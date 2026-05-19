@@ -135,13 +135,7 @@
   <div id="announce"></div>
   <div id="center">
     <div id="title">BRAWL ARENA</div>
-    <div class="panel" id="intro">
-      <p><b style="color:#9cf">Knock the CPU off the stage!</b> Higher % = bigger knockback.</p>
-      <p>3 stocks each. Last fighter standing wins.</p>
-      <p class="ctrl-mobile">Joystick + <b style="color:#fc4">A</b>/<b style="color:#f49">B</b> &nbsp; Tilt stick ↑/↓ for up &amp; down attacks &nbsp; <b style="color:#6f9">JUMP</b> &nbsp; <b style="color:#aaf">SHLD</b></p>
-      <p class="ctrl-desktop">Move <kbd>A</kbd><kbd>D</kbd> &nbsp; Up <kbd>W</kbd>/<kbd>↑</kbd> &nbsp; Down <kbd>↓</kbd> &nbsp; Jump <kbd>Space</kbd> &nbsp; Hit <kbd>J</kbd> &nbsp; Smash <kbd>K</kbd> &nbsp; Shield <kbd>S</kbd></p>
-      <p style="opacity:.75;font-size:.92em">Hold ↑ or ↓ while attacking for <b>up</b>/<b>down</b> tilts &amp; smashes. In the air: forward/back/up/down/neutral aerials. <b style="color:#6cf">🎮 Controller</b>: left stick + face buttons (A=jump, X=hit, Y=smash, LB/RB=shield, START=fight).</p>
-    </div>
+    <div class="panel hidden" id="intro"></div>
     <button id="mode" class="btn-mode" type="button">MODE: VS CPU</button>
     <button id="start">FIGHT</button>
     <button id="settingsBtn" class="btn-mode" type="button">SETTINGS</button>
@@ -521,6 +515,73 @@ function spark(x,y,color,n=12,spd=4) {
     particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:1, color, size: 3+Math.random()*3 });
   }
 }
+// Impact rings (item 6) — expanding stroked circle at hit points, attacker-tinted.
+const rings = [];
+const RING_MAX = 32;
+function pushRing(x, y, color, r0 = 8, r1 = 60, life = 18) {
+  if (rings.length >= RING_MAX) rings.shift();
+  rings.push({ x, y, color, r0, r1, life, age: 0 });
+}
+function drawRings() {
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const ring = rings[i];
+    const t = ring.age / ring.life;
+    if (t >= 1) { rings.splice(i, 1); continue; }
+    const r = ring.r0 + (ring.r1 - ring.r0) * t;
+    const a = (1 - t) * 0.85;
+    ctx.strokeStyle = ring.color.startsWith('rgba') ? ring.color : hexToRgba(ring.color, a);
+    ctx.lineWidth = 3 * (1 - t * 0.6);
+    ctx.beginPath();
+    ctx.arc(ring.x, ring.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ring.age++;
+  }
+}
+
+// Knockback streak ghosts (item 7) — semi-transparent silhouette trail for fighters
+// in heavy hitstun. Drawn before the live fighter so the live one stays on top.
+const trailGhosts = [];
+const GHOST_MAX = 16;
+function pushGhost(f) {
+  if (trailGhosts.length >= GHOST_MAX) trailGhosts.shift();
+  trailGhosts.push({
+    x: f.x, y: f.y, w: f.w, h: f.h, facing: f.facing,
+    color: damageTint(f.color, f.pct), age: 0, life: 12,
+  });
+}
+function drawGhosts() {
+  for (let i = trailGhosts.length - 1; i >= 0; i--) {
+    const g = trailGhosts[i];
+    if (g.age >= g.life) { trailGhosts.splice(i, 1); continue; }
+    const a = (1 - g.age / g.life) * 0.45;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = g.color;
+    // Simplified silhouette: torso + head circle. No detail — it's a blur.
+    roundRect(g.x + g.w*0.10, g.y + g.h*0.10, g.w*0.80, g.h*0.50, 8);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(g.x + g.w/2, g.y + g.h*0.14, 14, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    g.age++;
+  }
+}
+
+// Helper for ring alpha — accepts #rgb or #rrggbb base colors.
+function hexToRgba(hex, alpha) {
+  const m = hex.match(/^#([0-9a-f]{3,6})$/i);
+  if (!m) return hex;
+  const h = m[1];
+  let r, g, b;
+  if (h.length === 3) {
+    r = parseInt(h[0]+h[0], 16); g = parseInt(h[1]+h[1], 16); b = parseInt(h[2]+h[2], 16);
+  } else {
+    r = parseInt(h.slice(0,2), 16); g = parseInt(h.slice(2,4), 16); b = parseInt(h.slice(4,6), 16);
+  }
+  return `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+}
+
 let shake = 0;
 function doShake(n) { if (settings.shake) shake = Math.max(shake, n); }
 
@@ -585,8 +646,12 @@ function startGame() {
   if (actx && actx.state === 'suspended') actx.resume();
   spawnFighters();
   particles.length = 0;
+  rings.length = 0;
+  trailGhosts.length = 0;
   gameState = 'playing'; winner = null; frame = 0;
   centerEl.classList.add('hidden');
+  introEl.classList.add('hidden');
+  introEl.textContent = '';
   // Refresh HUD name (CPU vs P2)
   document.getElementById('name2').textContent = P2.name;
   if (isMobile) touchEl.classList.add('active');
@@ -671,6 +736,8 @@ function quitToMenu() {
   gameState = 'menu';
   touchEl.classList.remove('active');
   centerEl.classList.remove('hidden');
+  introEl.classList.add('hidden');
+  introEl.textContent = '';
   startBtn.textContent = 'FIGHT';
 }
 
@@ -696,8 +763,19 @@ function endGame(text, color) {
   document.getElementById('pauseBtn').classList.remove('show');
   announce(text, color, 1500);
   setTimeout(() => {
-    introEl.innerHTML = `<p style="font-size:22px"><b style="color:${color}">${text}</b></p>
-      <p>Final: ${P1.name} ${P1.pct.toFixed(0)}% (${P1.stocks}) — ${P2.name} ${P2.pct.toFixed(0)}% (${P2.stocks})</p>`;
+    // Build the results panel safely via DOM nodes (no innerHTML).
+    introEl.textContent = '';
+    const head = document.createElement('p');
+    head.style.fontSize = '22px';
+    const headBold = document.createElement('b');
+    headBold.style.color = color;
+    headBold.textContent = text;
+    head.appendChild(headBold);
+    const sub = document.createElement('p');
+    sub.textContent = `Final: ${P1.name} ${P1.pct.toFixed(0)}% (${P1.stocks}) — ${P2.name} ${P2.pct.toFixed(0)}% (${P2.stocks})`;
+    introEl.appendChild(head);
+    introEl.appendChild(sub);
+    introEl.classList.remove('hidden');
     startBtn.textContent = 'REMATCH';
     centerEl.classList.remove('hidden');
   }, 1400);
@@ -721,12 +799,17 @@ function landOnPlatforms(f, prevY) {
   f._wasGround = f.onGround;
 }
 
-function applyKnockback(target, dmg, angle, base, scaling) {
+function applyKnockback(target, dmg, angle, base, scaling, attacker) {
   if (target.invul > 0) return false;
+  const hx = target.x + target.w/2;
+  const hy = target.y + target.h/2;
+  // Attacker color falls back to a neutral hot orange when no attacker context (legacy callers).
+  const atkColor = attacker?.color || '#fc4';
   if (target.shieldOn && target.shieldHP > 0) {
     target.shieldHP -= dmg*2;
     target.vx += Math.cos(angle) * 1.2;
-    spark(target.x+target.w/2, target.y+target.h/2, '#9cf', 6, 3);
+    spark(hx, hy, '#9cf', 6, 3);
+    pushRing(hx, hy, '#9cf', 18, 44, 14);
     tone(220, 0.08, 'sawtooth', 0.12);
     return false;
   }
@@ -736,8 +819,11 @@ function applyKnockback(target, dmg, angle, base, scaling) {
   target.vy = Math.sin(angle) * power;
   target.hitstun = Math.min(40, 10 + power*1.4);
   target.invul = 8;
-  spark(target.x+target.w/2, target.y+target.h/2, '#fc4', 14, 5);
-  spark(target.x+target.w/2, target.y+target.h/2, '#fff', 6, 7);
+  // Sparks now tint by attacker (item 14): attacker color + white core.
+  spark(hx, hy, atkColor, 14, 5);
+  spark(hx, hy, '#fff',   6, 7);
+  // Impact ring (item 6) — size scaled by hit power.
+  pushRing(hx, hy, atkColor, 10, 36 + power * 2.0, 18);
   doShake(Math.min(14, 3 + power*0.4));
   hitStop = Math.min(8, 3 + Math.floor(power*0.3));
   tone(180 + dmg*15, 0.1, 'square', 0.18, 60);
@@ -962,6 +1048,12 @@ function updateFighter(f, control) {
   // Squash recovery
   f.squash += (1 - f.squash) * 0.18;
 
+  // Knockback streak trail (item 7) — drop a ghost every other frame when
+  // in heavy hitstun. Cap is enforced inside pushGhost so this is safe to call.
+  if (f.hitstun > 0 && (Math.abs(f.vx) + Math.abs(f.vy) > 12) && (frame & 1) === 0) {
+    pushGhost(f);
+  }
+
   // Invul tick
   if (f.invul > 0) f.invul--;
 
@@ -1003,7 +1095,7 @@ function applyHits(attacker, defender) {
   if (elapsed < m.startup || elapsed >= m.startup + m.active) return;
   const tb = { x: defender.x, y: defender.y, w: defender.w, h: defender.h };
   if (aabb(hb, tb)) {
-    const landed = applyKnockback(defender, hb.dmg, hb.angle, hb.base, hb.scaling);
+    const landed = applyKnockback(defender, hb.dmg, hb.angle, hb.base, hb.scaling, attacker);
     if (landed && hb.spike) {
       // meteor smash: extra downward push + longer hitstun + flashy feedback
       defender.vy = Math.max(defender.vy, 0) + 10;
@@ -1019,7 +1111,87 @@ function applyHits(attacker, defender) {
 }
 
 // ---------- Draw ----------
+// ---- Background depth helpers (Tier 1 items 1, 2, 18) ----
+// Parallax offset: small fraction of fighter-average X displacement.
+// During menu/end states P1/P2 are undefined — fall back to viewport center.
+function bgParallax(depth) {
+  const ax = (P1 && P2) ? (P1.x + P2.x) * 0.5 : W * 0.5;
+  return (ax - W * 0.5) * depth;
+}
+
+let stars = null;
+function seedStars() {
+  // Density scales with viewport area so phones get fewer than desktops.
+  const count = Math.max(30, Math.min(140, Math.floor((W * H) / 9000)));
+  stars = new Array(count);
+  for (let i = 0; i < count; i++) {
+    stars[i] = {
+      x: Math.random() * W,
+      y: Math.random() * H * 0.66,
+      r: 0.5 + Math.random() * 1.4,
+      phase: Math.random() * Math.PI * 2,
+      hue: 200 + Math.random() * 40,
+    };
+  }
+}
+// Invalidate on resize so density tracks viewport.
+addEventListener('resize', () => { stars = null; });
+
+function drawStars(t) {
+  if (!stars) seedStars();
+  const px = bgParallax(-0.08); // drift opposite the foreground for depth
+  for (const s of stars) {
+    const tw = 0.55 + 0.45 * Math.sin(t * 0.02 + s.phase);
+    ctx.fillStyle = `hsla(${s.hue|0}, 70%, 85%, ${(tw * 0.9).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(s.x - px, s.y, s.r * (0.7 + tw * 0.6), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawClouds(t) {
+  // Two strips drifting at different speeds — adds parallax even when fighters are still.
+  const cloudY = H * 0.30;
+  for (let layer = 0; layer < 2; layer++) {
+    const speed = layer === 0 ? 0.15 : 0.08;
+    const yOff = layer === 0 ? 0 : 26;
+    const alpha = layer === 0 ? 0.05 : 0.07;
+    ctx.fillStyle = `rgba(200,180,230,${alpha})`;
+    const period = 200;
+    const shift = ((t * speed) % period + period) % period;
+    let x = -shift;
+    while (x < W + 100) {
+      const w = 60 + ((x * 2654435761) >>> 16) % 80;
+      const h = 10 + ((x * 3266489917) >>> 16) % 6;
+      ctx.beginPath();
+      ctx.ellipse(x + w/2, cloudY + yOff, w/2, h, 0, 0, Math.PI*2);
+      ctx.fill();
+      x += w + 36;
+    }
+  }
+}
+
+function drawSkylineLayer(baseY, color, depth, base, range, seed) {
+  const px = bgParallax(depth);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  // Start a bit off-screen left so parallax shift never reveals an empty band.
+  let x = -Math.ceil(Math.abs(px)) - 40;
+  ctx.moveTo(x - px, baseY);
+  while (x < W + Math.abs(px) + 40) {
+    const hx = ((x + seed) * 2654435761) >>> 0;
+    const hy = ((x + seed) * 3266489917) >>> 0;
+    const w = base.w + (hx >>> 16) % range.w;
+    const h = base.h + (hy >>> 16) % range.h;
+    ctx.rect(x - px, baseY - h, w, h);
+    x += w + 4;
+  }
+  ctx.fill();
+}
+
 function drawBackground() {
+  const t = frame;
+
   // sky gradient
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#1a1140');
@@ -1028,21 +1200,38 @@ function drawBackground() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  // distant city silhouette
-  ctx.fillStyle = '#10082a';
-  const baseY = H*0.78;
-  ctx.beginPath();
-  ctx.moveTo(0, baseY);
-  let x = 0;
-  while (x < W) {
-    const w = 30 + ((x*2654435761)>>>16)%70;
-    const h = 30 + ((x*3266489917)>>>16)%140;
-    ctx.rect(x, baseY - h, w, h);
-    x += w + 4;
-  }
-  ctx.fill();
+  // moon — pulsing halo (item 2). Draw before stars so stars sit over the halo.
+  const moonPx = bgParallax(0.02);
+  const mx = W*0.82 - moonPx;
+  const my = H*0.22;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 0.02);
+  ctx.fillStyle = `rgba(255,240,200,${(0.05 + 0.06 * pulse).toFixed(3)})`;
+  ctx.beginPath(); ctx.arc(mx, my, 64 + pulse * 9, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = `rgba(255,240,200,${(0.10 + 0.08 * pulse).toFixed(3)})`;
+  ctx.beginPath(); ctx.arc(mx, my, 48 + pulse * 4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,240,200,0.92)';
+  ctx.beginPath(); ctx.arc(mx, my, 38, 0, Math.PI*2); ctx.fill();
 
-  // grid floor
+  // stars (item 1) — drift slightly opposite the foreground
+  drawStars(t);
+
+  // distant clouds (item 18) — two strips drifting at different speeds
+  drawClouds(t);
+
+  // three skyline layers (item 1) — far → near, deepening parallax
+  drawSkylineLayer(H*0.66, '#0c0628', 0.05, {w:18, h:14}, {w:28, h:30},  101);
+  drawSkylineLayer(H*0.72, '#120a3c', 0.12, {w:26, h:22}, {w:48, h:60},  211);
+  drawSkylineLayer(H*0.78, '#1a0e52', 0.22, {w:30, h:30}, {w:80, h:120}, 307);
+
+  // atmospheric haze band (item 2) — sits over the skyline so depth reads as smog
+  const hazeG = ctx.createLinearGradient(0, H*0.60, 0, H*0.82);
+  hazeG.addColorStop(0,    'rgba(80,40,110,0)');
+  hazeG.addColorStop(0.55, 'rgba(60,30,90,0.30)');
+  hazeG.addColorStop(1,    'rgba(20,10,40,0.20)');
+  ctx.fillStyle = hazeG;
+  ctx.fillRect(0, H*0.60, W, H*0.24);
+
+  // grid floor (unchanged — visual anchor on the ground)
   ctx.strokeStyle = 'rgba(120,200,255,0.08)';
   ctx.lineWidth = 1;
   for (let i=0;i<10;i++){
@@ -1050,12 +1239,6 @@ function drawBackground() {
     if (y > H) break;
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
   }
-
-  // moon
-  ctx.fillStyle = 'rgba(255, 240, 200, 0.85)';
-  ctx.beginPath(); ctx.arc(W*0.82, H*0.22, 38, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,240,200,0.12)';
-  ctx.beginPath(); ctx.arc(W*0.82, H*0.22, 60, 0, Math.PI*2); ctx.fill();
 }
 
 function drawPlatform(p) {
@@ -1072,35 +1255,80 @@ function drawPlatform(p) {
   ctx.fillRect(p.x-6, p.y, p.w+12, p.h+8);
 }
 
+// Lerp a base hex color toward a damaged tint as pct rises. Cap is around 180%
+// so a fighter at the very edge of survivability reads strongly orange.
+function damageTint(baseColor, pct) {
+  const t = Math.min(1, Math.max(0, pct) / 180);
+  if (t < 0.05) return baseColor;
+  const m = baseColor.match(/^#([0-9a-f]{3,6})$/i);
+  if (!m) return baseColor;
+  const hex = m[1];
+  let r, g, b;
+  if (hex.length === 3) {
+    r = parseInt(hex[0] + hex[0], 16);
+    g = parseInt(hex[1] + hex[1], 16);
+    b = parseInt(hex[2] + hex[2], 16);
+  } else {
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  }
+  const tr = 0xff, tg = 0x60, tb = 0x20;
+  r = Math.round(r + (tr - r) * t);
+  g = Math.round(g + (tg - g) * t);
+  b = Math.round(b + (tb - b) * t);
+  return `rgb(${r},${g},${b})`;
+}
+
 function drawFighter(f) {
   const cx = f.x + f.w/2;
   const baseY = f.y + f.h;
+
+  // Idle breathing offsets (item 3) — only when calm and grounded.
+  let breathOff = 0, armSway = 0;
+  if (f.attackTimer === 0 && f.hitstun === 0 && f.onGround && f.knockoutAnim === 0) {
+    breathOff = Math.sin(frame * 0.04 + f.blinkT) * 1.2;
+    armSway   = Math.sin(frame * 0.04 + f.blinkT) * 0.06;
+  }
+
+  // Hit reaction (item 5) — tilt away from hit direction, decaying white overlay.
+  let hitTilt = 0, hitFlashA = 0;
+  if (f.hitstun > 0) {
+    const dirSign = Math.sign(f.vx) || 1;
+    hitTilt = dirSign * Math.min(0.22, Math.abs(f.vx) * 0.035);
+    const fade = Math.max(0, Math.min(1, (f.hitstun - 2) / 6));
+    hitFlashA = fade * 0.75;
+  }
+
   ctx.save();
   // invul flicker
   if (f.invul > 0 && (frame >> 1) % 2 === 0) { ctx.globalAlpha = 0.4; }
-  // squash transform
-  ctx.translate(cx, baseY);
+  // breathing offset → squash transform → hit-reaction tilt → facing scale
+  ctx.translate(cx, baseY + breathOff);
+  if (hitTilt) ctx.rotate(hitTilt);
   const sx = (f.facing) * (1 + (1 - f.squash)*0.6);
   const sy = f.squash;
   ctx.scale(Math.sign(sx) || 1, 1);
   ctx.scale(Math.abs(sx), sy);
-  // body
+  // body — torso color shifts toward orange as pct rises (item 4)
   const bw = f.w, bh = f.h;
+  const tint = damageTint(f.color, f.pct);
   // legs
   ctx.fillStyle = '#222';
   ctx.fillRect(-bw*0.32, -bh*0.32, bw*0.22, bh*0.32);
   ctx.fillRect( bw*0.10, -bh*0.32, bw*0.22, bh*0.32);
   // torso
-  ctx.fillStyle = f.color;
+  ctx.fillStyle = tint;
   roundRect(-bw*0.40, -bh*0.78, bw*0.80, bh*0.50, 8);
   ctx.fill();
   // belt
   ctx.fillStyle = '#111';
   ctx.fillRect(-bw*0.40, -bh*0.32, bw*0.80, 4);
-  // arms — direction depends on the active move's dy (up/down/forward)
-  ctx.fillStyle = f.color;
+  // arms — direction depends on the active move's dy (up/down/forward); idle adds tiny sway
+  ctx.fillStyle = tint;
   const am = f.attackTimer > 0 ? MOVES[f.attackType] : null;
   const armPunch = am ? (am.cd >= 30 ? 18 : 12) : 0;
+  const swayPx = (am === null) ? armSway * bw : 0;
   if (am && am.dy < -0.4) {
     // upward swing — raise arm
     ctx.fillRect( bw*0.10, -bh*0.95 - armPunch, 8, 10 + armPunch);
@@ -1114,9 +1342,9 @@ function drawFighter(f) {
     ctx.fillRect(-bw*0.28 - 10 - armPunch, -bh*0.66, 10 + armPunch, 8);
     ctx.fillRect( bw*0.28, -bh*0.66, 10, 8);
   } else {
-    // forward
-    ctx.fillRect( bw*0.28, -bh*0.66, 10 + armPunch, 8);
-    ctx.fillRect(-bw*0.28 - 10, -bh*0.66, 10, 8);
+    // forward swing OR idle sway
+    ctx.fillRect( bw*0.28 + swayPx,      -bh*0.66, 10 + armPunch, 8);
+    ctx.fillRect(-bw*0.28 - 10 - swayPx, -bh*0.66, 10, 8);
   }
   // head
   ctx.fillStyle = f.headColor;
@@ -1134,12 +1362,26 @@ function drawFighter(f) {
     ctx.fillRect( 3, -bh*0.88, 4, 1);
   }
   f.blinkT += 0.05;
-  // mouth (angry when attacking)
+  // mouth (angry when attacking, pained when in hitstun)
   ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
   ctx.beginPath();
-  if (f.attackTimer > 0) { ctx.moveTo(-3, -bh*0.78); ctx.lineTo(3, -bh*0.78); }
-  else { ctx.arc(0, -bh*0.82, 3, 0, Math.PI); }
+  if (f.hitstun > 0) {
+    // grimace: small upside-down arc
+    ctx.arc(0, -bh*0.78, 3, Math.PI, Math.PI*2);
+  } else if (f.attackTimer > 0) {
+    ctx.moveTo(-3, -bh*0.78); ctx.lineTo(3, -bh*0.78);
+  } else {
+    ctx.arc(0, -bh*0.82, 3, 0, Math.PI);
+  }
   ctx.stroke();
+
+  // Hit-reaction white overlay (item 5) — inside the squash transform so it follows the pose.
+  if (hitFlashA > 0) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = `rgba(255,255,255,${hitFlashA.toFixed(3)})`;
+    ctx.fillRect(-bw*0.6, -bh*1.05, bw*1.2, bh*1.1);
+    ctx.globalCompositeOperation = 'source-over';
+  }
 
   ctx.restore();
 
@@ -1286,9 +1528,13 @@ function loop() {
     refreshHud();
   }
 
+  // Streak trails sit BEHIND live fighters
+  drawGhosts();
   if (P2) drawFighter(P2);
   if (P1) drawFighter(P1);
   drawParticles();
+  // Impact rings sit ABOVE particles for maximum punch
+  drawRings();
 
   ctx.restore();
 
