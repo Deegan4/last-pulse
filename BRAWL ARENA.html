@@ -16,33 +16,11 @@
     -webkit-tap-highlight-color: transparent; -webkit-user-select:none; user-select:none;
     touch-action:none; overscroll-behavior:none;
   }
-  canvas#c { display:block; position:absolute; inset:0; width:100%; height:100%; touch-action:none; z-index:2; }
-  /* Phase 1 3D preview — small corner viewport. Sits behind the 2D canvas
-     and the UI so it's visible but doesn't interact with gameplay yet. */
-  canvas#c3d {
-    display:block; position:fixed;
-    right: calc(12px + env(safe-area-inset-right));
-    top: calc(72px + env(safe-area-inset-top));
-    width: 220px; height: 220px;
-    z-index: 9;
-    border-radius: 14px;
-    border: 1px solid rgba(140,180,255,.5);
-    box-shadow: 0 0 24px rgba(80,160,255,.35), inset 0 0 18px rgba(80,160,255,.18);
-    background: #0a0820;
-    pointer-events: none;
-  }
-  #c3d-label {
-    position: fixed;
-    right: calc(12px + env(safe-area-inset-right));
-    top: calc(48px + env(safe-area-inset-top));
-    z-index: 10;
-    font-size: 10px; letter-spacing: 3px; opacity: .6; color: #cdf;
-    pointer-events: none;
-    text-shadow: 0 0 6px rgba(80,160,255,.6);
-  }
-  @media (max-width: 540px) {
-    canvas#c3d { width: 130px; height: 130px; }
-  }
+  /* Phase 2: 3D canvas is the gameplay backdrop (full viewport, z=1).
+     2D canvas sits IN FRONT (z=2, transparent) and renders only particles,
+     rings, ghosts on top of the 3D fighters + platforms. HUD/DOM is z=10. */
+  canvas#c3d { display:block; position:absolute; inset:0; width:100%; height:100%; touch-action:none; z-index:1; }
+  canvas#c   { display:block; position:absolute; inset:0; width:100%; height:100%; touch-action:none; z-index:2; background: transparent; }
   #ui { position:fixed; inset:0; pointer-events:none; z-index:10;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     box-sizing:border-box; }
@@ -144,9 +122,8 @@
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
 <canvas id="c3d"></canvas>
-<div id="c3d-label">3D PREVIEW</div>
+<canvas id="c"></canvas>
 <div id="ui">
   <div class="hud">
     <div class="pcard" id="card1">
@@ -274,129 +251,162 @@
 <script src="assets/three-bundle.js"></script>
 <script src="assets/scene-usdz.js"></script>
 <script>
-// ---------- 3D Preview (Phase 1 /3d branch) ----------
-// Renders the embedded USDZ as a spinning model in the corner #c3d canvas.
-// Independent of the 2D game loop. Errors here must never block 2D play.
+// ---------- 3D Game Renderer (Phase 2 /3d branch) ----------
+// Full-viewport ortho 3D scene. Reads frozen-each-frame state from
+// globalThis.__brawl (exposed by the 2D IIFE) and renders fighters
+// and platforms in 3D, with a hex-skybox backdrop. Independent of the
+// 2D loop — errors here never block 2D play. When this script's scene
+// init succeeds, it sets globalThis.__brawl3dActive = true so the 2D
+// loop's drawBackground / drawPlatform / drawFighter can become no-ops.
 (() => {
   'use strict';
   const canvas3d = document.getElementById('c3d');
-  const label    = document.getElementById('c3d-label');
   if (!canvas3d) return;
   if (!globalThis.THREE) {
-    console.warn('[3d] Three.js bundle not present — preview disabled');
+    console.warn('[3d] Three.js bundle not present — 3D disabled, 2D fallback active');
     canvas3d.style.display = 'none';
-    if (label) label.style.display = 'none';
     return;
   }
   const THREE = globalThis.THREE;
 
+  // ---------- Scene + camera ----------
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0c0628);
 
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 200);
-  camera.position.set(2.4, 1.6, 3.2);
-  camera.lookAt(0, 0.6, 0);
+  // Sky: 1×N gradient texture stretched as scene.background (cheap, parallax-free).
+  function makeSkyTexture() {
+    const c = document.createElement('canvas');
+    c.width = 4; c.height = 256;
+    const g = c.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0,    '#1a1140');
+    grad.addColorStop(0.5,  '#2b1a5a');
+    grad.addColorStop(1,    '#0a0820');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 4, 256);
+    return new THREE.CanvasTexture(c);
+  }
+  scene.background = makeSkyTexture();
+
+  // 1 unit = 1 CSS pixel so the 2D fighter coords drop straight into 3D space.
+  // Frustum is built around the viewport; resize3d() recomputes on resize.
+  const camera = new THREE.OrthographicCamera(
+    -innerWidth/2, innerWidth/2, innerHeight/2, -innerHeight/2, -2000, 2000
+  );
+  camera.position.set(0, 0, 500);
+  camera.lookAt(0, 0, 0);
 
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, alpha: true });
+    renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   } catch (e) {
     console.warn('[3d] WebGL unavailable:', e.message);
     canvas3d.style.display = 'none';
-    if (label) label.style.display = 'none';
     return;
   }
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 
-  // Lights — match the 2D game's purple/cyan palette
-  scene.add(new THREE.HemisphereLight(0xb0d2ff, 0x201040, 0.7));
-  const key = new THREE.DirectionalLight(0xffffff, 1.1);
-  key.position.set(3, 5, 2);
+  // ---------- Lights ----------
+  scene.add(new THREE.HemisphereLight(0xb0d2ff, 0x201040, 0.65));
+  const key = new THREE.DirectionalLight(0xffffff, 1.0);
+  key.position.set(100, 200, 80);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0xff66cc, 0.5);
-  rim.position.set(-4, 2, -3);
+  const rim = new THREE.DirectionalLight(0xff66cc, 0.45);
+  rim.position.set(-150, 60, -80);
   scene.add(rim);
 
-  // Floor disk so the model has something to stand on visually
-  const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(2.2, 48),
-    new THREE.MeshStandardMaterial({ color: 0x1a1140, roughness: 0.85, metalness: 0.1 })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor);
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(2.18, 2.30, 64),
-    new THREE.MeshBasicMaterial({ color: 0x66ccff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.001;
-  scene.add(ring);
+  // ---------- Fighter meshes (2, color set on spawn) ----------
+  function makeFighterMesh(hex) {
+    const geom = new THREE.BoxGeometry(44, 70, 44);
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(hex),
+      roughness: 0.5, metalness: 0.25,
+      emissive: new THREE.Color(hex).multiplyScalar(0.12),
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.visible = false;
+    return mesh;
+  }
+  const fighterMeshes = [ makeFighterMesh('#3399ff'), makeFighterMesh('#ff5555') ];
+  fighterMeshes.forEach(m => scene.add(m));
 
-  // Resize the WebGL drawing buffer to match the CSS box of #c3d.
+  // ---------- Platform meshes (rebuilt when count / dims change on resize) ----------
+  let platformMeshes = [];
+  function rebuildPlatforms(plats) {
+    platformMeshes.forEach(m => { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
+    platformMeshes = [];
+    if (!plats) return;
+    for (const p of plats) {
+      const geom = new THREE.BoxGeometry(p.w, p.h, 80);
+      const mat = new THREE.MeshStandardMaterial({
+        color:    p.main ? 0x66ccff : 0xff66cc,
+        emissive: p.main ? 0x114488 : 0x661144,
+        roughness: 0.35, metalness: 0.55,
+      });
+      platformMeshes.push(new THREE.Mesh(geom, mat));
+      scene.add(platformMeshes[platformMeshes.length - 1]);
+    }
+  }
+
+  // ---------- Resize ----------
   function resize3d() {
-    const w = canvas3d.clientWidth, h = canvas3d.clientHeight;
-    if (w <= 0 || h <= 0) return;
+    const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    camera.left = -w/2; camera.right = w/2;
+    camera.top = h/2; camera.bottom = -h/2;
     camera.updateProjectionMatrix();
+    if (globalThis.__brawl) rebuildPlatforms(globalThis.__brawl.getPlatforms());
   }
   addEventListener('resize', resize3d);
   resize3d();
 
-  // Load the embedded USDZ via USDZLoader.parse(). Skip silently if no
-  // loader is available — Three.js USDZLoader is in /examples and might
-  // be absent in a stripped bundle.
-  let modelGroup = null;
-  const USDZLoader = globalThis.USDZLoader;
-  if (USDZLoader && globalThis.SCENE_USDZ_B64) {
-    try {
-      const b64 = globalThis.SCENE_USDZ_B64;
-      const bin = atob(b64);
-      const buf = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-      const loader = new USDZLoader();
-      const loaded = loader.parse(buf.buffer);
-      if (loaded) {
-        modelGroup = loaded;
-        // Auto-fit: scale so the largest dimension is ~1.4 world units, recenter on Y.
-        const box = new THREE.Box3().setFromObject(modelGroup);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z) || 1;
-        const scale = 1.4 / maxDim;
-        modelGroup.scale.setScalar(scale);
-        modelGroup.position.set(
-          -center.x * scale,
-          -box.min.y * scale,
-          -center.z * scale
-        );
-        scene.add(modelGroup);
-      }
-    } catch (err) {
-      console.warn('[3d] USDZ parse failed:', err.message);
-      // Fall back to a placeholder cube so the preview shows SOMETHING.
-      modelGroup = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 0.8, 0.8),
-        new THREE.MeshStandardMaterial({ color: 0x6699ff, roughness: 0.4 })
-      );
-      modelGroup.position.y = 0.4;
-      scene.add(modelGroup);
-    }
-  } else {
-    console.warn('[3d] USDZLoader or SCENE_USDZ_B64 missing — using placeholder cube');
-    modelGroup = new THREE.Mesh(
-      new THREE.BoxGeometry(0.8, 0.8, 0.8),
-      new THREE.MeshStandardMaterial({ color: 0x6699ff, roughness: 0.4 })
-    );
-    modelGroup.position.y = 0.4;
-    scene.add(modelGroup);
-  }
+  // Mark 3D as active so the 2D draw functions skip their work.
+  globalThis.__brawl3dActive = true;
 
-  // Independent RAF loop so pausing/unpausing the 2D game doesn't freeze preview.
+  // ---------- Per-frame sync ----------
+  let prevPlatCount = -1;
+  const tmpColor = new THREE.Color();
   function frame3d() {
-    if (modelGroup) modelGroup.rotation.y += 0.012;
-    renderer.render(scene, camera);
     requestAnimationFrame(frame3d);
+    const W = innerWidth, H = innerHeight;
+    const brawl = globalThis.__brawl;
+    if (brawl) {
+      // Platforms
+      const plats = brawl.getPlatforms() || [];
+      if (plats.length !== prevPlatCount) {
+        rebuildPlatforms(plats);
+        prevPlatCount = plats.length;
+      }
+      for (let i = 0; i < platformMeshes.length; i++) {
+        const p = plats[i];
+        const m = platformMeshes[i];
+        if (!p) { m.visible = false; continue; }
+        m.visible = true;
+        m.position.set(p.x + p.w/2 - W/2, H/2 - (p.y + p.h/2), 0);
+        m.scale.set(p.w / (m.geometry.parameters.width || 1), p.h / (m.geometry.parameters.height || 1), 1);
+      }
+      // Fighters
+      const fighters = brawl.getFighters() || [];
+      for (let i = 0; i < 2; i++) {
+        const f = fighters[i];
+        const m = fighterMeshes[i];
+        if (!f) { m.visible = false; continue; }
+        m.visible = true;
+        m.position.set(f.x + f.w/2 - W/2, H/2 - (f.y + f.h/2), 0);
+        m.rotation.y = (f.facing > 0) ? 0.0 : Math.PI;
+        // Damage tint — pull through if the 2D code exposed it.
+        const tintHex = brawl.damageTint ? brawl.damageTint(f.color, f.pct) : f.color;
+        // damageTint may return "rgb(r,g,b)" or "#rrggbb"; THREE.Color handles both.
+        tmpColor.set(tintHex);
+        m.material.color.copy(tmpColor);
+        m.material.emissive.copy(tmpColor).multiplyScalar(0.10);
+        // Invul flicker so spawn invul reads in 3D too.
+        m.material.opacity = f.invul > 0 && (Math.floor(performance.now()/64) & 1) ? 0.45 : 1.0;
+        m.material.transparent = m.material.opacity < 1.0;
+        // Subtle squash from the 2D fighter's squash factor.
+        m.scale.set(1, f.squash || 1, 1);
+      }
+    }
+    renderer.render(scene, camera);
   }
   frame3d();
 })();
@@ -1353,6 +1363,13 @@ function drawSkylineLayer(baseY, color, depth, base, range, seed) {
 }
 
 function drawBackground() {
+  // 3D Phase 2: when the 3D renderer is active, just clear the 2D canvas
+  // so it stays transparent over the WebGL backdrop. Particles/rings/ghosts
+  // still draw on top in this 2D layer.
+  if (globalThis.__brawl3dActive) {
+    ctx.clearRect(0, 0, W, H);
+    return;
+  }
   const t = frame;
 
   // sky gradient
@@ -1405,6 +1422,7 @@ function drawBackground() {
 }
 
 function drawPlatform(p) {
+  if (globalThis.__brawl3dActive) return;   // platforms drawn by the 3D renderer
   // top neon bar
   const g = ctx.createLinearGradient(0, p.y, 0, p.y+p.h);
   g.addColorStop(0, p.main ? '#6cf' : '#f6c');
@@ -1444,6 +1462,7 @@ function damageTint(baseColor, pct) {
 }
 
 function drawFighter(f) {
+  if (globalThis.__brawl3dActive) return;   // 3D renderer owns the fighter
   const cx = f.x + f.w/2;
   const baseY = f.y + f.h;
 
@@ -1713,6 +1732,17 @@ function loop() {
   requestAnimationFrame(loop);
 }
 loop();
+
+// Bridge to the 3D renderer (Phase 2 /3d branch). The 3D IIFE pulls fresh
+// fighter + platform state each frame via these getters. Live function
+// references keep this safe across rematches: P1/P2 get reassigned in
+// spawnFighters(), but the getters always read the current bindings.
+globalThis.__brawl = {
+  getFighters: () => [P1, P2].filter(Boolean),
+  getPlatforms: () => PLATS,
+  damageTint:   damageTint,
+  isPaused:     () => paused,
+};
 
 // Prevent context menu on long-press
 addEventListener('contextmenu', e => e.preventDefault());
