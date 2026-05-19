@@ -4,3 +4,5 @@
 node_modules/
 .vscode/
 .idea/
+# Playtest scratch output (artifacts, not source)
+.claude/skills/playtest/out/
