@@ -953,6 +953,7 @@ function landOnPlatforms(f, prevY) {
       f.onGround = true;
       if (!f._wasGround) { spark(f.x, f.y+f.h, '#ddd', 6, 2.4); f.squash = 0.7; }
       f.jumps = 0;
+      f.airDodged = false;
       break;
     }
   }
@@ -1019,6 +1020,10 @@ const MOVES = {
   bair:   { startup:4, active:3, recover:10, cd:20, dmg:8,  base:8,  scl:1.0, dx:-0.85,dy:0.0,   w:1.00, h:0.65, ang:Math.PI+0.20 },
   uair:   { startup:4, active:5, recover:10, cd:22, dmg:8,  base:7,  scl:0.8, dx:0.10, dy:-0.65, w:1.10, h:0.65, ang:-Math.PI/2+0.20 },
   dair:   { startup:8, active:5, recover:14, cd:28, dmg:11, base:8,  scl:1.1, dx:0.05, dy:0.75,  w:1.00, h:0.60, ang:Math.PI/2-0.15, spike:true },
+  // Grab (shield + attack on the ground). Beats shields, but the long recover
+  // makes a whiffed grab punishable — completes a rock-paper-scissors with
+  // attack (beats grab on startup) and shield (beats attack).
+  grab:   { startup:6, active:3, recover:22, cd:36, dmg:6,  base:7,  scl:0.6, dx:0.72, dy:-0.05, w:0.85, h:0.62, ang:-0.55, ignoreShield:true, grab:true },
 };
 
 function selectMove(f, isSmash, mx, my) {
@@ -1127,7 +1132,7 @@ function updateFighter(f, control) {
     const dx = P1.x - f.x;
     const dy = P1.y - f.y;
     const adx = Math.abs(dx);
-    f.aiCool--; f.aiJumpCool--;
+    f.aiCool--; f.aiJumpCool--; f.aiGrabCool--;
     f.facing = dx >= 0 ? 1 : -1;
     if (adx > 80) mx = dx > 0 ? 1 : -1;
     else if (adx < 50 && Math.random() < 0.04) mx = dx > 0 ? -1 : 1;
@@ -1143,6 +1148,10 @@ function updateFighter(f, control) {
       }
     }
     if (P1.attackTimer > 0 && adx < 80 && Math.random() < probShield) shield = true;
+    // Punish a shielding opponent with a grab (neutral stick so it doesn't roll).
+    if (P1.shieldOn && adx < reach && f.onGround && f.aiGrabCool <= 0 && Math.random() < 0.25) {
+      attackPress = true; shield = true; mx = 0; my = 0; f.aiGrabCool = 70;
+    }
     if (f.x < W*0.12 || f.x > W*0.88) {
       mx = (f.x < W*0.5) ? 1 : -1;
       if (f.aiJumpCool <= 0 && !f.onGround) { jumpPress = true; f.aiJumpCool = 18; }
@@ -1151,8 +1160,30 @@ function updateFighter(f, control) {
 
   // Move
   if (f.hitstun > 0) f.hitstun--;
+  if (f.dodgeTimer > 0) f.dodgeTimer--;
+  if (f.comboTimer > 0) { f.comboTimer--; if (f.comboTimer === 0) f.combo = 0; }
   const stunned = f.hitstun > 0;
-  const canControl = !stunned && f.attackTimer <= 0 && f.knockoutAnim <= 0;
+  let canControl = !stunned && f.attackTimer <= 0 && f.knockoutAnim <= 0 && f.dodgeTimer <= 0;
+
+  // Dodge / roll / air-dodge — fires on the frame shield is first pressed WITH a
+  // direction (neutral shield-press just raises the shield). Grants brief i-frames.
+  const shieldEdge = shield && !f._shieldPrev;
+  f._shieldPrev = shield;
+  if (shieldEdge && canControl) {
+    if (!f.onGround && !f.airDodged) {
+      f.airDodged = true; f.dodgeTimer = 22; f.invul = Math.max(f.invul, 18);
+      const dl = Math.hypot(mx, my) || 1;
+      f.vx = (mx / dl) * 9; f.vy = (my / dl) * 9;
+      spark(f.x+f.w/2, f.y+f.h/2, '#adf', 12, 5); tone(720, 0.1, 'sine', 0.12);
+      canControl = false;
+    } else if (f.onGround && (my > 0.4 || Math.abs(mx) > 0.3)) {
+      f.dodgeTimer = 20; f.invul = Math.max(f.invul, 14);
+      f.vx = Math.abs(mx) > 0.3 ? (mx > 0 ? 1 : -1) * 9 : 0;   // roll vs spot-dodge
+      spark(f.x+f.w/2, f.y+f.h/2, '#adf', 10, 4); tone(600, 0.08, 'sine', 0.12);
+      canControl = false;
+    }
+  }
+
   f.shieldOn = shield && canControl && f.onGround && f.shieldHP > 0;
 
   if (canControl && !f.shieldOn) {
@@ -1177,14 +1208,18 @@ function updateFighter(f, control) {
   if (canControl && f.attackCooldown <= 0 && (attackPress || smashPress)) {
     // Ground side attacks should turn toward the input
     if (f.onGround && Math.abs(mx) > 0.3) f.facing = mx > 0 ? 1 : -1;
-    const key = selectMove(f, smashPress, mx, my);
+    // Shield + light attack on the ground = grab (beats shields).
+    const key = (shield && f.onGround && attackPress && !smashPress)
+      ? 'grab'
+      : selectMove(f, smashPress, mx, my);
     const m = MOVES[key];
     f.attackType = key;
     f.attackAir = !f.onGround;
     f.attackTimer = m.startup + m.active + m.recover;
     f.attackCooldown = m.cd;
     // Per-move startup sfx
-    if (smashPress) tone(140, 0.18, 'sawtooth', 0.18, 90);
+    if (key === 'grab') tone(300, 0.12, 'sawtooth', 0.14, 200);
+    else if (smashPress) tone(140, 0.18, 'sawtooth', 0.18, 90);
     else if (key === 'jab') tone(540, 0.05, 'square', 0.12);
     else if (key === 'dair') tone(180, 0.16, 'sawtooth', 0.16, 110);
     else if (key === 'uair' || key === 'utilt') tone(620, 0.08, 'triangle', 0.14);
@@ -1197,9 +1232,11 @@ function updateFighter(f, control) {
   else if (f.shieldRegen > 0) f.shieldRegen--;
   else f.shieldHP = Math.min(100, f.shieldHP + 0.7);
 
-  // Gravity
+  // Gravity (+ fast-fall: hold down while airborne and descending to drop quickly)
   f.vy += GRAV;
-  if (f.vy > 18) f.vy = 18;
+  const fastFalling = !f.onGround && canControl && my > 0.5 && f.vy > 1;
+  if (fastFalling) { f.vy = 22; if (frame % 3 === 0) spark(f.x+f.w/2, f.y, '#9cf', 3, 2); }
+  else if (f.vy > 18) f.vy = 18;
 
   const prevY = f.y;
   f.x += f.vx; f.y += f.vy;
@@ -1217,6 +1254,8 @@ function updateFighter(f, control) {
   if (f.hitstun > 0 && (Math.abs(f.vx) + Math.abs(f.vy) > 12) && (frame & 1) === 0) {
     pushGhost(f);
   }
+  // Dodge leaves a streak too, so the i-frame window is readable.
+  if (f.dodgeTimer > 0 && (frame & 1) === 0) pushGhost(f);
 
   // Invul tick
   if (f.invul > 0) f.invul--;
@@ -1242,6 +1281,7 @@ function updateFighter(f, control) {
         setTimeout(() => {
           f.x = W*0.5 - f.w/2; f.y = -60; f.vx = 0; f.vy = 0;
           f.pct = 0; f.hitstun = 0; f.invul = 90; f.knockoutAnim = 0;
+          f.dodgeTimer = 0; f.airDodged = false; f.combo = 0; f.comboTimer = 0;
         }, 700);
       }
     }
@@ -1259,7 +1299,12 @@ function applyHits(attacker, defender) {
   if (elapsed < m.startup || elapsed >= m.startup + m.active) return;
   const tb = { x: defender.x, y: defender.y, w: defender.w, h: defender.h };
   if (aabb(hb, tb)) {
-    const landed = applyKnockback(defender, hb.dmg, hb.angle, hb.base, hb.scaling, attacker);
+    const landed = applyKnockback(defender, hb.dmg, hb.angle, hb.base, hb.scaling, attacker, !!m.ignoreShield);
+    if (landed) {
+      // Combo tracking — consecutive hits before the window lapses.
+      attacker.combo++; attacker.comboTimer = 40;
+      if (attacker.combo >= 3) announce(`${attacker.combo} HIT COMBO!`, attacker.color, 550);
+    }
     if (landed && hb.spike) {
       // meteor smash: extra downward push + longer hitstun + flashy feedback
       defender.vy = Math.max(defender.vy, 0) + 10;
