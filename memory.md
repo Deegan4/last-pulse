@@ -57,9 +57,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   and **remove it before committing**.
 
 ## Next enhancements (prioritized)
-_Done: Progression & stats + character art upgrade (see above)._ Remaining:
+_Done: Progression & stats, character art, joystick upgrade, **New modes & bigger map** (below)._ Remaining:
 
-1. **New modes & bigger map** (recommended next)
+1. ~~New modes & bigger map~~ — DONE: 3 modes (Battle Royale / Endless Horde / Squads),
+   bigger 3000² map with buildings (cover + bullet-blocking), water ponds, and day/dusk/night.
    - **Endless Horde** mode (survive escalating zombie waves; score = time/kills, no BR zone).
    - **Squad** mode (a few AI teammates vs other squads).
    - Larger/varied map: buildings as real cover (collision), water, a day-night tint.
