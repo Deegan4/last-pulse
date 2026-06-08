@@ -1,8 +1,6 @@
-.DS_Store
-*.swp
-*.bak
+# local playtest artifacts (headless screenshots / console logs)
+.shots/
+# misc
 node_modules/
-.vscode/
-.idea/
-# Playtest scratch output (artifacts, not source)
-.claude/skills/playtest/out/
+*.log
+.DS_Store
