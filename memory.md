@@ -19,6 +19,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Juice**: hit/kill markers, kill-streak callouts, blood + ground splats, damage-direction
   indicator, per-weapon SFX, optional music, **#1 VICTORY** confetti screen, power-ups
   (lightning chain, bomb AoE).
+- **Progression & stats**: career stats (wins / matches / kills / K-D / best placement / streak)
+  on a start-screen card + a results career line; **weapons are level-gated** (unlock by level
+  like avatars; `weaponUnlocked`).
+- **Art pass**: dark-outlined cartoon characters & zombies with shading, real faces, and
+  per-weapon gun shapes (`GUNK`/`drawGun`); matching upgraded avatar portraits.
 - **Automation** (`.claude/`): PostToolUse parse-check hook on `index.html`, SessionStart
   readiness check, permission allowlist. Plus `scripts/parse-check.mjs` + `scripts/validate.mjs`.
   ⚠ Hooks activate only after `/hooks` reload or a session restart (the `.claude/` dir was
@@ -47,25 +52,19 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   and **remove it before committing**.
 
 ## Next enhancements (prioritized)
-Two pre-scoped bundles remain from the enhancement menu, plus follow-ups:
+_Done: Progression & stats + character art upgrade (see above)._ Remaining:
 
-1. **Progression & stats** (recommended next)
-   - Persist wins / kills / matches / best placement / K-D / win streak (localStorage `meta`).
-   - Show a stats panel on the start screen + on results.
-   - **Level-gate weapons** (all are currently unlocked) so leveling unlocks guns, like avatars.
-   - Optional: daily challenge / objectives.
-
-2. **New modes & bigger map**
+1. **New modes & bigger map** (recommended next)
    - **Endless Horde** mode (survive escalating zombie waves; score = time/kills, no BR zone).
    - **Squad** mode (a few AI teammates vs other squads).
    - Larger/varied map: buildings as real cover (collision), water, a day-night tint.
 
-3. **Game-feel round 2**
+2. **Game-feel round 2**
    - Aim reticle/crosshair, reload ring on the player, low-ammo flash.
    - Spectate-after-death (watch the match finish) instead of instant results.
    - Gamepad support; SFX/music volume sliders + aim sensitivity in settings.
 
-4. **Tech/polish**
+3. **Tech/polish**
    - Particle pooling if perf dips on low-end phones.
    - More avatars/weapons; per-weapon gun art in `drawHuman`.
 
