@@ -245,9 +245,13 @@ function resize(){
   // Safari can collapse CSS min()/calc() viewport sizing to zero).
   const vw = window.innerWidth || document.documentElement.clientWidth || 360;
   const vh = window.innerHeight || document.documentElement.clientHeight || 640;
-  const AR = 9 / 19.5;                       // portrait width:height
-  let gw = Math.min(vw, vh * AR);
-  let gh = Math.min(vh, vw / AR);
+  let gw, gh;
+  if (vw <= 600) {                           // phone / narrow: fill the whole screen
+    gw = vw; gh = vh;
+  } else {                                   // desktop: centered portrait column, letterboxed
+    const AR = 9 / 19.5;                     // portrait width:height
+    gh = vh; gw = Math.min(vw, Math.round(vh * AR));
+  }
   if (!(gw > 0)) gw = vw;                    // fallbacks if anything went sideways
   if (!(gh > 0)) gh = vh;
   stage.style.width = gw + 'px';
