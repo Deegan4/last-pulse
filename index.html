@@ -15,10 +15,11 @@
     font-family:"Trebuchet MS",system-ui,"Segoe UI",Roboto,sans-serif}
   html,body{height:100%;overflow:hidden;background:#0a0d07;color:var(--txt);
     user-select:none;-webkit-user-select:none;touch-action:none}
-  /* portrait stage, centered with letterbox on desktop */
+  /* portrait stage, centered with letterbox on desktop. Size is computed in JS
+     (resize()) for reliability — iOS Safari mis-evaluates min()/calc() viewport math
+     and can collapse the stage to zero height. CSS here is just a full-screen fallback. */
   #game{position:fixed;inset:0;margin:auto;overflow:hidden;background:#0a0d07;
-    width:min(100vw, calc(100vh * 9 / 19.5));
-    height:min(100vh, calc(100vw * 19.5 / 9));
+    width:100%;height:100%;
     box-shadow:0 0 0 100vmax #0a0d07;}
   #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 
@@ -240,14 +241,28 @@ const mini = document.getElementById('minimap');
 const mctx = mini.getContext('2d');
 let W = 0, H = 0, DPR = 1;
 function resize(){
+  // Compute a portrait, letterboxed stage size in JS (robust across browsers; iOS
+  // Safari can collapse CSS min()/calc() viewport sizing to zero).
+  const vw = window.innerWidth || document.documentElement.clientWidth || 360;
+  const vh = window.innerHeight || document.documentElement.clientHeight || 640;
+  const AR = 9 / 19.5;                       // portrait width:height
+  let gw = Math.min(vw, vh * AR);
+  let gh = Math.min(vh, vw / AR);
+  if (!(gw > 0)) gw = vw;                    // fallbacks if anything went sideways
+  if (!(gh > 0)) gh = vh;
+  stage.style.width = gw + 'px';
+  stage.style.height = gh + 'px';
   DPR = Math.min(window.devicePixelRatio || 1, 2);
-  W = stage.clientWidth; H = stage.clientHeight;
-  cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
+  W = gw; H = gh;
+  cv.width = Math.max(1, Math.floor(W * DPR));
+  cv.height = Math.max(1, Math.floor(H * DPR));
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 }
 window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 150));
+window.addEventListener('load', () => setTimeout(resize, 50));
 resize();
+setTimeout(resize, 200);                     // re-measure after iOS settles its viewport
 
 // ---------- Persistence ----------
 function safeGet(k, d){ try{ const v = localStorage.getItem(k); return v==null?d:v; }catch(e){ return d; } }
