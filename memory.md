@@ -24,6 +24,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   like avatars; `weaponUnlocked`).
 - **Art pass**: dark-outlined cartoon characters & zombies with shading, real faces, and
   per-weapon gun shapes (`GUNK`/`drawGun`); matching upgraded avatar portraits.
+- **Modes & map**: Battle Royale / Endless Horde / Squads; 3000² map with buildings (cover +
+  bullet-blocking), water ponds, day/dusk/night.
+- **Game feel 2**: aim reticle, reload ring, low-ammo flash, **spectate-after-death** (watch a
+  survivor, "Results ▸" button), gamepad support, SFX-volume + aim-sensitivity sliders.
+- **Content**: 12 avatars, 9 weapons (added Magnum). **Tech**: particle pooling + 900 cap.
 - **Automation** (`.claude/`): PostToolUse parse-check hook on `index.html`, SessionStart
   readiness check, permission allowlist. Plus `scripts/parse-check.mjs` + `scripts/validate.mjs`.
   ⚠ Hooks activate only after `/hooks` reload or a session restart (the `.claude/` dir was
@@ -59,20 +64,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 ## Next enhancements (prioritized)
 _Done: Progression & stats, character art, joystick upgrade, **New modes & bigger map** (below)._ Remaining:
 
-1. ~~New modes & bigger map~~ — DONE: 3 modes (Battle Royale / Endless Horde / Squads),
-   bigger 3000² map with buildings (cover + bullet-blocking), water ponds, and day/dusk/night.
-   - **Endless Horde** mode (survive escalating zombie waves; score = time/kills, no BR zone).
-   - **Squad** mode (a few AI teammates vs other squads).
-   - Larger/varied map: buildings as real cover (collision), water, a day-night tint.
+_All pre-scoped bundles are shipped (see "Current state")._ Fresh ideas / open work:
 
-2. **Game-feel round 2**
-   - Aim reticle/crosshair, reload ring on the player, low-ammo flash.
-   - Spectate-after-death (watch the match finish) instead of instant results.
-   - Gamepad support; SFX/music volume sliders + aim sensitivity in settings.
-
-3. **Tech/polish**
-   - Particle pooling if perf dips on low-end phones.
-   - More avatars/weapons; per-weapon gun art in `drawHuman`.
+1. **Balance from real play** — wave ramp (Horde), squad sizes, building density, weapon power.
+2. **Meta depth** — daily challenge, currency/shop, more avatars/weapons, seasonal cosmetics.
+3. **Online** — would need a backend (out of single-file scope); only if the user wants it.
 
 ## Open questions for the user
 - Real on-phone feel: movement speed, fire cadence, zombie pressure, weapon balance — needs

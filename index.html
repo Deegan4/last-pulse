@@ -164,6 +164,16 @@
   #toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);background:rgba(0,0,0,.6);
     color:#ffe27a;font-weight:800;padding:8px 16px;border-radius:10px;font-size:15px;opacity:0;
     transition:opacity .3s;z-index:45;pointer-events:none}
+  .slider{background:#fff;border-radius:14px;padding:11px 16px;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  .slider label{display:flex;justify-content:space-between;font-weight:800;color:#1d2a14;font-size:15px;margin-bottom:7px}
+  .slider input[type=range]{width:100%;accent-color:#7bbf2e;height:22px}
+  #specBar{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:22;display:flex;align-items:center;gap:10px;
+    background:rgba(20,28,12,.85);border:1px solid var(--line);border-radius:999px;padding:7px 9px 7px 15px;pointer-events:auto;
+    box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  #specBar .specinfo{font-weight:800;font-size:12.5px;color:#ffd0d0}
+  #specBar .specinfo b{color:#fff}
+  .specbtn{cursor:pointer;border:none;border-radius:999px;padding:7px 14px;font-weight:800;font-size:12px;
+    background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f}
 </style>
 </head>
 <body>
@@ -244,6 +254,10 @@
       <button class="opt" id="sWeapon">Change Weapon</button>
       <button class="opt" id="sName">Change Name</button>
       <button class="opt" id="sMusic">🔊 Music: On</button>
+      <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
+        <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
+      <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
+        <input type="range" id="aimSens" min="30" max="200" step="10"></div>
     </div>
     <button class="close" id="sClose">Close</button>
   </div>
@@ -262,6 +276,12 @@
       <button class="btn" id="againBtn">Play Again</button>
       <button class="btn ghost" id="menuBtn">Menu</button>
     </div>
+  </div>
+
+  <!-- spectate bar (after the player dies) -->
+  <div id="specBar" class="hidden">
+    <div class="specinfo">ELIMINATED <b id="specPlace">#8</b> · watching <span id="specName">—</span></div>
+    <button id="specBtn" class="specbtn">Results ▸</button>
   </div>
 
   <div id="toast"></div>
@@ -334,16 +354,20 @@ const AVATARS = [
   {name:'Saki',   speed:5.8, health:85,  unlock:11, look:{skin:'#f0c8b0',hair:'#9a5acb',outfit:'#3a3f4a',style:'glasses'}},
   {name:'Kaito',  speed:5.5, health:95,  unlock:13, look:{skin:'#e8b48c',hair:'#141414',outfit:'#2a2f3a',style:'ninja'}},
   {name:'Dennis', speed:6.0, health:80,  unlock:15, look:{skin:'#7bbf5a',hair:'#5a8a3a',outfit:'#3a3f4a',style:'frog'}},
+  {name:'Luna',   speed:5.6, health:95,  unlock:12, look:{skin:'#f0c8b0',hair:'#cfd0e8',outfit:'#7a4ab0',style:'long'}},
+  {name:'Rex',    speed:4.6, health:145, unlock:16, look:{skin:'#caa07a',hair:'#3a2a1a',outfit:'#3a5a3a',style:'beard'}},
+  {name:'Bo',     speed:6.3, health:75,  unlock:18, look:{skin:'#e8b48c',hair:'#e0a030',outfit:'#d23030',style:'curly'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
   {name:'Rifle',   icon:'🪖', dmg:10,  mag:10, reload:1.25, range:150, fireCd:0.10, mode:'auto',    unlock:1,  special:'10 bullets per ammo'},
   {name:'Shotgun', icon:'💥', dmg:20,  mag:2,  reload:1.25, range:150, fireCd:0.62, mode:'shotgun', unlock:2,  special:'wide pellet spread'},
   {name:'SMG',     icon:'🧨', dmg:8,   mag:25, reload:1.6,  range:200, fireCd:0.07, mode:'auto',    unlock:3,  special:'blazing fire rate'},
-  {name:'Sniper',  icon:'🎯', dmg:250, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:4,  special:'pierces — huge range & damage'},
-  {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'silent piercing bolt'},
-  {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:6,  special:'sets enemies on fire'},
-  {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:8,  special:'huge mag — mows down crowds'},
+  {name:'Magnum',  icon:'🔩', dmg:55,  mag:6,  reload:1.8,  range:340, fireCd:0.40, mode:'semi',    unlock:4,  special:'heavy-hitting revolver'},
+  {name:'Sniper',  icon:'🎯', dmg:250, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage'},
+  {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt'},
+  {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire'},
+  {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds'},
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
@@ -365,6 +389,8 @@ const meta = {
   streak: parseInt(safeGet('dd2_streak','0'),10) || 0,
   bestStreak: parseInt(safeGet('dd2_bstreak','0'),10) || 0,
   bestWave: parseInt(safeGet('dd2_bwave','0'),10) || 0,
+  sfxVol: Math.max(0,Math.min(1, parseFloat(safeGet('dd2_sfxvol','0.8'))||0.8)),
+  aimSens: Math.max(0.3,Math.min(2, parseFloat(safeGet('dd2_sens','1'))||1)),
 };
 function xpNeed(lv){ return 80 + lv*40; }
 function saveMeta(){
@@ -373,6 +399,7 @@ function saveMeta(){
   safeSet('dd2_matches',meta.matches); safeSet('dd2_wins',meta.wins); safeSet('dd2_ckills',meta.ckills);
   safeSet('dd2_deaths',meta.deaths); safeSet('dd2_best',meta.best);
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);
+  safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_sens',meta.aimSens);
 }
 function weaponUnlocked(w){ return meta.level >= (w.unlock||1); }
 function grantXp(n){
@@ -394,6 +421,8 @@ const GRACE = 2.6;
 let gameMode = safeGet('dd2_mode','br');   // 'br' | 'horde' | 'squad'
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
 let hordeWave = 0;
+let aimWX = 0, aimWY = 0, aimShow = false;  // reticle world target
+let spectating = false, specTarget = null, deathPlace = 0, spectateT = 0;
 
 const humans = [];
 const zombies = [];
@@ -711,8 +740,13 @@ function explode(b){
 }
 
 // ---------- Effects ----------
+const partPool=[];   // recycle particle objects to cut GC churn
 function spark(x,y,color,spd,ang,life){
-  particles.push({x,y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:life||rand(.25,.55),r:rand(1.5,3.5),color});
+  if(particles.length>900) return;             // hard cap for low-end phones
+  const p = partPool.pop() || {};
+  p.x=x; p.y=y; p.vx=Math.cos(ang)*spd; p.vy=Math.sin(ang)*spd;
+  p.life=life||rand(.25,.55); p.r=rand(1.5,3.5); p.color=color;
+  particles.push(p);
 }
 let toastT=0;
 function toast(msg){ const t=el('toast'); t.textContent=msg; t.style.opacity='1'; toastT=1.1; }
@@ -784,7 +818,8 @@ function setupTouch(){
 let actx=null, master=null, musicTimer=null;
 function audioInit(){ if(actx) return;
   try{ actx=new (window.AudioContext||window.webkitAudioContext)(); master=actx.createGain();
-    master.gain.value=0.3; master.connect(actx.destination); if(meta.music) startMusic(); }catch(e){ actx=null; } }
+    master.gain.value=0.36*meta.sfxVol; master.connect(actx.destination); if(meta.music) startMusic(); }catch(e){ actx=null; } }
+function applyVolume(){ if(master) master.gain.value = 0.36*meta.sfxVol; }
 function tone(f,d,type,v,slide){ if(!actx) return; const o=actx.createOscillator(),g=actx.createGain();
   o.type=type||'square'; o.frequency.value=f; if(slide)o.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
   g.gain.value=v||0.2; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d); o.connect(g);g.connect(master);o.start();o.stop(actx.currentTime+d); }
@@ -867,21 +902,44 @@ function updateZombie(z,dt){
 //  Update
 // ============================================================
 function updatePlayer(h,dt){
+  if(!h.alive) return;
   if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=h.weapon.mag; }
+  const gp=readGamepad();
   let mx=0,my=0;
   if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
   if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
   if(moveVec.active){ mx+=moveVec.x; my+=moveVec.y; }
+  if(gp){ mx+=gp.mx; my+=gp.my; }
   const m=len(mx,my);
   if(m>0){ h.vx+=(mx/m*h.speed-h.vx)*0.25; h.vy+=(my/m*h.speed-h.vy)*0.25; h.walk+=dt*9; }
   else { h.vx*=0.78; h.vy*=0.78; }
   // aim + fire
-  let firing=false;
-  if(aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
-  else if(!isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; }
+  let firing=false, mouseAim=false;
+  if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=Math.atan2(gp.ay,gp.ax); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
+  else if(aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
+  else if(!isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
+  if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); }
+  // reticle world target
+  if(mouseAim){ aimWX=mouse.x+cam.x; aimWY=mouse.y+cam.y; }
+  else { aimWX=h.x+Math.cos(h.aim)*130; aimWY=h.y+Math.sin(h.aim)*130; }
+  aimShow = mouseAim || firing || aimVec.active || !!(gp&&(Math.abs(gp.ax)+Math.abs(gp.ay))>0.25);
   if(Math.cos(h.aim)) h.faceX=Math.cos(h.aim)<0?-1:1;
   if(firing) fire(h);
   if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt;
+}
+let gpRP=false,gpLP=false,gpBP=false,gpSeen=false;
+function readGamepad(){
+  if(!navigator.getGamepads) return null;
+  let gp=null; const pads=navigator.getGamepads();
+  for(const p of pads){ if(p){ gp=p; break; } }
+  if(!gp) return null;
+  const dz=v=>Math.abs(v)<0.18?0:v, btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  const mx=dz(gp.axes[0]||0), my=dz(gp.axes[1]||0), ax=dz(gp.axes[2]||0), ay=dz(gp.axes[3]||0);
+  const fire=btn(7)||btn(5)||btn(0);
+  const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6)||btn(9);
+  const reload=rN&&!gpRP, light=lN&&!gpLP, bomb=bN&&!gpBP; gpRP=rN; gpLP=lN; gpBP=bN;
+  if(!gpSeen && (mx||my||ax||ay||fire)){ gpSeen=true; audioInit(); }
+  return {mx,my,ax,ay,fire,reload,light,bomb};
 }
 function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
@@ -966,7 +1024,7 @@ function updatePickups(dt){
 }
 function updateParticles(dt){
   for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.life-=dt; p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.92;p.vy*=0.92;
-    if(p.life<=0) particles.splice(i,1); }
+    if(p.life<=0){ particles.splice(i,1); if(partPool.length<400) partPool.push(p); } }
   for(let i=floaters.length-1;i>=0;i--){ const f=floaters[i]; f.t-=dt; f.y+=f.vy*dt; f.vy*=0.96; if(f.t<=0) floaters.splice(i,1); }
   for(let i=zaps.length-1;i>=0;i--){ zaps[i].t-=dt; if(zaps[i].t<=0) zaps.splice(i,1); }
   for(let i=killFeed.length-1;i>=0;i--){ killFeed[i].t-=dt; if(killFeed[i].t<=0) killFeed.splice(i,1); }
@@ -1001,13 +1059,26 @@ function checkEnd(){
   if(ended||screenState!=='playing') return;
   if(gameMode==='horde'){ if(!player.alive){ ended=true; setTimeout(()=>showResults(false,0),700); } return; }
   const alive=aliveHumans();
-  if(!player.alive){ ended=true; setTimeout(()=>showResults(false, alive+1),700); return; }
-  if(gameMode==='squad'){ if(enemiesLeft()===0){ ended=true; sfx('win'); setTimeout(()=>showResults(true,1),800); } return; }
-  if(alive===1){ ended=true; sfx('win'); setTimeout(()=>showResults(true,1),800); }
+  // player just died → watch the rest of the match (spectate) instead of cutting to results
+  if(!player.alive && !spectating){
+    if(alive<=0){ ended=true; setTimeout(()=>showResults(false,1),700); return; }
+    deathPlace=alive+1; enterSpectate(); return;
+  }
+  if(gameMode==='squad'){ if(enemiesLeft()===0){ ended=true; if(!spectating) sfx('win');
+    setTimeout(()=>showResults(!spectating, spectating?deathPlace:1),800); } return; }
+  if(alive===1){ ended=true; if(!spectating) sfx('win');
+    setTimeout(()=>showResults(!spectating, spectating?deathPlace:1),800); }
 }
+function enterSpectate(){
+  spectating=true; spectateT=0; specPick();
+  el('specBar').classList.remove('hidden');
+  el('specPlace').textContent='#'+deathPlace;
+}
+function specPick(){ let best=null,bk=-2; for(const h of humans){ if(!h.alive) continue; const k=(h.kills||0)+(h.team===0?0.5:0); if(k>bk){bk=k;best=h;} } specTarget=best; }
+function endSpectate(){ spectating=false; el('specBar').classList.add('hidden'); }
 function ord(n){ const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
 function showResults(win, place){
-  screenState='results';
+  screenState='results'; endSpectate();
   const horde = gameMode==='horde';
   let xpEarned = win?120:40; xpEarned += killsTotal*10; if(horde) xpEarned += hordeWave*15;
   const lv=grantXp(xpEarned);
@@ -1041,7 +1112,7 @@ function showResults(win, place){
 // ============================================================
 function draw(){
   ctx.clearRect(0,0,W,H);
-  const t = (player&&player.alive)?player:(player||{x:ARENA/2,y:ARENA/2});
+  const t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA/2,y:ARENA/2});
   cam.x=clamp(t.x-W/2,0,Math.max(0,ARENA-W)); cam.y=clamp(t.y-H/2,0,Math.max(0,ARENA-H));
   if(ARENA<W) cam.x=(ARENA-W)/2; if(ARENA<H) cam.y=(ARENA-H)/2;
   let shx=0,shy=0; if(shake>0){ shx=rand(-shake,shake); shy=rand(-shake,shake); shake-=18/60; if(shake<0)shake=0; }
@@ -1085,6 +1156,7 @@ function draw(){
   for(const f of floaters){ ctx.globalAlpha=clamp(f.t*1.5,0,1); ctx.fillStyle=f.col;
     ctx.font='800 14px Trebuchet MS, sans-serif'; ctx.textAlign='center'; ctx.fillText(f.txt,f.x,f.y); } ctx.globalAlpha=1;
 
+  drawReticle();
   if(zoneActive()) drawZone();
   ctx.restore();
   drawDayNight();
@@ -1133,6 +1205,17 @@ function draw(){
     for(const c of confetti){ c.y+=c.vy*0.016; c.x+=c.vx*0.016; c.rot+=c.vr*0.016; if(c.y>H+10){ c.y=-10; c.x=rand(0,W); }
       ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.fillStyle=c.c; ctx.fillRect(-c.s/2,-c.s/2,c.s,c.s*0.6); ctx.restore(); }
   }
+}
+function drawReticle(){
+  if(!(screenState==='playing' && !spectating && player && player.alive && grace<=0 && aimShow)) return;
+  const x=aimWX, y=aimWY;
+  const low = player.reloading<=0 && player.mag<=Math.max(1,Math.ceil(player.weapon.mag*0.25));
+  ctx.save(); ctx.globalAlpha=0.9; ctx.lineWidth=2; ctx.lineCap='round';
+  ctx.strokeStyle = player.reloading>0?'#ffd166' : low?'#ff6a6a' : '#ffffff';
+  ctx.beginPath(); ctx.arc(x,y,9,0,TAU); ctx.stroke();
+  for(const a of [0,Math.PI/2,Math.PI,3*Math.PI/2]){ ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*5,y+Math.sin(a)*5); ctx.lineTo(x+Math.cos(a)*13,y+Math.sin(a)*13); ctx.stroke(); }
+  ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(x,y,1.5,0,TAU); ctx.fill();
+  ctx.restore(); ctx.globalAlpha=1;
 }
 function inView(x,y,pad){ return x>cam.x-pad && x<cam.x+W+pad && y>cam.y-pad && y<cam.y+H+pad; }
 function drawDayNight(){
@@ -1227,7 +1310,7 @@ function drawDrop(d){
   ctx.restore();
 }
 const GUNK={Pistol:{l:11,c:'#3a3f48'},Rifle:{l:20,c:'#3a3f48'},Shotgun:{l:17,c:'#6a4a2e'},
-  SMG:{l:14,c:'#3a3f48'},Sniper:{l:26,c:'#2a2f38',scope:1},Crossbow:{l:16,c:'#6a4e2a',bow:1},
+  SMG:{l:14,c:'#3a3f48'},Magnum:{l:13,c:'#4a5058'},Sniper:{l:26,c:'#2a2f38',scope:1},Crossbow:{l:16,c:'#6a4e2a',bow:1},
   Flame:{l:13,c:'#8a3a2a',tank:1},Minigun:{l:18,c:'#2a2f38',fat:1}};
 function drawGun(name){
   const g=GUNK[name]||{l:14,c:'#3a3f48'};
@@ -1280,7 +1363,9 @@ function drawHuman(h){
   ctx.translate(15,2); if(Math.cos(ga)<0) ctx.scale(1,-1);
   drawGun(h.weapon?h.weapon.name:'Pistol'); ctx.restore();
   // player ring
-  if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.ellipse(0,19,17,5.5,0,0,TAU); ctx.stroke(); }
+  if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.ellipse(0,19,17,5.5,0,0,TAU); ctx.stroke();
+    if(h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
+      ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); } }
   ctx.restore();
   drawNameplate(h);
 }
@@ -1315,11 +1400,14 @@ function drawNameplate(h){
   if(h.shield>0){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(x-bw/2,y-10,bw,3);
     ctx.fillStyle='#5fa8ff'; ctx.fillRect(x-bw/2,y-10,bw*clamp(h.shield/100,0,1),3); }
   // ammo pips (orange) for player, mini for bots
-  if(h.isPlayer){ const w=h.weapon, n=w.mag, pw=Math.min(5, n>8?8:n);
+  if(h.isPlayer){ const w=h.weapon, n=w.mag;
     const seg=Math.min(n,10), gap=2, tot=bw, sw=(tot-(seg-1)*gap)/seg;
-    for(let i=0;i<seg;i++){ ctx.fillStyle = i<h.mag? '#ff9b3d':'rgba(0,0,0,.45)';
+    const low = h.reloading<=0 && h.mag<=Math.max(1,Math.ceil(n*0.25));
+    const pulse = low ? (0.45+0.55*Math.abs(Math.sin(performance.now()/130))) : 1;
+    for(let i=0;i<seg;i++){ ctx.fillStyle = i<h.mag ? (low?'rgba(255,'+Math.round(70+90*pulse)+',60,1)':'#ff9b3d') : 'rgba(0,0,0,.45)';
       ctx.fillRect(x-bw/2+i*(sw+gap), y+1, sw, 4); }
     if(h.reloading>0){ ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='700 9px Trebuchet MS'; ctx.fillText('reloading…',x,y+13); }
+    else if(low){ ctx.fillStyle='#ff6a6a'; ctx.font='700 9px Trebuchet MS'; ctx.fillText('LOW AMMO',x,y+13); }
   } else if(h.reloading>0){ // bot reload progress
     ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(x-bw/2,y+1,bw,3);
     ctx.fillStyle='rgba(255,255,255,.8)'; ctx.fillRect(x-bw/2,y+1,bw*(1-h.reloading/h.weapon.reload),3);
@@ -1415,6 +1503,9 @@ function loop(now){
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();
     updateBullets(dt); updateBombs(dt); updatePickups(dt); updateParticles(dt);
+    if(spectating){ spectateT+=dt; if(!specTarget||!specTarget.alive) specPick();
+      el('specName').textContent = specTarget? specTarget.name : '—';
+      if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }
     refreshHud(); drawMini();
   } else { updateParticles(dt); }
   draw();
@@ -1508,6 +1599,8 @@ function buildWeaponGrid(){
 
 function startMatch(){
   audioInit(); ended=false; paused=false; grace=GRACE; lastWin=false; confetti=[];
+  spectating=false; specTarget=null; el('specBar').classList.add('hidden');
+  applyVolume();
   // never drop in with a locked weapon/avatar (e.g. after data reset)
   if(!weaponUnlocked(WEAPONS[meta.weapon])) meta.weapon=0;
   if(!avatarUnlocked(AVATARS[meta.avatar])) meta.avatar=0;
@@ -1528,9 +1621,17 @@ el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState=
 el('dropInBtn').addEventListener('click', startMatch);
 el('againBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); startMatch(); });
 el('menuBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); screenState='start'; show('startScreen'); });
+// spectate → results
+el('specBtn').addEventListener('click',()=>{ if(!ended){ ended=true; showResults(false, deathPlace); } });
+
+// settings sliders
+function syncSliders(){ el('sfxVol').value=Math.round(meta.sfxVol*100); el('sfxVal').textContent=Math.round(meta.sfxVol*100)+'%';
+  el('aimSens').value=Math.round(meta.aimSens*100); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; }
+el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100,0,1); el('sfxVal').textContent=Math.round(meta.sfxVol*100)+'%'; applyVolume(); saveMeta(); });
+el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings
-function openSettings(){ paused=true; el('settings').classList.remove('hidden'); el('sMusic').textContent='🔊 Music: '+(meta.music?'On':'Off'); }
+function openSettings(){ paused=true; el('settings').classList.remove('hidden'); el('sMusic').textContent='🔊 Music: '+(meta.music?'On':'Off'); syncSliders(); }
 function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; }
 el('gearHud').addEventListener('click',openSettings);
 el('avatarGear').addEventListener('click',openSettings);
