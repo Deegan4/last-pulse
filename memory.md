@@ -31,6 +31,9 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Content**: 12 avatars, 9 weapons (added Magnum). **Tech**: particle pooling + 900 cap.
 - **Fire feel**: muzzle flash at the gun tip, gun recoil kick, ejected brass shell casings,
   glowing piercing tracers; new hairstyles (mohawk on Bo, cap on Rex).
+- **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
+  (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
+  ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
 - **Automation** (`.claude/`): PostToolUse parse-check hook on `index.html`, SessionStart
   readiness check, permission allowlist. Plus `scripts/parse-check.mjs` + `scripts/validate.mjs`.
   ⚠ Hooks activate only after `/hooks` reload or a session restart (the `.claude/` dir was
@@ -60,6 +63,8 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   zero (blank page). `resize()` computes the stage size in JS; phones fill the screen, desktop
   letterboxes a portrait column.
 - **githack caches** (incl. 404s) for a few minutes — always hand out a fresh `?v=` link.
+- **Headless FPS is software-rendered** (`--disable-gpu`) so it under-reads vs real devices;
+  treat it as a pessimistic lower bound, not the on-phone number.
 - I **cannot** change repo visibility or enable Pages (no tool); those are user-side toggles.
 - Headless tests use a dumb scripted player that dies fast — not a real balance signal; a
   competent kiting run is the check. Use a temporary `?bot`/`?win` debug hook for verification
