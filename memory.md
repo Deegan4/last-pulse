@@ -34,6 +34,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Graphics pass 2**: checkered mowed-lawn ground texture (cached 256px pattern tile per
+  time-of-day, seeded speckles/blades), animated water (sand shore, shallow layer, drifting
+  ripples, glint), swaying tree canopies, shockwave `rings[]` on explosions / lightning hits /
+  supply-drop landings.
 - **Automation** (`.claude/`): PostToolUse parse-check hook on `index.html`, SessionStart
   readiness check, permission allowlist. Plus `scripts/parse-check.mjs` + `scripts/validate.mjs`.
   ⚠ Hooks activate only after `/hooks` reload or a session restart (the `.claude/` dir was
