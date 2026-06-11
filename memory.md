@@ -79,6 +79,7 @@ _Done: Progression & stats, character art, joystick upgrade, **New modes & bigge
 
 _All pre-scoped bundles are shipped (see "Current state")._ Fresh ideas / open work:
 
+0. _(done)_ Spawns/pickups/supply-drops now avoid water + buildings (`blockedSpawn`).
 1. **Balance from real play** — wave ramp (Horde), squad sizes, building density, weapon power.
 2. **Meta depth** — daily challenge, currency/shop, more avatars/weapons, seasonal cosmetics.
 3. **Online** — would need a backend (out of single-file scope); only if the user wants it.

@@ -529,12 +529,19 @@ function makeZombie(x,y,kind){
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
     burn:0, burnSrc:null };
 }
+function blockedSpawn(x,y){
+  for(const o of obstacles){ if(x>o.x-18 && x<o.x+o.w+18 && y>o.y-18 && y<o.y+o.h+18) return true; }
+  for(const d of decor){ if(d.type==='water'){ const dx=(x-d.x)/(d.s+14), dy=(y-d.y)/(d.s*0.64+14); if(dx*dx+dy*dy<1) return true; } }
+  return false;
+}
 function farSpawn(minFromCenter){
-  for(let i=0;i<40;i++){
+  let fx=ARENA/2, fy=ARENA/2;
+  for(let i=0;i<48;i++){
     const a=rand(0,TAU), rr=rand(minFromCenter, ARENA*0.5*0.92);
-    const x=ARENA/2+Math.cos(a)*rr, y=ARENA/2+Math.sin(a)*rr;
-    return {x:clamp(x,80,ARENA-80), y:clamp(y,80,ARENA-80)};
+    fx=clamp(ARENA/2+Math.cos(a)*rr,80,ARENA-80); fy=clamp(ARENA/2+Math.sin(a)*rr,80,ARENA-80);
+    if(!blockedSpawn(fx,fy)) return {x:fx,y:fy};
   }
+  return {x:fx,y:fy};
 }
 const ROOFS=['#9a4d3a','#5a6a86','#6a8a5a','#7a6a4a','#8a5a7a'];
 function buildDecor(){
@@ -1013,14 +1020,18 @@ function updatePickups(dt){
         applyPickup(h,p); taken=true; break; } }
     if(taken) pickups.splice(i,1);
   }
-  // trickle new items inside the safe zone
-  if(pickups.length<9 && Math.random()<dt*0.45){ const a=rand(0,TAU), rr=Math.sqrt(Math.random())*zone.r*0.85;
-    pickups.push(makePickup(clamp(zone.cx+Math.cos(a)*rr,120,ARENA-120), clamp(zone.cy+Math.sin(a)*rr,120,ARENA-120))); }
+  // trickle new items inside the safe zone (avoid water/buildings)
+  if(pickups.length<9 && Math.random()<dt*0.45){
+    for(let tries=0;tries<8;tries++){ const a=rand(0,TAU), rr=Math.sqrt(Math.random())*zone.r*0.85;
+      const px=clamp(zone.cx+Math.cos(a)*rr,120,ARENA-120), py=clamp(zone.cy+Math.sin(a)*rr,120,ARENA-120);
+      if(!blockedSpawn(px,py)){ pickups.push(makePickup(px,py)); break; } } }
   // supply drops
   nextDrop-=dt;
   if(nextDrop<=0 && drops.length<2){ nextDrop=rand(24,36);
-    const a=rand(0,TAU), rr=Math.sqrt(Math.random())*zone.r*0.6;
-    const tx=clamp(zone.cx+Math.cos(a)*rr,150,ARENA-150), ty=clamp(zone.cy+Math.sin(a)*rr,150,ARENA-150);
+    let tx=zone.cx, ty=zone.cy;
+    for(let tries=0;tries<8;tries++){ const a=rand(0,TAU), rr=Math.sqrt(Math.random())*zone.r*0.6;
+      tx=clamp(zone.cx+Math.cos(a)*rr,150,ARENA-150); ty=clamp(zone.cy+Math.sin(a)*rr,150,ARENA-150);
+      if(!blockedSpawn(tx,ty)) break; }
     drops.push({x:tx, y:ty-520, tx, ty, landed:false, lt:0}); if(player&&player.alive) toast('📦 SUPPLY DROP INCOMING'); }
   for(let i=drops.length-1;i>=0;i--){ const d=drops[i];
     if(!d.landed){ d.y+=340*dt; if(d.y>=d.ty){ d.y=d.ty; d.landed=true; shake=Math.min(shake+3,8);
