@@ -11,20 +11,26 @@ import {
   View,
 } from 'react-native';
 
-import { BUILDINGS, GRID_COLS, GRID_ROWS, SAVE_KEY, STATE_VERSION, createInitialState } from './src/config';
+import { BUILDINGS, GRID_COLS, GRID_ROWS, SAVE_KEY, STATE_VERSION, TROOPS, createInitialState } from './src/config';
 import {
+  armyCapacity,
   builderAvailable,
+  checkTrain,
   checkUpgrade,
   collect,
   collectorBuffer,
   getLevelStat,
+  housingUsed,
   isMaxLevel,
   isUpgrading,
   reconcile,
   resourceCapacity,
   startUpgrade,
+  trainTroop,
+  trainingRemaining,
+  troopUnlocked,
 } from './src/economy';
-import { Building, GameState, ResourceType } from './src/types';
+import { Building, GameState, ResourceType, TroopType } from './src/types';
 
 const COLORS = {
   bg: '#11151c',
@@ -138,6 +144,14 @@ export default function App() {
     setState((prev) => (prev ? startUpgrade(prev, b.id, Date.now()) : prev));
   };
 
+  const onTrain = (type: TroopType) => {
+    setState((prev) => (prev ? trainTroop(prev, type, Date.now()) : prev));
+  };
+
+  const housing = housingUsed(state);
+  const housingCap = armyCapacity(state);
+  const trainRemain = trainingRemaining(state, now);
+
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar style="light" />
@@ -221,13 +235,36 @@ export default function App() {
         </View>
       </View>
 
+      {/* Army / training status */}
+      <View style={styles.armyBar}>
+        <Text style={styles.armyText}>
+          🪖 {housing}/{housingCap}
+        </Text>
+        <Text style={styles.armyDivider}>·</Text>
+        {trainRemain != null ? (
+          <Text style={styles.armyText}>
+            {TROOPS[state.queue[0].type].icon} {fmtTime(trainRemain)}
+            {state.queue.length > 1 ? `  +${state.queue.length - 1}` : ''}
+          </Text>
+        ) : (
+          <Text style={styles.armyDim}>Barracks idle</Text>
+        )}
+      </View>
+
       {/* Action / info panel */}
       <View style={styles.panel}>
         {selected ? (
-          <BuildingPanel state={state} building={selected} now={now} onUpgrade={onUpgrade} />
+          <BuildingPanel
+            state={state}
+            building={selected}
+            now={now}
+            onUpgrade={onUpgrade}
+            onTrain={onTrain}
+          />
         ) : (
           <Text style={styles.hint}>
-            Tap a producer to collect its resources. Tap any building to upgrade it.
+            Tap a producer to collect resources. Tap a building to upgrade it. Tap the Barracks
+            to train troops.
           </Text>
         )}
       </View>
@@ -267,11 +304,13 @@ function BuildingPanel({
   building,
   now,
   onUpgrade,
+  onTrain,
 }: {
   state: GameState;
   building: Building;
   now: number;
   onUpgrade: (b: Building) => void;
+  onTrain: (type: TroopType) => void;
 }) {
   const def = BUILDINGS[building.type];
   const stat = getLevelStat(building);
@@ -301,7 +340,13 @@ function BuildingPanel({
         {stat.baseCapacity ? (
           <Text style={styles.statText}>+{fmt(stat.baseCapacity)} base capacity (each resource)</Text>
         ) : null}
+        {building.type === 'armyCamp' ? (
+          <Text style={styles.statText}>Houses {fmt(stat.housing ?? 0)} troop space</Text>
+        ) : null}
       </View>
+
+      {building.type === 'barracks' ? <TrainSection state={state} onTrain={onTrain} /> : null}
+      {building.type === 'armyCamp' ? <ArmySection state={state} /> : null}
 
       {upgrading ? (
         <View style={[styles.upgradeBtn, styles.upgradeBtnBusy]}>
@@ -336,6 +381,64 @@ function BuildingPanel({
       {!check.ok && !upgrading && !maxed ? (
         <Text style={styles.reason}>{check.reason}</Text>
       ) : null}
+    </View>
+  );
+}
+
+function TrainSection({
+  state,
+  onTrain,
+}: {
+  state: GameState;
+  onTrain: (type: TroopType) => void;
+}) {
+  return (
+    <View style={styles.trainList}>
+      {(Object.keys(TROOPS) as TroopType[]).map((type) => {
+        const t = TROOPS[type];
+        const unlocked = troopUnlocked(state, type);
+        const check = checkTrain(state, type);
+        return (
+          <Pressable
+            key={type}
+            onPress={() => onTrain(type)}
+            disabled={!check.ok}
+            style={[styles.troopRow, !check.ok && styles.troopRowDisabled]}
+          >
+            <Text style={styles.troopIcon}>{t.icon}</Text>
+            <View style={styles.troopInfo}>
+              <Text style={styles.troopName}>{t.name}</Text>
+              <Text style={styles.troopMeta}>
+                {unlocked
+                  ? `⚗️ ${fmt(t.cost.elixir ?? 0)} · ⏱ ${fmtTime(t.trainTimeSec)} · ${t.housing} space`
+                  : `Unlocks at Barracks Lv ${t.requiresBarracksLevel}`}
+              </Text>
+            </View>
+            <Text style={[styles.troopTrain, !check.ok && styles.troopTrainOff]}>
+              {check.ok ? 'Train' : unlocked ? check.reason : '🔒'}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function ArmySection({ state }: { state: GameState }) {
+  const trained = (Object.keys(TROOPS) as TroopType[]).filter((t) => (state.army[t] ?? 0) > 0);
+  return (
+    <View style={styles.armySection}>
+      {trained.length === 0 ? (
+        <Text style={styles.statText}>No troops trained yet — visit the Barracks.</Text>
+      ) : (
+        <View style={styles.armyComp}>
+          {trained.map((t) => (
+            <Text key={t} style={styles.armyCompItem}>
+              {TROOPS[t].icon} {state.army[t]}
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -431,8 +534,19 @@ const styles = StyleSheet.create({
   },
   upgradeTagText: { color: COLORS.text, fontSize: 9, fontWeight: '700' },
 
-  panel: {
+  armyBar: {
     marginTop: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  armyText: { color: COLORS.text, fontSize: 13, fontWeight: '700' },
+  armyDim: { color: COLORS.dim, fontSize: 13, fontWeight: '600' },
+  armyDivider: { color: COLORS.dim, fontSize: 13 },
+
+  panel: {
     backgroundColor: COLORS.panel,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
@@ -462,4 +576,26 @@ const styles = StyleSheet.create({
   costRow: { flexDirection: 'row', gap: 14, marginTop: 4 },
   costText: { color: COLORS.text, fontSize: 12, fontWeight: '600' },
   reason: { color: COLORS.bad, fontSize: 12, textAlign: 'center', marginTop: 8, fontWeight: '600' },
+
+  trainList: { marginTop: 12, gap: 8 },
+  troopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.panelAlt,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  troopRowDisabled: { opacity: 0.55 },
+  troopIcon: { fontSize: 24 },
+  troopInfo: { flex: 1 },
+  troopName: { color: COLORS.text, fontSize: 15, fontWeight: '700' },
+  troopMeta: { color: COLORS.dim, fontSize: 12, marginTop: 2 },
+  troopTrain: { color: COLORS.good, fontSize: 14, fontWeight: '800' },
+  troopTrainOff: { color: COLORS.dim, fontSize: 11, fontWeight: '700' },
+
+  armySection: { marginTop: 10 },
+  armyComp: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  armyCompItem: { color: COLORS.text, fontSize: 16, fontWeight: '700' },
 });

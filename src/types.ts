@@ -7,7 +7,11 @@ export type BuildingType =
   | 'goldMine'
   | 'elixirCollector'
   | 'goldStorage'
-  | 'elixirStorage';
+  | 'elixirStorage'
+  | 'armyCamp'
+  | 'barracks';
+
+export type TroopType = 'grunt' | 'archer' | 'bruiser';
 
 /**
  * Stats for a single building level. Index 0 in a definition's `levels` array
@@ -21,6 +25,20 @@ export interface BuildingLevel {
   bufferCapacity?: number; // producers: max uncollected resource held
   storageCapacity?: number; // storages: capacity added to the resource pool
   baseCapacity?: number; // town hall: base capacity added to each resource pool
+  housing?: number; // army camp: troop housing space added
+}
+
+export interface TroopDef {
+  type: TroopType;
+  name: string;
+  icon: string;
+  cost: Partial<Record<ResourceType, number>>;
+  trainTimeSec: number;
+  housing: number; // housing space this troop occupies
+  requiresBarracksLevel: number; // barracks level needed to train it
+  // Combat stats (used by the raid phase, added later):
+  hp: number;
+  dps: number;
 }
 
 export interface BuildingDef {
@@ -43,9 +61,21 @@ export interface Building {
   upgradeFinishAt?: number;
 }
 
+/** One queued unit waiting to finish training. */
+export interface TrainItem {
+  id: string;
+  type: TroopType;
+}
+
 export interface GameState {
   version: number;
   gold: number;
   elixir: number;
   buildings: Building[];
+  /** Trained troops ready to deploy, by type. */
+  army: Partial<Record<TroopType, number>>;
+  /** Units queued/in-progress at the barracks (head of list trains first). */
+  queue: TrainItem[];
+  /** When the head queue item started training (ms epoch). */
+  trainStartAt?: number;
 }

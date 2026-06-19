@@ -2,8 +2,10 @@
 // current `now`, so progress (production + build timers) is correct even after
 // the app has been closed for a while.
 
-import { BUILDER_COUNT, BUILDINGS } from './config';
-import { Building, BuildingLevel, GameState, ResourceType } from './types';
+import { BUILDER_COUNT, BUILDINGS, TROOPS } from './config';
+import { Building, BuildingLevel, GameState, ResourceType, TrainItem, TroopType } from './types';
+
+let trainItemSeq = 0;
 
 export function getDef(b: Building) {
   return BUILDINGS[b.type];
@@ -127,7 +129,7 @@ export function startUpgrade(state: GameState, id: string, now: number): GameSta
  * buffer (at the old rate) before leveling up, then reset their accrual clock.
  * Returns the same reference when nothing changed.
  */
-export function reconcile(state: GameState, now: number): GameState {
+function reconcileBuildings(state: GameState, now: number): GameState {
   const finished = state.buildings.filter((b) => b.upgradeFinishAt != null && b.upgradeFinishAt <= now);
   if (finished.length === 0) return state;
 
@@ -150,4 +152,96 @@ export function reconcile(state: GameState, now: number): GameState {
     };
   }
   return s;
+}
+
+// ── Army / training ─────────────────────────────────────────────────────────
+
+export function barracksLevel(state: GameState): number {
+  const b = state.buildings.find((x) => x.type === 'barracks');
+  return b ? b.level : 0;
+}
+
+/** Total troop housing across all army camps. */
+export function armyCapacity(state: GameState): number {
+  let cap = 0;
+  for (const b of state.buildings) {
+    if (b.type === 'armyCamp') cap += getLevelStat(b).housing ?? 0;
+  }
+  return cap;
+}
+
+/** Housing occupied by trained troops + everything still in the queue. */
+export function housingUsed(state: GameState): number {
+  let used = 0;
+  for (const t of Object.keys(state.army) as TroopType[]) {
+    used += (state.army[t] ?? 0) * TROOPS[t].housing;
+  }
+  for (const item of state.queue) {
+    used += TROOPS[item.type].housing;
+  }
+  return used;
+}
+
+export function troopUnlocked(state: GameState, type: TroopType): boolean {
+  return barracksLevel(state) >= TROOPS[type].requiresBarracksLevel;
+}
+
+export function checkTrain(state: GameState, type: TroopType): UpgradeCheck {
+  const def = TROOPS[type];
+  if (!troopUnlocked(state, type)) return { ok: false, reason: `Needs Barracks Lv ${def.requiresBarracksLevel}` };
+  if (housingUsed(state) + def.housing > armyCapacity(state)) return { ok: false, reason: 'Army camp full' };
+  if (!canAfford(state, def.cost)) return { ok: false, reason: 'Not enough resources' };
+  return { ok: true };
+}
+
+/** Queue a troop for training (pays its cost up front). No-op if not allowed. */
+export function trainTroop(state: GameState, type: TroopType, now: number): GameState {
+  if (!checkTrain(state, type).ok) return state;
+  const cost = TROOPS[type].cost;
+  const item: TrainItem = { id: `t${now}-${trainItemSeq++}`, type };
+  return {
+    ...state,
+    gold: state.gold - (cost.gold ?? 0),
+    elixir: state.elixir - (cost.elixir ?? 0),
+    queue: [...state.queue, item],
+    trainStartAt: state.queue.length === 0 ? now : state.trainStartAt,
+  };
+}
+
+/** Seconds remaining on the unit currently training, or null if idle. */
+export function trainingRemaining(state: GameState, now: number): number | null {
+  if (state.queue.length === 0 || state.trainStartAt == null) return null;
+  const finishAt = state.trainStartAt + TROOPS[state.queue[0].type].trainTimeSec * 1000;
+  return Math.max(0, (finishAt - now) / 1000);
+}
+
+/** Move finished units from the queue into the army (chains across offline time). */
+function reconcileTraining(state: GameState, now: number): GameState {
+  if (state.queue.length === 0 || state.trainStartAt == null) return state;
+
+  let start = state.trainStartAt;
+  let queue = state.queue;
+  const army = { ...state.army };
+  let changed = false;
+
+  while (queue.length > 0) {
+    const head = queue[0];
+    const finishAt = start + TROOPS[head.type].trainTimeSec * 1000;
+    if (now < finishAt) break;
+    army[head.type] = (army[head.type] ?? 0) + 1;
+    queue = queue.slice(1);
+    start = finishAt; // next unit starts the moment this one finishes
+    changed = true;
+  }
+
+  if (!changed) return state;
+  return { ...state, army, queue, trainStartAt: queue.length > 0 ? start : undefined };
+}
+
+/**
+ * Advance all time-based progress to `now`: finish building upgrades and train
+ * queued troops. Returns the same reference when nothing changed.
+ */
+export function reconcile(state: GameState, now: number): GameState {
+  return reconcileTraining(reconcileBuildings(state, now), now);
 }

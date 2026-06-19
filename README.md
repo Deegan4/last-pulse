@@ -3,11 +3,12 @@
 A Clash-of-Clans-style base-builder, built with [Expo](https://expo.dev)
 (React Native + TypeScript) and designed to run in **Expo Go**.
 
-Current build is the **single-player economy slice**: place is fixed for now, but
-gold mines and elixir collectors generate resources over real time (including
-while the app is closed), you collect them, and you spend them on timed building
-upgrades gated by a single builder and your Town Hall level. Progress is saved
-locally, so the kingdom survives an app restart.
+Current build is the **economy + army layer**: gold mines and elixir collectors
+generate resources over real time (including while the app is closed), you collect
+them, and you spend them on timed building upgrades gated by a single builder and
+your Town Hall level. You can also **train troops** at the Barracks — units queue
+and train on real timers (catching up offline) and fill your Army Camps up to
+capacity. Progress is saved locally, so the kingdom survives an app restart.
 
 See [`docs/CONCEPT.md`](docs/CONCEPT.md) for the full game direction and
 [`docs/GAME_DESIGN_PROMPTS.md`](docs/GAME_DESIGN_PROMPTS.md) for the design notes.
@@ -41,7 +42,8 @@ npm run web       # run in the browser
 - **Collect:** producers show a badge when they have resources ready — tap them to bank it (up to your storage capacity).
 - **Upgrade:** tap any building, then **Upgrade** in the bottom panel. Upgrades cost resources, take real time, and need a free builder.
 - **Gating:** a building can be at most one level above your **Town Hall** — upgrade the Town Hall to unlock further levels.
-- **Offline:** close the app and come back later; production and build timers catch up to wall-clock time.
+- **Train troops:** tap the **Barracks** and train Grunts/Archers/Bruisers (cost elixir + time, capped by Army Camp housing). Higher Barracks levels unlock stronger troops.
+- **Offline:** close the app and come back later; production, build timers, and troop training all catch up to wall-clock time.
 
 ## Project layout
 
@@ -54,5 +56,6 @@ npm run web       # run in the browser
 
 ## Roadmap
 
-Next up per the concept: army camps + barracks (train troops), then the **raid**
-phase against preset enemy bases (deploy troops, auto-combat, stars + loot).
+Next up per the concept: the **raid** phase against preset enemy bases — deploy
+your trained troops, auto-combat against defenses, and earn stars + looted
+resources to bring home.
