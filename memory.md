@@ -85,8 +85,10 @@ _Done: Progression & stats, character art, joystick upgrade, **New modes & bigge
 _All pre-scoped bundles are shipped (see "Current state")._ Fresh ideas / open work:
 
 0. _(done)_ Spawns/pickups/supply-drops now avoid water + buildings (`blockedSpawn`).
-1. **Balance from real play** — _Horde wave ramp done_ (`hordeScale`/`hordeKind`); still open:
-   squad sizes, building density, weapon power, zombie pressure in BR.
+1. **Balance from real play** — _Horde wave ramp done_ (`hordeScale`/`hordeKind`); _BR/Squad
+   zombie pressure done_ (`reinforceZombies` trickles zombies just inside the safe zone to a
+   target of `min(10, 3+aliveHumans)`, ~every 7–11s, never within 320px of the player). Still
+   open: squad sizes, building density, weapon power.
 2. **Meta depth** — daily challenge, currency/shop, more avatars/weapons, seasonal cosmetics.
 3. **Online** — would need a backend (out of single-file scope); only if the user wants it.
 

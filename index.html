@@ -447,6 +447,7 @@ let lastWin = false, victoryT = 0, nextDrop = 18;
 let streakMsg = '', streakT = 0;
 let zoneWarn = 0;
 let heartT = 0;                             // low-health heartbeat cadence
+let zReinforce = 0;                         // BR/Squad zombie reinforcement cadence
 let player = null;
 let startTime = 0, elapsed = 0, shake = 0, lastT = performance.now();
 let killsTotal = 0, fieldSize = 15;
@@ -591,7 +592,7 @@ function spawnMatch(){
   humans.length=0; zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
-  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0;
+  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14);
   buildDecor();
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
@@ -1089,6 +1090,21 @@ function hordeScale(z, wave){
   z.hp = z.maxhp = Math.round(z.maxhp*(1 + w*0.09));        // +9% HP per wave
   z.dmg = Math.round(z.dmg*(1 + Math.min(w*0.04, 1.2)));   // up to +120% damage
   z.speed *= 1 + Math.min(w*0.015, 0.45);                  // up to +45% speed
+}
+// BR / Squad keep a light, steady zombie presence so the field doesn't go quiet
+// mid-match once the early roamers are cleared. Horde has its own wave system, so this
+// is skipped there. Spawns land just inside the safe zone (stay relevant as it closes)
+// and never right on top of the player; the target count eases off as the lobby empties.
+function reinforceZombies(dt){
+  if(grace>0 || zone.state==='done') return;
+  zReinforce -= dt; if(zReinforce>0) return;
+  zReinforce = rand(7,11);
+  let aliveZ=0; for(const z of zombies) if(z.alive) aliveZ++;
+  const target = Math.min(10, 3 + aliveHumans());
+  if(aliveZ>=target) return;
+  const a=rand(0,TAU), rr=zone.r*rand(0.55,0.92);
+  const x=clamp(zone.cx+Math.cos(a)*rr, R, ARENA-R), y=clamp(zone.cy+Math.sin(a)*rr, R, ARENA-R);
+  if(!blockedSpawn(x,y) && dist2(x,y,player.x,player.y)>320*320) zombies.push(makeZombie(x,y));
 }
 function hordeUpdate(dt){
   if(grace>0) return;
@@ -1648,7 +1664,7 @@ function loop(now){
   if(screenState==='playing' && !paused){
     elapsed=(now-startTime)/1000;
     if(grace>0) grace-=dt;
-    if(zoneActive()){ if(grace<=0) zoneUpdate(dt); if(zoneWarn>0) zoneWarn-=dt; }
+    if(zoneActive()){ if(grace<=0){ zoneUpdate(dt); reinforceZombies(dt); } if(zoneWarn>0) zoneWarn-=dt; }
     else hordeUpdate(dt);
     updatePlayer(player,dt);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
