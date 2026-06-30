@@ -1,24 +1,79 @@
-# Don't Die — Battle Royale
+<div align="center">
 
-A single-file, portrait, mobile-first cartoon **twin-stick survival royale** (HTML5 canvas). Pick a character, pick a weapon, drop into a field of 15, survive the shrinking safe area and the zombies — last one standing wins.
+# 🧟 DON'T DIE — BATTLE ROYALE
+
+### A portrait, mobile-first, cartoon **twin-stick survival royale** — the entire game in one `index.html`.
+
+Pick a character, pick a gun, drop into a field of 15. Outlast the other players, the roaming zombies, and the closing safe zone. **Last one standing wins.**
+
+[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)
+&nbsp;
+![HTML5 Canvas](https://img.shields.io/badge/HTML5-canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![Single file](https://img.shields.io/badge/single_file-no_build-blue?style=for-the-badge)
+![Vanilla JS](https://img.shields.io/badge/vanilla-JS-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+
+<br/>
+
+<img src="docs/img/start.png" alt="Don't Die — Battle Royale title screen" width="300" />
+
+<table>
+<tr>
+<td align="center"><img src="docs/img/combat-horde.png" alt="Endless Horde combat" width="270" /><br/><b>🧟 Endless Horde</b> — survive escalating waves</td>
+<td align="center"><img src="docs/img/combat-br.png" alt="Battle Royale, safe zone closing" width="270" /><br/><b>🏆 Battle Royale</b> — outlast the shrinking zone</td>
+</tr>
+</table>
+
+</div>
 
 ## ▶ Play
 
-### **[▶ TAP HERE TO PLAY](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)**
+> **[▶ TAP HERE TO PLAY](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)**
+>
+> Backup link (if the one above is blank): **[open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/brawl-arena/main/index.html)**
 
-Backup link (if the one above is blank): **[open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/brawl-arena/main/index.html)**
+On a phone, just tap **Play**. On a laptop you can also download [`index.html`](index.html) and open it in any browser — no server, no build step, no dependencies.
 
-> Tip: on a phone, just tap the **Play** link above. On a laptop you can also download `index.html` and open it in any browser — it needs no server or build step.
+## ✨ Features
 
-## How to play
+- 🎮 **Twin-stick controls** — dual virtual joysticks on touch, `WASD` + mouse on desktop, plus gamepad support.
+- 🏆 **Three modes** — **Battle Royale** (15 players, shrinking zone), **Endless Horde** (escalating zombie waves), and **Squads** (last team standing).
+- 🧟 **Three zombie types** — `normal`, fast `runner`, and tanky `brute` — that get tougher, faster, and meaner every Horde wave.
+- 🔫 **9 weapons** — Pistol (crit), Rifle, Shotgun, SMG, Magnum, Sniper (pierce), Crossbow, Flamethrower (burn DoT), Minigun — each with its own ammo, reload, range, and feel.
+- 🦸 **12 unlockable avatars** — each with distinct speed / health stats and a hand-drawn cartoon look, gated behind your level.
+- 📦 **Loot & supply drops** — health, medkits, armor, ammo, and weapon swaps, plus parachuting crates with a strong gun + armor.
+- ⚡ **Power-ups** — chain-lightning and a throwable AoE bomb, on cooldown buttons.
+- 🩸 **Game feel** — hit markers, kill-streak callouts, blood splats, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
+- 🌅 **Living arena** — a 3000² map with buildings (cover), ponds, animated water, swaying trees, a checkered lawn, and day / dusk / night lighting.
+- 📈 **Progression** — XP, levels, and career stats (wins / matches / kills / K-D / best placement / streak).
 
-- **Pick an avatar** (Speed/Health stats, more unlock as you level up) and a **weapon** (Pistol / Rifle / Shotgun / Sniper, each with its own ammo, reload, and special).
-- **Survive** the shrinking *safe area* and the roaming zombies while out-gunning 14 other players.
+## 🎮 Controls
 
-**Touch (mobile):** left stick = move, right stick = aim & fire, ⚡ = lightning, 💣 = bomb.
+| Action | Touch (mobile) | Keyboard / Mouse (desktop) |
+|---|---|---|
+| Move | Left stick | `WASD` / arrow keys |
+| Aim & fire | Right stick (auto-fire) | Mouse aim · click or `Space` to fire |
+| Reload | automatic | `R` |
+| ⚡ Lightning | ⚡ button | `Q` |
+| 💣 Bomb | 💣 button | `E` |
 
-**Keyboard (desktop):** `WASD`/arrows = move, mouse = aim, click/`Space` = fire, `R` = reload, `Q` = lightning, `E` = bomb.
+## 🛠 Development
 
-## Development
+Everything — markup, styles, and game logic — lives in a single [`index.html`](index.html). No build system, no package manager, no dependencies.
 
-Everything — markup, styles, and game logic — lives in [`index.html`](index.html). No build system, no dependencies. Syntax-check with `node scripts/parse-check.mjs`. See [CLAUDE.md](CLAUDE.md) for architecture notes.
+```sh
+# play / iterate: just open it
+open index.html                    # or: python3 -m http.server 8000
+
+# syntax-check the script block (fast, no execution)
+node scripts/validate.mjs
+```
+
+Want to drive it headlessly (launch, play a match, screenshot, smoke-test)? There's a ready-made skill at [`.claude/skills/run-brawl-arena/`](.claude/skills/run-brawl-arena/):
+
+```sh
+node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde --shoot
+```
+
+See [CLAUDE.md](CLAUDE.md) for architecture notes and [memory.md](memory.md) for the running design log.
+
+<div align="center"><sub>A from-scratch canvas remake inspired by the StickyGames title of the same name — all art is drawn with canvas shapes, no original sprites.</sub></div>
