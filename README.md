@@ -6,11 +6,11 @@
 
 Pick a character, pick a gun, drop into a field of 15. Outlast the other players, the roaming zombies, and the closing safe zone. **Last one standing wins.**
 
-## ▶ &nbsp; [CLICK HERE TO PLAY](https://raw.githack.com/Deegan4/brawl-arena/main/index.html) &nbsp; ◀
+## ▶ &nbsp; [CLICK HERE TO PLAY](https://rawcdn.githack.com/Deegan4/brawl-arena/c681f60b69c71a5ebe333fd35a2213219aef57ff/index.html) &nbsp; ◀
 
-<sup>opens the game in your browser — no install, no sign-up</sup>
+<sup>opens the game in your browser — no install, no sign-up · for a permanent URL see [Play](#-play)</sup>
 
-[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)
+[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://rawcdn.githack.com/Deegan4/brawl-arena/c681f60b69c71a5ebe333fd35a2213219aef57ff/index.html)
 &nbsp;
 ![HTML5 Canvas](https://img.shields.io/badge/HTML5-canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![Single file](https://img.shields.io/badge/single_file-no_build-blue?style=for-the-badge)
@@ -31,19 +31,24 @@ Pick a character, pick a gun, drop into a field of 15. Outlast the other players
 
 ## ▶ Play
 
-**Play instantly (works now, no setup):**
-> ### [▶ raw.githack.com/Deegan4/brawl-arena/main/index.html](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)
->
-> Backup (if the link above ever shows blank): **[open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/brawl-arena/main/index.html)**
+### ⭐ Best link — enable GitHub Pages once (2 clicks)
 
-On a phone, just tap the link. On a laptop you can also download [`index.html`](index.html) and open it in any browser — no server, no build step, no dependencies.
-
-**Optional — a cleaner URL via GitHub Pages.** The repo is already Pages-ready (`index.html` at root + `.nojekyll`). Turn it on once and the game lives at a tidy address:
+The repo is already Pages-ready (`index.html` at root + `.nojekyll`). This gives a fast, permanent URL that never breaks:
 
 1. Repo **Settings → Pages**
 2. **Source: Deploy from a branch** → **Branch: `main`** → **Folder: `/ (root)`** → **Save**
 
-Then it's playable at **`https://deegan4.github.io/brawl-arena/`** and rebuilds automatically on every push to `main`.
+Then play at **`https://deegan4.github.io/brawl-arena/`** — it rebuilds automatically on every push to `main`.
+
+### Play right now (no setup)
+
+These use free third-party proxies for the public `index.html`. If one shows a blank page or error, give it a minute (they cache briefly after a push) or try the next:
+
+- **Latest:** <https://raw.githack.com/Deegan4/brawl-arena/main/index.html>
+- **Pinned (most reliable):** <https://rawcdn.githack.com/Deegan4/brawl-arena/c681f60b69c71a5ebe333fd35a2213219aef57ff/index.html>
+- **Backup:** [open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/brawl-arena/main/index.html)
+
+On a laptop you can also download [`index.html`](index.html) and open it in any browser — no server, no build step, no dependencies.
 
 ## ✨ Features
 
