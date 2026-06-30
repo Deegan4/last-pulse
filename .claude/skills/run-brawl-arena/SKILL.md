@@ -53,6 +53,14 @@ node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde
 node .claude/skills/run-brawl-arena/driver.mjs --play --mode br
 ```
 
+To screenshot **combat juice** (muzzle flash, tracers, casings, LOW AMMO / reload), add
+`--shoot`: after the GET READY grace the driver holds fire and sweeps the aim across the field.
+`--seconds` sets how long it fires (default 3.0):
+
+```bash
+node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde --shoot --seconds 4
+```
+
 Screenshots land in `./.shots/` (gitignored): `01-start.png`, `02-weapon.png`, `03-match.png`.
 **Open `03-match.png` and actually look at it** — a blank field or a stuck "GET READY" banner
 means the run is wrong even if the process exited 0. With `--play` the driver also prints the
@@ -63,7 +71,8 @@ live HUD as a sanity check, e.g.:
   HUD: {"players":"15/15","lblPlayers":"players","safe":"39s","lblSafe":"Safe area:","kills":"0","fps":"25"} # br
 ```
 
-Useful flags: `--out <dir>` (screenshot dir), `--file <path>` (alternate `index.html`),
+Useful flags: `--shoot` (hold-fire + sweep aim), `--seconds <n>` (fire/wait duration),
+`--out <dir>` (screenshot dir), `--file <path>` (alternate `index.html`),
 `--keep-open` (leave the browser running for debugging).
 
 The driver clicks the **explicit** menu buttons in order —

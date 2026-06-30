@@ -13,6 +13,10 @@
 // Flags:
 //   --play            click through name → mode → avatar → weapon → Drop In into gameplay
 //   --mode <m>        br | horde | squad   (default: br)
+//   --shoot           after the GET READY grace, hold-fire while sweeping aim (shows
+//                     muzzle flash / tracers / casings, and may score a kill)
+//   --seconds <n>     without --shoot: total wait after Drop In before the shot (default 3.4)
+//                     with --shoot: seconds to hold-fire after the grace        (default 3.0)
 //   --out <dir>       screenshot directory (default: ./.shots, which is gitignored)
 //   --file <path>     index.html to load   (default: ./index.html)
 //   --keep-open       leave the browser open (debugging); otherwise it closes
@@ -28,6 +32,8 @@ const argv = process.argv.slice(2);
 const has  = f => argv.includes(f);
 const val  = (f, d) => { const i = argv.indexOf(f); return i >= 0 && argv[i+1] ? argv[i+1] : d; };
 const play = has('--play');
+const shoot = has('--shoot');
+const seconds = parseFloat(val('--seconds', shoot ? '3.0' : '3.4'));
 const mode = val('--mode', 'br');
 const out  = path.resolve(val('--out', '.shots'));
 const file = path.resolve(val('--file', 'index.html'));
@@ -95,7 +101,21 @@ if (play) {
   await page.waitForTimeout(250);
   await shot('02-weapon');
   await page.click('#dropInBtn');              // Drop In → match starts (GRACE ≈ 2.6s)
-  await page.waitForTimeout(3400);             // wait past the GET READY grace so play is live
+  if (shoot) {
+    await page.waitForTimeout(2700);           // fire() is blocked while grace > 0 — wait it out
+    console.log(`  holding fire for ${seconds}s, sweeping aim …`);
+    await page.keyboard.down('Space');         // desktop fire is keys[' '] (held)
+    const ms = Math.max(400, Math.round(seconds * 1000));
+    const steps = Math.max(1, Math.round(ms / 400));
+    for (let i = 0; i < steps; i++) {          // sweep the mouse so aim rotates and sprays the field
+      const a = (i / steps) * Math.PI * 2;
+      await page.mouse.move(215 + Math.cos(a) * 160, 466 + Math.sin(a) * 230);
+      await page.waitForTimeout(ms / steps);
+    }
+    await page.keyboard.up('Space');
+  } else {
+    await page.waitForTimeout(Math.round(seconds * 1000)); // wait past grace so play is live
+  }
   await shot('03-match');
   const hud = await page.evaluate(() => {
     const t = id => (document.getElementById(id)?.textContent || '').trim();
