@@ -37,6 +37,15 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **3D model wiring (Meshy)**: the in-game 3D layer (2nd `<script type=module>`) now builds its
+  model map from the auto-generated `assets/meshy/loader.js` (`MODELS`, `status:"generated"` only)
+  instead of a hardcoded 2-entry map — so every model produced by `scripts/gen-meshy.mjs`
+  auto-wires on next load (keys = lowercased avatar name / zombie kind; characters prefer `walk`).
+  Falls back to the Alex+normal-zombie pilots if `loader.js` can't import. Also fixed the avatar-
+  screen hero preview (was `renderTile('avatar:0')`, a key that never existed → now first loaded
+  character). ⚠ Only 3 pilots generated so far; the other 25 need a `MESHY_API_KEY` /authorized
+  Meshy MCP to generate (`node scripts/gen-meshy.mjs`). CDN (unpkg three.js) is blocked in the
+  sandbox, so the 3D path can't be verified headless — confirm in a real browser over http(s).
 - **Main menu upgrade**: `#startScreen` redesigned — pulsing "LAST PULSE" logo + red heartbeat
   backdrop (`.menuGlow`, CSS `menuPulse`/`beat`), drifting spores, a **fighter card** (live
   `portraitChibi` of `meta.avatar` + inline editable name + LV badge + XP bar, tap portrait →
