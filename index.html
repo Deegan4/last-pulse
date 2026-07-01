@@ -2106,8 +2106,9 @@ requestAnimationFrame(loop);
 // (or generate this map from assets/meshy/manifest.json). Player avatar 0 = Alex.
 // Keyed by avatar NAME (h.avatar.name) and zombie kind — both are visible on the entity,
 // so this works for the player and every bot without reaching into the game's closures.
-const MODEL_FILES = {
-  'avatar:Alex':   'assets/meshy/alex-walk.glb',   // Alex, rigged + walking
+// Fallback used only if the generated loader can't be imported — keeps the pilot assets working.
+const FALLBACK_FILES = {
+  'avatar:alex':   'assets/meshy/alex-walk.glb',
   'zombie:normal': 'assets/meshy/zombie-normal.glb',
 };
 const SPRITE = 256;                                  // offscreen render-tile size (px)
@@ -2119,6 +2120,23 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
     THREE = await import('https://unpkg.com/three@0.169.0/build/three.module.js');
     ({ GLTFLoader } = await import('https://unpkg.com/three@0.169.0/examples/jsm/loaders/GLTFLoader.js'));
   } catch { return; }                                // offline / CDN blocked → stay fully 2D
+
+  // Build the model map from the auto-generated manifest loader so EVERY generated model
+  // wires itself in — run scripts/gen-meshy.mjs to produce more and they light up on next
+  // load with no code change. Characters prefer their walk animation; keys mirror the
+  // in-game entity (lowercased avatar name / zombie kind), matching loader ids.
+  let MODEL_FILES = FALLBACK_FILES;
+  try {
+    const { MODELS } = await import('./assets/meshy/loader.js');
+    const map = {};
+    for (const m of MODELS) {
+      if (m.status !== 'generated') continue;
+      if (m.type === 'character') map['avatar:' + m.id] = 'assets/meshy/' + (m.walk || m.preview);
+      else if (m.type === 'zombie') map['zombie:' + m.key] = 'assets/meshy/' + m.preview;
+    }
+    if (Object.keys(map).length) MODEL_FILES = map;
+  } catch {}                                          // loader missing → fall back to pilots
+
   let renderer;
   const tile = document.createElement('canvas'); tile.width = tile.height = SPRITE;
   try { renderer = new THREE.WebGLRenderer({ canvas: tile, antialias: true, alpha: true }); }
@@ -2174,7 +2192,7 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
     _tickedAt: -1,
     _tickOnce() { const n = performance.now(); if (n !== this._tickedAt) { this._tickedAt = n; tickAnim(); } },
     drawHuman(ctx, h) {
-      const key = 'avatar:' + (h.avatar && h.avatar.name);
+      const key = 'avatar:' + ((h.avatar && h.avatar.name || '').toLowerCase());
       if (!models[key]) return false;
       this._tickOnce();
       return blit(ctx, key, h.x, h.y + 18, WORLD_H.character, h.faceX < 0 ? -1 : 1);
@@ -2196,7 +2214,8 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
       const avatarScreen = document.getElementById('avatarScreen');
       if (!avatarScreen || avatarScreen.classList.contains('hidden')) return;
       window.Models3D._tickOnce();
-      const t = renderTile('avatar:0', 1); if (!t) return;
+      const heroKey = Object.keys(models).find(k => k.startsWith('avatar:'));   // first loaded character
+      const t = heroKey && renderTile(heroKey, 1); if (!t) return;
       hero.classList.add('ready');
       hctx.clearRect(0, 0, hero.width, hero.height);
       hctx.drawImage(t, 0, 0, hero.width, hero.height);
