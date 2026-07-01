@@ -148,6 +148,7 @@
     box-shadow:0 4px 10px rgba(0,0,0,.4)}
   #boltBtn{background:radial-gradient(circle at 38% 32%,#9fd2ff,#39a0ff)}
   #bombBtn{background:radial-gradient(circle at 38% 32%,#3a3f4a,#15181f)}
+  #grapBtn{background:radial-gradient(circle at 38% 32%,#e8cf9a,#8a6a3a)}
   .power .cool{position:absolute;left:0;bottom:0;width:100%;background:rgba(0,0,0,.55);pointer-events:none}
   .power span{position:relative;z-index:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
 
@@ -214,6 +215,7 @@
   <div id="powers" class="hidden">
     <div class="power" id="boltBtn"><div class="cool" id="boltCool"></div><span>⚡</span></div>
     <div class="power" id="bombBtn"><div class="cool" id="bombCool"></div><span>💣</span></div>
+    <div class="power" id="grapBtn"><div class="cool" id="grapCool"></div><span>🪝</span></div>
   </div>
 
   <!-- ===== Start / name screen ===== -->
@@ -607,7 +609,7 @@ function spawnMatch(){
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
   player.team=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
-  player.lightCd=0; player.bombCd=0;
+  player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null;
   humans.push(player);
 
   if(gameMode==='horde'){
@@ -775,6 +777,47 @@ function throwBomb(h){
   bombs.push({x:h.x, y:h.y, tx:h.x+Math.cos(a)*d, ty:h.y+Math.sin(a)*d, t:0, fuse:0.85, owner:h, sx:h.x, sy:h.y});
   if(h.isPlayer) sfx('throw');
 }
+
+// ---------- Grapple hook (player mobility) ----------
+// Unilateral spring-damper rope: it only pulls when taut (d > len), and the force is
+// radial-only — tangential velocity passes through untouched, so momentum is conserved
+// through the swing and release keeps your full speed (the zip IS the reward). The rest
+// length reels in over time; reeling a taut rope does work on the player, adding speed.
+const GRAPPLE={range:430, k:22, c:2.2, reel:230, minLen:46, cd:7, maxV:760, maxT:2.6};
+function grappleAnchor(h){ // march along aim, anchor on the first building edge
+  const step=8, a=h.aim;
+  for(let d=step; d<=GRAPPLE.range; d+=step){
+    const x=h.x+Math.cos(a)*d, y=h.y+Math.sin(a)*d;
+    for(const o of obstacles){ if(x>o.x&&x<o.x+o.w&&y>o.y&&y<o.y+o.h) return {x,y}; }
+  }
+  return null;
+}
+function castGrapple(h){
+  if(grace>0 || !h.alive) return;
+  if(h.grap){ grappleRelease(h); return; }        // press again to let go early
+  if(h.grapCd>0) return;
+  const hit=grappleAnchor(h);
+  if(!hit){ h.grapCd=1; if(h.isPlayer){ toast('NO ANCHOR IN RANGE'); sfx('tick'); } return; }
+  h.grap={ax:hit.x, ay:hit.y, len:Math.hypot(hit.x-h.x,hit.y-h.y), t:0};
+  if(h.isPlayer) sfx('throw');
+}
+function grappleRelease(h){ h.grap=null; h.grapCd=GRAPPLE.cd; }
+function updateGrapple(h,dt){
+  const g=h.grap; if(!g) return;
+  g.t+=dt;
+  g.len=Math.max(GRAPPLE.minLen, g.len-GRAPPLE.reel*dt);
+  const dx=g.ax-h.x, dy=g.ay-h.y, d=Math.hypot(dx,dy);
+  if(g.t>GRAPPLE.maxT || d<=GRAPPLE.minLen*1.2){ grappleRelease(h); return; }
+  if(d>1e-4 && d>g.len){                          // TAUT: F = k·stretch − c·v_radial, never pushes
+    const rx=dx/d, ry=dy/d;
+    const vTo=h.vx*rx+h.vy*ry;                    // radial speed toward the anchor
+    const F=GRAPPLE.k*(d-g.len) - GRAPPLE.c*vTo;  // accel: k in s^-2 · stretch px, c in s^-1
+    if(F>0){ h.vx+=rx*F*dt; h.vy+=ry*F*dt; }
+    if(Math.random()<dt*24) spark(h.x-rx*8,h.y-ry*8,'#d8c49a',rand(20,60),Math.atan2(-ry,-rx)+rand(-.5,.5),.3);
+  }
+  const v=Math.hypot(h.vx,h.vy);
+  if(v>GRAPPLE.maxV){ h.vx*=GRAPPLE.maxV/v; h.vy*=GRAPPLE.maxV/v; }
+}
 function explode(b){
   const RAD=130, RAD2=RAD*RAD;
   for(let i=0;i<30;i++) spark(b.x,b.y, i%2?'#ffb13d':'#ff5a2a', rand(80,360), rand(0,TAU), .8);
@@ -813,6 +856,7 @@ window.addEventListener('keydown',e=>{
   if(k==='r' && player) startReload(player);
   if(k==='q' && player) castLightning(player);
   if(k==='e' && player) throwBomb(player);
+  if(k==='f' && player) castGrapple(player);
 },{passive:false});
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 cv.addEventListener('mousemove',e=>{ const r=cv.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; });
@@ -857,6 +901,7 @@ function setupTouch(){
     b.addEventListener('touchstart',go,{passive:false}); b.addEventListener('mousedown',go); };
   bind('boltBtn',()=>player&&castLightning(player));
   bind('bombBtn',()=>player&&throwBomb(player));
+  bind('grapBtn',()=>player&&castGrapple(player));
 }
 
 // ============================================================
@@ -959,7 +1004,10 @@ function updatePlayer(h,dt){
   if(moveVec.active){ mx+=moveVec.x; my+=moveVec.y; }
   if(gp){ mx+=gp.mx; my+=gp.my; }
   const m=len(mx,my);
-  if(m>0){ h.vx+=(mx/m*h.speed-h.vx)*0.25; h.vy+=(my/m*h.speed-h.vy)*0.25; h.walk+=dt*9; }
+  if(h.grap){ // rope physics owns velocity — input only steers (pumps the swing)
+    if(m>0){ h.vx+=mx/m*520*dt; h.vy+=my/m*520*dt; } h.walk+=dt*10;
+  }
+  else if(m>0){ h.vx+=(mx/m*h.speed-h.vx)*0.25; h.vy+=(my/m*h.speed-h.vy)*0.25; h.walk+=dt*9; }
   else { h.vx*=0.78; h.vy*=0.78; }
   // aim + fire
   let firing=false, mouseAim=false;
@@ -973,7 +1021,8 @@ function updatePlayer(h,dt){
   aimShow = mouseAim || firing || aimVec.active || !!(gp&&(Math.abs(gp.ax)+Math.abs(gp.ay))>0.25);
   if(Math.cos(h.aim)) h.faceX=Math.cos(h.aim)<0?-1:1;
   if(firing) fire(h);
-  if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt;
+  if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt; if(h.grapCd>0) h.grapCd-=dt;
+  updateGrapple(h,dt);
   // low-health heartbeat — quickens as HP drops toward zero
   const lf = h.maxhp>0 ? h.hp/h.maxhp : 1;
   if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
@@ -1235,6 +1284,17 @@ function draw(){
   // bombs
   for(const b of bombs){ ctx.fillStyle='#15181f'; ctx.beginPath(); ctx.arc(b.x,b.y-6,7,0,TAU); ctx.fill();
     ctx.fillStyle = (Math.floor(b.t*12)%2)?'#ff3a2a':'#ffd24a'; ctx.beginPath(); ctx.arc(b.x+3,b.y-12,2.5,0,TAU); ctx.fill(); }
+  // grapple rope (taut = straight + stretch tint; slack = sagging curve)
+  if(player&&player.alive&&player.grap){ const g=player.grap;
+    const d=Math.hypot(g.ax-player.x,g.ay-player.y), taut=d>g.len;
+    ctx.strokeStyle= taut?'#f0dcae':'#bfae8a'; ctx.lineWidth= taut?2.6:2;
+    ctx.beginPath(); ctx.moveTo(player.x,player.y-6);
+    if(taut) ctx.lineTo(g.ax,g.ay);
+    else { const mx=(player.x+g.ax)/2, my=(player.y+g.ay)/2+(g.len-d)*0.35; ctx.quadraticCurveTo(mx,my,g.ax,g.ay); }
+    ctx.stroke();
+    ctx.fillStyle='#8a6a3a'; ctx.beginPath(); ctx.arc(g.ax,g.ay,4.2,0,TAU); ctx.fill();
+    ctx.strokeStyle=INK; ctx.lineWidth=1.4; ctx.stroke();
+  }
   // bullets (flame = fiery blobs, others = glowing tracers)
   ctx.lineCap='round';
   for(const b of bullets){
@@ -1767,6 +1827,7 @@ function refreshHud(){
   // power cooldown fills
   el('boltCool').style.height = (player?clamp(player.lightCd/11,0,1):0)*100 + '%';
   el('bombCool').style.height = (player?clamp(player.bombCd/10,0,1):0)*100 + '%';
+  el('grapCool').style.height = (player&&!player.grap?clamp(player.grapCd/GRAPPLE.cd,0,1):0)*100 + '%';
 }
 
 // ============================================================

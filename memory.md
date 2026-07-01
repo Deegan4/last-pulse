@@ -37,6 +37,13 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Grapple hook** (player-only mobility, `F` / 🪝 button, press again to release): `castGrapple`
+  marches along the aim and anchors on the first building edge (`grappleAnchor`, 430px range).
+  `updateGrapple` is a unilateral spring-damper — radial-only force (`GRAPPLE.k`·stretch −
+  `GRAPPLE.c`·v_radial, never pushes) so tangential momentum is conserved; rest length reels in
+  at 230px/s (does work → speeds you up); auto-release near the anchor or after 2.6s; release
+  keeps full velocity. While grappled the normal move lerp/friction is bypassed (input = light
+  steering, 520px/s²). Tunables in `GRAPPLE`; rope drawn taut/sagging before bullets.
 - **Firing feel**: `bulletFx(w)` drives per-weapon shot juice — tracer colour/width/tail/glow/tip,
   muzzle-flash radius (`h.muzzleR`, scaled in `drawHuman`), recoil kick, spark count/spread,
   knockback push, and player screen-shake for heavy guns (Sniper/Shotgun/Magnum). Shotgun ejects a

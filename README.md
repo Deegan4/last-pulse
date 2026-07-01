@@ -58,7 +58,7 @@ On a laptop you can also download [`index.html`](index.html) and open it in any 
 - 🔫 **10 weapons** — Pistol (crit), Rifle, Shotgun, SMG, Magnum, Sniper (pierce), Crossbow, Flamethrower (burn DoT), Minigun, and the drum-mag Tommy — each with its own ammo, reload, range, and feel.
 - 🦸 **15 unlockable avatars** — each with distinct speed / health stats and a hand-drawn cartoon look (cyber visor, top hat, crown, mohawk, ninja…), gated behind your level.
 - 📦 **Loot & supply drops** — health, medkits, armor, ammo, and weapon swaps, plus parachuting crates with a strong gun + armor.
-- ⚡ **Power-ups** — chain-lightning and a throwable AoE bomb, on cooldown buttons.
+- ⚡ **Power-ups** — chain-lightning, a throwable AoE bomb, and a 🪝 **grapple hook** (fire at a building, get reeled in on an elastic rope that conserves your swing momentum — release keeps your speed).
 - 🩸 **Game feel** — hit markers, kill-streak callouts, blood splats, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
 - 🌅 **Living arena** — a 3000² map with buildings (cover), ponds, animated water, swaying trees, a checkered lawn, and day / dusk / night lighting.
 - 📈 **Progression** — XP, levels, and career stats (wins / matches / kills / K-D / best placement / streak).
@@ -72,6 +72,7 @@ On a laptop you can also download [`index.html`](index.html) and open it in any 
 | Reload | automatic | `R` |
 | ⚡ Lightning | ⚡ button | `Q` |
 | 💣 Bomb | 💣 button | `E` |
+| 🪝 Grapple | 🪝 button | `F` (again to release) |
 
 ## 🛠 Development
 
