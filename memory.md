@@ -37,6 +37,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Environment/item art pass**: `drawDecor` trees now cartoon-outlined (unified INK blob behind
+  the canopy) with layered green shading + shaded trunk (round + pine); bushes outlined with
+  berries + highlight; rocks get a dark facet + brighter light facet; grass gets light tips;
+  flowers outlined. `drawDrop` supply crate rebuilt as a wooden loot crate (planks, metal corner
+  brackets, red band + gold ★). `drawPickup` gains a clipped top-gloss / bottom-shade bevel.
 - **3D model wiring (Meshy)**: the in-game 3D layer (2nd `<script type=module>`) now builds its
   model map from the auto-generated `assets/meshy/loader.js` (`MODELS`, `status:"generated"` only)
   instead of a hardcoded 2-entry map — so every model produced by `scripts/gen-meshy.mjs`
