@@ -89,6 +89,56 @@
     background:rgba(40,56,28,.55);color:#dfeccb;font-weight:800;font-size:13px}
   .modebtn.on{background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f;border-color:#d6ff6e}
 
+  /* ---------- Upgraded main menu ---------- */
+  #startScreen.menu{justify-content:flex-start;padding-top:6vh;overflow-x:hidden}
+  #startScreen.menu > *{position:relative;z-index:1}
+  .menuGlow{position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(58% 40% at 50% 26%, rgba(226,69,47,.22), rgba(226,69,47,0) 70%);
+    animation:menuPulse 1.9s ease-in-out infinite}
+  @keyframes menuPulse{0%,100%{opacity:.45;transform:scale(1)}16%{opacity:1;transform:scale(1.05)}
+    28%{opacity:.55;transform:scale(1)}44%{opacity:.85;transform:scale(1.035)}58%{opacity:.45;transform:scale(1)}}
+  #startScreen.menu .logo{animation:beat 1.9s ease-in-out infinite;transform-origin:50% 65%}
+  @keyframes beat{0%,100%{transform:scale(1)}16%{transform:scale(1.045)}28%{transform:scale(1)}
+    44%{transform:scale(1.028)}58%{transform:scale(1)}}
+  .spore{position:absolute;z-index:0;border-radius:50%;background:rgba(190,230,150,.5);
+    filter:blur(.4px);pointer-events:none;animation:drift linear infinite}
+  @keyframes drift{from{transform:translateY(0);opacity:0}12%{opacity:.55}88%{opacity:.55}to{transform:translateY(-140px);opacity:0}}
+
+  .fighter{display:flex;align-items:center;gap:12px;margin:16px auto 6px;
+    background:rgba(30,44,20,.55);border:1px solid var(--line);border-radius:16px;padding:9px 16px 9px 9px;
+    width:min(84vw,340px)}
+  .fighterPortrait{width:58px;height:70px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;
+    cursor:pointer;border-radius:12px;transition:transform .08s}
+  .fighterPortrait:active{transform:scale(.95)}
+  .fighterPortrait canvas{transform:scale(.86);transform-origin:bottom;display:block}
+  .fighterInfo{flex:1;text-align:left;min-width:0}
+  .nameField{background:transparent;border:none;outline:none;color:#fff;font-weight:800;font-size:19px;
+    width:100%;padding:1px 0;border-bottom:2px dashed rgba(255,255,255,.2)}
+  .nameField:focus{border-bottom-color:#d6ff6e}
+  .nameField::placeholder{color:rgba(255,255,255,.38)}
+  .lvlrow{display:flex;align-items:center;gap:8px;margin:7px 0 5px}
+  .lvlbadge{background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f;font-weight:800;font-size:11px;
+    padding:2px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.4px}
+  .xpmini{flex:1;height:7px;border-radius:5px;background:rgba(0,0,0,.35);overflow:hidden}
+  .xpmini > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#bfff5a,#7bbf2e);transition:width .3s}
+  .fighterEdit{font-size:11px;font-weight:700;color:#9fc267;letter-spacing:.2px;cursor:pointer}
+
+  .modes{display:flex;flex-direction:column;gap:9px;width:min(84vw,340px);margin:8px auto 2px}
+  .modecard{cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;
+    padding:11px 14px;border-radius:14px;border:2px solid var(--line);
+    background:rgba(40,56,28,.5);color:#dfeccb;transition:transform .08s,border-color .12s,background .12s}
+  .modecard:active{transform:scale(.985)}
+  .modecard .mi{font-size:26px;flex:0 0 auto;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+  .modecard .mtxt{flex:1;min-width:0}
+  .modecard .mt{font-weight:800;font-size:16px;color:#fff;display:block}
+  .modecard .md{font-size:11.5px;font-weight:700;color:#a9c47f;display:block;margin-top:1px}
+  .modecard.on{background:linear-gradient(180deg,rgba(205,238,106,.26),rgba(154,206,60,.16));border-color:#d6ff6e;
+    box-shadow:0 0 0 2px #d6ff6e33, 0 6px 18px rgba(0,0,0,.28)}
+  .modecard.on .md{color:#dfeccb}
+  .btn.play{margin-top:14px;padding:16px 36px;font-size:20px;
+    box-shadow:0 6px 0 #6f9a25, 0 9px 22px rgba(120,200,60,.32)}
+  .btn.play:active{transform:translateY(3px);box-shadow:0 3px 0 #6f9a25}
+
   /* ---------- HUD ---------- */
   #hud{position:absolute;inset:0;z-index:10;pointer-events:none}
   #xpwrap{position:absolute;left:54px;top:14px;width:min(46%,180px)}
@@ -219,18 +269,27 @@
   </div>
 
   <!-- ===== Start / name screen ===== -->
-  <div id="startScreen" class="screen center">
+  <div id="startScreen" class="screen center menu">
+    <div class="menuGlow"></div>
     <div class="logo">Last Pulse<small>Survive the swarm</small></div>
-    <div class="namebox">
-      <div style="font-weight:800;color:#eaf6d6">Enter your name</div>
-      <input id="nameInput" maxlength="12" placeholder="deegan" />
+
+    <div class="fighter">
+      <div class="fighterPortrait" id="fighterPortrait" title="Change fighter"></div>
+      <div class="fighterInfo">
+        <input id="nameInput" class="nameField" maxlength="12" placeholder="deegan" aria-label="your name" />
+        <div class="lvlrow"><span class="lvlbadge">LV <b id="menuLvl">1</b></span>
+          <div class="xpmini"><i id="menuXp"></i></div></div>
+        <div class="fighterEdit" id="changeAvatar">▸ tap portrait to change fighter</div>
+      </div>
     </div>
-    <div class="modesel">
-      <button class="modebtn" data-mode="br">🏆 Battle Royale</button>
-      <button class="modebtn" data-mode="horde">🧟 Endless Horde</button>
-      <button class="modebtn" data-mode="squad">🛡 Squads</button>
+
+    <div class="modes" id="modeCards">
+      <button class="modecard" data-mode="br"><span class="mi">🏆</span><span class="mtxt"><span class="mt">Battle Royale</span><span class="md">15 players · outlast the shrinking zone</span></span></button>
+      <button class="modecard" data-mode="horde"><span class="mi">🧟</span><span class="mtxt"><span class="mt">Endless Horde</span><span class="md">survive escalating zombie waves</span></span></button>
+      <button class="modecard" data-mode="squad"><span class="mi">🛡</span><span class="mtxt"><span class="mt">Squads</span><span class="md">team up · last squad standing</span></span></button>
     </div>
-    <button class="btn" id="toAvatarBtn">Play</button>
+
+    <button class="btn play" id="toAvatarBtn"><span id="playLabel">PLAY</span></button>
     <div id="statsCard" class="statscard"></div>
     <div class="footer" style="color:#cfe0b3;font-size:12px">A canvas remake · twin-stick survival royale</div>
   </div>
@@ -1860,7 +1919,17 @@ function loop(now){
 //  Screens & flow
 // ============================================================
 function show(id){ ['startScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
-  if(id==='startScreen') renderStats(); }
+  if(id==='startScreen'){ renderStats(); renderMenu(); } }
+const MODE_NAME={br:'BATTLE ROYALE',horde:'ENDLESS HORDE',squad:'SQUADS'};
+function renderMenu(){
+  const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
+  const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
+  const xp=el('menuXp'); if(xp) xp.style.width=clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%';
+  const pl=el('playLabel'); if(pl) pl.textContent='PLAY · '+(MODE_NAME[gameMode]||'BATTLE ROYALE');
+}
+function goAvatar(){ audioInit();
+  const v=el('nameInput').value.trim(); meta.name=v||'deegan'; saveMeta();
+  buildAvatarGrid(); screenState='avatar'; show('avatarScreen'); }
 function kd(){ return (meta.ckills/Math.max(1,meta.deaths)).toFixed(1); }
 function renderStats(){
   const c=el('statsCard'); if(!c) return;
@@ -1973,9 +2042,9 @@ function startMatch(){
 // ---------- button wiring ----------
 el('nameInput').value = meta.name==='deegan'?'':meta.name;
 el('nameInput').placeholder = 'deegan';
-el('toAvatarBtn').addEventListener('click',()=>{ audioInit();
-  const v=el('nameInput').value.trim(); meta.name = v||'deegan'; saveMeta();
-  buildAvatarGrid(); screenState='avatar'; show('avatarScreen'); });
+el('toAvatarBtn').addEventListener('click',goAvatar);
+el('fighterPortrait').addEventListener('click',goAvatar);
+el('changeAvatar').addEventListener('click',goAvatar);
 el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState='weapon'; show('weaponScreen'); });
 el('dropInBtn').addEventListener('click', startMatch);
 el('againBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); startMatch(); });
@@ -2006,9 +2075,16 @@ el('sMusic').addEventListener('click',()=>{ meta.music=!meta.music; saveMeta();
   el('sMusic').textContent='🔊 Music: '+(meta.music?'On':'Off'); if(meta.music){ audioInit(); startMusic(); } else stopMusic(); });
 
 // mode selector
-function renderModeSel(){ document.querySelectorAll('.modebtn').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode)); }
-document.querySelectorAll('.modebtn').forEach(b=>b.addEventListener('click',()=>{ gameMode=b.dataset.mode; safeSet('dd2_mode',gameMode); renderModeSel(); }));
+function renderModeSel(){ document.querySelectorAll('.modecard').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode)); }
+document.querySelectorAll('.modecard').forEach(b=>b.addEventListener('click',()=>{ audioInit(); gameMode=b.dataset.mode; safeSet('dd2_mode',gameMode); renderModeSel(); renderMenu(); }));
 renderModeSel();
+// drifting spores behind the menu
+(function(){ const host=el('startScreen'); if(!host) return;
+  for(let i=0;i<10;i++){ const s=document.createElement('div'); s.className='spore';
+    const sz=2+Math.random()*4; s.style.width=s.style.height=sz+'px';
+    s.style.left=(5+Math.random()*90)+'%'; s.style.bottom=(2+Math.random()*18)+'%';
+    s.style.animationDuration=(6+Math.random()*8)+'s'; s.style.animationDelay=(-Math.random()*12)+'s';
+    host.appendChild(s); } })();
 
 setupTouch();
 buildDecor();

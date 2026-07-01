@@ -37,6 +37,13 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Main menu upgrade**: `#startScreen` redesigned — pulsing "LAST PULSE" logo + red heartbeat
+  backdrop (`.menuGlow`, CSS `menuPulse`/`beat`), drifting spores, a **fighter card** (live
+  `portraitChibi` of `meta.avatar` + inline editable name + LV badge + XP bar, tap portrait →
+  avatar select via `goAvatar`), **mode cards** with icon/title/description (`.modecard`, replaces
+  `.modebtn`), and a hero Play button showing the selected mode (`renderMenu` sets `#playLabel`).
+  ⚠ `.screen` relies on `position:absolute; inset:0` for full height — do NOT set the menu to
+  `position:relative` (collapses to content height, canvas bleeds through).
 - **Grapple hook** (player-only mobility, `F` / 🪝 button, press again to release): `castGrapple`
   marches along the aim and anchors on the first building edge (`grappleAnchor`, 430px range).
   `updateGrapple` is a unilateral spring-damper — radial-only force (`GRAPPLE.k`·stretch −
