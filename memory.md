@@ -37,6 +37,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **In-game HUD upgrade**: XP row is now a flex pill — a green `#lvlText` LV badge + a glossy
+  `#xpbar` (`::after` top-sheen). Minimap sits in a translucent framed `#mmwrap` panel with
+  icon-led stat rows (`.srow`/`.si`: 👥 players / 💀 kills / ⏱ safe / 📶 fps, safe value yellow).
+  Power buttons get a `.ready` glow when off cooldown (toggled in `refreshHud`) and desktop-only
+  keybind hints (`.power .key` Q/E/F, hidden via `body.touch` — set from `isTouch`).
 - **Results & settings UI upgrade**: results screen (`showResults`) rebuilt as a match-summary
   card — 4 stat tiles in a 2×2 grid (Kills / Place(or Wave) / Survived / XP), an animated XP-gain
   bar with LEVEL-UP text, a bordered career panel, and a pulsing gold glow on `.placard.win`

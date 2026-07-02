@@ -161,20 +161,22 @@
 
   /* ---------- HUD ---------- */
   #hud{position:absolute;inset:0;z-index:10;pointer-events:none}
-  #xpwrap{position:absolute;left:54px;top:14px;width:min(46%,180px)}
-  #xpbar{height:16px;border-radius:9px;background:rgba(0,0,0,.4);border:1px solid var(--line);overflow:hidden}
-  #xpfill{height:100%;width:0;background:linear-gradient(90deg,#bfff5a,#7bbf2e)}
-  #lvlText{position:absolute;right:-2px;top:18px;font-weight:800;font-size:13px;color:#fff;
-    text-shadow:1px 1px 0 rgba(0,0,0,.4);transform:translateX(100%);white-space:nowrap;padding-left:8px}
-  #gearHud{position:absolute;left:10px;top:10px;width:40px;height:40px;border-radius:50%;border:none;
+  #xpwrap{position:absolute;left:56px;top:12px;width:min(54%,210px);display:flex;align-items:center;gap:8px}
+  #lvlText{flex:0 0 auto;background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f;font-weight:800;
+    font-size:12px;letter-spacing:.4px;padding:3px 9px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+  #xpbar{flex:1;height:14px;border-radius:8px;background:rgba(0,0,0,.5);border:1px solid var(--line);overflow:hidden;position:relative}
+  #xpfill{height:100%;width:0;background:linear-gradient(90deg,#bfff5a,#7bbf2e);transition:width .3s}
+  #xpbar::after{content:'';position:absolute;inset:0 0 auto 0;height:45%;background:rgba(255,255,255,.14);border-radius:8px 8px 0 0}
+  #gearHud{position:absolute;left:10px;top:10px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
     background:rgba(40,56,24,.85);color:#fff;font-size:19px;pointer-events:auto;cursor:pointer;
     display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
-  #mmwrap{position:absolute;right:10px;top:10px;text-align:right}
-  #minimap{width:108px;height:108px;border-radius:10px;border:2px solid rgba(0,0,0,.4);
-    background:#243818;display:block}
-  #stats{margin-top:5px;font-weight:800;font-size:13px;color:#fff;line-height:1.5;
-    text-shadow:1px 1px 0 rgba(0,0,0,.45)}
-  #stats .safe{color:#ffe27a}
+  #mmwrap{position:absolute;right:10px;top:10px;background:rgba(20,30,12,.5);border:1px solid var(--line);
+    border-radius:14px;padding:8px}
+  #minimap{width:108px;height:108px;border-radius:8px;border:2px solid rgba(0,0,0,.45);background:#243818;display:block}
+  #stats{margin-top:7px;font-weight:800;font-size:12.5px;color:#fff;text-shadow:1px 1px 0 rgba(0,0,0,.45)}
+  .srow{display:flex;align-items:center;gap:5px;line-height:1.75}
+  .srow .si{font-size:12px;width:16px;text-align:center;opacity:.92}
+  .srow b{color:#fff} .srow.safe b{color:#ffe27a}
 
   /* ---------- Touch / controls ---------- */
   #ctrl{position:absolute;inset:0;z-index:14;pointer-events:none}
@@ -213,14 +215,18 @@
   .gly.aim::after{top:50%;left:-8px;height:2.6px;width:54px;transform:translateY(-50%)}
   .gly.aim b{position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;background:#fff;transform:translate(-50%,-50%)}
   #powers{position:absolute;right:16px;bottom:210px;display:flex;flex-direction:column;gap:14px;z-index:16;pointer-events:none}
-  .power{width:66px;height:66px;border-radius:50%;pointer-events:auto;cursor:pointer;border:3px solid rgba(255,255,255,.7);
+  .power{width:66px;height:66px;border-radius:50%;pointer-events:auto;cursor:pointer;border:3px solid rgba(255,255,255,.5);
     display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden;
-    box-shadow:0 4px 10px rgba(0,0,0,.4)}
+    box-shadow:0 4px 10px rgba(0,0,0,.4);transition:box-shadow .18s,border-color .18s}
+  .power.ready{border-color:rgba(255,255,255,.95);box-shadow:0 0 0 2px rgba(255,255,255,.3),0 0 15px rgba(255,255,255,.32),0 4px 10px rgba(0,0,0,.4)}
   #boltBtn{background:radial-gradient(circle at 38% 32%,#9fd2ff,#39a0ff)}
   #bombBtn{background:radial-gradient(circle at 38% 32%,#3a3f4a,#15181f)}
   #grapBtn{background:radial-gradient(circle at 38% 32%,#e8cf9a,#8a6a3a)}
   .power .cool{position:absolute;left:0;bottom:0;width:100%;background:rgba(0,0,0,.55);pointer-events:none}
   .power span{position:relative;z-index:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
+  .power .key{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);z-index:3;font-size:8.5px;
+    font-weight:800;color:rgba(255,255,255,.8);letter-spacing:.3px;pointer-events:none}
+  body.touch .power .key{display:none}
 
   /* ---------- Settings & results ---------- */
   .modal{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;
@@ -269,14 +275,14 @@
   <!-- ===== In-game HUD ===== -->
   <div id="hud" class="hidden">
     <button id="gearHud" aria-label="settings">⚙</button>
-    <div id="xpwrap"><div id="xpbar"><div id="xpfill"></div></div><div id="lvlText">Level 1</div></div>
+    <div id="xpwrap"><span id="lvlText">LV 1</span><div id="xpbar"><div id="xpfill"></div></div></div>
     <div id="mmwrap">
       <canvas id="minimap" width="108" height="108"></canvas>
       <div id="stats">
-        <div><span id="statPlayers">15/15</span> <span id="lblPlayers">players</span></div>
-        <div><span id="statKills">0</span> kills</div>
-        <div class="safe"><span id="lblSafe">Safe area:</span> <span id="statSafe">--</span></div>
-        <div>FPS: <span id="statFps">60</span></div>
+        <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
+        <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
+        <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
+        <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
       </div>
     </div>
   </div>
@@ -293,9 +299,9 @@
     <div class="stickknob" id="aimKnob"></div>
   </div>
   <div id="powers" class="hidden">
-    <div class="power" id="boltBtn"><div class="cool" id="boltCool"></div><span>⚡</span></div>
-    <div class="power" id="bombBtn"><div class="cool" id="bombCool"></div><span>💣</span></div>
-    <div class="power" id="grapBtn"><div class="cool" id="grapCool"></div><span>🪝</span></div>
+    <div class="power" id="boltBtn"><div class="cool" id="boltCool"></div><span>⚡</span><span class="key">Q</span></div>
+    <div class="power" id="bombBtn"><div class="cool" id="bombCool"></div><span>💣</span><span class="key">E</span></div>
+    <div class="power" id="grapBtn"><div class="cool" id="grapCool"></div><span>🪝</span><span class="key">F</span></div>
   </div>
 
   <!-- ===== Start / name screen ===== -->
@@ -953,6 +959,7 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 
 // twin-stick touch
 const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+document.body.classList.toggle('touch', isTouch);   // hide desktop-only keybind hints on touch
 const moveVec={x:0,y:0,active:false};
 const aimVec={x:0,y:0,active:false};
 function stick(zoneId, baseId, knobId, hintId, vec){
@@ -1969,11 +1976,13 @@ function refreshHud(){
   el('statKills').textContent = killsTotal;
   el('statFps').textContent = Math.round(fps);
   el('xpfill').style.width = clamp(meta.xp/xpNeed(meta.level),0,1)*100 + '%';
-  el('lvlText').textContent = 'Level '+meta.level;
-  // power cooldown fills
-  el('boltCool').style.height = (player?clamp(player.lightCd/11,0,1):0)*100 + '%';
-  el('bombCool').style.height = (player?clamp(player.bombCd/10,0,1):0)*100 + '%';
-  el('grapCool').style.height = (player&&!player.grap?clamp(player.grapCd/GRAPPLE.cd,0,1):0)*100 + '%';
+  el('lvlText').textContent = 'LV '+meta.level;
+  // power cooldown fills + "ready" glow when off cooldown
+  const bc=(player?clamp(player.lightCd/11,0,1):0), mc=(player?clamp(player.bombCd/10,0,1):0),
+        gc=(player&&!player.grap?clamp(player.grapCd/GRAPPLE.cd,0,1):0);
+  el('boltCool').style.height = bc*100 + '%'; el('boltBtn').classList.toggle('ready', bc<=0 && grace<=0);
+  el('bombCool').style.height = mc*100 + '%'; el('bombBtn').classList.toggle('ready', mc<=0 && grace<=0);
+  el('grapCool').style.height = gc*100 + '%'; el('grapBtn').classList.toggle('ready', gc<=0 && !(player&&player.grap) && grace<=0);
 }
 
 // ============================================================
