@@ -116,6 +116,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   time-of-day, seeded speckles/blades), animated water (sand shore, shallow layer, drifting
   ripples, glint), swaying tree canopies, shockwave `rings[]` on explosions / lightning hits /
   supply-drop landings.
+- **Modal overflow fix**: `.modal` (Settings/Results) now uses `justify-content:safe center` +
+  `overflow-y:auto` so it centers when it fits and top-anchors + scrolls when the content is
+  taller than the viewport (portrait / short-height phones). Before, `justify-content:center`
+  with no scroll clipped the top of the list and put the Close button off-screen. Verified
+  headless at 430×480 (overflow → heading anchored at top, Close reachable via scroll).
 - **Automation** (`.claude/`): PostToolUse parse-check hook on `index.html`, SessionStart
   readiness check, permission allowlist. Plus `scripts/parse-check.mjs` + `scripts/validate.mjs`.
   ⚠ Hooks activate only after `/hooks` reload or a session restart (the `.claude/` dir was

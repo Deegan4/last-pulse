@@ -238,7 +238,12 @@
 
   /* ---------- Settings & results ---------- */
   .modal{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:14px;padding:20px;background:rgba(20,28,12,.82)}
+    justify-content:safe center;gap:14px;padding:24px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:rgba(20,28,12,.82)}
+  /* keep the heading and Close button from being squeezed when the list is tall in portrait */
+  .modal .heading{flex:0 0 auto}
+  .modal .stack{flex:0 0 auto}
+  .modal .close{flex:0 0 auto}
   .modal .stack{display:flex;flex-direction:column;gap:12px;width:min(86%,360px)}
   .modal .opt{background:#fff;color:#1d2a14;border:none;border-radius:14px;padding:14px 18px;font-size:17px;
     font-weight:800;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.25);display:flex;align-items:center;gap:12px;text-align:left}
