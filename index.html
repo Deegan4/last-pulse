@@ -649,6 +649,9 @@ function blockedSpawn(x,y){
   for(const d of decor){ if(d.type==='water'){ const dx=(x-d.x)/(d.s+14), dy=(y-d.y)/(d.s*0.64+14); if(dx*dx+dy*dy<1) return true; } }
   return false;
 }
+// a decor position clear of buildings + ponds (retries; last try is accepted if all blocked)
+function decorSpot(m){ let x=rand(m,ARENA-m), y=rand(m,ARENA-m);
+  for(let t=0; t<16 && blockedSpawn(x,y); t++){ x=rand(m,ARENA-m); y=rand(m,ARENA-m); } return {x,y}; }
 function farSpawn(minFromCenter){
   let fx=ARENA/2, fy=ARENA/2;
   for(let i=0;i<48;i++){
@@ -673,11 +676,11 @@ function buildDecor(){
         if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
       tries++; } while(!ok && tries<20);
     if(ok){ obstacles.push(b); decor.push(b); } }
-  for(let i=0;i<26;i++){ decor.push({type:'tree', x:rand(120,ARENA-120), y:rand(120,ARENA-120), s:rand(0.85,1.4), round:Math.random()<0.4}); }
-  for(let i=0;i<34;i++){ decor.push({type:'bush', x:rand(80,ARENA-80), y:rand(80,ARENA-80), s:rand(0.8,1.3)}); }
+  for(let i=0;i<26;i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
+  for(let i=0;i<34;i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
   for(let i=0;i<66;i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
   for(let i=0;i<26;i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
-  for(let i=0;i<14;i++){ decor.push({type:'rock', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.5)}); }
+  for(let i=0;i<14;i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
   for(let i=0;i<6;i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
 }

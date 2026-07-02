@@ -37,6 +37,9 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Decor placement cleanup**: new `decorSpot(m)` helper retries `blockedSpawn` so trees / bushes /
+  rocks no longer spawn on buildings or in ponds (grass/flowers left as-is — tiny ground decor).
+  Verified 0/22200 blocked placements over 300 worlds.
 - **Buildings-in-ponds fix**: `buildDecor` placed buildings checking only other buildings + map
   centre, never water — so houses could spawn on top of ponds. Added a pond-AABB rejection
   (`wd.s+30` × `wd.s*0.64+30`) to the building placement loop. Verified 0 overlaps across 400
