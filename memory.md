@@ -116,6 +116,15 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   time-of-day, seeded speckles/blades), animated water (sand shore, shallow layer, drifting
   ripples, glint), swaying tree canopies, shockwave `rings[]` on explosions / lightning hits /
   supply-drop landings.
+- **Achievements** (14 badges): `ACHIEVEMENTS` table near `saveMeta` — each `{id,icon,name,desc,test(meta,ctx)}`.
+  Career tests read `meta` (wins/ckills/bestStreak/bestWave/matches/level); per-match feats read a
+  `ctx` built in `showResults` from `killsTotal` + `matchStat` ({dmgTaken,grappled}, reset in
+  `spawnMatch`, fed by `hurt` for player dmg and `castGrapple` for grapple use). `checkAchievements(ctx)`
+  runs after career stats save in `showResults`, adds newly-passed ids to `meta.achieved` (persisted as
+  `dd2_ach` comma string), and staggers a "🏅 X unlocked!" toast per unlock. UI: a `🏅 Achievements N/14`
+  button on the start screen (count set in `renderStats`) opens the `#achievements` `.modal` — a
+  `.achgrid` of `.achcard`s (unlocked = white + icon + green ✓, locked = dashed/grey + 🔒). Reuses the
+  modal scroll + sticky-Close fix, so the badge wall scrolls on short screens.
 - **Modal overflow fix**: `.modal` (Settings/Results) now uses `justify-content:safe center` +
   `overflow-y:auto` so it centers when it fits and top-anchors + scrolls when the content is
   taller than the viewport (portrait / short-height phones). Before, `justify-content:center`

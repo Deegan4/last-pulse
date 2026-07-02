@@ -62,6 +62,7 @@ On a laptop you can also download [`index.html`](index.html) and open it in any 
 - 🩸 **Game feel** — hit markers, kill-streak callouts, blood splats, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
 - 🌅 **Living arena** — a 3000² map with buildings (cover), ponds, animated water, swaying trees, a checkered lawn, and day / dusk / night lighting.
 - 📈 **Progression** — XP, levels, and career stats (wins / matches / kills / K-D / best placement / streak).
+- 🏅 **Achievements** — 14 unlockable badges (First Blood, Rampage, Untouchable, Horde Master, Centurion…) that pop a toast the moment you earn them, tracked on a menu badge wall.
 
 ## 🎮 Controls
 

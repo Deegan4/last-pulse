@@ -253,6 +253,21 @@
     border:none;border-radius:12px;padding:11px 30px;cursor:pointer;font-size:15px;margin-top:4px;
     box-shadow:0 6px 20px 6px rgba(20,28,12,.92)}
 
+  /* achievements */
+  .achbtn{margin-top:8px;font-size:14px}
+  .achcount{opacity:.85;font-weight:800;font-size:12px;margin-left:4px}
+  .achgrid{flex:0 0 auto;display:flex;flex-direction:column;gap:9px;width:min(90%,380px)}
+  .achcard{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.96);color:#1d2a14;
+    border-radius:13px;padding:11px 14px;box-shadow:0 3px 0 rgba(0,0,0,.22);position:relative}
+  .achcard.locked{background:rgba(38,50,26,.72);color:#95a982;box-shadow:none;
+    border:1px dashed rgba(150,170,120,.4)}
+  .achcard .aic{font-size:26px;width:30px;text-align:center;flex:0 0 auto;filter:saturate(1.1)}
+  .achcard.locked .aic{filter:grayscale(1) opacity(.7)}
+  .achcard .atxt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+  .achcard .atxt b{font-size:15px}
+  .achcard .atxt span{font-size:12px;opacity:.8}
+  .achcard .adone{margin-left:auto;color:#3a9d2a;font-weight:900;font-size:18px;flex:0 0 auto}
+
   #results .placard{font-size:clamp(30px,10vw,56px);font-weight:800;font-style:italic;text-transform:uppercase;
     color:#fff;text-shadow:2px 2px 0 #2f4420}
   #results .placard.win{color:#ffe27a;text-shadow:2px 2px 0 #7a5a10;animation:winGlow 1.4s ease-in-out infinite}
@@ -341,6 +356,7 @@
 
     <button class="btn play" id="toAvatarBtn"><span id="playLabel">PLAY</span></button>
     <div id="statsCard" class="statscard"></div>
+    <button class="btn ghost achbtn" id="achBtn">🏅 Achievements <span id="achCount" class="achcount"></span></button>
     <div class="footer" style="color:#cfe0b3;font-size:12px">A canvas remake · twin-stick survival royale</div>
   </div>
 
@@ -391,6 +407,14 @@
       <button class="btn" id="againBtn">Play Again</button>
       <button class="btn ghost" id="menuBtn">Menu</button>
     </div>
+  </div>
+
+  <!-- ===== Achievements ===== -->
+  <div id="achievements" class="modal hidden">
+    <h2 class="heading">Achievements</h2>
+    <div id="achProg" class="career"></div>
+    <div class="achgrid" id="achGrid"></div>
+    <button class="close" id="achClose">Close</button>
   </div>
 
   <!-- spectate bar (after the player dies) -->
@@ -510,6 +534,7 @@ const meta = {
   bestWave: parseInt(safeGet('dd2_bwave','0'),10) || 0,
   sfxVol: Math.max(0,Math.min(1, parseFloat(safeGet('dd2_sfxvol','0.8'))||0.8)),
   aimSens: Math.max(0.3,Math.min(2, parseFloat(safeGet('dd2_sens','1'))||1)),
+  achieved: (safeGet('dd2_ach','')||'').split(',').filter(Boolean),   // unlocked achievement ids
 };
 function xpNeed(lv){ return 80 + lv*40; }
 function saveMeta(){
@@ -519,6 +544,38 @@ function saveMeta(){
   safeSet('dd2_deaths',meta.deaths); safeSet('dd2_best',meta.best);
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);
   safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_sens',meta.aimSens);
+  safeSet('dd2_ach', meta.achieved.join(','));
+}
+
+// ===== Achievements =====
+// Career tests read `meta`; per-match feats read the `ctx` passed at match end.
+const ACHIEVEMENTS = [
+  {id:'firstkill',  icon:'🩸', name:'First Blood',  desc:'Score your first elimination',        test:m=>m.ckills>=1},
+  {id:'firstwin',   icon:'🏆', name:'Winner',       desc:'Win your first match',                test:m=>m.wins>=1},
+  {id:'sharp',      icon:'🎯', name:'Sharpshooter', desc:'Get 5+ kills in a single match',      test:(m,c)=>c.matchKills>=5},
+  {id:'rampage',    icon:'💥', name:'Rampage',      desc:'Get 10+ kills in a single match',     test:(m,c)=>c.matchKills>=10},
+  {id:'untouchable',icon:'🛡', name:'Untouchable',  desc:'Win a match without taking damage',   test:(m,c)=>c.win && c.dmgTaken<=0},
+  {id:'grappler',   icon:'🪝', name:'Swinger',      desc:'Use the grapple hook in a match',     test:(m,c)=>c.grappled},
+  {id:'streak3',    icon:'🔥', name:'Unstoppable',  desc:'Win 3 matches in a row',              test:m=>m.bestStreak>=3},
+  {id:'wave5',      icon:'🌊', name:'Survivor',     desc:'Reach wave 5 in Endless Horde',       test:m=>m.bestWave>=5},
+  {id:'wave10',     icon:'🧟', name:'Horde Master', desc:'Reach wave 10 in Endless Horde',      test:m=>m.bestWave>=10},
+  {id:'matches10',  icon:'🎖', name:'Veteran',      desc:'Play 10 matches',                     test:m=>m.matches>=10},
+  {id:'kills100',   icon:'💯', name:'Centurion',    desc:'Rack up 100 career kills',            test:m=>m.ckills>=100},
+  {id:'lvl5',       icon:'⭐', name:'Rising Star',   desc:'Reach level 5',                       test:m=>m.level>=5},
+  {id:'lvl10',      icon:'🌟', name:'Elite',        desc:'Reach level 10',                      test:m=>m.level>=10},
+  {id:'champ5',     icon:'👑', name:'Champion',     desc:'Win 5 matches',                       test:m=>m.wins>=5},
+];
+// Evaluate all achievements against current meta + this match's context; toast any newly unlocked.
+function checkAchievements(ctx){
+  const got=[];
+  for(const a of ACHIEVEMENTS){
+    if(meta.achieved.includes(a.id)) continue;
+    let ok=false; try{ ok=!!a.test(meta, ctx||{}); }catch(e){}
+    if(ok){ meta.achieved.push(a.id); got.push(a); }
+  }
+  if(got.length){ saveMeta();
+    got.forEach((a,i)=> setTimeout(()=>{ toast('🏅 '+a.name+' unlocked!'); sfx('level'); }, 1000 + i*1500)); }
+  return got;
 }
 function weaponUnlocked(w){ return meta.level >= (w.unlock||1); }
 function grantXp(n){
@@ -570,6 +627,7 @@ let zReinforce = 0;                         // BR/Squad zombie reinforcement cad
 let player = null;
 let startTime = 0, elapsed = 0, shake = 0, lastT = performance.now();
 let killsTotal = 0, fieldSize = 15;
+let matchStat = {dmgTaken:0, grappled:false};
 
 // FPS counter
 let fps = 60, fpsAcc = 0, fpsFrames = 0;
@@ -717,6 +775,7 @@ function spawnMatch(){
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14);
+  matchStat={dmgTaken:0, grappled:false};   // per-match feats for achievements
   buildDecor();
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
@@ -825,7 +884,7 @@ function hurt(e, dmg, src, isHumanTarget){
   // armor soaks damage first
   if(e.shield>0){ const a=Math.min(e.shield,dmg); e.shield-=a; dmg-=a;
     for(let i=0;i<3;i++) spark(e.x,e.y-6,'#7fc8ff',rand(40,120),rand(0,TAU),.3); }
-  if(dmg>0){ e.hp -= dmg; }
+  if(dmg>0){ e.hp -= dmg; if(e.isPlayer) matchStat.dmgTaken += dmg; }
   e.hitFlash=0.12;
   // blood
   const blood = isHumanTarget ? '#c0303a' : '#5f8f2c';
@@ -911,7 +970,7 @@ function castGrapple(h){
   const hit=grappleAnchor(h);
   if(!hit){ h.grapCd=1; if(h.isPlayer){ toast('NO ANCHOR IN RANGE'); sfx('tick'); } return; }
   h.grap={ax:hit.x, ay:hit.y, len:Math.hypot(hit.x-h.x,hit.y-h.y), t:0};
-  if(h.isPlayer) sfx('throw');
+  if(h.isPlayer){ matchStat.grappled=true; sfx('throw'); }
 }
 function grappleRelease(h){ h.grap=null; h.grapCd=GRAPPLE.cd; }
 function updateGrapple(h,dt){
@@ -1341,6 +1400,8 @@ function showResults(win, place){
   if(horde){ if(hordeWave>meta.bestWave) meta.bestWave=hordeWave; }
   else if(meta.best===0 || place<meta.best) meta.best=place;
   saveMeta();
+  checkAchievements({ win, place, horde, matchKills:killsTotal,
+    dmgTaken:matchStat.dmgTaken, grappled:matchStat.grappled });
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden');
   lastWin = win;
   if(win){ confetti=[]; for(let i=0;i<90;i++) confetti.push({x:rand(0,W), y:rand(-H,0),
@@ -2052,7 +2113,19 @@ function renderStats(){
     ['Best',meta.best?('#'+meta.best):'—'],['K/D',kd()],
     ['Streak',meta.streak+(meta.bestStreak>meta.streak?(' /'+meta.bestStreak):'')]];
   c.innerHTML=tiles.map(t=>'<div class="st"><b>'+t[1]+'</b><span>'+t[0]+'</span></div>').join('');
+  const ac=el('achCount'); if(ac) ac.textContent=meta.achieved.length+'/'+ACHIEVEMENTS.length;
 }
+function renderAchievements(){
+  const g=el('achGrid'); if(!g) return;
+  const n=meta.achieved.length, tot=ACHIEVEMENTS.length;
+  el('achProg').innerHTML='<b>'+n+'</b> / '+tot+' unlocked';
+  g.innerHTML=ACHIEVEMENTS.map(a=>{ const got=meta.achieved.includes(a.id);
+    return '<div class="achcard'+(got?'':' locked')+'"><span class="aic">'+(got?a.icon:'🔒')+'</span>'
+      +'<div class="atxt"><b>'+a.name+'</b><span>'+a.desc+'</span></div>'
+      +(got?'<span class="adone">✓</span>':'')+'</div>'; }).join('');
+}
+function openAchievements(){ renderAchievements(); el('achievements').classList.remove('hidden'); }
+function closeAchievements(){ el('achievements').classList.add('hidden'); }
 function portraitChibi(av){
   const c=document.createElement('canvas'); c.width=70; c.height=84; const o=c.getContext('2d');
   const L=av.look; o.translate(35,58); o.lineJoin='round'; o.lineCap='round';
@@ -2182,6 +2255,9 @@ el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState=
 el('dropInBtn').addEventListener('click', startMatch);
 el('againBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); startMatch(); });
 el('menuBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); screenState='start'; show('startScreen'); });
+// achievements
+el('achBtn').addEventListener('click',()=>{ audioInit(); openAchievements(); });
+el('achClose').addEventListener('click',closeAchievements);
 // spectate → results
 el('specBtn').addEventListener('click',()=>{ if(!ended){ ended=true; showResults(false, deathPlace); } });
 
