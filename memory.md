@@ -37,6 +37,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Avatar-select UI upgrade** (matches the weapon cards): `buildAvatarGrid` adds a class chip
+  (`avClass`: Tank hp≥130 / Swift spd≥5.6 / All-round) next to the name, color-coded Speed (cyan
+  `.bar.spd`) / Health (green `.bar.hp`) bars via the shared `statBar`, and a SELECTED ribbon that
+  follows the click. Reuses `.wtop`/`.nm2`/`.equip` from the weapon cards.
 - **Weapon-select UI upgrade**: `buildWeaponGrid` cards now show a color-coded **fire-mode chip**
   (SEMI/AUTO/SHOT/SNIPE/FLAME), a big gold **DPS headline** (`wstats(w)`: perShot×mag / (mag·fireCd
   + reload), pellets folded in for shotgun/flame), **color-coded stat bars** (dmg red / fire yellow

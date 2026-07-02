@@ -78,6 +78,10 @@
   .bar.rng > i{background:linear-gradient(90deg,#8fd6ff,#3a86ff)}
   .card .equip{position:absolute;top:8px;left:8px;font-size:9px;font-weight:800;letter-spacing:.5px;
     color:#22330f;background:linear-gradient(180deg,#cdee6a,#9ace3c);padding:2px 7px;border-radius:999px}
+  .aclass{font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:999px;text-transform:uppercase;color:#12160c}
+  .aclass.swift{background:#7fd0e0} .aclass.tank{background:#8ed07a} .aclass.balanced{background:#c9b98a}
+  .bar.spd > i{background:linear-gradient(90deg,#8fe0ff,#3aa0ff)}
+  .bar.hp > i{background:linear-gradient(90deg,#bfff5a,#3fbf4a)}
 
   .btn{appearance:none;border:none;cursor:pointer;font-weight:800;letter-spacing:1px;
     color:#22330f;border-radius:13px;padding:14px 26px;font-size:19px;text-transform:uppercase;
@@ -2055,21 +2059,24 @@ function portraitChibi(av){
 }
 function rr(o,x,y,w,h,r){ o.beginPath(); o.moveTo(x+r,y); o.arcTo(x+w,y,x+w,y+h,r); o.arcTo(x+w,y+h,x,y+h,r); o.arcTo(x,y+h,x,y,r); o.arcTo(x,y,x+w,y,r); o.closePath(); }
 
+function avClass(av){ if(av.health>=130) return {k:'tank',t:'Tank'}; if(av.speed>=5.6) return {k:'swift',t:'Swift'}; return {k:'balanced',t:'All-round'}; }
 function buildAvatarGrid(){
   const g=el('avatarGrid'); g.innerHTML='';
   el('curLevel').textContent=meta.level; el('curLevel2').textContent=meta.level;
   AVATARS.forEach((av,i)=>{
-    const unlocked=avatarUnlocked(av);
-    const card=document.createElement('div'); card.className='card'+(i===meta.avatar?' sel':'')+(unlocked?'':' locked');
+    const unlocked=avatarUnlocked(av), sel=i===meta.avatar, c=avClass(av);
+    const card=document.createElement('div'); card.className='card'+(sel?' sel':'')+(unlocked?'':' locked');
     const por=document.createElement('div'); por.className='por'; por.appendChild(portraitChibi(av)); card.appendChild(por);
-    const nm=document.createElement('div'); nm.className='nm'; nm.textContent=av.name; card.appendChild(nm);
     card.insertAdjacentHTML('beforeend',
-      '<div class="row"><span>Speed</span><span>'+av.speed.toFixed(1)+'</span></div><div class="bar"><i style="width:'+(av.speed/6.5*100)+'%"></i></div>'+
-      '<div class="row"><span>Health</span><span>'+av.health+'</span></div><div class="bar"><i style="width:'+(av.health/160*100)+'%"></i></div>'+
-      '<div class="lvl">'+(unlocked?'Level '+av.unlock:'🔒 Level '+av.unlock)+'</div>');
-    if(!unlocked) card.insertAdjacentHTML('beforeend','<div class="lock">🔒</div>');
+      '<div class="wtop"><span class="nm2">'+av.name+'</span><span class="aclass '+c.k+'">'+c.t+'</span></div>'+
+      statBar('spd','Speed', av.speed.toFixed(1), av.speed/6.5)+
+      statBar('hp','Health', av.health, av.health/160)+
+      '<div class="lvl">'+(unlocked?'Level '+av.unlock:'🔒 Level '+av.unlock)+'</div>'+
+      (sel?'<div class="equip">SELECTED</div>':'')+
+      (unlocked?'':'<div class="lock">🔒</div>'));
     if(unlocked) card.addEventListener('click',()=>{ meta.avatar=i; saveMeta();
-      [...g.children].forEach(c=>c.classList.remove('sel')); card.classList.add('sel'); });
+      [...g.children].forEach(c2=>{ c2.classList.remove('sel'); const e=c2.querySelector('.equip'); if(e) e.remove(); });
+      card.classList.add('sel'); card.insertAdjacentHTML('beforeend','<div class="equip">SELECTED</div>'); });
     g.appendChild(card);
   });
 }
