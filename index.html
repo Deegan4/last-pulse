@@ -243,14 +243,15 @@
   /* keep the heading and Close button from being squeezed when the list is tall in portrait */
   .modal .heading{flex:0 0 auto}
   .modal .stack{flex:0 0 auto}
-  .modal .close{flex:0 0 auto}
   .modal .stack{display:flex;flex-direction:column;gap:12px;width:min(86%,360px)}
   .modal .opt{background:#fff;color:#1d2a14;border:none;border-radius:14px;padding:14px 18px;font-size:17px;
     font-weight:800;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.25);display:flex;align-items:center;gap:12px;text-align:left}
   .modal .opt:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
   .modal .opt .oic{font-size:20px;width:24px;text-align:center;flex:0 0 auto}
-  .modal .close{background:#445c2a;color:#fff;font-weight:800;border:none;border-radius:12px;
-    padding:10px 26px;cursor:pointer;font-size:15px;margin-top:4px}
+  /* Close stays pinned to the bottom while the option list scrolls under it (tall / short screens) */
+  .modal .close{flex:0 0 auto;position:sticky;bottom:0;background:#445c2a;color:#fff;font-weight:800;
+    border:none;border-radius:12px;padding:11px 30px;cursor:pointer;font-size:15px;margin-top:4px;
+    box-shadow:0 6px 20px 6px rgba(20,28,12,.92)}
 
   #results .placard{font-size:clamp(30px,10vw,56px);font-weight:800;font-style:italic;text-transform:uppercase;
     color:#fff;text-shadow:2px 2px 0 #2f4420}
