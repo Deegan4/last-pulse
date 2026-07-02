@@ -37,6 +37,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Landscape HUD fix**: the bottom-anchored vertical `#powers` stack (`bottom:210px`, tuned for
+  tall portrait) rode up into the top-right minimap on short/landscape viewports. Added
+  `@media (max-height:560px)` → powers become a compact **bottom-centre row**, minimap scales to
+  .82, xp pill narrows. Portrait unaffected. (Reported via a real landscape phone screenshot.)
 - **In-game HUD upgrade**: XP row is now a flex pill — a green `#lvlText` LV badge + a glossy
   `#xpbar` (`::after` top-sheen). Minimap sits in a translucent framed `#mmwrap` panel with
   icon-led stat rows (`.srow`/`.si`: 👥 players / 💀 kills / ⏱ safe / 📶 fps, safe value yellow).

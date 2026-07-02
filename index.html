@@ -227,6 +227,14 @@
   .power .key{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);z-index:3;font-size:8.5px;
     font-weight:800;color:rgba(255,255,255,.8);letter-spacing:.3px;pointer-events:none}
   body.touch .power .key{display:none}
+  /* Landscape / short viewports: the bottom-anchored vertical power stack rides up into the
+     top-right minimap. Lay the powers out as a compact bottom-centre row and shrink the map. */
+  @media (max-height:560px){
+    #powers{flex-direction:row;bottom:12px;top:auto;right:auto;left:50%;transform:translateX(-50%);gap:12px}
+    .power{width:54px;height:54px;font-size:23px}
+    #mmwrap{transform:scale(.82);transform-origin:top right}
+    #xpwrap{width:min(40%,180px)}
+  }
 
   /* ---------- Settings & results ---------- */
   .modal{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;
