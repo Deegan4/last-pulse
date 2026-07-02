@@ -226,17 +226,27 @@
   .modal{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;
     justify-content:center;gap:14px;padding:20px;background:rgba(20,28,12,.82)}
   .modal .stack{display:flex;flex-direction:column;gap:12px;width:min(86%,360px)}
-  .modal .opt{background:#fff;color:#1d2a14;border:none;border-radius:14px;padding:16px;font-size:18px;
-    font-weight:800;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.25)}
-  .modal .opt:active{transform:translateY(2px)}
+  .modal .opt{background:#fff;color:#1d2a14;border:none;border-radius:14px;padding:14px 18px;font-size:17px;
+    font-weight:800;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.25);display:flex;align-items:center;gap:12px;text-align:left}
+  .modal .opt:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+  .modal .opt .oic{font-size:20px;width:24px;text-align:center;flex:0 0 auto}
   .modal .close{background:#445c2a;color:#fff;font-weight:800;border:none;border-radius:12px;
     padding:10px 26px;cursor:pointer;font-size:15px;margin-top:4px}
 
   #results .placard{font-size:clamp(30px,10vw,56px);font-weight:800;font-style:italic;text-transform:uppercase;
     color:#fff;text-shadow:2px 2px 0 #2f4420}
-  #results .placard.win{color:#ffe27a;text-shadow:2px 2px 0 #7a5a10}
-  #results .rstats{display:flex;gap:22px;margin:16px 0;color:#eaf6d6;font-weight:700;font-size:14px;text-align:center}
-  #results .rstats b{display:block;color:#fff;font-size:24px}
+  #results .placard.win{color:#ffe27a;text-shadow:2px 2px 0 #7a5a10;animation:winGlow 1.4s ease-in-out infinite}
+  @keyframes winGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(255,215,90,.4))}50%{filter:drop-shadow(0 0 20px rgba(255,215,90,.85))}}
+  #results .rstats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(88%,340px);margin:14px 0 10px}
+  #results .rstats > div{background:rgba(60,82,38,.7);border:1px solid var(--line);border-radius:12px;
+    padding:9px 4px;text-align:center;font-size:11.5px;font-weight:800;color:#cddcb6;text-transform:uppercase;letter-spacing:.4px}
+  #results .rstats b{display:block;color:#fff;font-size:23px;margin-top:2px;font-style:normal}
+  #results .xpwrap{width:min(88%,340px);margin:0 0 8px}
+  #results .xprow{display:flex;justify-content:space-between;font-weight:800;font-size:12px;color:#dfeccb;margin-bottom:4px}
+  #results .xprow .up{color:#bfff5a}
+  #results .xpbar{height:10px;border-radius:6px;background:rgba(0,0,0,.4);overflow:hidden;border:1px solid var(--line)}
+  #results .xpbar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#bfff5a,#7bbf2e);transition:width .5s}
+  #results .career{background:rgba(30,44,20,.5);border:1px solid var(--line);border-radius:12px;padding:8px 12px;width:min(88%,340px);margin-top:2px}
   #toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);background:rgba(0,0,0,.6);
     color:#ffe27a;font-weight:800;padding:8px 16px;border-radius:10px;font-size:15px;opacity:0;
     transition:opacity .3s;z-index:45;pointer-events:none}
@@ -337,10 +347,10 @@
   <div id="settings" class="modal hidden">
     <h2 class="heading">Settings</h2>
     <div class="stack">
-      <button class="opt" id="sAvatar">Change Avatar</button>
-      <button class="opt" id="sWeapon">Change Weapon</button>
-      <button class="opt" id="sName">Change Name</button>
-      <button class="opt" id="sMusic">🔊 Music: On</button>
+      <button class="opt" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
+      <button class="opt" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
+      <button class="opt" id="sName"><span class="oic">✏️</span>Change Name</button>
+      <button class="opt" id="sMusic"><span class="oic">🔊</span><span id="sMusicTxt">Music: On</span></button>
       <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
         <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
@@ -353,11 +363,9 @@
   <div id="results" class="modal hidden">
     <div class="placard" id="placard">#8</div>
     <div id="placeSub" style="color:#eaf6d6;font-weight:700">Eliminated</div>
-    <div class="rstats">
-      <div>Kills<b id="rKills">0</b></div>
-      <div>Survived<b id="rTime">0s</b></div>
-      <div>XP<b id="rXp">+0</b></div>
-    </div>
+    <div class="rstats" id="rStats"></div>
+    <div class="xpwrap"><div class="xprow"><span id="rXpLbl">+0 XP</span><span id="rLvl">Lv 1</span></div>
+      <div class="xpbar"><i id="rXpFill"></i></div></div>
     <div id="rCareer" class="career"></div>
     <div class="btnrow">
       <button class="btn" id="againBtn">Play Again</button>
@@ -1319,7 +1327,14 @@ function showResults(win, place){
     el('placeSub').textContent = win
       ? (gameMode==='squad'?'🏆 Your squad takes the win!':'🏆 Winner winner — last one standing!')
       : ('Eliminated · '+ord(place)+(gameMode==='squad'?'':(' of '+fieldSize))); }
-  el('rKills').textContent=killsTotal; el('rTime').textContent=Math.floor(elapsed)+'s'; el('rXp').textContent='+'+xpEarned;
+  const tiles = horde
+    ? [['⚔ Kills',killsTotal],['🌊 Wave',hordeWave],['⏱ Time',Math.floor(elapsed)+'s'],['✨ XP','+'+xpEarned]]
+    : [['⚔ Kills',killsTotal],['🏅 Place', win?'#1':('#'+place)],['⏱ Survived',Math.floor(elapsed)+'s'],['✨ XP','+'+xpEarned]];
+  el('rStats').innerHTML = tiles.map(t=>'<div>'+t[0]+'<b>'+t[1]+'</b></div>').join('');
+  el('rXpLbl').textContent='+'+xpEarned+' XP';
+  el('rLvl').innerHTML = lv ? '<span class="up">LEVEL UP! · Lv '+meta.level+'</span>' : ('Lv '+meta.level);
+  el('rXpFill').style.width='0%';
+  setTimeout(()=>{ el('rXpFill').style.width = clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%'; }, 120);   // animate the fill
   el('rCareer').innerHTML='Career: <b>'+meta.wins+'</b> wins · <b>'+meta.matches+'</b> matches · <b>'+meta.ckills+'</b> kills · K/D <b>'+kd()+'</b>'+(meta.bestWave?(' · wave <b>'+meta.bestWave+'</b>'):'');
   el('results').classList.remove('hidden');
   if(lv) setTimeout(levelToast,400);
@@ -2149,7 +2164,7 @@ el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100
 el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings
-function openSettings(){ paused=true; el('settings').classList.remove('hidden'); el('sMusic').textContent='🔊 Music: '+(meta.music?'On':'Off'); syncSliders(); }
+function openSettings(){ paused=true; el('settings').classList.remove('hidden'); el('sMusicTxt').textContent='Music: '+(meta.music?'On':'Off'); syncSliders(); }
 function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; }
 el('gearHud').addEventListener('click',openSettings);
 el('avatarGear').addEventListener('click',openSettings);
@@ -2162,7 +2177,7 @@ el('sWeapon').addEventListener('click',()=>{ closeSettings(); buildWeaponGrid();
 el('sName').addEventListener('click',()=>{ closeSettings(); screenState='start'; show('startScreen');
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); el('nameInput').focus(); });
 el('sMusic').addEventListener('click',()=>{ meta.music=!meta.music; saveMeta();
-  el('sMusic').textContent='🔊 Music: '+(meta.music?'On':'Off'); if(meta.music){ audioInit(); startMusic(); } else stopMusic(); });
+  el('sMusicTxt').textContent='Music: '+(meta.music?'On':'Off'); if(meta.music){ audioInit(); startMusic(); } else stopMusic(); });
 
 // mode selector
 function renderModeSel(){ document.querySelectorAll('.modecard').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode)); }

@@ -37,6 +37,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Results & settings UI upgrade**: results screen (`showResults`) rebuilt as a match-summary
+  card — 4 stat tiles in a 2×2 grid (Kills / Place(or Wave) / Survived / XP), an animated XP-gain
+  bar with LEVEL-UP text, a bordered career panel, and a pulsing gold glow on `.placard.win`
+  (`winGlow`). Settings options got icons (`.oic`) + left-aligned layout; the music toggle uses a
+  `#sMusicTxt` span so setting its text doesn't wipe the icon.
 - **Avatar-select UI upgrade** (matches the weapon cards): `buildAvatarGrid` adds a class chip
   (`avClass`: Tank hp≥130 / Swift spd≥5.6 / All-round) next to the name, color-coded Speed (cyan
   `.bar.spd`) / Health (green `.bar.hp`) bars via the shared `statBar`, and a SELECTED ribbon that
