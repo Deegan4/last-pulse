@@ -37,6 +37,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Buildings & water pass**: `drawBuilding` — shingled roof (clipped courses) + ridge highlight +
+  chimney, wall top-light/right-shade/trim, paneled door, and **windows that glow warm at
+  dusk/night** (`lit=timeOfDay!=='day'`; blue glass + glint by day). `drawDecor` water gains
+  seeded lily pads + a pink lily + moon-tint glint at night.
 - **Environment/item art pass**: `drawDecor` trees now cartoon-outlined (unified INK blob behind
   the canopy) with layered green shading + shaded trunk (round + pine); bushes outlined with
   berries + highlight; rocks get a dark facet + brighter light facet; grass gets light tips;

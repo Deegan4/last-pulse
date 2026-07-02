@@ -1517,20 +1517,38 @@ function drawField(){
   ctx.strokeStyle='rgba(40,60,24,.8)'; ctx.lineWidth=8; ctx.strokeRect(4,4,ARENA-8,ARENA-8);
 }
 function drawBuilding(d){
-  const x=d.x,y=d.y,w=d.w,h=d.h;
+  const x=d.x,y=d.y,w=d.w,h=d.h, lit=timeOfDay!=='day';   // windows glow at dusk/night
   ctx.lineJoin='round';
-  ctx.fillStyle='rgba(0,0,0,.16)'; roundRect(x+5,y+7,w,h,6); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.18)'; roundRect(x+5,y+8,w,h,6); ctx.fill();
+  // wall + soft top-light / right-shade
   ctx.fillStyle='#ddd0b8'; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x,y,w,h,5); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='rgba(0,0,0,.08)'; ctx.fillRect(x+w*0.64,y+3,w*0.34,h-6);
-  // windows + door
-  ctx.fillStyle='#9fd0e6'; ctx.strokeStyle=INK; ctx.lineWidth=2;
-  for(const wx of [x+w*0.24, x+w*0.76]){ roundRect(wx-13,y+h*0.34,26,21,3); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle='rgba(20,40,60,.5)'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(wx,y+h*0.34); ctx.lineTo(wx,y+h*0.34+21); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2; }
+  ctx.save(); roundRect(x,y,w,h,5); ctx.clip();
+  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x,y,w,h*0.3);
+  ctx.fillStyle='rgba(0,0,0,.10)'; ctx.fillRect(x+w*0.64,y,w*0.36,h);
+  ctx.fillStyle='rgba(120,90,50,.16)'; ctx.fillRect(x,y+h*0.5,w,2.5);          // wall trim line
+  ctx.restore();
+  // windows (lit at night)
+  ctx.strokeStyle=INK; ctx.lineWidth=2;
+  for(const wx of [x+w*0.24, x+w*0.76]){
+    if(lit){ ctx.shadowColor='#ffcf6a'; ctx.shadowBlur=10; ctx.fillStyle='#ffd98a'; }
+    else ctx.fillStyle='#9fd0e6';
+    roundRect(wx-13,y+h*0.34,26,21,3); ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
+    if(!lit){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(wx-11,y+h*0.34+2); ctx.lineTo(wx-3,y+h*0.34+2); ctx.lineTo(wx-11,y+h*0.34+10); ctx.closePath(); ctx.fill(); }  // glass glint
+    ctx.strokeStyle='rgba(20,40,60,.5)'; ctx.lineWidth=1.4; ctx.beginPath();
+    ctx.moveTo(wx,y+h*0.34); ctx.lineTo(wx,y+h*0.34+21); ctx.moveTo(wx-13,y+h*0.34+10.5); ctx.lineTo(wx+13,y+h*0.34+10.5); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2; }
+  // door with panel + knob
   ctx.fillStyle='#5a4632'; const dw=22,dh=28; roundRect(x+w/2-dw/2,y+h-dh,dw,dh,3); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1.2; roundRect(x+w/2-dw/2+3,y+h-dh+4,dw-6,dh-7,2); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2;
   ctx.fillStyle='#caa24a'; ctx.beginPath(); ctx.arc(x+w/2+5,y+h-dh/2,1.8,0,TAU); ctx.fill();
-  // roof slab (offset up for depth)
+  // roof slab with shingle courses + ridge highlight
   ctx.fillStyle=d.roof; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x-6,y-16,w+12,26,6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x-2,y-13,w+4,7);
+  ctx.save(); roundRect(x-6,y-16,w+12,26,6); ctx.clip();
+  ctx.strokeStyle='rgba(0,0,0,.16)'; ctx.lineWidth=1.4;
+  for(let ry=y-8; ry<y+10; ry+=6){ ctx.beginPath(); ctx.moveTo(x-6,ry); ctx.lineTo(x+w+6,ry); ctx.stroke(); }
+  ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,.14)'; ctx.fillRect(x-2,y-13,w+4,5);
+  // chimney
+  ctx.fillStyle='#8a5a4a'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(x+w*0.72,y-26,12,14,2); ctx.fill(); ctx.stroke();
 }
 function drawDecor(d){
   if(d.type==='dirt'){ ctx.fillStyle = timeOfDay==='night'?'rgba(80,64,40,.45)':'rgba(150,120,72,.4)';
@@ -1553,9 +1571,15 @@ function drawDecor(d){
       ctx.globalAlpha = 0.32*(1-ph);
       ctx.beginPath(); ctx.ellipse(d.x,d.y,d.s*(0.2+0.74*ph),d.s*0.64*(0.2+0.74*ph),0,0,TAU); ctx.stroke(); }
     ctx.globalAlpha=1;
-    // sun glint
-    ctx.fillStyle='rgba(255,255,255,.14)'; ctx.beginPath();
-    ctx.ellipse(d.x-d.s*0.28,d.y-d.s*0.18,d.s*0.4,d.s*0.18,-0.4,0,TAU); ctx.fill(); return; }
+    // sun / moon glint
+    ctx.fillStyle= timeOfDay==='night'?'rgba(210,225,255,.16)':'rgba(255,255,255,.14)'; ctx.beginPath();
+    ctx.ellipse(d.x-d.s*0.28,d.y-d.s*0.18,d.s*0.4,d.s*0.18,-0.4,0,TAU); ctx.fill();
+    // lily pads (seeded per-pond so they don't jitter)
+    for(let k=0;k<3;k++){ const a=(d.x*7+k*2.399), lx=d.x+Math.cos(a)*d.s*0.55, ly=d.y+Math.sin(a)*d.s*0.4*0.9, ps=d.s*0.16;
+      ctx.fillStyle= timeOfDay==='night'?'#2e6a34':'#3f8a3f'; ctx.beginPath(); ctx.ellipse(lx,ly,ps,ps*0.7,a,0,TAU); ctx.fill();
+      ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.arc(lx,ly,ps,a+0.3,a+0.9); ctx.closePath(); ctx.fill();
+      if(k===0){ ctx.fillStyle='#ff8ab0'; ctx.beginPath(); ctx.arc(lx,ly-ps*0.3,ps*0.3,0,TAU); ctx.fill(); } }  // one flower
+    return; }
   if(d.type==='building'){ drawBuilding(d); return; }
   if(d.type==='rock'){ const s=d.s; ctx.lineJoin='round';
     ctx.fillStyle='rgba(0,0,0,.15)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+4*s,11*s,4*s,0,0,TAU); ctx.fill();
