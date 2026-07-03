@@ -11,6 +11,18 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v1.8.0 "Juice & Hooks"**: ⚡ **kill combos** — kills inside a 3s window chain (`combo`/`comboT`,
+  `COMBO_WIN`), XP multiplied up to 3× (`1+(combo-1)*0.25`), gold "COMBO xN" floaters + rising
+  `sfx('combo',n)`, an on-screen combo meter w/ draining chain bar (drawn after the streak callout),
+  and **hitstop** — `hitstop` timer set on player kills scales gameplay `dt` ×0.15 for a slow-mo
+  beat (escalates with combo, cap 0.12s; decremented by wall dt in `loop`). `matchStat.bestCombo`
+  feeds 2 new achievements (`combo4` Chain Reaction, `combo6` Kill Frenzy → 16 total). **Zombie
+  animation pass** (`drawZombie`): drunken lurch lean (vx tilt + never-settling sway via per-zombie
+  `seed`), clawing out-of-phase arms w/ stubby fingers, head loll, **attack lunge** (`z.lunge` set
+  on hit in `updateZombie`, snap-toward + swell + open jaw w/ teeth), **glowing eyes at night**
+  (`timeOfDay!=='day'`), runner scrabble-dirt + brute stomp-clods, and a green death-pop ring in
+  `die()`. **Results hooks**: `nextUnlock()` teaser (`#rNext`, "🔓 X unlocks at Lv N — M XP to go")
+  + "🔥 SO CLOSE!"/"😤 Almost had it!" flavor on places 2/3.
 - **Core loop**: avatar select (15 chars, level-gated unlocks), weapon select, grass-field
   arena, shrinking "safe area", 15-player field of bot humans + roaming zombies (normal/
   runner/brute), XP/level, results screen. Twin-stick touch + WASD/mouse + gamepad.

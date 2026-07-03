@@ -319,6 +319,11 @@
   .wnitem .tx span{font-size:12px;opacity:.8}
   .verlink{text-decoration:underline;cursor:pointer;color:#e6f2c8}
 
+  /* next-unlock teaser on results */
+  .rnext{color:#ffd88a;font-weight:700;font-size:13px;background:rgba(60,45,12,.5);
+    border:1px solid rgba(255,210,100,.35);border-radius:10px;padding:6px 14px}
+  .rnext b{color:#ffe9b0}
+
   #results .placard{font-size:clamp(30px,10vw,56px);font-weight:800;font-style:italic;text-transform:uppercase;
     color:#fff;text-shadow:2px 2px 0 #2f4420}
   #results .placard.win{color:#ffe27a;text-shadow:2px 2px 0 #7a5a10;animation:winGlow 1.4s ease-in-out infinite}
@@ -459,6 +464,7 @@
     <div class="runlocks" id="rUnlocks"></div>
     <div class="xpwrap"><div class="xprow"><span id="rXpLbl">+0 XP</span><span id="rLvl">Lv 1</span></div>
       <div class="xpbar"><i id="rXpFill"></i></div></div>
+    <div id="rNext" class="rnext"></div>
     <div id="rCareer" class="career"></div>
     <div class="btnrow">
       <button class="btn" id="againBtn">Play Again</button>
@@ -595,10 +601,12 @@ const RANGE_SCALE = 1.7;
 const GAME_VERSION = '1.8.0';
 const CHANGELOG = [
   { v:'1.8.0', items:[
+    ['⚡','Kill combos','chain kills inside 3s for up to 3× XP — with slow-mo hits'],
     ['🪙','Coins & Shop','earn coins from kills, wins & badges — buy cosmetic trails'],
+    ['🥇','Tiered achievements','23 badges in bronze / silver / gold, each pays coins'],
     ['📅','Daily challenge','a fresh feat every day, worth 60 coins'],
-    ['🥇','Tiered achievements','21 badges in bronze / silver / gold, each pays coins'],
-    ['🧟','Livelier zombies','lurching lean, dragging arms & dirt puffs'],
+    ['🧟','Zombies came alive','lurching, clawing, lunging jaws — glowing eyes at night'],
+    ['🔓','Next unlock teaser','results show exactly what you unlock next'],
   ]},
   { v:'1.7.0', items:[
     ['🏅','Achievements','14 badges to unlock — track them from the menu'],
@@ -657,6 +665,8 @@ const ACHIEVEMENTS = [
   {id:'firstkill',  tier:'bronze', icon:'🩸', name:'First Blood',  desc:'Score your first elimination',        test:m=>m.ckills>=1},
   {id:'sharp',      tier:'silver', icon:'🎯', name:'Sharpshooter', desc:'Get 5+ kills in a single match',      test:(m,c)=>c.matchKills>=5},
   {id:'rampage',    tier:'gold',   icon:'💥', name:'Rampage',      desc:'Get 10+ kills in a single match',     test:(m,c)=>c.matchKills>=10},
+  {id:'combo4',     tier:'silver', icon:'⚡', name:'Chain Reaction',desc:'Chain a 4-kill combo',                test:(m,c)=>c.bestCombo>=4},
+  {id:'combo6',     tier:'gold',   icon:'🔗', name:'Kill Frenzy',  desc:'Chain a 6-kill combo',                test:(m,c)=>c.bestCombo>=6},
   {id:'firstwin',   tier:'bronze', icon:'🏆', name:'Winner',       desc:'Win your first match',                test:m=>m.wins>=1},
   {id:'champ5',     tier:'silver', icon:'👑', name:'Champion',     desc:'Win 5 matches',                       test:m=>m.wins>=5},
   {id:'champ15',    tier:'gold',   icon:'🏰', name:'Dynasty',      desc:'Win 15 matches',                      test:m=>m.wins>=15},
@@ -727,6 +737,13 @@ const SHOP_ITEMS = [
 ];
 function shopItem(id){ return SHOP_ITEMS.find(s=>s.id===id); }
 function weaponUnlocked(w){ return meta.level >= (w.unlock||1); }
+// nearest still-locked avatar/weapon — the "one more run" carrot on the results screen
+function nextUnlock(){
+  let best=null;
+  for(const a of AVATARS) if(a.unlock>meta.level && (!best||a.unlock<best.lv)) best={lv:a.unlock, name:a.name};
+  for(const w of WEAPONS) if((w.unlock||1)>meta.level && (!best||(w.unlock||1)<best.lv)) best={lv:w.unlock||1, name:w.name};
+  return best;
+}
 function grantXp(n){
   meta.xp += n; let leveled=false;
   while(meta.xp >= xpNeed(meta.level)){ meta.xp -= xpNeed(meta.level); meta.level++; leveled=true; }
@@ -770,6 +787,9 @@ const dmgDirs = [];        // damage-direction indicators (player)
 let confetti = [];         // victory celebration
 let lastWin = false, victoryT = 0, nextDrop = 18;
 let streakMsg = '', streakT = 0;
+let combo = 0, comboT = 0;                  // kill-combo chain (xp multiplier)
+const COMBO_WIN = 3.0;                      // seconds to chain the next kill
+let hitstop = 0;                            // kill slow-mo timer (wall-clock seconds)
 let zoneWarn = 0;
 let heartT = 0;                             // low-health heartbeat cadence
 let zReinforce = 0;                         // BR/Squad zombie reinforcement cadence
@@ -855,7 +875,7 @@ function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
   return { x,y, vx:0,vy:0, aim:0, kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
-    seed:rand(0,9), burn:0, burnSrc:null };
+    seed:rand(0,9), lunge:0, burn:0, burnSrc:null };
 }
 function blockedSpawn(x,y){
   for(const o of obstacles){ if(x>o.x-18 && x<o.x+o.w+18 && y>o.y-18 && y<o.y+o.h+18) return true; }
@@ -924,7 +944,8 @@ function spawnMatch(){
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14);
-  matchStat={dmgTaken:0, grappled:false};   // per-match feats for achievements
+  combo=0; comboT=0; hitstop=0;
+  matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
   buildDecor();
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
@@ -1055,14 +1076,23 @@ function die(e, src, isHumanTarget){
     if(src.isPlayer){
       shake=Math.min(shake+5,14);
       hitmarks.push({x:e.x,y:e.y-6,t:0.42,kill:true}); sfx('kill');
-      if(isHumanTarget){ killsTotal++; if(grantXp(28)) levelToast();
+      // kill combo: chain kills inside the window for up to 3x XP + escalating slow-mo
+      combo = comboT>0 ? combo+1 : 1; comboT=COMBO_WIN;
+      if(combo>matchStat.bestCombo) matchStat.bestCombo=combo;
+      const mult = Math.min(1+(combo-1)*0.25, 3);
+      hitstop = Math.min(0.045+combo*0.012, 0.12);
+      if(combo>=2){ sfx('combo', combo);
+        floaters.push({x:e.x, y:e.y-R-24, vy:-40, t:0.9, txt:'COMBO x'+combo, col:'#ffd24a'}); }
+      if(isHumanTarget){ killsTotal++; if(grantXp(Math.round(28*mult))) levelToast();
         const now=performance.now()/1000;
         player.streak = (now - player.lastKillT < 4.5) ? player.streak+1 : 1;
         player.lastKillT = now;
         if(player.streak>=2) showStreak(player.streak); else toast('+1 KILL');
-      } else { if(grantXp(8)) levelToast(); }
+      } else { if(grantXp(Math.round(8*mult))) levelToast(); }
     }
   }
+  if(!isHumanTarget){ // zombie death pop
+    rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3}); }
   if(e.isPlayer){ shake=Math.min(shake+10,18); }
   if(isHumanTarget){
     const victim = e.isPlayer?meta.name:e.name;
@@ -1253,6 +1283,7 @@ function sfx(kind,mode){ if(!actx) return;
   else if(kind==='flame'){ const t=performance.now(); if(t-lastShot<45) return; lastShot=t; noise(0.1,0.07); tone(130,0.07,'sawtooth',0.05,90); }
   else if(kind==='tick'){ const t=performance.now(); if(t-lastTick<45) return; lastTick=t; tone(1500,0.03,'square',0.07,1200); }
   else if(kind==='kill'){ tone(880,0.08,'square',0.13,1320); }
+  else if(kind==='combo'){ const n=Math.min(mode||2,9); tone(420+n*95,0.1,'square',0.15,560+n*95); tone(210+n*45,0.12,'triangle',0.1); }
   else if(kind==='streak'){ const n=Math.min(mode||2,4); [660,880,1100,1320].slice(0,n).forEach((f,i)=>setTimeout(()=>tone(f,0.12,'square',0.14),i*70)); }
   else if(kind==='pickup'){ tone(720,0.1,'sine',0.13,1120); }
   else if(kind==='loot'){ [700,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,0.14,'triangle',0.15),i*80)); }
@@ -1307,16 +1338,25 @@ function updateZombie(z,dt){
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
   if(tgt && near.d<460){ const a=Math.atan2(tgt.y-z.y,tgt.x-z.x); z.aim=a; mvx=Math.cos(a); mvy=Math.sin(a);
-    if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0){ z.attackCd=0.85; hurt(tgt, z.dmg, z, true);
+    if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
       tgt.vx+=Math.cos(a)*120; tgt.vy+=Math.sin(a)*120; if(tgt.isPlayer) shake=Math.min(shake+4,10); } }
   else { if(z.think<=0){ z.wanderA=rand(0,TAU); z.think=rand(1,2.4); } z.think-=dt;
     mvx=Math.cos(z.wanderA)*0.5; mvy=Math.sin(z.wanderA)*0.5; }
+  if(z.lunge>0) z.lunge-=dt*3.2;
   const m=len(mvx,mvy);
   if(m>0){ z.vx+=(mvx/m*z.speed-z.vx)*0.12; z.vy+=(mvy/m*z.speed-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
-  // dirt puffs scuffed up by the shamble (bigger zombies kick more)
-  if((z.vx*z.vx+z.vy*z.vy)>2500 && Math.random()<dt*5*z.size && inView(z.x,z.y,40))
-    spark(z.x+rand(-6,6)*z.size, z.y+15*z.size, 'rgba(140,118,80,.5)', rand(6,20), rand(-Math.PI*0.85,-Math.PI*0.15), rand(.3,.5));
+  // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
+  // stomp-clods on each footfall, normals scuff the odd puff
+  const zs=z.vx*z.vx+z.vy*z.vy;
+  if(zs>2500 && inView(z.x,z.y,40)){
+    if(z.kind==='runner' && zs>8000 && Math.random()<dt*9)
+      spark(z.x+rand(-5,5), z.y+14, 'rgba(120,100,70,.6)', rand(15,45), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.2,.35));
+    else if(z.kind==='brute' && Math.sin(z.walk)>0.92 && Math.random()<dt*22)
+      for(let i=0;i<3;i++) spark(z.x+rand(-9,9), z.y+16, 'rgba(105,88,60,.65)', rand(10,35), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.3,.5));
+    else if(z.kind==='normal' && Math.random()<dt*4)
+      spark(z.x+rand(-6,6), z.y+15, 'rgba(140,118,80,.5)', rand(6,20), rand(-Math.PI*0.85,-Math.PI*0.15), rand(.3,.5));
+  }
   z.x=clamp(z.x+z.vx*dt,R,ARENA-R); z.y=clamp(z.y+z.vy*dt,R,ARENA-R);
   resolveObstacles(z);
 }
@@ -1476,6 +1516,7 @@ function updateParticles(dt){
   for(let i=dmgDirs.length-1;i>=0;i--){ dmgDirs[i].t-=dt; if(dmgDirs[i].t<=0) dmgDirs.splice(i,1); }
   for(let i=splats.length-1;i>=0;i--){ splats[i].t-=dt; if(splats[i].t<=0) splats.splice(i,1); }
   if(streakT>0) streakT-=dt;
+  if(comboT>0){ comboT-=dt; if(comboT<=0) combo=0; }
   if(toastT>0){ toastT-=dt; if(toastT<=0) el('toast').style.opacity='0'; }
   // respawn a few zombies over time to keep pressure
   if(zombies.filter(z=>z.alive).length<6 && Math.random()<dt*0.3){ const s=farSpawn(zone.r*0.3+60); if(s) zombies.push(makeZombie(s.x,s.y)); }
@@ -1567,7 +1608,7 @@ function showResults(win, place){
   meta.coins += coinsEarned;
   saveMeta();
   const mctxA = { win, place, horde, matchKills:killsTotal, wave:hordeWave, time:elapsed,
-    dmgTaken:matchStat.dmgTaken, grappled:matchStat.grappled };
+    dmgTaken:matchStat.dmgTaken, grappled:matchStat.grappled, bestCombo:matchStat.bestCombo };
   const newAch = checkAchievements(mctxA);
   const dailyHit = checkDaily(mctxA);
   coinsEarned += newAch.reduce((s,a)=>s+(TIER_COINS[a.tier]||25),0) + (dailyHit?DAILY_COINS:0);
@@ -1580,9 +1621,10 @@ function showResults(win, place){
   if(horde){ pc.classList.remove('win'); pc.textContent='WAVE '+hordeWave;
     el('placeSub').textContent='🧟 Survived '+Math.floor(elapsed)+'s · best wave '+meta.bestWave; }
   else { pc.classList.toggle('win',win); pc.textContent = win?'#1 VICTORY':('#'+place);
+    const close = place===2?'🔥 SO CLOSE! ':place===3?'😤 Almost had it! ':'';
     el('placeSub').textContent = win
       ? (gameMode==='squad'?'🏆 Your squad takes the win!':'🏆 Winner winner — last one standing!')
-      : ('Eliminated · '+ord(place)+(gameMode==='squad'?'':(' of '+fieldSize))); }
+      : (close+'Eliminated · '+ord(place)+(gameMode==='squad'?'':(' of '+fieldSize))); }
   const tiles = horde
     ? [['⚔ Kills',killsTotal],['🌊 Wave',hordeWave],['⏱ Time',Math.floor(elapsed)+'s'],['✨ XP','+'+xpEarned]]
     : [['⚔ Kills',killsTotal],['🏅 Place', win?'#1':('#'+place)],['⏱ Survived',Math.floor(elapsed)+'s'],['✨ XP','+'+xpEarned]];
@@ -1591,6 +1633,12 @@ function showResults(win, place){
   el('rLvl').innerHTML = lv ? '<span class="up">LEVEL UP! · Lv '+meta.level+'</span>' : ('Lv '+meta.level);
   el('rXpFill').style.width='0%';
   setTimeout(()=>{ el('rXpFill').style.width = clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%'; }, 120);   // animate the fill
+  // "one more run" hook: what does the next level (or a nearby one) unlock?
+  const nu=nextUnlock();
+  if(nu){ let need=-meta.xp; for(let l=meta.level;l<nu.lv;l++) need+=xpNeed(l);
+    el('rNext').innerHTML='🔓 <b>'+nu.name+'</b> unlocks at Lv '+nu.lv+' — <b>'+Math.max(0,need)+'</b> XP to go';
+    el('rNext').style.display=''; }
+  else el('rNext').style.display='none';
   el('rCareer').innerHTML='Career: <b>'+meta.wins+'</b> wins · <b>'+meta.matches+'</b> matches · <b>'+meta.ckills+'</b> kills · K/D <b>'+kd()+'</b>'+(meta.bestWave?(' · wave <b>'+meta.bestWave+'</b>'):'');
   // unlock banner: coins earned + any new achievement badges + daily-challenge completion
   let ub='<div class="ru coin">🪙 +'+coinsEarned+' <span>coins</span></div>';
@@ -1734,6 +1782,17 @@ function draw(){
       const sc=1+clamp(1.7-streakT,0,0.3); ctx.translate(W/2,H*0.26); ctx.scale(sc,sc);
       ctx.font='800 italic 30px Trebuchet MS, sans-serif'; ctx.lineWidth=4; ctx.strokeStyle='rgba(0,0,0,.45)';
       ctx.fillStyle='#ff5a6e'; ctx.strokeText(streakMsg,0,0); ctx.fillText(streakMsg,0,0); ctx.restore(); ctx.globalAlpha=1; }
+    // kill-combo meter (xp multiplier) — pulses and drains with the chain window
+    if(combo>=2 && comboT>0){ const k=comboT/COMBO_WIN, mult=Math.min(1+(combo-1)*0.25,3);
+      ctx.save(); ctx.textAlign='center'; ctx.translate(W/2,H*0.335);
+      const pu=1+Math.max(0,comboT-COMBO_WIN+0.18)*1.6;  // pop on each fresh kill
+      ctx.scale(pu,pu);
+      ctx.font='800 italic 22px Trebuchet MS, sans-serif'; ctx.lineWidth=3.5; ctx.strokeStyle='rgba(0,0,0,.5)';
+      ctx.fillStyle='#ffd24a'; const txt='COMBO x'+combo+'  ·  '+mult.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+'× XP';
+      ctx.strokeText(txt,0,0); ctx.fillText(txt,0,0);
+      ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(-52,7,104,5);
+      ctx.fillStyle=k>0.35?'#ffd24a':'#ff6a4a'; ctx.fillRect(-52,7,104*k,5);
+      ctx.restore(); }
   }
   // victory confetti
   if(lastWin && screenState==='results'){
@@ -2198,18 +2257,25 @@ function drawZombie(z){
   const s=z.size, flip=z.faceX<0?-1:1, flash=z.hitFlash>0;
   const now=performance.now()/1000, seed=z.seed||0;
   const moving=(z.vx*z.vx+z.vy*z.vy)>200;
+  const lunge=Math.max(0,z.lunge||0);
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
   const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*3:0;
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.fillStyle='rgba(0,0,0,.20)'; ctx.beginPath(); ctx.ellipse(0,18,15,5,0,0,TAU); ctx.fill();
   // lurch lean: pitched into the shamble with an uneven stagger (shadow stays flat)
-  ctx.rotate(moving ? flip*0.07 + Math.sin(z.walk*0.5+seed)*0.055 + Math.sin(z.walk)*0.03
+  ctx.rotate(moving ? clamp(z.vx/1400,-0.1,0.1) + flip*0.05 + Math.sin(z.walk*0.5+seed)*0.055 + Math.sin(z.walk)*0.03
                     : Math.sin(now*1.6+seed)*0.03);
-  // reaching arm (front): claws forward, pawing with the shamble
-  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8;
-  ctx.strokeStyle=INK; ctx.lineWidth=6.5; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*13,-3+paw); ctx.stroke();
-  ctx.strokeStyle=flash?'#fff':z.skin; ctx.lineWidth=4.5; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*13,-3+paw); ctx.stroke();
-  ctx.fillStyle=flash?'#fff':z.skin; ctx.beginPath(); ctx.arc(flip*13.5,-2.6+paw,2.2,0,TAU); ctx.fill();
+  // attack lunge: snap toward the prey and swell up for a beat
+  if(lunge>0){ ctx.translate(flip*lunge*6, -lunge*2); ctx.scale(1+lunge*0.12, 1+lunge*0.06); }
+  // reaching arm (front): claws forward, pawing with the shamble; thrown out on a lunge
+  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=13+lunge*5;
+  ctx.strokeStyle=INK; ctx.lineWidth=6.5; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  ctx.strokeStyle=flash?'#fff':z.skin; ctx.lineWidth=4.5; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  ctx.fillStyle=flash?'#fff':z.skin; ctx.beginPath(); ctx.arc(flip*(rx+0.5),-2.6+paw,2.2,0,TAU); ctx.fill();
+  if(!flash){ // stubby claw fingers on the reaching hand
+    ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath();
+    ctx.moveTo(flip*(rx+0.5),-2.6+paw); ctx.lineTo(flip*(rx+3.5),-4.2+paw);
+    ctx.moveTo(flip*(rx+0.5),-2.6+paw); ctx.lineTo(flip*(rx+3.9),-1.6+paw); ctx.stroke(); }
   // dragging arm (back): hangs limp behind, knuckles trailing near the ground
   const drag=moving?Math.sin(z.walk*0.5+seed)*1.6:sway*0.6;
   ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(flip*-8+drag*flip,11+Math.abs(drag)*0.4); ctx.stroke();
@@ -2227,16 +2293,25 @@ function drawZombie(z){
     ctx.strokeStyle='rgba(20,30,12,.55)'; ctx.lineWidth=1; ctx.beginPath();                      // ragged tears
     ctx.moveTo(-3,zty+4); ctx.lineTo(-1,zty+8); ctx.lineTo(-3,zty+11); ctx.moveTo(3,zty+3); ctx.lineTo(2,zty+7); ctx.stroke(); ctx.restore();
     ctx.fillStyle=z.torso; for(let k=-1;k<=1;k++){ ctx.beginPath(); ctx.moveTo(k*4-2,zty+15); ctx.lineTo(k*4,zty+18.5); ctx.lineTo(k*4+2,zty+15); ctx.closePath(); ctx.fill(); } }  // torn hem
-  // head
-  const hy=-15+bob; ctx.fillStyle=flash?'#fff':z.skin; ctx.beginPath(); ctx.arc(0,hy,8.6,0,TAU); ctx.fill(); ctx.stroke();
+  // head — lolls side to side as it shambles
+  const hy=-15+bob, hx=Math.sin(z.walk*0.7+seed)*1.6;
+  ctx.save(); ctx.translate(hx,0); ctx.rotate(Math.sin(z.walk*0.7+seed)*0.09);
+  ctx.fillStyle=flash?'#fff':z.skin; ctx.strokeStyle=INK; ctx.beginPath(); ctx.arc(0,hy,8.6,0,TAU); ctx.fill(); ctx.stroke();
   if(!flash){ ctx.fillStyle='rgba(0,0,0,.12)'; ctx.beginPath(); ctx.arc(3,hy+1.8,4.5,0,TAU); ctx.fill();
     ctx.strokeStyle='rgba(190,230,150,.35)'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(0,hy,7.5,Math.PI*1.05,Math.PI*1.5); ctx.stroke(); }  // sickly rim light
+  // eyes glow in the dark
+  if(timeOfDay!=='day' && !flash){ ctx.fillStyle='rgba(214,255,138,.28)';
+    ctx.beginPath(); ctx.arc(flip*-3,hy-1.5,4.6,0,TAU); ctx.arc(flip*3.5,hy-1,4.2,0,TAU); ctx.fill(); }
   // sunken eyes + angry brow + drool
   ctx.fillStyle='#28401e'; ctx.beginPath(); ctx.arc(flip*-3,hy-1.5,2.4,0,TAU); ctx.arc(flip*3.5,hy-1,2,0,TAU); ctx.fill();
   ctx.fillStyle='#d6ff8a'; ctx.beginPath(); ctx.arc(flip*-3,hy-1.5,0.9,0,TAU); ctx.arc(flip*3.5,hy-1,0.8,0,TAU); ctx.fill();
   ctx.strokeStyle='#1f3015'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(flip*-5.5,hy-4); ctx.lineTo(flip*-1,hy-2.5); ctx.moveTo(flip*1.5,hy-2.6); ctx.lineTo(flip*5.5,hy-3.8); ctx.stroke();
-  ctx.strokeStyle='#2c5a22'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(flip*-1,hy+4); ctx.lineTo(flip*-1,hy+7); ctx.stroke();
+  if(lunge>0.25){ // jaw drops open mid-lunge
+    ctx.fillStyle='#1c2a12'; ctx.beginPath(); ctx.ellipse(flip*0.5,hy+4.4,2.6,1.6+lunge*1.8,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#cfe0a0'; ctx.fillRect(flip*0.5-2,hy+3.2,1.4,1.2); ctx.fillRect(flip*0.5+0.8,hy+3.2,1.4,1.2); }
+  else { ctx.strokeStyle='#2c5a22'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(flip*-1,hy+4); ctx.lineTo(flip*-1,hy+7); ctx.stroke(); }
   if(z.kind==='brute'){ ctx.fillStyle='#cfe0a0'; ctx.beginPath(); ctx.moveTo(flip*-2,hy+3); ctx.lineTo(flip*-3,hy+6); ctx.lineTo(flip*-1,hy+5); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
   ctx.restore();
   // tiny hp bar
   const hc=clamp(z.hp/z.maxhp,0,1), bw=24*s; if(hc<1){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(z.x-bw/2,z.y-30*s,bw,3);
@@ -2300,6 +2375,7 @@ function loop(now){
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
   if(screenState==='playing' && !paused){
     elapsed=(now-startTime)/1000;
+    if(hitstop>0){ hitstop-=dt; dt*=0.15; }   // kill slow-mo: world crawls for a beat
     if(grace>0) grace-=dt;
     if(zoneActive()){ if(grace<=0){ zoneUpdate(dt); reinforceZombies(dt); } if(zoneWarn>0) zoneWarn-=dt; }
     else hordeUpdate(dt);
