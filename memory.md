@@ -11,6 +11,17 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.2.0 "Alive World"**: 🏕 **campfire heal aura** — `campfireHeal(h,dt)` (called from
+  updatePlayer) regens `CAMPFIRE.heal` (6) hp/s within `CAMPFIRE.r` (72px) of any cached
+  `campfires` (filtered from decor in buildDecor), green heal sparks; grace/full-hp guarded.
+  🧟 **indoor-aware zombies** — `updateZombie` now routes to a building's door when the prey is
+  inside (`insideBuilding(x,y)` helper): aims at prey for visuals, moves toward the door gap,
+  and **skirts the nearer corner** when on the wrong side (verified 247→20px path-in). 🚪
+  **second door on big houses** — `wallRects` adds a top-wall door gap for `o.w>BIG_HOUSE` (170);
+  the facade-fade `nearDoor` check recognizes both bottom + top doors. 🎯 **BR aim easing** — bots
+  also shoot wider during the early warmup: `fire()` uses `botAcc = h.acc*(1+1.6*(1-warm))`,
+  `warm=clamp(elapsed/18,0,1)` (complements v2.1.2's sight/reaction easing). Deferred (need splat
+  refactor, low value): wall blood streaks + dried-blood aging (see ROADMAP). GAME_VERSION 2.2.0.
 - **v2.1.2 menu top-space + BR difficulty** (user-reported): (1) `#startScreen.menu` used
   `padding-top:6vh` which stacked on top of the notch, leaving a big empty band under the Dynamic
   Island. Fixed with `padding-top:calc(env(safe-area-inset-top,0px)+10px)` and made `.screen`
