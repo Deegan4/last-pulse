@@ -708,8 +708,14 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.1.2';
+const GAME_VERSION = '2.2.0';
 const CHANGELOG = [
+  { v:'2.2.0', items:[
+    ['🏕','Campfire healing','stand near a campfire to slowly recover health'],
+    ['🧟','Smarter zombies','they path to the door when you hole up in a house'],
+    ['🚪','Bigger houses','large buildings now have a second door — no dead ends'],
+    ['🎯','Fairer BR start','enemy aim also eases in over the first ~18s'],
+  ]},
   { v:'2.1.2', items:[
     ['⬆️','Tighter menu','trimmed the empty space above the title'],
     ['🎯','Easier start','Battle Royale eases you in — enemies warm up over the first ~18s'],
@@ -944,6 +950,8 @@ let fps = 60, fpsAcc = 0, fpsFrames = 0;
 
 // ---------- Tunables ----------
 const R = 15;                 // collision radius (humans)
+let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
+const CAMPFIRE = { r:72, heal:6 };   // heal radius (px) and hp/sec near a fire
 
 // ============================================================
 //  Safe area (shrinking zone)
@@ -1069,19 +1077,24 @@ function buildDecor(){
   if(lvl>=10) for(let i=0;i<2;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
   if(lvl>=15) for(let i=0;i<2;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
+  campfires = decor.filter(d=>d.type==='campfire');   // cache for the heal-aura check
 }
 // Buildings are hollow — 4 solid walls with a door gap at the bottom-centre, so entities
 // can walk inside through the door and bullets fly through the doorway but not the walls.
 const WALL_T = 9, DOOR_HALF = 21;   // gap 42px: humans (r15) fit easily, brutes (r20) barely
+const BIG_HOUSE = 170;              // wider houses get a second door in the top wall (no dead ends)
 function wallRects(o){
   const dx0=o.x+o.w/2-DOOR_HALF, dx1=o.x+o.w/2+DOOR_HALF;
-  return [
-    [o.x, o.y, o.w, WALL_T],                       // top
+  const r = [
     [o.x, o.y, WALL_T, o.h],                       // left
     [o.x+o.w-WALL_T, o.y, WALL_T, o.h],            // right
     [o.x, o.y+o.h-WALL_T, dx0-o.x, WALL_T],        // bottom, left of the door
     [dx1, o.y+o.h-WALL_T, o.x+o.w-dx1, WALL_T],    // bottom, right of the door
   ];
+  if(o.w>BIG_HOUSE){ r.push([o.x, o.y, dx0-o.x, WALL_T]);        // top, left of the 2nd door
+    r.push([dx1, o.y, o.x+o.w-dx1, WALL_T]); }                   // top, right of the 2nd door
+  else r.push([o.x, o.y, o.w, WALL_T]);                          // solid top wall
+  return r;
 }
 // push a circle entity out of one solid rect
 function pushOutRect(e, rx,ry,rw,rh, r){
@@ -1101,6 +1114,12 @@ function resolveObstacles(e){
     if(e.x < o.x-r || e.x > o.x+o.w+r || e.y < o.y-r || e.y > o.y+o.h+r) continue;
     for(const wr of wallRects(o)) pushOutRect(e, wr[0],wr[1],wr[2],wr[3], r);
   }
+}
+// which building's interior contains this point (null if none) — used so zombies path to the
+// door when their prey is holed up inside instead of grinding against the wall
+function insideBuilding(x,y){
+  for(const o of obstacles) if(x>o.x+WALL_T && x<o.x+o.w-WALL_T && y>o.y+WALL_T && y<o.y+o.h-WALL_T) return o;
+  return null;
 }
 function bulletInObstacle(b){
   for(const o of obstacles){
@@ -1209,8 +1228,10 @@ function fire(h){
   const spd = w.mode==='sniper'?1040 : w.mode==='shotgun'?560 : 780;
   const shots = w.mode==='shotgun'?6:1;
   const fx = bulletFx(w);
+  // bots shoot wilder during the early-match warmup (see updateBot) — softens a fresh BR drop
+  const botAcc = h.isPlayer ? 0 : h.acc * (1 + 1.6*(1-clamp(elapsed/18,0,1)));
   for(let i=0;i<shots;i++){
-    const spread = w.mode==='shotgun'? rand(-0.28,0.28) : (h.isPlayer?rand(-0.012,0.012):rand(-h.acc,h.acc));
+    const spread = w.mode==='shotgun'? rand(-0.28,0.28) : (h.isPlayer?rand(-0.012,0.012):rand(-botAcc,botAcc));
     const a=h.aim+spread;
     let dmg=w.dmg, crit=false;
     if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
@@ -1385,6 +1406,15 @@ function stepDust(h,dt){
   if((h.vx*h.vx+h.vy*h.vy)>3600 && Math.random()<dt*7)
     spark(h.x+rand(-5,5), h.y+15, 'rgba(168,158,128,.55)', rand(8,26), rand(-Math.PI*0.85,-Math.PI*0.15), rand(.25,.4));
 }
+// campfire heal aura — stand near a fire (Lv3+ landmark) to slowly recover HP
+function campfireHeal(h,dt){
+  if(h.hp>=h.maxhp || grace>0 || !campfires.length) return;
+  const r2=CAMPFIRE.r*CAMPFIRE.r;
+  for(const cf of campfires){ if(dist2(h.x,h.y,cf.x,cf.y)<r2){
+    h.hp=Math.min(h.maxhp, h.hp+CAMPFIRE.heal*dt);
+    if(h.isPlayer && Math.random()<dt*9) spark(h.x+rand(-9,9), h.y-rand(0,16), '#8fe36a', rand(18,60), -Math.PI/2, .55);
+    return; } }
+}
 let toastT=0;
 function toast(msg){ const t=el('toast'); t.textContent=msg; t.style.opacity='1'; toastT=1.1; }
 function levelToast(){ toast('LEVEL UP! Lv '+meta.level); sfx('level'); }
@@ -1534,7 +1564,18 @@ function updateZombie(z,dt){
     if(z.hp<=0){ die(z, z.burnSrc, false); return; } }
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
-  if(tgt && near.d<460){ const a=Math.atan2(tgt.y-z.y,tgt.x-z.x); z.aim=a; mvx=Math.cos(a); mvy=Math.sin(a);
+  if(tgt && near.d<460){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
+    // if the prey is holed up in a building we aren't in, route to a door gap (around the
+    // walls via the nearer corner when we're on the wrong side) instead of grinding the wall
+    let gx=tgt.x, gy=tgt.y; const b=insideBuilding(tgt.x,tgt.y);
+    if(b && insideBuilding(z.x,z.y)!==b){
+      const cx=b.x+b.w/2, useTop=b.w>BIG_HOUSE && z.y<b.y;   // big house: take the top door from above
+      const doorY=useTop?b.y:b.y+b.h, outside=useTop?b.y-20:b.y+b.h+20;
+      const onDoorSide = useTop ? z.y<=doorY+8 : z.y>=doorY-8;
+      if(onDoorSide){ gx=cx; gy=outside; }                   // aligned with the door → head in
+      else { gx=(z.x<cx)?b.x-28:b.x+b.w+28; gy=outside; }    // skirt the nearer corner to reach it
+    }
+    const a=Math.atan2(gy-z.y,gx-z.x); mvx=Math.cos(a); mvy=Math.sin(a);
     if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
       tgt.vx+=Math.cos(a)*120; tgt.vy+=Math.sin(a)*120; if(tgt.isPlayer) shake=Math.min(shake+4,10); } }
   else { if(z.think<=0){ z.wanderA=rand(0,TAU); z.think=rand(1,2.4); } z.think-=dt;
@@ -1591,6 +1632,7 @@ function updatePlayer(h,dt){
   if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt; if(h.grapCd>0) h.grapCd-=dt;
   updateGrapple(h,dt);
   stepDust(h,dt);
+  campfireHeal(h,dt);
   // equipped cosmetic trail (shop) — player only
   const tr = meta.trail!=='none' && shopItem(meta.trail);
   if(tr && (h.vx*h.vx+h.vy*h.vy)>3600 && Math.random()<dt*14)
@@ -2080,7 +2122,8 @@ function drawField(){
 // floor. Also computes the facade fade (player inside or stepping through the door).
 function drawBuildingBase(d){
   const x=d.x,y=d.y,w=d.w,h=d.h;
-  const p=player, nearDoor = p && p.alive && Math.abs(p.x-(x+w/2))<DOOR_HALF+16 && p.y>y+h-36 && p.y<y+h+18;
+  const p=player, doorX = p && Math.abs(p.x-(x+w/2))<DOOR_HALF+16;
+  const nearDoor = p && p.alive && doorX && ((p.y>y+h-36 && p.y<y+h+18) || (w>BIG_HOUSE && p.y>y-18 && p.y<y+36));
   const inside = p && p.alive && p.x>x+WALL_T && p.x<x+w-WALL_T && p.y>y+WALL_T && p.y<y+h-WALL_T;
   d.fade = lerp(d.fade===undefined?1:d.fade, (inside||nearDoor)?0.15:1, 0.16);
   ctx.lineJoin='round';

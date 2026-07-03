@@ -17,17 +17,21 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 5. **Fail-safe enhancement** — optional layers (3D models, future add-ons) must degrade
    gracefully to the core 2D game.
 
-## v1.11 — "Alive World" (next up)
+## v1.11 — "Alive World" (mostly shipped as v2.2.0)
 
-- [ ] **Campfire heal aura** — stand near a campfire to regen ~3 hp/s (capped, with a soft
-      glow + ticking SFX). Turns the Lv3 landmark into micro-strategy and a fight magnet.
-- [ ] **Wall blood streaks** — blood spray that hits a building leaves a streak decal on the
-      wall (pairs with interior fights; reuse the splat system with a vertical variant).
-- [ ] **Indoor-aware zombies** — when the player is inside a building, zombies path to the
-      door (steer toward the door gap instead of bumping walls). Keeps houses tense, not safe.
-- [ ] **Second door on large houses** (`w>170`) — no dead-end interiors; door gap on the top
-      wall reusing `wallRects`.
-- [ ] **Dried-blood aging** — decals darken as `t` decays (one-line color lerp in the splat draw).
+- [x] **Campfire heal aura** — `campfireHeal(h,dt)`: `CAMPFIRE.heal` hp/s within `CAMPFIRE.r`,
+      green heal sparks. Player-only for now (bots could be added — small compute cost).
+- [ ] **Wall blood streaks** — _deferred_: blood is particle-based (`spark`) with no wall
+      collision; needs a vertical streak-decal variant + spray-vs-wall test. Fiddliest item.
+- [x] **Indoor-aware zombies** — `updateZombie` routes to the nearest door (skirts the nearer
+      corner when on the wrong side) via `insideBuilding`. Verified: zombie navigates 247→20px.
+- [x] **Second door on large houses** — `wallRects` adds a top-wall door gap for `w>BIG_HOUSE`
+      (170); facade fade recognizes both doors.
+- [ ] **Dried-blood aging** — _deferred_: splat color is stored as an `'rgba(r,g,b,'` prefix
+      string; a clean darken-over-age needs numeric rgb storage or an overlay pass. Low value.
+
+_Remaining Alive-World polish (wall streaks, dried blood) parked — they need a splat-system
+refactor for marginal payoff; revisit if doing a broader gore pass._
 
 ## v1.12 — "Arsenal & Fighters" (content drop)
 
