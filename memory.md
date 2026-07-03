@@ -11,6 +11,15 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.1.0 main-menu split**: the old `#startScreen` combined the landing page + mode picker.
+  Now `#startScreen` is a pure **home screen** (logo, fighter card, ▶ PLAY, daily, stats,
+  achievements/shop) and the mode cards moved to a new `#modeScreen` (`.top` back arrow
+  `#modeBack`, heading, three `.modecard`s, a mode-aware Continue button `#toAvatarBtn` whose
+  `#modeLabel` reads "CONTINUE · <MODE>"). Flow: home → `#toModeBtn` → mode → `#toAvatarBtn`
+  (goAvatar) → avatar → weapon → drop in. `show()` toggles `modeScreen` too and calls
+  `renderModeSel()` on it. Portrait-tap/`changeAvatar` still jump straight to avatar (change-fighter
+  shortcut). **Driver + SKILL.md updated**: the menu flow now needs a `#toModeBtn` click before
+  the `[data-mode]` card (cards live on the mode screen now). GAME_VERSION 2.1.0.
 - **v2.0.1 layout fixes** (user-reported via screenshots): (1) the v2.0.0 safe-area rule
   `#powers{bottom:calc(210px+env())}` came LATER in the sheet than the `@media(max-height:560px)`
   landscape block and — since media queries add no specificity — clobbered `bottom:12px`, so in

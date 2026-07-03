@@ -76,8 +76,10 @@ Useful flags: `--shoot` (hold-fire + sweep aim), `--seconds <n>` (fire/wait dura
 `--keep-open` (leave the browser running for debugging).
 
 The driver clicks the **explicit** menu buttons in order —
-`#nameInput` → `[data-mode=…]` → `#toAvatarBtn` (Play) → `#toWeaponBtn` (Continue) →
-`#dropInBtn` (Drop In) — then waits past the ~2.6 s "GET READY" grace before the gameplay shot.
+`#nameInput` → `#toModeBtn` (main-menu ▶ PLAY) → `[data-mode=…]` (mode-select screen) →
+`#toAvatarBtn` (Continue) → `#toWeaponBtn` (Continue) → `#dropInBtn` (Drop In) — then waits
+past the ~2.6 s "GET READY" grace before the gameplay shot. (The main menu and the Choose-Mode
+screen are separate: PLAY leads to the mode picker, which holds the `[data-mode]` cards.)
 
 ## Run (human path)
 
