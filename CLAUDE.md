@@ -10,11 +10,15 @@ it brief; omit only when the reply is itself purely a list of next steps.
 
 ## Repository
 
-A single-file HTML5 canvas game: **Don't Die — Battle Royale**, a portrait, mobile-first,
-cartoon twin-stick survival royale. It is a from-scratch **canvas remake** inspired by the
-StickyGames title of the same name (the original sprites are not used — all art is drawn with
-canvas shapes). The entire game — markup, styles, and logic — lives in
-[index.html](index.html). No build system, no package manager, no test suite.
+A single-file HTML5 canvas game: **Last Pulse** (repo `Deegan4/last-pulse`), a portrait,
+mobile-first, cartoon twin-stick survival royale with three modes (Battle Royale / Endless
+Horde / Squads). It is a from-scratch **canvas remake** inspired by the StickyGames title
+_Don't Die_ (no original sprites — all art is drawn with canvas shapes). The entire game —
+markup, styles, and logic — lives in [index.html](index.html): one big game IIFE plus a second
+`<script type="module">` that progressively loads an optional 3D character layer (Meshy GLBs
+via `assets/meshy/loader.js`; fails safe to 2D everywhere). No build system, no package
+manager, no test suite. `scripts/` holds validation + asset-generation helpers;
+[memory.md](memory.md) is the running design log — add a bullet there for every shipped change.
 
 ## Running / Iterating
 
@@ -33,18 +37,24 @@ to exercise the touch path.
 
 ## Architecture
 
-Everything is one IIFE inside the `<script>` at the bottom of the HTML. Section banner comments
-(`// ===== X =====`) mark the major regions — preserve them when editing.
+The game is one IIFE inside the first `<script>` at the bottom of the HTML (the second, module
+script is the fail-safe 3D layer). Section banner comments (`// ===== X =====`) mark the major
+regions — preserve them when editing.
 
 Pipeline (top-down in the file):
 
 1. **Stage / canvas** — the game lives in a portrait `#game` stage; `resize()` is DPR-aware and
    reads the stage size (not the window). Don't multiply by DPR when drawing.
 2. **Persistence** — `safeGet`/`safeSet` wrap `localStorage` (raw access can throw in sandboxed
-   previews — always go through them). `meta` holds level/xp/name/avatar/weapon/music.
-3. **Data tables** — `AVATARS` (name, speed, health, unlock level, `look` descriptor) and
-   `WEAPONS` (dmg, mag, reload, range, fireCd, `mode`, special). To add a character or gun, add a
-   table entry; the avatar/weapon select grids and combat read from these.
+   previews — always go through them). `meta` holds level/xp/name/avatar/weapon/music, career
+   stats (matches/wins/kills/deaths/best/streaks/bestWave), unlocked achievement ids, and the
+   SFX-volume / aim-sensitivity settings; `saveMeta()` writes it all.
+3. **Data tables** — `AVATARS` (15; name, speed, health, unlock level, `look` descriptor),
+   `WEAPONS` (10; dmg, mag, reload, range, fireCd, `mode`, special), `ACHIEVEMENTS` (14;
+   `{id,icon,name,desc,test(meta,ctx)}`, checked at match end), and `GAME_VERSION`+`CHANGELOG`.
+   To add a character or gun, add a table entry (new `look.style`s need a case in BOTH `drawHair`
+   and `portraitChibi`). **When shipping a player-visible change, bump `GAME_VERSION` and prepend
+   a `CHANGELOG` entry** — returning players get a one-time "Game Updated!" popup from it.
 4. **World / safe area** — `ARENA` is the square world; camera follows the player, clamped.
    `zone` is the shrinking "safe area" state machine (`zoneUpdate`/`outsideZone`/`safeText`);
    `PHASES` defines hold/shrink timing, radius, and out-of-zone damage.
@@ -54,11 +64,13 @@ Pipeline (top-down in the file):
    `updateBot`; the player runs `updatePlayer`; zombies run `updateZombie`. AI lives alongside
    player logic. Most entities carry a per-instance radius `r` (default `R`) used by collisions
    and `separate()`.
-6. **Combat** — weapon-driven `fire()` (semi/auto/shotgun/sniper modes, ammo `mag`, auto
-   `reload`, pistol crit, sniper pierce). `hurt`/`die` apply damage and award kills + XP, and push
-   eliminations to `killFeed`. Power-ups: `castLightning` (chain-zap) and `throwBomb`/`explode`
-   (AoE), shown as cooldown buttons. Balance lives in the tunable consts near the top of the IIFE
-   (`MOVE`/speeds, `ZTYPES`, `PHASES`, `GRACE`) — tune there, not inline.
+6. **Combat** — weapon-driven `fire()` (semi/auto/shotgun/sniper/flame modes, ammo `mag`, auto
+   `reload`, pistol crit, sniper pierce, burn DoT). `hurt`/`die` apply damage and award kills +
+   XP, push eliminations to `killFeed`, and feed per-match achievement stats (`matchStat`).
+   Power-ups: `castLightning` (chain-zap), `throwBomb`/`explode` (AoE), and `castGrapple` (`F` /
+   🪝 — spring-damper rope to a building that conserves swing momentum; tunables in `GRAPPLE`),
+   shown as cooldown buttons. Balance lives in the tunable consts near the top of the IIFE
+   (`MOVE`/speeds, `ZTYPES`, `PHASES`, `GRACE`, `GRAPPLE`) — tune there, not inline.
 7. **Effects / Audio** — `spark` pushes into `particles[]`; `floaters[]` are damage numbers;
    `zaps[]` are lightning visuals. Audio is a lazy WebAudio synth (`audioInit` on first gesture);
    `tone`/`noise`/`sfx` are fire-and-forget; `startMusic`/`stopMusic` toggle a simple loop.
@@ -69,33 +81,49 @@ Pipeline (top-down in the file):
 9. **Screens / flow** — `screenState` is `'start' | 'avatar' | 'weapon' | 'playing' | 'results'`
    with a `settings` overlay and `paused` flag. Menu screens are DOM overlays; the avatar/weapon
    grids are generated by JS (`buildAvatarGrid`/`buildWeaponGrid`) and draw chibi portraits.
+   Full-screen popups (settings / results / achievements / what's-new) share the `.modal` class —
+   it uses `justify-content:safe center` + `overflow-y:auto` with a sticky Close button so tall
+   content scrolls instead of clipping on short screens; reuse it for new popups.
 10. **Main loop** — one `requestAnimationFrame(loop)` chain; an FPS counter feeds the HUD; a
     `grace` countdown gives a no-fire "GET READY" opening.
 
 ### Input edge / continuous split
 
-Press-once actions read keyboard presses (`R` reload, `Q` lightning, `E` bomb) or button taps;
-continuous actions (movement, hold-to-fire) read live state. Touch uses two dynamic joysticks
-(`moveVec` left, `aimVec` right with auto-fire). Mirror this split when adding controls.
+Press-once actions read keyboard presses (`R` reload, `Q` lightning, `E` bomb, `F` grapple) or
+button taps; continuous actions (movement, hold-to-fire) read live state. Touch uses two dynamic
+joysticks (`moveVec` left, `aimVec` right with auto-fire). Gamepad is also supported
+(`readGamepad`). Mirror this split when adding controls.
 
 ## Validation
 
-After any non-trivial edit, syntax-check the script block, then render headless:
+After any non-trivial edit, syntax-check both script blocks, then drive the real game headless:
 
 ```sh
-# parse the <script> block with vm.Script (no execution) — fails fast on syntax errors
-node scripts/parse-check.mjs
+# parse-check both <script> blocks (no execution) — fails fast on syntax errors
+node scripts/validate.mjs
 
-# headless screenshot at portrait res using the bundled Chromium
-#   /opt/pw-browsers/chromium-1194/chrome-linux/chrome  driven via the global `playwright`
-#   module — viewport ~430x932. (The Playwright MCP is pinned to a `chrome` channel that may
-#   not be installed in CI containers; driving the bundled Chromium directly is the fallback.)
+# boot → menu-drive into a live match → screenshots → fails on any page error
+node .claude/skills/run-brawl-arena/driver.mjs --play --mode br --shoot
 ```
 
-There is no GitHub Actions CI: the runner here can't execute standard workflow steps (an
-`actions/checkout` parse-check workflow failed during setup before Node ran), so validation is
-manual via `scripts/parse-check.mjs` + a headless render. Re-add a workflow only if the Actions
-environment gains marketplace-action support.
+The driver (see `.claude/skills/run-brawl-arena/`) launches the bundled Chromium
+(`/opt/pw-browsers/chromium-*/chrome-linux/chrome`) via the global `playwright` module at
+~430×932. Verify visually (read the PNGs in `.shots/`) and check for page errors. To test
+closure-scoped internals (e.g. `openSettings`, `buildDecor`), inject a temporary
+`window.__hook=...` into a **throwaway copy** of index.html (awk-insert before the IIFE-closing
+`})();`) — never commit hooks (`grep -c "window.__" index.html` must be 0).
 
-Verify visually (read the PNG) and check the console log for runtime errors. Headless caveats:
-WebAudio stays suspended without a gesture and the Gamepad list is empty — neither is a failure.
+Headless caveats: WebAudio stays suspended without a gesture, the gamepad list is empty, the
+three.js CDN is blocked (game falls back to 2D), and FPS under-reads (software rendering) —
+none are failures.
+
+## Git / deploy
+
+Work on the designated `claude/...` branch and open a draft PR. **`git push origin main`
+persistently fails (HTTP 503)** — to land on `main`, mark the PR ready and merge it via the
+GitHub API (rebase), then re-sync: `git fetch origin main && git checkout -B <branch>
+origin/main` (force-with-lease push is fine — the branch is only already-merged history).
+There is no repo CI workflow; a Vercel integration auto-deploys `main` (and PR branches) on
+push, and raw.githack serves `index.html` directly. GitHub's API rebase-merge stamps its own
+committer, so merged commits show "Unverified" — a known cosmetic artifact; don't rewrite
+`main` to fix it.
