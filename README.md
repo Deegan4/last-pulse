@@ -59,10 +59,11 @@ On a laptop you can also download [`index.html`](index.html) and open it in any 
 - 🦸 **15 unlockable avatars** — each with distinct speed / health stats and a hand-drawn cartoon look (cyber visor, top hat, crown, mohawk, ninja…), gated behind your level.
 - 📦 **Loot & supply drops** — health, medkits, armor, ammo, and weapon swaps, plus parachuting crates with a strong gun + armor.
 - ⚡ **Power-ups** — chain-lightning, a throwable AoE bomb, and a 🪝 **grapple hook** (fire at a building, get reeled in on an elastic rope that conserves your swing momentum — release keeps your speed).
-- 🩸 **Game feel** — hit markers, kill-streak callouts, blood splats, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
+- 🩸 **Game feel** — hit markers, kill-streak callouts, ⚡ **kill combos** (chain kills inside 3 s for up to **3× XP**, with slow-mo hit-stop), blood splats, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
 - 🌅 **Living arena** — a 3000² map with buildings (cover), ponds, animated water, swaying trees, a checkered lawn, and day / dusk / night lighting.
 - 📈 **Progression** — XP, levels, and career stats (wins / matches / kills / K-D / best placement / streak).
-- 🏅 **Achievements** — 14 unlockable badges (First Blood, Rampage, Untouchable, Horde Master, Centurion…) that pop a toast the moment you earn them, tracked on a menu badge wall.
+- 🏅 **Achievements** — 23 tiered badges in bronze / silver / gold (First Blood, Rampage, Chain Reaction, Kill Frenzy, Untouchable, Horde Master…), each paying a coin reward, tracked on a menu badge wall.
+- 🪙 **Coins & shop** — earn coins from kills, wins, waves, badges, and a **daily challenge**; spend them on cosmetic particle trails.
 
 ## 🎮 Controls
 
