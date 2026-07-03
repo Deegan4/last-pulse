@@ -598,8 +598,13 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '1.8.0';
+const GAME_VERSION = '1.9.0';
 const CHANGELOG = [
+  { v:'1.9.0', items:[
+    ['🚪','Enterable buildings','walk in through the door — loot hides inside every house'],
+    ['🛡','Real cover','walls block bullets, doorways don\'t — fight room to room'],
+    ['🔫','Weapon detail pass','wood grain, muzzle caps, gold-trim magnum & rotary barrels'],
+  ]},
   { v:'1.8.0', items:[
     ['⚡','Kill combos','chain kills inside 3s for up to 3× XP — with slow-mo hits'],
     ['🪙','Coins & Shop','earn coins from kills, wins & badges — buy cosmetic trails'],
@@ -917,22 +922,45 @@ function buildDecor(){
   for(let i=0;i<6;i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
 }
-// push an entity out of any building it overlaps (circle vs AABB)
+// Buildings are hollow — 4 solid walls with a door gap at the bottom-centre, so entities
+// can walk inside through the door and bullets fly through the doorway but not the walls.
+const WALL_T = 9, DOOR_HALF = 21;   // gap 42px: humans (r15) fit easily, brutes (r20) barely
+function wallRects(o){
+  const dx0=o.x+o.w/2-DOOR_HALF, dx1=o.x+o.w/2+DOOR_HALF;
+  return [
+    [o.x, o.y, o.w, WALL_T],                       // top
+    [o.x, o.y, WALL_T, o.h],                       // left
+    [o.x+o.w-WALL_T, o.y, WALL_T, o.h],            // right
+    [o.x, o.y+o.h-WALL_T, dx0-o.x, WALL_T],        // bottom, left of the door
+    [dx1, o.y+o.h-WALL_T, o.x+o.w-dx1, WALL_T],    // bottom, right of the door
+  ];
+}
+// push a circle entity out of one solid rect
+function pushOutRect(e, rx,ry,rw,rh, r){
+  if(e.x < rx-r || e.x > rx+rw+r || e.y < ry-r || e.y > ry+rh+r) return;
+  const nx=clamp(e.x,rx,rx+rw), ny=clamp(e.y,ry,ry+rh);
+  let dx=e.x-nx, dy=e.y-ny, d2=dx*dx+dy*dy;
+  if(d2 > r*r) return;
+  if(d2 > 0.001){ const d=Math.sqrt(d2); e.x=nx+dx/d*r; e.y=ny+dy/d*r; }
+  else { // centre inside — push to nearest edge
+    const dl=e.x-rx, dr=rx+rw-e.x, dt=e.y-ry, db=ry+rh-e.y, m=Math.min(dl,dr,dt,db);
+    if(m===dl) e.x=rx-r; else if(m===dr) e.x=rx+rw+r; else if(m===dt) e.y=ry-r; else e.y=ry+rh+r;
+  }
+}
 function resolveObstacles(e){
   const r=(e.r||R);
   for(const o of obstacles){
     if(e.x < o.x-r || e.x > o.x+o.w+r || e.y < o.y-r || e.y > o.y+o.h+r) continue;
-    const nx=clamp(e.x,o.x,o.x+o.w), ny=clamp(e.y,o.y,o.y+o.h);
-    let dx=e.x-nx, dy=e.y-ny, d2=dx*dx+dy*dy;
-    if(d2 > r*r) continue;
-    if(d2 > 0.001){ const d=Math.sqrt(d2); e.x=nx+dx/d*r; e.y=ny+dy/d*r; }
-    else { // centre inside — push to nearest edge
-      const dl=e.x-o.x, dr=o.x+o.w-e.x, dt=e.y-o.y, db=o.y+o.h-e.y, m=Math.min(dl,dr,dt,db);
-      if(m===dl) e.x=o.x-r; else if(m===dr) e.x=o.x+o.w+r; else if(m===dt) e.y=o.y-r; else e.y=o.y+o.h+r;
-    }
+    for(const wr of wallRects(o)) pushOutRect(e, wr[0],wr[1],wr[2],wr[3], r);
   }
 }
-function bulletInObstacle(b){ for(const o of obstacles){ if(b.x>o.x&&b.x<o.x+o.w&&b.y>o.y&&b.y<o.y+o.h) return true; } return false; }
+function bulletInObstacle(b){
+  for(const o of obstacles){
+    if(b.x<o.x||b.x>o.x+o.w||b.y<o.y||b.y>o.y+o.h) continue;
+    for(const wr of wallRects(o)) if(b.x>wr[0]&&b.x<wr[0]+wr[2]&&b.y>wr[1]&&b.y<wr[1]+wr[3]) return true;
+  }
+  return false;
+}
 function newBot(team, namePool, i){
   const av=pick(AVATARS);
   const b=makeHuman(false, av, pick(WEAPONS), namePool? namePool[i%namePool.length] : av.name);
@@ -947,6 +975,8 @@ function spawnMatch(){
   combo=0; comboT=0; hitstop=0;
   matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
   buildDecor();
+  // interior loot — every house hides a pickup (a reason to step inside)
+  for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
   player.team=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
@@ -1676,7 +1706,11 @@ function draw(){
   const drawables=[];
   for(const d of decor){ if(d.type!=='tree'&&d.type!=='bush'&&d.type!=='building') continue;
     const cx=d.x+(d.w?d.w/2:0), cy=d.y+(d.h?d.h/2:0), pad=d.type==='building'?300:140;
-    if(inView(cx,cy,pad)) drawables.push({y:(d.y+(d.h||0)), fn:()=>drawDecor(d)}); }
+    if(!inView(cx,cy,pad)) continue;
+    // buildings split in two layers: the interior floor sorts at the TOP edge (under anyone
+    // standing inside), the facade at the bottom edge (over anyone inside, until it fades)
+    if(d.type==='building') drawables.push({y:d.y, fn:()=>drawBuildingBase(d)});
+    drawables.push({y:(d.y+(d.h||0)), fn:()=>drawDecor(d)}); }
   for(const p of pickups) if(inView(p.x,p.y,40)) drawables.push({y:p.y, fn:()=>drawPickup(p)});
   for(const d of drops) if(inView(d.x,d.y,560)) drawables.push({y:d.landed?d.y:1e9, fn:()=>drawDrop(d)});
   for(const z of zombies) if(z.alive && inView(z.x,z.y,60)) drawables.push({y:z.y, fn:()=>drawZombie(z)});
@@ -1871,10 +1905,35 @@ function drawField(){
   // world border (fence-ish)
   ctx.strokeStyle='rgba(40,60,24,.8)'; ctx.lineWidth=8; ctx.strokeRect(4,4,ARENA-8,ARENA-8);
 }
-function drawBuilding(d){
-  const x=d.x,y=d.y,w=d.w,h=d.h, lit=timeOfDay!=='day';   // windows glow at dusk/night
+// interior layer — y-sorted at the building's TOP edge so entities inside draw on top of the
+// floor. Also computes the facade fade (player inside or stepping through the door).
+function drawBuildingBase(d){
+  const x=d.x,y=d.y,w=d.w,h=d.h;
+  const p=player, nearDoor = p && p.alive && Math.abs(p.x-(x+w/2))<DOOR_HALF+16 && p.y>y+h-36 && p.y<y+h+18;
+  const inside = p && p.alive && p.x>x+WALL_T && p.x<x+w-WALL_T && p.y>y+WALL_T && p.y<y+h-WALL_T;
+  d.fade = lerp(d.fade===undefined?1:d.fade, (inside||nearDoor)?0.15:1, 0.16);
   ctx.lineJoin='round';
   ctx.fillStyle='rgba(0,0,0,.18)'; roundRect(x+5,y+8,w,h,6); ctx.fill();
+  // wood floor, rug, clutter and the top-down wall frame (seen when the facade fades)
+  if(d.fade<0.98){
+    ctx.fillStyle='#b9975f'; roundRect(x,y,w,h,5); ctx.fill();
+    ctx.strokeStyle='rgba(90,64,34,.5)'; ctx.lineWidth=1.2;
+    for(let fy=y+12; fy<y+h-5; fy+=11){ ctx.beginPath(); ctx.moveTo(x+4,fy); ctx.lineTo(x+w-4,fy); ctx.stroke(); }
+    ctx.fillStyle='rgba(160,60,60,.85)'; roundRect(x+w/2-24,y+h*0.4,48,30,6); ctx.fill();          // rug
+    ctx.strokeStyle='rgba(255,230,180,.5)'; ctx.lineWidth=1.5; roundRect(x+w/2-19,y+h*0.4+4,38,22,4); ctx.stroke();
+    ctx.fillStyle='#8a6a3a'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(x+13,y+13,22,18,3); ctx.fill(); ctx.stroke();   // crate
+    ctx.strokeStyle='rgba(60,40,16,.6)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x+13,y+22); ctx.lineTo(x+35,y+22); ctx.stroke();
+    ctx.fillStyle='#7a5a3a'; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(x+w-32,y+27,14,9,0,0,TAU); ctx.fill(); ctx.stroke();  // table
+    ctx.fillStyle='#8f8271'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;                                // wall frame + door gap
+    for(const wr of wallRects(d)){ ctx.fillRect(wr[0],wr[1],wr[2],wr[3]); ctx.strokeRect(wr[0],wr[1],wr[2],wr[3]); }
+  }
+}
+// facade layer — y-sorted at the bottom edge; fades away while the player is inside
+function drawBuilding(d){
+  const x=d.x,y=d.y,w=d.w,h=d.h, lit=timeOfDay!=='day';   // windows glow at dusk/night
+  if((d.fade===undefined?1:d.fade)<=0.02) return;
+  ctx.lineJoin='round';
+  ctx.save(); ctx.globalAlpha=(d.fade===undefined?1:d.fade);
   // wall + soft top-light / right-shade
   ctx.fillStyle='#ddd0b8'; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x,y,w,h,5); ctx.fill(); ctx.stroke();
   ctx.save(); roundRect(x,y,w,h,5); ctx.clip();
@@ -1904,6 +1963,7 @@ function drawBuilding(d){
   ctx.fillStyle='rgba(255,255,255,.14)'; ctx.fillRect(x-2,y-13,w+4,5);
   // chimney
   ctx.fillStyle='#8a5a4a'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(x+w*0.72,y-26,12,14,2); ctx.fill(); ctx.stroke();
+  ctx.restore();
 }
 function drawDecor(d){
   if(d.type==='dirt'){ ctx.fillStyle = timeOfDay==='night'?'rgba(80,64,40,.45)':'rgba(150,120,72,.4)';
@@ -2018,16 +2078,16 @@ function drawDrop(d){
   ctx.restore();
 }
 const GUNK={
-  Pistol:  {l:11,c:'#454a53'},
-  Rifle:   {l:20,c:'#3a3f48',stock:1,mag:1,sight:1},
-  Shotgun: {l:17,c:'#6a4a2e',stock:1,pump:1,tip:1},
-  SMG:     {l:14,c:'#3a3f48',stock:1,mag:1},
-  Magnum:  {l:13,c:'#4a5058',cyl:1},
-  Sniper:  {l:26,c:'#2a2f38',scope:1,stock:1,bipod:1,sight:1},
-  Crossbow:{l:16,c:'#6a4e2a',bow:1},
-  Flame:   {l:13,c:'#8a3a2a',tank:1,nozzle:1},
-  Minigun: {l:18,c:'#2a2f38',fat:1},
-  Tommy:   {l:16,c:'#5a4a3a',drum:1,stock:1,foregrip:1}};
+  Pistol:  {l:11,c:'#454a53',serr:1,guard:1},
+  Rifle:   {l:20,c:'#3a3f48',stock:1,mag:1,sight:1,vents:1,muzzle:1,guard:1},
+  Shotgun: {l:17,c:'#6a4a2e',stock:1,pump:1,tip:1,wood:1,guard:1},
+  SMG:     {l:14,c:'#3a3f48',stock:1,mag:1,muzzle:1,guard:1},
+  Magnum:  {l:13,c:'#4a5058',cyl:1,nickel:1,guard:1},
+  Sniper:  {l:26,c:'#2a2f38',scope:1,stock:1,bipod:1,sight:1,brake:1,muzzle:1,guard:1},
+  Crossbow:{l:16,c:'#6a4e2a',bow:1,wood:1,guard:1},
+  Flame:   {l:13,c:'#8a3a2a',tank:1,nozzle:1,hazard:1},
+  Minigun: {l:18,c:'#2a2f38',fat:1,cluster:1},
+  Tommy:   {l:16,c:'#5a4a3a',drum:1,stock:1,foregrip:1,wood:1,muzzle:1,guard:1}};
 function drawGun(name,c){
   c=c||ctx;
   const g=GUNK[name]||{l:14,c:'#3a3f48'}, ink='rgba(0,0,0,.38)';
@@ -2072,6 +2132,29 @@ function drawGun(name,c){
   if(g.drum){ c.fillStyle='#34343c'; c.strokeStyle=ink; c.beginPath(); c.arc(7,4.6,3.9,0,TAU); c.fill(); c.stroke();
     c.fillStyle='rgba(255,255,255,.16)'; c.beginPath(); c.arc(5.8,3.4,1.4,0,TAU); c.fill();
     c.strokeStyle='rgba(0,0,0,.3)'; c.beginPath(); c.arc(7,4.6,2,0,TAU); c.stroke(); }
+  // ---- detail pass: per-gun flair ----
+  if(g.guard){ c.strokeStyle='#1c1f26'; c.lineWidth=1.3;                    // trigger guard loop
+    c.beginPath(); c.arc(0.8,3.1,2.4,-0.25,Math.PI*0.95); c.stroke(); c.lineWidth=1; }
+  if(g.serr){ c.strokeStyle='rgba(255,255,255,.3)'; c.lineWidth=0.9;        // slide serrations
+    c.beginPath(); for(let k=0;k<3;k++){ c.moveTo(1.6+k*1.7,-1.7); c.lineTo(1.6+k*1.7,-0.2); } c.stroke(); c.lineWidth=1; }
+  if(g.wood){ c.strokeStyle='rgba(52,32,14,.45)'; c.lineWidth=0.8;          // wood grain waves
+    for(let k=0;k<3;k++){ const yy=-1.1+k*1.15; c.beginPath(); c.moveTo(1.5,yy);
+      c.quadraticCurveTo(g.l*0.5,yy+0.8,g.l-2.5,yy-0.35); c.stroke(); } c.lineWidth=1; }
+  if(g.vents){ c.fillStyle='rgba(0,0,0,.32)';                               // handguard vents
+    for(let k=0;k<3;k++) c.fillRect(g.l*0.5+k*3,-1.2,1.7,2.4); }
+  if(g.brake){ c.fillStyle='rgba(0,0,0,.42)';                               // muzzle-brake slots
+    for(let k=0;k<2;k++) c.fillRect(g.l-6.5+k*3,-2.6,1.4,1.3); }
+  if(g.muzzle){ c.fillStyle='#20242a'; c.strokeStyle=ink;                    // muzzle cap ring
+    roundRect(g.l-1.2,-2.5,2.8,5,1,c); c.fill(); c.stroke(); }
+  if(g.nickel){ c.fillStyle='rgba(255,255,255,.4)'; c.fillRect(1.6,-1.7,g.l-4.5,0.9);  // polished top
+    c.fillStyle='#e8c25a'; c.beginPath(); c.arc(1.2,4.2,1.1,0,TAU); c.fill();          // gold trigger
+    c.fillStyle='rgba(232,194,90,.9)'; c.fillRect(g.l-2.6,-2.5,1.4,5); }               // gold muzzle band
+  if(g.hazard){ c.save(); roundRect(-3.5,-3.6,5.5,7.2,2.2,c); c.clip();     // hazard stripes on the tank
+    c.fillStyle='rgba(255,208,60,.7)'; c.rotate(-0.6);
+    for(let k=-2;k<3;k++) c.fillRect(-7+k*4.4,-2,2,15); c.restore(); }
+  if(g.cluster){ c.fillStyle='#3a4048'; c.strokeStyle=ink;                   // rotary barrel cluster
+    for(const oy of [-2.3,0,2.3]){ c.beginPath(); c.arc(g.l+1.6,oy,1.5,0,TAU); c.fill(); c.stroke(); }
+    c.fillStyle='rgba(0,0,0,.5)'; for(const oy of [-2.3,0,2.3]){ c.beginPath(); c.arc(g.l+1.6,oy,0.6,0,TAU); c.fill(); } }
 }
 // render a weapon's real gun art onto a small canvas for the select-grid card
 function weaponIcon(w){
