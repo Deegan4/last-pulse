@@ -4,9 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Response convention
 
-End every reply with a short **Next steps** section — a few concrete, prioritized suggestions
-for what to do next (e.g. follow-up work, validation, playtest tuning, or open decisions). Keep
-it brief; omit only when the reply is itself purely a list of next steps.
+End every reply with an **advanced, detailed Next steps** section — not a generic checklist.
+Make each step *specific and actionable*, and where useful name the concrete lever:
+
+- **Reference the actual code**: cite the `function`, constant, CSS selector, `file:line`, or
+  version to touch (e.g. "lengthen the BR warmup window in `updateBot` — `clamp(elapsed/18…)` →
+  `/24`", not "make BR easier").
+- **Prioritize and justify**: order by impact/effort and say *why* this next, plus the trade-off
+  or risk (perf, balance, scope creep, single-file constraint).
+- **Give real options with numbers**: when a value is tunable, state the current value and a
+  suggested range so the user can decide in one message (e.g. "combo window `COMBO_WIN=3.0s` →
+  try 2.5–3.5").
+- **Include verification**: how to confirm the change worked (which driver command, which
+  headless render / measurement, what to look for), and any playtest question only the user can
+  answer on-device.
+- **Look ahead**: tie back to `ROADMAP.md` (which version/bundle this unblocks) and flag any
+  blocked/parked work (e.g. Meshy needs `MESHY_API_KEY`).
+
+Aim for ~3–6 substantive steps. Keep each to a tight sentence or two — detailed, not padded.
+Omit the section only when the reply is itself purely a list of next steps.
 
 ## Repository
 
