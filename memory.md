@@ -116,6 +116,15 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   time-of-day, seeded speckles/blades), animated water (sand shore, shallow layer, drifting
   ripples, glint), swaying tree canopies, shockwave `rings[]` on explosions / lightning hits /
   supply-drop landings.
+- **Character upgrade pass 3** (drawHuman): body **lean** into the run (rotate by vx, shadow stays
+  flat), **second arm** — support hand on the foregrip for two-handed guns, free swinging/hanging
+  back arm for Pistol/Magnum (`oneHand`), **idle breathing** (time-based bob via per-entity
+  `seed` added in makeHuman), **blink** every ~3.4s, **pupils track aim**, **low-HP face** (<30%:
+  knit brows, gritted mouth, looping sweat drop), **belt + gold buckle** on all outfits and a
+  studded **bandolier** on heavies (avatar.health>=118), and `stepDust(h,dt)` foot-dust puffs
+  (called from updatePlayer + updateBot; guards on speed² > 3600). Verify with the scratchpad
+  lineup harness: hook pins a row of avatars w/ different weapons + a 20%-hp one in front of the
+  camera (grace=999 freezes firing → giant "999" GET READY text in shots is a test artifact).
 - **Achievements** (14 badges): `ACHIEVEMENTS` table near `saveMeta` — each `{id,icon,name,desc,test(meta,ctx)}`.
   Career tests read `meta` (wins/ckills/bestStreak/bestWave/matches/level); per-match feats read a
   `ctx` built in `showResults` from `killsTotal` + `matchStat` ({dmgTaken,grappled}, reset in
