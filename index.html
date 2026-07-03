@@ -1106,15 +1106,14 @@ function hurt(e, dmg, src, isHumanTarget){
   e.hitFlash=0.12;
   // blood: a directional spray along the shot's path (exit-wound style), sized by damage,
   // plus a close mist and — on solid hits — a splatter decal left on the ground
-  const blood = isHumanTarget ? '#c0303a' : '#5f8f2c';
-  const dark  = isHumanTarget ? '#8f1f28' : '#48761f';
+  const blood = '#c0303a', dark = '#8f1f28';   // everything bleeds red
   const a0 = (src && src!==e) ? Math.atan2(e.y-src.y, e.x-src.x) : rand(0,TAU);
   const n = clamp(3+Math.round(dmg/8), 3, 14);
   for(let i=0;i<n;i++) spark(e.x, e.y-4, i%3?blood:dark, rand(60,230), a0+rand(-0.55,0.55), rand(.35,.7));
   for(let i=0;i<3;i++) spark(e.x, e.y-4, blood, rand(25,80), rand(0,TAU), .3);
   if(dmg>=12 && splats.length<220)
     splats.push({x:e.x+Math.cos(a0)*rand(6,20), y:e.y+rand(2,12), r:rand(5,10)+dmg*0.06, t:4,
-      col: isHumanTarget?'rgba(120,22,30,':'rgba(58,90,28,'});
+      col:'rgba(120,22,30,'});
   if(dmg>0) floaters.push({x:e.x, y:e.y-R-10, vy:-34, t:0.7, txt:Math.round(dmg), col: dmg>=60?'#ffd24a':'#fff'});
   // player feedback
   if(src && src.isPlayer && dmg>0){ hitmarks.push({x:e.x,y:e.y-6,t:0.22,kill:false}); sfx('tick'); }
@@ -1123,11 +1122,10 @@ function hurt(e, dmg, src, isHumanTarget){
 }
 function die(e, src, isHumanTarget){
   e.alive=false; e.hp=0; e.burn=0;
-  const gore = isHumanTarget ? '#c0303a' : '#5f8f2c';
-  const goreCol = isHumanTarget?'rgba(120,22,30,':'rgba(58,90,28,';
+  const gore = '#c0303a', goreCol = 'rgba(120,22,30,';   // red blood for everyone
   const ka = (src && src!==e) ? Math.atan2(e.y-src.y, e.x-src.x) : rand(0,TAU);
   for(let i=0;i<14;i++) spark(e.x,e.y, gore, rand(60,240), rand(0,TAU), .9);            // burst
-  for(let i=0;i<12;i++) spark(e.x,e.y-4, i%3?gore:(isHumanTarget?'#8f1f28':'#48761f'),  // directional gout
+  for(let i=0;i<12;i++) spark(e.x,e.y-4, i%3?gore:'#8f1f28',                            // directional gout
     rand(120,300), ka+rand(-0.4,0.4), rand(.5,.9));
   splats.push({x:e.x, y:e.y+6, r:rand(16,26), t:7, col:goreCol});
   for(let k=0;k<2;k++) splats.push({x:e.x+Math.cos(ka)*rand(14,34)+rand(-8,8),           // satellite pools

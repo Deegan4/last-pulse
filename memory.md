@@ -20,7 +20,10 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   `statue` (Lv15 — weathered stone hero on a pedestal w/ cracks + moss). All placed via
   `decorSpot` (avoid buildings/ponds), decorative only (no collision). Verified scaling
   lvl 1/5/10/20/30 → buildings 9/10/11/14/16, landmarks appear on schedule; per-landmark
-  screenshots. GAME_VERSION 1.10.0.
+  screenshots. Also 🩸 **blood splatter**: hits spray directionally along the shot path (count
+  scales w/ dmg) + close mist + ground splatter decal on 12+ dmg (cap 220 live); deaths add a
+  directional gout + satellite pools. **All blood is red** (user call — dropped the green
+  zombie-goo convention). GAME_VERSION 1.10.0.
 - **v1.9.0 "Open Doors"**: 🚪 **enterable buildings** — buildings are hollow: `wallRects(o)` returns
   4 wall rects with a bottom-centre door gap (`WALL_T=9`, `DOOR_HALF=21` → 42px gap: humans r15 fit,
   brutes r20 barely). `resolveObstacles`/`bulletInObstacle` collide per-wall via `pushOutRect`, so
