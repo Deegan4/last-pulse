@@ -11,6 +11,19 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.0.0 "Interface Overhaul"**: a **UI v2 override layer** appended at the END of the
+  `<style>` block (tune tokens there, not per-rule) — deep "midnight forest" gradients on
+  `.screen`, frosted glass (`backdrop-filter:blur` + gradient-over-glass backgrounds) on cards /
+  fighter / mode cards / stat tiles / HUD panels / modals, entrance motion (`scrIn` on
+  `.screen:not(.hidden)`, `mdIn` slide-up on `.modal:not(.hidden)`), gradient-text logo
+  (`background-clip:text` + drop-shadow glow; `.logo small` resets fill), hero-button `sheen`
+  sweep (`.btn.play::after` only — deliberately not all buttons), springier `.btn` press curve,
+  and notch **safe-areas** (`env(safe-area-inset-*)` on `#gearHud/#xpwrap/#mmwrap/#powers`).
+  Selectors untouched → zero JS changes. Verified every screen headless (start/avatar/weapon/
+  settings/HUD/results), no page errors; backdrop-filter renders in headless Chromium.
+  ⚠ Multi-layer `background: <gradient> padding-box, <color>` — the color must be the LAST layer.
+  GAME_VERSION 2.0.0. (User asked about "other languages" — declined: browser ships HTML/CSS/JS;
+  a build step would break the single-file pillar without improving the UI.)
 - **v1.10.0 "Growing World"**: the map scales with `meta.level` in `buildDecor` — buildings
   `9+floor(lvl/4)` (cap 16, each still hiding interior loot), ponds `7+floor(lvl/8)` (cap 10),
   trees/bushes/grass/flowers/rocks/dirt get an `xtra=min(lvl,20)` density bonus. **Level-milestone
