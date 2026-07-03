@@ -268,6 +268,43 @@
   .achcard .atxt span{font-size:12px;opacity:.8}
   .achcard .adone{margin-left:auto;color:#3a9d2a;font-weight:900;font-size:18px;flex:0 0 auto}
 
+  /* achievement tiers */
+  .achcard.tier-bronze{border-left:5px solid #c77b3a}
+  .achcard.tier-silver{border-left:5px solid #9fb2c4}
+  .achcard.tier-gold{border-left:5px solid #e8b83a}
+  .tchip{font-style:normal;font-size:12px;margin-left:2px}
+
+  /* coins / daily / shop */
+  .coinbadge{background:rgba(0,0,0,.35);border:1px solid rgba(255,209,102,.5);color:#ffd166;
+    font-weight:900;font-size:12px;border-radius:999px;padding:3px 9px;flex:0 0 auto}
+  .menurow{display:flex;gap:8px;align-items:center;justify-content:center}
+  .dailycard{display:flex;align-items:center;gap:10px;width:min(88%,340px);margin:10px auto 0;text-align:left;
+    background:rgba(46,64,30,.75);border:1px solid rgba(255,209,102,.45);border-radius:13px;padding:9px 12px}
+  .dailycard.done{border-color:rgba(140,220,110,.5);opacity:.85}
+  .dailycard .dic{font-size:22px;flex:0 0 auto}
+  .dailycard .dtx{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+  .dailycard .dtx b{font-size:12px;color:#ffd166;text-transform:uppercase;letter-spacing:.6px}
+  .dailycard .dtx span{font-size:12.5px;color:#e6f2c8;font-weight:700}
+  .dailycard .drw{margin-left:auto;flex:0 0 auto;font-weight:900;font-size:12px;color:#ffd166;
+    background:rgba(0,0,0,.3);border-radius:999px;padding:4px 10px}
+  .dailycard.done .drw{color:#9de07a}
+  .shopcard{cursor:pointer}
+  .shopcard.equipped{outline:2px solid #7bbf2e}
+  .shopcard.poor{opacity:.75}
+  .shopbtn{margin-left:auto;flex:0 0 auto;cursor:pointer;border:none;border-radius:999px;padding:7px 12px;
+    font-weight:900;font-size:11.5px;background:linear-gradient(180deg,#ffe27a,#f0b840);color:#4a3a10}
+  .shopbtn.on{background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f}
+  .runlocks{display:flex;flex-direction:column;gap:6px;width:min(88%,340px);margin:0 0 10px}
+  .runlocks:empty{display:none}
+  .ru{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:#fff;
+    background:rgba(60,82,38,.7);border:1px solid var(--line);border-radius:11px;padding:7px 12px}
+  .ru span{margin-left:auto;font-size:11.5px;color:#cddcb6}
+  .ru.coin{border-color:rgba(255,209,102,.55);color:#ffd166}
+  .ru.bronze{border-color:#c77b3a}
+  .ru.silver{border-color:#9fb2c4}
+  .ru.gold{border-color:#e8b83a}
+  .ru.dailyhit{border-color:rgba(140,220,110,.6);color:#c9f2a8}
+
   /* game-updated notification */
   .wnburst{font-size:44px;line-height:1;animation:wnpop .6s cubic-bezier(.2,1.6,.4,1) both}
   @keyframes wnpop{from{transform:scale(0) rotate(-30deg)}to{transform:scale(1) rotate(0)}}
@@ -357,7 +394,8 @@
       <div class="fighterInfo">
         <input id="nameInput" class="nameField" maxlength="12" placeholder="deegan" aria-label="your name" />
         <div class="lvlrow"><span class="lvlbadge">LV <b id="menuLvl">1</b></span>
-          <div class="xpmini"><i id="menuXp"></i></div></div>
+          <div class="xpmini"><i id="menuXp"></i></div>
+          <span class="coinbadge">🪙 <b id="menuCoins">0</b></span></div>
         <div class="fighterEdit" id="changeAvatar">▸ tap portrait to change fighter</div>
       </div>
     </div>
@@ -369,8 +407,12 @@
     </div>
 
     <button class="btn play" id="toAvatarBtn"><span id="playLabel">PLAY</span></button>
+    <div id="dailyCard" class="dailycard"></div>
     <div id="statsCard" class="statscard"></div>
-    <button class="btn ghost achbtn" id="achBtn">🏅 Achievements <span id="achCount" class="achcount"></span></button>
+    <div class="menurow">
+      <button class="btn ghost achbtn" id="achBtn">🏅 Achievements <span id="achCount" class="achcount"></span></button>
+      <button class="btn ghost achbtn" id="shopBtn">🛒 Shop</button>
+    </div>
     <div class="footer" style="color:#cfe0b3;font-size:12px">A canvas remake · twin-stick survival royale · <span id="verLink" class="verlink"></span></div>
   </div>
 
@@ -414,6 +456,7 @@
     <div class="placard" id="placard">#8</div>
     <div id="placeSub" style="color:#eaf6d6;font-weight:700">Eliminated</div>
     <div class="rstats" id="rStats"></div>
+    <div class="runlocks" id="rUnlocks"></div>
     <div class="xpwrap"><div class="xprow"><span id="rXpLbl">+0 XP</span><span id="rLvl">Lv 1</span></div>
       <div class="xpbar"><i id="rXpFill"></i></div></div>
     <div id="rCareer" class="career"></div>
@@ -429,6 +472,14 @@
     <div id="achProg" class="career"></div>
     <div class="achgrid" id="achGrid"></div>
     <button class="close" id="achClose">Close</button>
+  </div>
+
+  <!-- ===== Shop ===== -->
+  <div id="shop" class="modal hidden">
+    <h2 class="heading">Shop</h2>
+    <div id="shopCoins" class="career"></div>
+    <div class="achgrid" id="shopGrid"></div>
+    <button class="close" id="shopClose">Close</button>
   </div>
 
   <!-- ===== Game-updated notification ===== -->
@@ -541,8 +592,14 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '1.7.0';
+const GAME_VERSION = '1.8.0';
 const CHANGELOG = [
+  { v:'1.8.0', items:[
+    ['🪙','Coins & Shop','earn coins from kills, wins & badges — buy cosmetic trails'],
+    ['📅','Daily challenge','a fresh feat every day, worth 60 coins'],
+    ['🥇','Tiered achievements','21 badges in bronze / silver / gold, each pays coins'],
+    ['🧟','Livelier zombies','lurching lean, dragging arms & dirt puffs'],
+  ]},
   { v:'1.7.0', items:[
     ['🏅','Achievements','14 badges to unlock — track them from the menu'],
     ['🧍','Livelier fighters','two-handed grips, blinks, run lean & foot dust'],
@@ -571,6 +628,12 @@ const meta = {
   sfxVol: Math.max(0,Math.min(1, parseFloat(safeGet('dd2_sfxvol','0.8'))||0.8)),
   aimSens: Math.max(0.3,Math.min(2, parseFloat(safeGet('dd2_sens','1'))||1)),
   achieved: (safeGet('dd2_ach','')||'').split(',').filter(Boolean),   // unlocked achievement ids
+  // economy / cosmetics / daily challenge
+  coins: parseInt(safeGet('dd2_coins','0'),10) || 0,
+  owned: (safeGet('dd2_owned','')||'').split(',').filter(Boolean),   // purchased shop item ids
+  trail: safeGet('dd2_trail','none'),                                // equipped trail id
+  dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
+  dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
 };
 function xpNeed(lv){ return 80 + lv*40; }
 function saveMeta(){
@@ -581,38 +644,88 @@ function saveMeta(){
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);
   safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_sens',meta.aimSens);
   safeSet('dd2_ach', meta.achieved.join(','));
+  safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
+  safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
 }
 
 // ===== Achievements =====
 // Career tests read `meta`; per-match feats read the `ctx` passed at match end.
+// Tiered: bronze/silver/gold — the tier colors the badge and sets the coin reward.
+const TIER_COINS = { bronze:25, silver:75, gold:150 };
+const TIER_ICON  = { bronze:'🥉', silver:'🥈', gold:'🥇' };
 const ACHIEVEMENTS = [
-  {id:'firstkill',  icon:'🩸', name:'First Blood',  desc:'Score your first elimination',        test:m=>m.ckills>=1},
-  {id:'firstwin',   icon:'🏆', name:'Winner',       desc:'Win your first match',                test:m=>m.wins>=1},
-  {id:'sharp',      icon:'🎯', name:'Sharpshooter', desc:'Get 5+ kills in a single match',      test:(m,c)=>c.matchKills>=5},
-  {id:'rampage',    icon:'💥', name:'Rampage',      desc:'Get 10+ kills in a single match',     test:(m,c)=>c.matchKills>=10},
-  {id:'untouchable',icon:'🛡', name:'Untouchable',  desc:'Win a match without taking damage',   test:(m,c)=>c.win && c.dmgTaken<=0},
-  {id:'grappler',   icon:'🪝', name:'Swinger',      desc:'Use the grapple hook in a match',     test:(m,c)=>c.grappled},
-  {id:'streak3',    icon:'🔥', name:'Unstoppable',  desc:'Win 3 matches in a row',              test:m=>m.bestStreak>=3},
-  {id:'wave5',      icon:'🌊', name:'Survivor',     desc:'Reach wave 5 in Endless Horde',       test:m=>m.bestWave>=5},
-  {id:'wave10',     icon:'🧟', name:'Horde Master', desc:'Reach wave 10 in Endless Horde',      test:m=>m.bestWave>=10},
-  {id:'matches10',  icon:'🎖', name:'Veteran',      desc:'Play 10 matches',                     test:m=>m.matches>=10},
-  {id:'kills100',   icon:'💯', name:'Centurion',    desc:'Rack up 100 career kills',            test:m=>m.ckills>=100},
-  {id:'lvl5',       icon:'⭐', name:'Rising Star',   desc:'Reach level 5',                       test:m=>m.level>=5},
-  {id:'lvl10',      icon:'🌟', name:'Elite',        desc:'Reach level 10',                      test:m=>m.level>=10},
-  {id:'champ5',     icon:'👑', name:'Champion',     desc:'Win 5 matches',                       test:m=>m.wins>=5},
+  {id:'firstkill',  tier:'bronze', icon:'🩸', name:'First Blood',  desc:'Score your first elimination',        test:m=>m.ckills>=1},
+  {id:'sharp',      tier:'silver', icon:'🎯', name:'Sharpshooter', desc:'Get 5+ kills in a single match',      test:(m,c)=>c.matchKills>=5},
+  {id:'rampage',    tier:'gold',   icon:'💥', name:'Rampage',      desc:'Get 10+ kills in a single match',     test:(m,c)=>c.matchKills>=10},
+  {id:'firstwin',   tier:'bronze', icon:'🏆', name:'Winner',       desc:'Win your first match',                test:m=>m.wins>=1},
+  {id:'champ5',     tier:'silver', icon:'👑', name:'Champion',     desc:'Win 5 matches',                       test:m=>m.wins>=5},
+  {id:'champ15',    tier:'gold',   icon:'🏰', name:'Dynasty',      desc:'Win 15 matches',                      test:m=>m.wins>=15},
+  {id:'streak3',    tier:'silver', icon:'🔥', name:'Unstoppable',  desc:'Win 3 matches in a row',              test:m=>m.bestStreak>=3},
+  {id:'streak5',    tier:'gold',   icon:'☄️', name:'Legendary',    desc:'Win 5 matches in a row',              test:m=>m.bestStreak>=5},
+  {id:'wave5',      tier:'bronze', icon:'🌊', name:'Survivor',     desc:'Reach wave 5 in Endless Horde',       test:m=>m.bestWave>=5},
+  {id:'wave10',     tier:'silver', icon:'🧟', name:'Horde Master', desc:'Reach wave 10 in Endless Horde',      test:m=>m.bestWave>=10},
+  {id:'wave15',     tier:'gold',   icon:'💀', name:'Undying',      desc:'Reach wave 15 in Endless Horde',      test:m=>m.bestWave>=15},
+  {id:'matches10',  tier:'bronze', icon:'🎖', name:'Veteran',      desc:'Play 10 matches',                     test:m=>m.matches>=10},
+  {id:'matches50',  tier:'silver', icon:'🗡', name:'Warhorse',     desc:'Play 50 matches',                     test:m=>m.matches>=50},
+  {id:'kills100',   tier:'silver', icon:'💯', name:'Centurion',    desc:'Rack up 100 career kills',            test:m=>m.ckills>=100},
+  {id:'kills500',   tier:'gold',   icon:'⚔️', name:'Warbringer',   desc:'Rack up 500 career kills',            test:m=>m.ckills>=500},
+  {id:'lvl5',       tier:'bronze', icon:'⭐', name:'Rising Star',   desc:'Reach level 5',                       test:m=>m.level>=5},
+  {id:'lvl10',      tier:'silver', icon:'🌟', name:'Elite',        desc:'Reach level 10',                      test:m=>m.level>=10},
+  {id:'lvl20',      tier:'gold',   icon:'💫', name:'Ascendant',    desc:'Reach level 20',                      test:m=>m.level>=20},
+  {id:'grappler',   tier:'bronze', icon:'🪝', name:'Swinger',      desc:'Use the grapple hook in a match',     test:(m,c)=>c.grappled},
+  {id:'untouchable',tier:'gold',   icon:'🛡', name:'Untouchable',  desc:'Win a match without taking damage',   test:(m,c)=>c.win && c.dmgTaken<=0},
+  {id:'daily3',     tier:'silver', icon:'📅', name:'Regular',      desc:'Complete 3 daily challenges',         test:m=>m.dailies>=3},
 ];
-// Evaluate all achievements against current meta + this match's context; toast any newly unlocked.
+// Evaluate all achievements against current meta + this match's context; toast any newly
+// unlocked and pay out the tier's coin reward.
 function checkAchievements(ctx){
   const got=[];
   for(const a of ACHIEVEMENTS){
     if(meta.achieved.includes(a.id)) continue;
     let ok=false; try{ ok=!!a.test(meta, ctx||{}); }catch(e){}
-    if(ok){ meta.achieved.push(a.id); got.push(a); }
+    if(ok){ meta.achieved.push(a.id); meta.coins += TIER_COINS[a.tier]||25; got.push(a); }
   }
   if(got.length){ saveMeta();
-    got.forEach((a,i)=> setTimeout(()=>{ toast('🏅 '+a.name+' unlocked!'); sfx('level'); }, 1000 + i*1500)); }
+    got.forEach((a,i)=> setTimeout(()=>{ toast(TIER_ICON[a.tier]+' '+a.name+' unlocked! +'+(TIER_COINS[a.tier]||25)+' 🪙'); sfx('level'); }, 1000 + i*1500)); }
   return got;
 }
+
+// ===== Daily challenge =====
+// One deterministic challenge per calendar day (hashed from the date); completing it in any
+// match that day pays DAILY_COINS. Per-match feats come from the same ctx as achievements.
+const DAILY_COINS = 60;
+const DAILIES = [
+  {icon:'⚔',  desc:'Get 6+ kills in one match',             test:c=>c.matchKills>=6},
+  {icon:'🏆', desc:'Win a match (any mode)',                 test:c=>c.win},
+  {icon:'🌊', desc:'Reach wave 6 in Endless Horde',          test:c=>c.horde && c.wave>=6},
+  {icon:'🥉', desc:'Finish top 3 in Battle Royale / Squads', test:c=>!c.horde && (c.win || c.place<=3)},
+  {icon:'🪝', desc:'Grapple and get 3+ kills in one match',  test:c=>c.grappled && c.matchKills>=3},
+  {icon:'⏱',  desc:'Survive 90+ seconds in one match',       test:c=>c.time>=90},
+  {icon:'💨', desc:'Take under 30 damage (survive 45s+)',    test:c=>c.dmgTaken<30 && c.time>=45},
+];
+function dayKey(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function todaysDaily(){ const k=dayKey(); let h=0; for(let i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0; return DAILIES[h%DAILIES.length]; }
+function dailyDoneToday(){ return meta.dailyDone===dayKey(); }
+// Called at match end (before results render). Returns true if the daily was just completed.
+function checkDaily(ctx){
+  if(dailyDoneToday()) return false;
+  let ok=false; try{ ok=!!todaysDaily().test(ctx||{}); }catch(e){}
+  if(ok){ meta.dailyDone=dayKey(); meta.dailies++; meta.coins+=DAILY_COINS; saveMeta();
+    setTimeout(()=>{ toast('📅 Daily challenge complete! +'+DAILY_COINS+' 🪙'); sfx('level'); }, 600); }
+  return ok;
+}
+
+// ===== Shop (cosmetic trails) =====
+// Trails are player-only running particles; colors feed spark(). 'none' is free & default.
+const SHOP_ITEMS = [
+  {id:'ember',  icon:'🔥', name:'Ember Trail',   desc:'Smoldering embers in your wake',  cost:150, colors:['#ff9b3d','#ff6a2a']},
+  {id:'frost',  icon:'❄️', name:'Frost Trail',   desc:'A trail of glittering ice',       cost:150, colors:['#bfe9ff','#7ad0ff']},
+  {id:'toxic',  icon:'☠️', name:'Toxic Trail',   desc:'Dripping zombie-green ooze',      cost:200, colors:['#9dff5a','#5ad63a']},
+  {id:'shadow', icon:'🌑', name:'Shadow Trail',  desc:'Wisps of creeping darkness',      cost:250, colors:['rgba(50,44,70,.85)','rgba(80,66,110,.75)']},
+  {id:'star',   icon:'✨', name:'Star Trail',    desc:'Sparkling stardust footsteps',    cost:300, colors:['#fff6c0','#ffd166']},
+  {id:'royal',  icon:'👑', name:'Royal Trail',   desc:'Gold & violet — walk like a king',cost:500, colors:['#ffd166','#c08bff']},
+];
+function shopItem(id){ return SHOP_ITEMS.find(s=>s.id===id); }
 function weaponUnlocked(w){ return meta.level >= (w.unlock||1); }
 function grantXp(n){
   meta.xp += n; let leveled=false;
@@ -742,7 +855,7 @@ function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
   return { x,y, vx:0,vy:0, aim:0, kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
-    burn:0, burnSrc:null };
+    seed:rand(0,9), burn:0, burnSrc:null };
 }
 function blockedSpawn(x,y){
   for(const o of obstacles){ if(x>o.x-18 && x<o.x+o.w+18 && y>o.y-18 && y<o.y+o.h+18) return true; }
@@ -1201,6 +1314,9 @@ function updateZombie(z,dt){
   const m=len(mvx,mvy);
   if(m>0){ z.vx+=(mvx/m*z.speed-z.vx)*0.12; z.vy+=(mvy/m*z.speed-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
+  // dirt puffs scuffed up by the shamble (bigger zombies kick more)
+  if((z.vx*z.vx+z.vy*z.vy)>2500 && Math.random()<dt*5*z.size && inView(z.x,z.y,40))
+    spark(z.x+rand(-6,6)*z.size, z.y+15*z.size, 'rgba(140,118,80,.5)', rand(6,20), rand(-Math.PI*0.85,-Math.PI*0.15), rand(.3,.5));
   z.x=clamp(z.x+z.vx*dt,R,ARENA-R); z.y=clamp(z.y+z.vy*dt,R,ARENA-R);
   resolveObstacles(z);
 }
@@ -1238,6 +1354,10 @@ function updatePlayer(h,dt){
   if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt; if(h.grapCd>0) h.grapCd-=dt;
   updateGrapple(h,dt);
   stepDust(h,dt);
+  // equipped cosmetic trail (shop) — player only
+  const tr = meta.trail!=='none' && shopItem(meta.trail);
+  if(tr && (h.vx*h.vx+h.vy*h.vy)>3600 && Math.random()<dt*14)
+    spark(h.x+rand(-5,5), h.y+rand(8,15), pick(tr.colors), rand(6,22), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.3,.55));
   // low-health heartbeat — quickens as HP drops toward zero
   const lf = h.maxhp>0 ? h.hp/h.maxhp : 1;
   if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
@@ -1442,9 +1562,15 @@ function showResults(win, place){
   else { meta.deaths++; if(!horde) meta.streak=0; }
   if(horde){ if(hordeWave>meta.bestWave) meta.bestWave=hordeWave; }
   else if(meta.best===0 || place<meta.best) meta.best=place;
+  // coins: per-kill + win / horde-wave bonuses (achievements & the daily pay on top)
+  let coinsEarned = killsTotal*5 + (win?25:0) + (horde?hordeWave*4:0);
+  meta.coins += coinsEarned;
   saveMeta();
-  checkAchievements({ win, place, horde, matchKills:killsTotal,
-    dmgTaken:matchStat.dmgTaken, grappled:matchStat.grappled });
+  const mctxA = { win, place, horde, matchKills:killsTotal, wave:hordeWave, time:elapsed,
+    dmgTaken:matchStat.dmgTaken, grappled:matchStat.grappled };
+  const newAch = checkAchievements(mctxA);
+  const dailyHit = checkDaily(mctxA);
+  coinsEarned += newAch.reduce((s,a)=>s+(TIER_COINS[a.tier]||25),0) + (dailyHit?DAILY_COINS:0);
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden');
   lastWin = win;
   if(win){ confetti=[]; for(let i=0;i<90;i++) confetti.push({x:rand(0,W), y:rand(-H,0),
@@ -1466,6 +1592,11 @@ function showResults(win, place){
   el('rXpFill').style.width='0%';
   setTimeout(()=>{ el('rXpFill').style.width = clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%'; }, 120);   // animate the fill
   el('rCareer').innerHTML='Career: <b>'+meta.wins+'</b> wins · <b>'+meta.matches+'</b> matches · <b>'+meta.ckills+'</b> kills · K/D <b>'+kd()+'</b>'+(meta.bestWave?(' · wave <b>'+meta.bestWave+'</b>'):'');
+  // unlock banner: coins earned + any new achievement badges + daily-challenge completion
+  let ub='<div class="ru coin">🪙 +'+coinsEarned+' <span>coins</span></div>';
+  for(const a of newAch) ub+='<div class="ru '+a.tier+'">'+a.icon+' '+a.name+' <span>'+TIER_ICON[a.tier]+' unlocked</span></div>';
+  if(dailyHit) ub+='<div class="ru dailyhit">📅 Daily complete <span>+'+DAILY_COINS+' 🪙</span></div>';
+  el('rUnlocks').innerHTML=ub;
   el('results').classList.remove('hidden');
   if(lv) setTimeout(levelToast,400);
 }
@@ -2064,12 +2195,26 @@ function drawNameplate(h){
 }
 function drawZombie(z){
   if(window.Models3D && Models3D.drawZombie(ctx,z)){ return; }   // 3D model if available, else 2D below
-  const s=z.size, bob=Math.sin(z.walk)*2, step=Math.sin(z.walk)*3, flip=z.faceX<0?-1:1, flash=z.hitFlash>0;
+  const s=z.size, flip=z.faceX<0?-1:1, flash=z.hitFlash>0;
+  const now=performance.now()/1000, seed=z.seed||0;
+  const moving=(z.vx*z.vx+z.vy*z.vy)>200;
+  const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
+  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*3:0;
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.fillStyle='rgba(0,0,0,.20)'; ctx.beginPath(); ctx.ellipse(0,18,15,5,0,0,TAU); ctx.fill();
-  // arms reaching forward (outline under, skin over)
-  ctx.strokeStyle=INK; ctx.lineWidth=6.5; ctx.beginPath(); ctx.moveTo(-2,-2); ctx.lineTo(flip*13,-3); ctx.moveTo(2,0); ctx.lineTo(flip*13,1); ctx.stroke();
-  ctx.strokeStyle=flash?'#fff':z.skin; ctx.lineWidth=4.5; ctx.beginPath(); ctx.moveTo(-2,-2); ctx.lineTo(flip*13,-3); ctx.moveTo(2,0); ctx.lineTo(flip*13,1); ctx.stroke();
+  // lurch lean: pitched into the shamble with an uneven stagger (shadow stays flat)
+  ctx.rotate(moving ? flip*0.07 + Math.sin(z.walk*0.5+seed)*0.055 + Math.sin(z.walk)*0.03
+                    : Math.sin(now*1.6+seed)*0.03);
+  // reaching arm (front): claws forward, pawing with the shamble
+  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8;
+  ctx.strokeStyle=INK; ctx.lineWidth=6.5; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*13,-3+paw); ctx.stroke();
+  ctx.strokeStyle=flash?'#fff':z.skin; ctx.lineWidth=4.5; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*13,-3+paw); ctx.stroke();
+  ctx.fillStyle=flash?'#fff':z.skin; ctx.beginPath(); ctx.arc(flip*13.5,-2.6+paw,2.2,0,TAU); ctx.fill();
+  // dragging arm (back): hangs limp behind, knuckles trailing near the ground
+  const drag=moving?Math.sin(z.walk*0.5+seed)*1.6:sway*0.6;
+  ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(flip*-8+drag*flip,11+Math.abs(drag)*0.4); ctx.stroke();
+  ctx.strokeStyle=flash?'#fff':z.skin; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(flip*-8+drag*flip,11+Math.abs(drag)*0.4); ctx.stroke();
+  ctx.fillStyle=flash?'#fff':z.skin; ctx.beginPath(); ctx.arc(flip*-8.3+drag*flip,12+Math.abs(drag)*0.4,2.1,0,TAU); ctx.fill();
   // legs
   ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(-4,8); ctx.lineTo(-5,16+step); ctx.moveTo(4,8); ctx.lineTo(5,16-step); ctx.stroke();
   ctx.strokeStyle='#384824'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(-4,8); ctx.lineTo(-5,16+step); ctx.moveTo(4,8); ctx.lineTo(5,16-step); ctx.stroke();
@@ -2183,7 +2328,12 @@ function renderMenu(){
   const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
   const xp=el('menuXp'); if(xp) xp.style.width=clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%';
+  const co=el('menuCoins'); if(co) co.textContent=meta.coins;
   const pl=el('playLabel'); if(pl) pl.textContent='PLAY · '+(MODE_NAME[gameMode]||'BATTLE ROYALE');
+  const dc=el('dailyCard'); if(dc){ const d=todaysDaily(), done=dailyDoneToday();
+    dc.innerHTML='<span class="dic">'+(done?'✅':d.icon)+'</span><div class="dtx"><b>Daily Challenge</b>'
+      +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+DAILY_COINS)+'</span>';
+    dc.classList.toggle('done',done); }
 }
 function goAvatar(){ audioInit();
   const v=el('nameInput').value.trim(); meta.name=v||'deegan'; saveMeta();
@@ -2200,14 +2350,39 @@ function renderStats(){
 function renderAchievements(){
   const g=el('achGrid'); if(!g) return;
   const n=meta.achieved.length, tot=ACHIEVEMENTS.length;
-  el('achProg').innerHTML='<b>'+n+'</b> / '+tot+' unlocked';
+  const per={bronze:0,silver:0,gold:0};
+  for(const a of ACHIEVEMENTS) if(meta.achieved.includes(a.id)) per[a.tier]++;
+  el('achProg').innerHTML='<b>'+n+'</b> / '+tot+' unlocked · 🥉'+per.bronze+' 🥈'+per.silver+' 🥇'+per.gold;
   g.innerHTML=ACHIEVEMENTS.map(a=>{ const got=meta.achieved.includes(a.id);
-    return '<div class="achcard'+(got?'':' locked')+'"><span class="aic">'+(got?a.icon:'🔒')+'</span>'
-      +'<div class="atxt"><b>'+a.name+'</b><span>'+a.desc+'</span></div>'
+    return '<div class="achcard tier-'+a.tier+(got?'':' locked')+'"><span class="aic">'+(got?a.icon:'🔒')+'</span>'
+      +'<div class="atxt"><b>'+a.name+' <em class="tchip '+a.tier+'">'+TIER_ICON[a.tier]+'</em></b><span>'+a.desc+' · 🪙'+(TIER_COINS[a.tier]||25)+'</span></div>'
       +(got?'<span class="adone">✓</span>':'')+'</div>'; }).join('');
 }
 function openAchievements(){ renderAchievements(); el('achievements').classList.remove('hidden'); }
 function closeAchievements(){ el('achievements').classList.add('hidden'); }
+// ----- shop (cosmetic trails) -----
+function renderShop(){
+  el('shopCoins').innerHTML='Your coins: <b>🪙 '+meta.coins+'</b> — earn more from kills, wins & dailies';
+  el('shopGrid').innerHTML =
+    '<div class="achcard shopcard'+(meta.trail==='none'?' equipped':'')+'" data-shop="none"><span class="aic">🚫</span>'
+    +'<div class="atxt"><b>No Trail</b><span>Plain footsteps</span></div>'
+    +'<button class="shopbtn'+(meta.trail==='none'?' on':'')+'">'+(meta.trail==='none'?'EQUIPPED':'EQUIP')+'</button></div>'
+    + SHOP_ITEMS.map(s=>{ const owned=meta.owned.includes(s.id), eq=meta.trail===s.id;
+      const btn = eq?'EQUIPPED' : owned?'EQUIP' : '🪙 '+s.cost;
+      return '<div class="achcard shopcard'+(eq?' equipped':'')+(!owned&&meta.coins<s.cost?' poor':'')+'" data-shop="'+s.id+'">'
+        +'<span class="aic">'+s.icon+'</span><div class="atxt"><b>'+s.name+'</b><span>'+s.desc+'</span></div>'
+        +'<button class="shopbtn'+(eq?' on':'')+'">'+btn+'</button></div>'; }).join('');
+}
+function shopTap(id){
+  if(id!=='none' && !meta.owned.includes(id)){ const s=shopItem(id); if(!s) return;
+    if(meta.coins<s.cost){ toast('Not enough coins — earn more in matches!'); return; }
+    meta.coins-=s.cost; meta.owned.push(s.id); meta.trail=s.id; saveMeta();
+    toast(s.icon+' '+s.name+' purchased & equipped!'); sfx('level');
+  } else { meta.trail=id; saveMeta(); }
+  renderShop(); renderMenu();
+}
+function openShop(){ renderShop(); el('shop').classList.remove('hidden'); }
+function closeShop(){ el('shop').classList.add('hidden'); }
 // ----- game-updated notification -----
 function openWhatsNew(){
   const c=CHANGELOG[0];
@@ -2234,7 +2409,18 @@ function portraitChibi(av){
   o.fillStyle='#15151a'; o.beginPath(); o.ellipse(-5,19,3.6,2,0,0,TAU); o.ellipse(5,19,3.6,2,0,0,TAU); o.fill();
   // torso
   o.strokeStyle=INK; o.lineWidth=2; o.fillStyle=L.outfit; rr(o,-10,-7,20,18,6); o.fill(); o.stroke();
-  o.save(); rr(o,-10,-7,20,18,6); o.clip(); o.fillStyle='rgba(255,255,255,.13)'; o.fillRect(-10,-8,7,19); o.fillStyle='rgba(0,0,0,.12)'; o.fillRect(5,-8,5,19); o.restore();
+  o.save(); rr(o,-10,-7,20,18,6); o.clip(); o.fillStyle='rgba(255,255,255,.13)'; o.fillRect(-10,-8,7,19); o.fillStyle='rgba(0,0,0,.12)'; o.fillRect(5,-8,5,19);
+  // bandolier strap on heavy fighters (matches in-game drawHuman)
+  if(av.health>=118){ o.strokeStyle='rgba(52,38,24,.9)'; o.lineWidth=3.2;
+    o.beginPath(); o.moveTo(-8,-6.5); o.lineTo(7,8.5); o.stroke();
+    o.fillStyle='#c8b060'; for(let i=0;i<3;i++){ const k=0.28+i*0.22;
+      o.beginPath(); o.arc(-8+15*k,-6.5+15*k,1.1,0,TAU); o.fill(); } }
+  // belt + buckle
+  o.fillStyle='rgba(0,0,0,.30)'; o.fillRect(-10,5.3,20,3);
+  o.fillStyle='#d8b04a'; o.fillRect(-1.9,5,3.8,3.7);
+  o.fillStyle='rgba(0,0,0,.35)'; o.fillRect(-0.7,6,1.4,1.7);
+  o.restore();
+  o.strokeStyle='rgba(0,0,0,.18)'; o.lineWidth=2; o.beginPath(); o.arc(0,-6,5.5,0.16*Math.PI,0.84*Math.PI); o.stroke();   // collar
   // head
   const hy=-19; o.fillStyle=L.skin; o.strokeStyle=INK; o.lineWidth=2; o.beginPath(); o.arc(0,hy,10.5,0,TAU); o.fill(); o.stroke();
   o.fillStyle='rgba(0,0,0,.06)'; o.beginPath(); o.arc(4,hy+1.5,5.5,0,TAU); o.fill();
@@ -2356,6 +2542,10 @@ el('menuBtn').addEventListener('click',()=>{ el('results').classList.add('hidden
 // achievements
 el('achBtn').addEventListener('click',()=>{ audioInit(); openAchievements(); });
 el('achClose').addEventListener('click',closeAchievements);
+// shop
+el('shopBtn').addEventListener('click',()=>{ audioInit(); openShop(); });
+el('shopClose').addEventListener('click',closeShop);
+el('shopGrid').addEventListener('click',e=>{ const c=e.target.closest('[data-shop]'); if(c) shopTap(c.dataset.shop); });
 // what's-new
 el('wnClose').addEventListener('click',closeWhatsNew);
 el('verLink').textContent='v'+GAME_VERSION+' · what’s new';

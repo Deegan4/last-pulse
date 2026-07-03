@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
 _Last updated: 2026-07-03. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v1.7.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+v1.8.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -151,6 +151,33 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   readiness check, permission allowlist. Plus `scripts/parse-check.mjs` + `scripts/validate.mjs`.
   ⚠ Hooks activate only after `/hooks` reload or a session restart (the `.claude/` dir was
   created mid-session).
+- **Zombie animation pass (v1.8.0)**: `drawZombie` caught up with the human pass — per-zombie
+  `seed` (makeZombie), **lurch lean** (`ctx.rotate` after the flat shadow: forward pitch into
+  `flip` + uneven `walk*0.5`+`walk` stagger; gentle sway when idle), **reaching front arm** that
+  paws with the shamble + **dragging back arm** with knuckles trailing near the ground (both get
+  hand blobs), idle breathing sway on `bob`, and **dirt puffs** in `updateZombie` (speed² > 2500,
+  rate & spread scale with `z.size`, `inView`-guarded). Verified via scratchpad hook spawning all
+  3 kinds beside the player.
+- **Portrait sync (v1.8.0)**: `portraitChibi` now draws the character-pass-3 torso details —
+  belt + gold buckle on everyone, studded bandolier on heavies (`av.health>=118`), collar arc —
+  so grid/menu portraits match in-game chibis.
+- **Coins & shop (v1.8.0)**: `meta.coins` (dd2_coins) earned at match end (5/kill, +25 win,
+  +4/wave in horde), from achievement tiers, and the daily. `SHOP_ITEMS` = 6 cosmetic **trails**
+  (150–500 🪙; colors fed to `spark` from `updatePlayer`, player-only, speed-gated like stepDust);
+  `meta.owned`/`meta.trail` persist (dd2_owned/dd2_trail). `#shop` modal (reuses `.modal` +
+  `.achcard` rows, delegated `data-shop` clicks): buy → auto-equip, tap owned → equip, "No Trail"
+  free. Coin badge (`#menuCoins`) sits in the start-screen level row.
+- **Tiered achievements (v1.8.0)**: `ACHIEVEMENTS` grew 14→21, each with `tier:
+  bronze|silver|gold` (`TIER_COINS` 25/75/150 paid on unlock; existing ids/saves unchanged). New:
+  champ15, streak5, wave15, matches50, kills500, lvl20, daily3. Grid shows tier left-border +
+  medal chip + coin reward; header counts per-tier medals.
+- **Daily challenge (v1.8.0)**: one deterministic challenge/day (`todaysDaily()` hashes
+  `dayKey()` into `DAILIES[7]`; tests reuse the achievements match-ctx, which now also carries
+  `wave` + `time`). `checkDaily` in `showResults` pays 60 🪙 once/day (dd2_daily = day-key,
+  dd2_dailies counts for the daily3 badge). Start screen shows a `#dailyCard` (✅/DONE state).
+- **Results unlock banner (v1.8.0)**: `#rUnlocks` strip between stat tiles and the XP bar —
+  always a "🪙 +N coins" chip, plus a tier-bordered row per fresh achievement and a green
+  "📅 Daily complete" row (`.runlocks:empty` hides it outside matches).
 
 ## How to run / validate / deploy
 - The stage **fills the whole viewport** on every device (`resize()` sets `#game` to
@@ -194,21 +221,19 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   browser over http(s) — the 2D fallback is the tested path.
 
 ## Next enhancements (prioritized)
-_All pre-scoped bundles shipped (see "Current state") — v1.7.0 landed achievements, the
-character animation pass, the grapple hook, and the update popup._ Open work:
+_All pre-scoped bundles shipped (see "Current state") — v1.8.0 landed the zombie animation
+pass, portrait sync, and the meta-depth bundle (coins/shop, tiered achievements, daily
+challenge, results unlock banner)._ Open work:
 
-1. **Zombie animation pass** — lurch lean, dragging-arm sway, dirt puffs, so the horde matches
-   the upgraded humans (drawZombie is one pass behind drawHuman).
-2. **Portrait sync** — `portraitChibi` doesn't yet show the belt/bandolier from character pass 3.
-3. **Balance from real play** — squad sizes, building density, weapon power (Horde ramp and
-   BR/Squad zombie pressure are done).
-4. **Meta depth** — tiered achievements (bronze/silver/gold), results-screen unlock banner,
-   daily challenge, currency/shop, seasonal cosmetics.
-5. **Meshy 3D characters** — blocked on the API key (see Gotchas); wiring is done, generation isn't.
-6. **Online** — would need a backend (out of single-file scope); only if the user wants it.
+1. **Balance from real play** — squad sizes, building density, weapon power, and the new coin
+   economy rates (5/kill · 25/win · 60/daily vs 150–500 trail prices) — needs playtest feedback.
+2. **Meta depth 2** — seasonal cosmetics, more shop categories (nameplate titles? victory
+   effects?), weekly challenges on top of dailies.
+3. **Meshy 3D characters** — blocked on the API key (see Gotchas); wiring is done, generation isn't.
+4. **Online** — would need a backend (out of single-file scope); only if the user wants it.
 
 ## Open questions for the user
 - Real on-phone feel: movement speed, fire cadence, zombie pressure, weapon balance, and the new
-  v1.7.0 popup/achievements flow — needs playtest feedback to tune.
+  v1.8.0 shop/daily/coin flow — needs playtest feedback to tune (are trail prices fair?).
 - Batch several changes per `GAME_VERSION` bump, or bump every ship? (Currently: bump per ship.)
 - Provide `MESHY_API_KEY` via environment config to unblock 3D character generation?
