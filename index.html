@@ -268,6 +268,20 @@
   .achcard .atxt span{font-size:12px;opacity:.8}
   .achcard .adone{margin-left:auto;color:#3a9d2a;font-weight:900;font-size:18px;flex:0 0 auto}
 
+  /* game-updated notification */
+  .wnburst{font-size:44px;line-height:1;animation:wnpop .6s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes wnpop{from{transform:scale(0) rotate(-30deg)}to{transform:scale(1) rotate(0)}}
+  .wnver{flex:0 0 auto;background:#ffd166;color:#4a3a10;font-weight:900;font-size:13px;
+    border-radius:999px;padding:4px 16px;letter-spacing:1.5px;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+  .wnlist{flex:0 0 auto;display:flex;flex-direction:column;gap:9px;width:min(90%,380px);margin-top:4px}
+  .wnitem{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.96);color:#1d2a14;
+    border-radius:13px;padding:11px 14px;box-shadow:0 3px 0 rgba(0,0,0,.22)}
+  .wnitem .ic{font-size:24px;width:28px;text-align:center;flex:0 0 auto}
+  .wnitem .tx{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+  .wnitem .tx b{font-size:15px}
+  .wnitem .tx span{font-size:12px;opacity:.8}
+  .verlink{text-decoration:underline;cursor:pointer;color:#e6f2c8}
+
   #results .placard{font-size:clamp(30px,10vw,56px);font-weight:800;font-style:italic;text-transform:uppercase;
     color:#fff;text-shadow:2px 2px 0 #2f4420}
   #results .placard.win{color:#ffe27a;text-shadow:2px 2px 0 #7a5a10;animation:winGlow 1.4s ease-in-out infinite}
@@ -357,7 +371,7 @@
     <button class="btn play" id="toAvatarBtn"><span id="playLabel">PLAY</span></button>
     <div id="statsCard" class="statscard"></div>
     <button class="btn ghost achbtn" id="achBtn">🏅 Achievements <span id="achCount" class="achcount"></span></button>
-    <div class="footer" style="color:#cfe0b3;font-size:12px">A canvas remake · twin-stick survival royale</div>
+    <div class="footer" style="color:#cfe0b3;font-size:12px">A canvas remake · twin-stick survival royale · <span id="verLink" class="verlink"></span></div>
   </div>
 
   <!-- ===== Avatar select ===== -->
@@ -415,6 +429,15 @@
     <div id="achProg" class="career"></div>
     <div class="achgrid" id="achGrid"></div>
     <button class="close" id="achClose">Close</button>
+  </div>
+
+  <!-- ===== Game-updated notification ===== -->
+  <div id="whatsnew" class="modal hidden">
+    <div class="wnburst">🎉</div>
+    <h2 class="heading">Game Updated!</h2>
+    <div class="wnver" id="wnVer">v1.0</div>
+    <div class="wnlist" id="wnList"></div>
+    <button class="close" id="wnClose">Let's Go!</button>
   </div>
 
   <!-- spectate bar (after the player dies) -->
@@ -514,6 +537,19 @@ const WEAPONS = [
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
+
+// ===== Version / what's-new =====
+// Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
+// changes; returning players get a one-time "Game Updated!" popup with the newest entry.
+const GAME_VERSION = '1.7.0';
+const CHANGELOG = [
+  { v:'1.7.0', items:[
+    ['🏅','Achievements','14 badges to unlock — track them from the menu'],
+    ['🧍','Livelier fighters','two-handed grips, blinks, run lean & foot dust'],
+    ['🪝','Grapple hook','fire at a building and swing with momentum (F)'],
+    ['📱','Small-screen fixes','settings & results now scroll — nothing cut off'],
+  ]},
+];
 
 // meta / progression
 const meta = {
@@ -2172,6 +2208,22 @@ function renderAchievements(){
 }
 function openAchievements(){ renderAchievements(); el('achievements').classList.remove('hidden'); }
 function closeAchievements(){ el('achievements').classList.add('hidden'); }
+// ----- game-updated notification -----
+function openWhatsNew(){
+  const c=CHANGELOG[0];
+  el('wnVer').textContent='WHAT’S NEW · v'+c.v;
+  el('wnList').innerHTML=c.items.map(i=>'<div class="wnitem"><span class="ic">'+i[0]+'</span>'
+    +'<div class="tx"><b>'+i[1]+'</b><span>'+i[2]+'</span></div></div>').join('');
+  el('whatsnew').classList.remove('hidden');
+}
+function closeWhatsNew(){ el('whatsnew').classList.add('hidden'); safeSet('dd2_seenver',GAME_VERSION); }
+// auto-show once per version — but not to brand-new players (nothing is "new" to them)
+function maybeShowWhatsNew(){
+  const seen=safeGet('dd2_seenver','');
+  if(seen===GAME_VERSION) return;
+  if(!seen && meta.matches===0 && meta.level<=1){ safeSet('dd2_seenver',GAME_VERSION); return; }
+  openWhatsNew();
+}
 function portraitChibi(av){
   const c=document.createElement('canvas'); c.width=70; c.height=84; const o=c.getContext('2d');
   const L=av.look; o.translate(35,58); o.lineJoin='round'; o.lineCap='round';
@@ -2304,6 +2356,10 @@ el('menuBtn').addEventListener('click',()=>{ el('results').classList.add('hidden
 // achievements
 el('achBtn').addEventListener('click',()=>{ audioInit(); openAchievements(); });
 el('achClose').addEventListener('click',closeAchievements);
+// what's-new
+el('wnClose').addEventListener('click',closeWhatsNew);
+el('verLink').textContent='v'+GAME_VERSION+' · what’s new';
+el('verLink').addEventListener('click',openWhatsNew);
 // spectate → results
 el('specBtn').addEventListener('click',()=>{ if(!ended){ ended=true; showResults(false, deathPlace); } });
 
@@ -2344,6 +2400,7 @@ renderModeSel();
 setupTouch();
 buildDecor();
 show('startScreen');
+maybeShowWhatsNew();
 requestAnimationFrame(loop);
 
 })();

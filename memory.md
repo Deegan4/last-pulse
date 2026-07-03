@@ -116,6 +116,12 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   time-of-day, seeded speckles/blades), animated water (sand shore, shallow layer, drifting
   ripples, glint), swaying tree canopies, shockwave `rings[]` on explosions / lightning hits /
   supply-drop landings.
+- **Game-updated notification**: `GAME_VERSION` + `CHANGELOG` consts (top entry = newest) near the
+  data tables. `maybeShowWhatsNew()` at boot: brand-new players (no seenver, 0 matches, lvl 1) get
+  silently stamped; returning players see the `#whatsnew` modal (🎉 burst, gold version chip,
+  feature cards) once per version — dismissing stamps `dd2_seenver`. Footer "vX · what's new" link
+  (`#verLink`) reopens it anytime. **Bump GAME_VERSION + add a CHANGELOG entry when shipping
+  player-visible changes.**
 - **Character upgrade pass 3** (drawHuman): body **lean** into the run (rotate by vx, shadow stays
   flat), **second arm** — support hand on the foregrip for two-handed guns, free swinging/hanging
   back arm for Pistol/Magnum (`oneHand`), **idle breathing** (time-based bob via per-entity
