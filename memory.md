@@ -1,19 +1,21 @@
 # memory.md — project handoff & running notes
 
-_Last updated: 2026-06-08. Working memory for **Don't Die — Battle Royale**. For architecture
-details see [CLAUDE.md](CLAUDE.md); this file is the "where we are / what's next" snapshot._
+_Last updated: 2026-07-03. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
+v1.7.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
 A single-file HTML5 canvas game — portrait, mobile-first, cartoon **twin-stick survival
-royale** — recreated from screenshots of the StickyGames title (all art is canvas-drawn; no
-original sprites). Everything lives in [`index.html`](index.html). No build step, no deps.
+royale** — a from-scratch remake inspired by the StickyGames title _Don't Die_ (all art is
+canvas-drawn; no original sprites). Everything lives in [`index.html`](index.html): the game
+IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
-- **Core loop**: avatar select (9 chars, level-gated unlocks), weapon select, grass-field
+- **Core loop**: avatar select (15 chars, level-gated unlocks), weapon select, grass-field
   arena, shrinking "safe area", 15-player field of bot humans + roaming zombies (normal/
-  runner/brute), XP/level, results screen. Twin-stick touch + WASD/mouse fallback.
-- **Weapons (8)**: Pistol, Rifle, Shotgun, Sniper, SMG, Minigun, Flamethrower (burn DoT),
-  Crossbow. Ammo + auto-reload, pistol crit, sniper/crossbow pierce.
+  runner/brute), XP/level, results screen. Twin-stick touch + WASD/mouse + gamepad.
+- **Weapons (10)**: Pistol, Rifle, Shotgun, SMG, Magnum, Sniper, Crossbow, Flamethrower
+  (burn DoT), Minigun, Tommy. Ammo + auto-reload, pistol crit, sniper/crossbow pierce.
 - **Pickups & supply drops**: health, medkit, armor (blue shield), ammo, weapon swaps;
   parachuting supply crates with a strong weapon + armor.
 - **Juice**: hit/kill markers, kill-streak callouts, blood + ground splats, damage-direction
@@ -153,19 +155,23 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 ## How to run / validate / deploy
 - The stage **fills the whole viewport** on every device (`resize()` sets `#game` to
   `window.innerWidth/Height` in JS — never CSS `min()/calc()`, which iOS collapses to 0).
-- **Play**: `https://raw.githack.com/Deegan4/last-pulse/main/index.html` (repo is **public**).
-  Add a `?v=...` cache-buster after pushing. Cleaner options: GitHub **Pages** (Settings → Pages
-  → main → / root) → `https://deegan4.github.io/last-pulse/`, or **Vercel** (import the GitHub
-  repo at vercel.com → static deploy via `vercel.json`; auto-redeploys on push to `main`). Both
-  Pages and Vercel need a one-time manual setup in the user's dashboard — I can't do it (no
-  deploy tool; the Vercel MCP here is read-only).
-- **Validate**: `node scripts/validate.mjs` (parse-check), then render headless at ~430×932 with
-  the bundled Chromium `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` driven by the global
-  `playwright` module. Read the PNG + check console for errors.
-- **Deploy**: commit to branch `claude/run-game-DkAJ5`, then mirror onto `main`. GitHub Actions
-  DO run here (a Pages deploy ran ~32s) but the token **cannot enable Pages** (`enablement:true`
-  left `has_pages:false`), so Pages needs the one-time toggle: Settings → Pages → Deploy from a
-  branch → `main` / root. Then it rebuilds on every push — no workflow needed.
+- **Play**: `https://raw.githack.com/Deegan4/last-pulse/main/index.html` (repo is **public**);
+  add a `?v=...` cache-buster after pushing. A **Vercel** integration is connected
+  (`kollins-projects/last-pulse`) and auto-deploys `main` + PR branches on push — its deployment
+  is the "CI" status check on PRs. GitHub Pages remains an option but needs the one-time
+  user-side toggle (Settings → Pages → `main` / root).
+- **Validate**: `node scripts/validate.mjs` (parse-checks both script blocks), then drive the
+  real game headless with `.claude/skills/run-brawl-arena/driver.mjs --play [--mode m --shoot]`
+  (bundled Chromium + global playwright, ~430×932; fails on any page error). Read the PNGs.
+  For closure-scoped internals, awk-inject a `window.__hook` into a **throwaway copy** — never
+  commit hooks (`grep -c "window.__" index.html` → 0).
+- **Deploy**: work on branch `claude/skills-37sg64`, push, open a **draft PR**. Direct
+  `git push origin main` fails with **HTTP 503** (persistent) — when the user says "push to
+  main", mark the PR ready and **merge via the GitHub API** (rebase method), then re-sync:
+  `git fetch origin main && git checkout -B claude/skills-37sg64 origin/main` (+
+  `--force-with-lease` on the next branch push; the branch holds only already-merged history).
+  The API rebase-merge stamps GitHub's committer → merged commits show "Unverified" and the
+  stop-hook flags them; it's cosmetic — do NOT rewrite `main` over it.
 
 ## Gotchas / constraints (learned the hard way)
 - **Network allowlist** blocks `stickygames.com` and most third-party hosts — can't fetch the
@@ -178,23 +184,31 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   treat it as a pessimistic lower bound, not the on-phone number.
 - I **cannot** change repo visibility or enable Pages (no tool); those are user-side toggles.
 - Headless tests use a dumb scripted player that dies fast — not a real balance signal; a
-  competent kiting run is the check. Use a temporary `?bot`/`?win` debug hook for verification
-  and **remove it before committing**.
+  competent kiting run is the check. Use a temporary `window.__hook` in a throwaway copy for
+  verification and **never commit hooks**.
+- **Meshy 3D assets are blocked in this session**: no `MESHY_API_KEY` in the env and the Meshy
+  MCP needs interactive OAuth. 3/28 manifest assets generated (alex, zombie-normal, pistol).
+  Unblock: user adds `MESHY_API_KEY` to the environment config (never paste keys into chat) or
+  authorizes the MCP in an interactive session, then `node scripts/gen-meshy.mjs`.
+- The three.js CDN (unpkg) is blocked headless, so the 3D path can only be verified in a real
+  browser over http(s) — the 2D fallback is the tested path.
 
 ## Next enhancements (prioritized)
-_Done: Progression & stats, character art, joystick upgrade, **New modes & bigger map** (below)._ Remaining:
+_All pre-scoped bundles shipped (see "Current state") — v1.7.0 landed achievements, the
+character animation pass, the grapple hook, and the update popup._ Open work:
 
-_All pre-scoped bundles are shipped (see "Current state")._ Fresh ideas / open work:
-
-0. _(done)_ Spawns/pickups/supply-drops now avoid water + buildings (`blockedSpawn`).
-1. **Balance from real play** — _Horde wave ramp done_ (`hordeScale`/`hordeKind`); _BR/Squad
-   zombie pressure done_ (`reinforceZombies` trickles zombies just inside the safe zone to a
-   target of `min(10, 3+aliveHumans)`, ~every 7–11s, never within 320px of the player). Still
-   open: squad sizes, building density, weapon power.
-2. **Meta depth** — daily challenge, currency/shop, more avatars/weapons, seasonal cosmetics.
-3. **Online** — would need a backend (out of single-file scope); only if the user wants it.
+1. **Zombie animation pass** — lurch lean, dragging-arm sway, dirt puffs, so the horde matches
+   the upgraded humans (drawZombie is one pass behind drawHuman).
+2. **Portrait sync** — `portraitChibi` doesn't yet show the belt/bandolier from character pass 3.
+3. **Balance from real play** — squad sizes, building density, weapon power (Horde ramp and
+   BR/Squad zombie pressure are done).
+4. **Meta depth** — tiered achievements (bronze/silver/gold), results-screen unlock banner,
+   daily challenge, currency/shop, seasonal cosmetics.
+5. **Meshy 3D characters** — blocked on the API key (see Gotchas); wiring is done, generation isn't.
+6. **Online** — would need a backend (out of single-file scope); only if the user wants it.
 
 ## Open questions for the user
-- Real on-phone feel: movement speed, fire cadence, zombie pressure, weapon balance — needs
-  playtest feedback to tune.
-- Which next bundle to build first (recommend **Progression & stats**).
+- Real on-phone feel: movement speed, fire cadence, zombie pressure, weapon balance, and the new
+  v1.7.0 popup/achievements flow — needs playtest feedback to tune.
+- Batch several changes per `GAME_VERSION` bump, or bump every ship? (Currently: bump per ship.)
+- Provide `MESHY_API_KEY` via environment config to unblock 3D character generation?
