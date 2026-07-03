@@ -94,6 +94,6 @@ Want to drive it headlessly (launch, play a match, screenshot, smoke-test)? Ther
 node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde --shoot
 ```
 
-See [CLAUDE.md](CLAUDE.md) for architecture notes and [memory.md](memory.md) for the running design log.
+See [CLAUDE.md](CLAUDE.md) for architecture notes, [memory.md](memory.md) for the running design log, and [ROADMAP.md](ROADMAP.md) for the future plan.
 
 <div align="center"><sub>A from-scratch canvas remake inspired by the StickyGames title <em>Don't Die</em> — all art is drawn with canvas shapes, no original sprites.</sub></div>
