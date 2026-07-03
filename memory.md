@@ -11,6 +11,15 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.1.1 fighter visibility fix** (user-reported: characters looked faded/see-through): `drawDayNight()`
+  (the dusk/night screen-space tint) was called AFTER the whole world render, so it dimmed +
+  desaturated characters/decor along with the ground → low-contrast, washed-out fighters. Fix:
+  moved `drawDayNight()` to run right after the field + ground-decor pass and BEFORE the y-sorted
+  entity pass (split the camera-transform into two save/translate blocks), so the tint colors only
+  the ground and characters draw at full brightness on top. Also softened night from
+  `rgba(18,28,74,.36)`→`.30`. Day is a no-op (unchanged). Verified night + dusk headless — fighters
+  now crisp/opaque. **Gotcha: full-screen canvas overlays (tints/vignettes) drawn after entities
+  wash them out; tint the ground layer, not the entities.** GAME_VERSION 2.1.1.
 - **v2.1.0 main-menu split**: the old `#startScreen` combined the landing page + mode picker.
   Now `#startScreen` is a pure **home screen** (logo, fighter card, ▶ PLAY, daily, stats,
   achievements/shop) and the mode cards moved to a new `#modeScreen` (`.top` back arrow
