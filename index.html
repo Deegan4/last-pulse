@@ -351,6 +351,84 @@
   #specBar .specinfo b{color:#fff}
   .specbtn{cursor:pointer;border:none;border-radius:999px;padding:7px 14px;font-weight:800;font-size:12px;
     background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f}
+
+  /* ================================================================
+     UI v2 — design-system override layer. Deep "midnight forest" glass
+     look: darker layered gradients, frosted panels (backdrop blur),
+     entrance motion on screens/modals, hero-button sheen, and notch
+     safe-areas. Overrides earlier rules; selectors untouched so all JS
+     hooks keep working. Tune tokens here, not per-rule.
+     ================================================================ */
+  :root{
+    --bg0:#131b0c; --bg1:#22331a; --bg2:#31491f;
+    --glass:rgba(22,33,13,.58); --stroke:rgba(255,255,255,.13); --stroke2:rgba(214,255,110,.55);
+    --acc:#c8f556; --gold:#ffd24a;
+    --r-lg:20px; --r-md:14px;
+    --shadow-md:0 10px 26px rgba(0,0,0,.38); --shadow-lg:0 20px 44px rgba(0,0,0,.5);
+  }
+  *{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',
+    "Trebuchet MS",sans-serif}
+  /* screens: deep layered forest gradient + smooth entrance */
+  .screen{background:
+    radial-gradient(135% 95% at 50% -8%, var(--bg2), var(--bg1) 52%, var(--bg0) 100%);
+    scrollbar-width:none}
+  .screen::-webkit-scrollbar{display:none}
+  .screen:not(.hidden){animation:scrIn .3s cubic-bezier(.2,.9,.3,1)}
+  @keyframes scrIn{from{opacity:0;transform:translateY(12px) scale(.996)}to{opacity:1;transform:none}}
+  /* modals: frosted backdrop + slide-up */
+  .modal{background:rgba(12,18,7,.66);backdrop-filter:blur(12px) saturate(1.15);
+    -webkit-backdrop-filter:blur(12px) saturate(1.15)}
+  .modal:not(.hidden){animation:mdIn .27s cubic-bezier(.2,.9,.3,1)}
+  @keyframes mdIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+  /* glass cards everywhere */
+  .card,.fighter,.statscard .st,.modecard,#results .career,#results .rstats > div,
+  .xpwrap,.rnext,.achcard.locked{
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015)) padding-box,var(--glass);
+    border:1.5px solid var(--stroke);
+    backdrop-filter:blur(9px); -webkit-backdrop-filter:blur(9px)}
+  .card{border-radius:var(--r-lg);box-shadow:var(--shadow-md)}
+  .card.sel{border-color:var(--stroke2);
+    box-shadow:0 0 0 3px rgba(214,255,110,.16), 0 0 26px rgba(198,245,86,.14), var(--shadow-md)}
+  .fighter,.modecard{border-radius:16px}
+  .modecard.on{background:linear-gradient(180deg,rgba(205,238,106,.22),rgba(120,170,50,.12)) padding-box,var(--glass);
+    border-color:var(--stroke2);box-shadow:0 0 0 2.5px rgba(214,255,110,.2), 0 0 30px rgba(198,245,86,.13), var(--shadow-md)}
+  /* typography polish */
+  .heading{letter-spacing:1.5px;
+    text-shadow:0 2px 0 rgba(0,0,0,.42), 0 0 30px rgba(198,245,86,.22)}
+  .logo{background:linear-gradient(180deg,#ffffff 55%,#cfe89a);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    text-shadow:none;filter:drop-shadow(3px 3px 0 #1e2f12) drop-shadow(0 0 26px rgba(180,255,120,.32))}
+  .logo small{background:none;-webkit-text-fill-color:#d6ff6e}
+  /* buttons: springier press + sheen sweep on the hero button */
+  .btn{border-radius:16px;transition:transform .08s cubic-bezier(.3,1.6,.5,1),box-shadow .08s}
+  .btn.play{position:relative;overflow:hidden;
+    box-shadow:0 6px 0 #61892a, 0 12px 30px rgba(140,220,70,.30)}
+  .btn.play::after{content:'';position:absolute;top:0;left:-70%;width:42%;height:100%;
+    background:linear-gradient(105deg,transparent,rgba(255,255,255,.55),transparent);
+    transform:skewX(-18deg);animation:sheen 3.4s ease-in-out infinite;pointer-events:none}
+  @keyframes sheen{0%,68%{left:-70%}100%{left:135%}}
+  .achbtn{border:1.5px solid var(--stroke);border-radius:999px;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+  /* HUD: frosted panels + notch safe-areas */
+  #mmwrap{background:rgba(14,22,9,.55);border:1.5px solid var(--stroke);border-radius:16px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
+  #gearHud{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  #gearHud,#xpwrap{top:calc(10px + env(safe-area-inset-top,0px))}
+  #mmwrap{top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px))}
+  #xpbar{box-shadow:inset 0 2px 5px rgba(0,0,0,.45)}
+  #powers{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
+  .power{border:2.5px solid rgba(255,255,255,.55);box-shadow:0 8px 20px rgba(0,0,0,.4)}
+  #specBar{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);background:rgba(14,22,9,.7)}
+  #toast{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);background:rgba(10,16,6,.72);
+    border:1px solid var(--stroke);box-shadow:var(--shadow-md)}
+  /* modal option rows & sliders: soft ivory, rounder, floatier */
+  .modal .opt,.slider{border-radius:16px;box-shadow:0 6px 0 rgba(0,0,0,.28), 0 12px 24px rgba(0,0,0,.22)}
+  .modal .close{border-radius:14px}
+  .wnitem,.achcard:not(.locked){border-radius:16px;box-shadow:0 5px 0 rgba(0,0,0,.24), 0 10px 22px rgba(0,0,0,.2)}
+  /* grids breathe a little more */
+  .grid{gap:12px}
+  .namebox input{border-radius:14px;background:rgba(0,0,0,.32);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 </style>
 </head>
 <body>
@@ -598,8 +676,13 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '1.10.0';
+const GAME_VERSION = '2.0.0';
 const CHANGELOG = [
+  { v:'2.0.0', items:[
+    ['✨','Interface overhaul','frosted-glass panels, smoother motion & a deeper look'],
+    ['📱','Notch-friendly HUD','controls & panels respect phone safe areas'],
+    ['🎨','Polished menus','glowing selections, hero-button shine, springier taps'],
+  ]},
   { v:'1.10.0', items:[
     ['🏘','Growing world','more houses, ponds & greenery appear as you level up'],
     ['🏕','New landmarks','campfires (Lv3), fences (Lv6), wells (Lv10), statues (Lv15)'],
