@@ -6,11 +6,11 @@
 
 Pick a character, pick a gun, drop into a field of 15. Outlast the other players, the roaming zombies, and the closing safe zone. **Last one standing wins.**
 
-## ▶ &nbsp; [CLICK HERE TO PLAY](https://rawcdn.githack.com/Deegan4/last-pulse/886d466437fad26d2c5bb874602614e40ef5194e/index.html) &nbsp; ◀
+## ▶ &nbsp; [CLICK HERE TO PLAY](https://rawcdn.githack.com/Deegan4/last-pulse/bb4f9d2bcca1f301d6cffad6831246f5fc25c57b/index.html) &nbsp; ◀
 
 <sup>opens the game in your browser — no install, no sign-up · for a permanent URL see [Play](#-play)</sup>
 
-[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://rawcdn.githack.com/Deegan4/last-pulse/886d466437fad26d2c5bb874602614e40ef5194e/index.html)
+[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://rawcdn.githack.com/Deegan4/last-pulse/bb4f9d2bcca1f301d6cffad6831246f5fc25c57b/index.html)
 &nbsp;
 ![HTML5 Canvas](https://img.shields.io/badge/HTML5-canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![Single file](https://img.shields.io/badge/single_file-no_build-blue?style=for-the-badge)
@@ -45,7 +45,7 @@ Then play at **`https://deegan4.github.io/last-pulse/`** — it rebuilds automat
 These use free third-party proxies for the public `index.html`. If one shows a blank page or error, give it a minute (they cache briefly after a push) or try the next:
 
 - **Latest:** <https://raw.githack.com/Deegan4/last-pulse/main/index.html>
-- **Pinned (most reliable):** <https://rawcdn.githack.com/Deegan4/last-pulse/886d466437fad26d2c5bb874602614e40ef5194e/index.html>
+- **Pinned (most reliable):** <https://rawcdn.githack.com/Deegan4/last-pulse/bb4f9d2bcca1f301d6cffad6831246f5fc25c57b/index.html>
 - **Backup:** [open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/last-pulse/main/index.html)
 
 On a laptop you can also download [`index.html`](index.html) and open it in any browser — no server, no build step, no dependencies.
@@ -59,9 +59,10 @@ On a laptop you can also download [`index.html`](index.html) and open it in any 
 - 🦸 **15 unlockable avatars** — each with distinct speed / health stats and a hand-drawn cartoon look (cyber visor, top hat, crown, mohawk, ninja…), gated behind your level.
 - 📦 **Loot & supply drops** — health, medkits, armor, ammo, and weapon swaps, plus parachuting crates with a strong gun + armor.
 - ⚡ **Power-ups** — chain-lightning, a throwable AoE bomb, and a 🪝 **grapple hook** (fire at a building, get reeled in on an elastic rope that conserves your swing momentum — release keeps your speed).
-- 🩸 **Game feel** — hit markers, kill-streak callouts, ⚡ **kill combos** (chain kills inside 3 s for up to **3× XP**, with slow-mo hit-stop), blood splats, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
+- 🩸 **Game feel** — hit markers, kill-streak callouts, ⚡ **kill combos** (chain kills inside 3 s for up to **3× XP**, with slow-mo hit-stop), directional blood spray with ground splatter, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
 - 🌅 **Living arena** — a 3000² map with **enterable buildings** (walk in through the door — walls block bullets, doorways don't, and loot hides inside every house), ponds, animated water, swaying trees, a checkered lawn, and day / dusk / night lighting.
-- 📈 **Progression** — XP, levels, and career stats (wins / matches / kills / K-D / best placement / streak).
+- 🏘 **A world that grows with you** — leveling up adds more houses (up to 16), ponds, and greenery, and unlocks landmarks: campfires (Lv 3), fences (Lv 6), wells (Lv 10), and survivor statues (Lv 15).
+- 📈 **Progression** — XP, levels, career stats (wins / matches / kills / K-D / best placement / streak), and a **"Game Updated!"** popup that shows returning players what's new.
 - 🏅 **Achievements** — 23 tiered badges in bronze / silver / gold (First Blood, Rampage, Chain Reaction, Kill Frenzy, Untouchable, Horde Master…), each paying a coin reward, tracked on a menu badge wall.
 - 🪙 **Coins & shop** — earn coins from kills, wins, waves, badges, and a **daily challenge**; spend them on cosmetic particle trails.
 
