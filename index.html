@@ -429,6 +429,23 @@
   .grid{gap:12px}
   .namebox input{border-radius:14px;background:rgba(0,0,0,.32);
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+
+  /* --- v2.0.1 layout fixes (must stay LAST so they win the cascade) --- */
+  /* Menu: stop flex items from compressing/overlapping on iOS Safari — the column
+     just scrolls when tall. Also tame the PLAY glow so it doesn't bleed onto the
+     Daily Challenge card, and guarantee clear spacing around it. */
+  #startScreen.menu > *{flex-shrink:0}
+  #startScreen.menu .btn.play{margin-top:16px;margin-bottom:14px;
+    box-shadow:0 6px 0 #61892a, 0 10px 20px rgba(140,220,70,.22)}
+  #startScreen.menu .dailycard{margin-top:0}
+  /* In-game powers in landscape: a v2 safe-area rule (added later in the sheet than the
+     original landscape query) had knocked the power buttons back to the portrait
+     mid-screen spot, floating over the player. Re-assert the bottom-centre row here. */
+  @media (max-height:560px){
+    #powers{flex-direction:row;left:50%;right:auto;top:auto;
+      bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);gap:14px}
+    .power{width:54px;height:54px;font-size:23px}
+  }
 </style>
 </head>
 <body>
@@ -676,8 +693,12 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.0.0';
+const GAME_VERSION = '2.0.1';
 const CHANGELOG = [
+  { v:'2.0.1', items:[
+    ['🕹','Landscape fix','power buttons no longer float over your fighter'],
+    ['📐','Menu spacing','PLAY button no longer overlaps the Daily Challenge card'],
+  ]},
   { v:'2.0.0', items:[
     ['✨','Interface overhaul','frosted-glass panels, smoother motion & a deeper look'],
     ['📱','Notch-friendly HUD','controls & panels respect phone safe areas'],

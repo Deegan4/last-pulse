@@ -11,6 +11,16 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.0.1 layout fixes** (user-reported via screenshots): (1) the v2.0.0 safe-area rule
+  `#powers{bottom:calc(210px+env())}` came LATER in the sheet than the `@media(max-height:560px)`
+  landscape block and — since media queries add no specificity — clobbered `bottom:12px`, so in
+  landscape the power buttons snapped back to the portrait mid-screen spot and floated over the
+  player. Fix: re-assert the landscape bottom-centre row in a media block at the very END of the
+  stylesheet (last-in-source wins). Gotcha: **any `#foo` rule after a `@media` `#foo` rule wins
+  regardless of the media query** — keep responsive overrides last. (2) On iOS the menu flex
+  column compressed (default `flex-shrink:1`) so PLAY overlapped the Daily Challenge card, worsened
+  by the PLAY glow bleeding down. Fix: `#startScreen.menu > *{flex-shrink:0}` (column scrolls
+  instead of overlapping) + tamed the play glow + explicit 14px margins. GAME_VERSION 2.0.1.
 - **v2.0.0 "Interface Overhaul"**: a **UI v2 override layer** appended at the END of the
   `<style>` block (tune tokens there, not per-rule) — deep "midnight forest" gradients on
   `.screen`, frosted glass (`backdrop-filter:blur` + gradient-over-glass backgrounds) on cards /
