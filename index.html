@@ -30,7 +30,8 @@
 
   /* ---------- Full-screen menu screens ---------- */
   .screen{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
-    padding:18px 14px 16px;overflow-y:auto;background:#52702f;
+    padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 16px);
+    overflow-y:auto;background:#52702f;
     background-image:radial-gradient(120% 80% at 50% 0,#6f9149,#46602c);}
   .screen .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
   .gearbtn{width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;flex:0 0 auto;
@@ -110,7 +111,7 @@
   .modebtn.on{background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f;border-color:#d6ff6e}
 
   /* ---------- Upgraded main menu ---------- */
-  #startScreen.menu{justify-content:flex-start;padding-top:6vh;overflow-x:hidden}
+  #startScreen.menu{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top,0px) + 10px);overflow-x:hidden}
   #startScreen.menu > *{position:relative;z-index:1}
   .menuGlow{position:absolute;inset:0;z-index:0;pointer-events:none;
     background:radial-gradient(58% 40% at 50% 26%, rgba(226,69,47,.22), rgba(226,69,47,0) 70%);
@@ -707,8 +708,12 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.1.1';
+const GAME_VERSION = '2.1.2';
 const CHANGELOG = [
+  { v:'2.1.2', items:[
+    ['⬆️','Tighter menu','trimmed the empty space above the title'],
+    ['🎯','Easier start','Battle Royale eases you in — enemies warm up over the first ~18s'],
+  ]},
   { v:'2.1.1', items:[
     ['👁','Clearer fighters','characters no longer look faded at dusk & night'],
   ]},
@@ -1107,7 +1112,9 @@ function bulletInObstacle(b){
 function newBot(team, namePool, i){
   const av=pick(AVATARS);
   const b=makeHuman(false, av, pick(WEAPONS), namePool? namePool[i%namePool.length] : av.name);
-  b.team=team; const s=farSpawn(ARENA*0.16); b.x=s.x; b.y=s.y; b.aim=rand(0,TAU);
+  b.team=team; let s=farSpawn(ARENA*0.16), tries=0;   // don't drop a bot on top of the player
+  while(player && dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10){ s=farSpawn(ARENA*0.16); tries++; }
+  b.x=s.x; b.y=s.y; b.aim=rand(0,TAU);
   return b;
 }
 function spawnMatch(){
@@ -1140,8 +1147,8 @@ function spawnMatch(){
   } else { // br
     fieldSize=15;
     for(let i=0;i<14;i++){ const b=newBot(i+1, null, i); b.name=b.avatar.name + (i>5? ' '+randi(2,9):''); humans.push(b); }
-    for(let i=0;i<10;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
-      while(dist2(s.x,s.y,player.x,player.y)<420*420 && tries<12); zombies.push(makeZombie(s.x,s.y)); }
+    for(let i=0;i<6;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
+      while(dist2(s.x,s.y,player.x,player.y)<520*520 && tries<12); zombies.push(makeZombie(s.x,s.y)); }
     for(let i=0;i<9;i++){ const s=farSpawn(ARENA*0.1); pickups.push(makePickup(s.x,s.y)); }
   }
 }
@@ -1497,7 +1504,12 @@ function updateBot(h,dt){
   const dc=Math.hypot(h.x-zone.cx,h.y-zone.cy);
   if(out || dc>zone.r-90){ const a=Math.atan2(zone.cy-h.y,zone.cx-h.x); mvx+=Math.cos(a)*1.2; mvy+=Math.sin(a)*1.2; }
   const pref=h.weapon.range*RANGE_SCALE*0.7;
-  if(tgt && near.d<h.aggro){
+  // early-match warmup: bots ease in over the first ~18s — shorter sight, slower to fire, and
+  // they hesitate longer before shooting the player — so a fresh drop isn't instantly lethal.
+  const warm = clamp(elapsed/18, 0, 1);
+  const aggroR = h.aggro * (0.45 + 0.55*warm);
+  const react  = (tgt&&tgt.isPlayer) ? h.reaction*(2.4-1.4*warm) : h.reaction*(1.6-0.6*warm);
+  if(tgt && near.d<aggroR){
     const a=Math.atan2(tgt.y-h.y,tgt.x-h.x); h.aim=angLerp(h.aim,a,0.2);
     if(near.d>pref*1.15){ mvx+=Math.cos(a)*0.9; mvy+=Math.sin(a)*0.9; }
     else if(near.d<pref*0.55){ mvx-=Math.cos(a)*0.8; mvy-=Math.sin(a)*0.8; }
@@ -1505,7 +1517,7 @@ function updateBot(h,dt){
     mvx+=Math.cos(a+Math.PI/2)*h.strafe*0.6; mvy+=Math.sin(a+Math.PI/2)*h.strafe*0.6;
     if(near.d < h.weapon.range*RANGE_SCALE*1.02){
       const err=Math.abs(((h.aim-a+Math.PI)%TAU)-Math.PI);
-      if(err<0.22){ h.lockT+=dt; if(h.lockT>h.reaction){ if(h.mag>0) fire(h); else startReload(h); } } else h.lockT=Math.max(0,h.lockT-dt*.5);
+      if(err<0.22){ h.lockT+=dt; if(h.lockT>react){ if(h.mag>0) fire(h); else startReload(h); } } else h.lockT=Math.max(0,h.lockT-dt*.5);
     } else h.lockT=0;
   } else { h.lockT=0; if(!out){ if(h.think<=0){ h.wanderA=rand(0,TAU); h.think=rand(.8,1.8); } h.think-=dt;
     mvx+=Math.cos(h.wanderA)*0.5; mvy+=Math.sin(h.wanderA)*0.5; h.aim=angLerp(h.aim,h.wanderA,0.08); } }

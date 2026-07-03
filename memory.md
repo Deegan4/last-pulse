@@ -11,6 +11,15 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.1.2 menu top-space + BR difficulty** (user-reported): (1) `#startScreen.menu` used
+  `padding-top:6vh` which stacked on top of the notch, leaving a big empty band under the Dynamic
+  Island. Fixed with `padding-top:calc(env(safe-area-inset-top,0px)+10px)` and made `.screen`
+  base padding notch/home-bar-aware too (logo top 51px→9px no-notch; just below notch on device).
+  (2) BR was brutal at drop-in (14 armed bots detect at 440–560px, fire in 0.3–0.7s). Added an
+  **early-match warmup** in `updateBot`: `warm=clamp(elapsed/18,0,1)`; effective detection range
+  `aggro*(0.45+0.55*warm)` and fire-reaction delay scaled up early (extra vs the player:
+  `reaction*(2.4-1.4*warm)`). Also BR initial zombies 10→6, and `newBot` now rerolls its spawn if
+  within 560px of the player (BR + Squads). GAME_VERSION 2.1.2.
 - **v2.1.1 fighter visibility fix** (user-reported: characters looked faded/see-through): `drawDayNight()`
   (the dusk/night screen-space tint) was called AFTER the whole world render, so it dimmed +
   desaturated characters/decor along with the ground → low-contrast, washed-out fighters. Fix:
