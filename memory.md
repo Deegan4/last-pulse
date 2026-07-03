@@ -260,17 +260,12 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 - The three.js CDN (unpkg) is blocked headless, so the 3D path can only be verified in a real
   browser over http(s) — the 2D fallback is the tested path.
 
-## Next enhancements (prioritized)
-_All pre-scoped bundles shipped (see "Current state") — v1.8.0 landed the zombie animation
-pass, portrait sync, and the meta-depth bundle (coins/shop, tiered achievements, daily
-challenge, results unlock banner)._ Open work:
-
-1. **Balance from real play** — squad sizes, building density, weapon power, and the new coin
-   economy rates (5/kill · 25/win · 60/daily vs 150–500 trail prices) — needs playtest feedback.
-2. **Meta depth 2** — seasonal cosmetics, more shop categories (nameplate titles? victory
-   effects?), weekly challenges on top of dailies.
-3. **Meshy 3D characters** — blocked on the API key (see Gotchas); wiring is done, generation isn't.
-4. **Online** — would need a backend (out of single-file scope); only if the user wants it.
+## Next enhancements
+**The forward plan now lives in [ROADMAP.md](ROADMAP.md)** — versioned feature bundles
+(v1.11 "Alive World" → v1.13 "Modes & Bosses"), the balance/tuning knob table, and the parked
+moonshots (Meshy 3D — still blocked on `MESHY_API_KEY` —, online, leaderboards, PWA). Keep
+ROADMAP.md checked off / re-prioritized as things ship; this file stays the record of what
+already landed.
 
 ## Open questions for the user
 - Real on-phone feel: movement speed, fire cadence, zombie pressure, weapon balance, and the new
