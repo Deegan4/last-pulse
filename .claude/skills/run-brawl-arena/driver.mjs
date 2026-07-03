@@ -98,8 +98,10 @@ await shot('01-start');
 if (play) {
   console.log('driving into a', mode, 'match …');
   await page.fill('#nameInput', 'driver').catch(() => {});
+  await page.click('#toModeBtn');              // main menu → mode select
+  await page.waitForTimeout(200);
   await page.click(`[data-mode="${mode}"]`).catch(() => {});
-  await page.click('#toAvatarBtn');            // Play  → avatar select
+  await page.click('#toAvatarBtn');            // Continue → avatar select
   await page.waitForTimeout(250);
   await page.click('#toWeaponBtn');            // Continue → weapon select
   await page.waitForTimeout(250);

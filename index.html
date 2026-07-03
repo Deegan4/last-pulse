@@ -438,6 +438,13 @@
   #startScreen.menu .btn.play{margin-top:16px;margin-bottom:14px;
     box-shadow:0 6px 0 #61892a, 0 10px 20px rgba(140,220,70,.22)}
   #startScreen.menu .dailycard{margin-top:0}
+  /* dedicated mode-select screen: roomy, centred cards */
+  #modeScreen{justify-content:flex-start}
+  #modeScreen .modes.wide{width:min(94%,460px);gap:12px;margin:18px auto 0}
+  #modeScreen .modecard{padding:16px 16px}
+  #modeScreen .modecard .mi{font-size:30px}
+  #modeScreen .modecard .mt{font-size:18px}
+  #modeScreen .modecard .md{font-size:12.5px}
   /* In-game powers in landscape: a v2 safe-area rule (added later in the sheet than the
      original landscape query) had knocked the power buttons back to the portrait
      mid-screen spot, floating over the player. Re-assert the bottom-centre row here. */
@@ -500,13 +507,7 @@
       </div>
     </div>
 
-    <div class="modes" id="modeCards">
-      <button class="modecard" data-mode="br"><span class="mi">🏆</span><span class="mtxt"><span class="mt">Battle Royale</span><span class="md">15 players · outlast the shrinking zone</span></span></button>
-      <button class="modecard" data-mode="horde"><span class="mi">🧟</span><span class="mtxt"><span class="mt">Endless Horde</span><span class="md">survive escalating zombie waves</span></span></button>
-      <button class="modecard" data-mode="squad"><span class="mi">🛡</span><span class="mtxt"><span class="mt">Squads</span><span class="md">team up · last squad standing</span></span></button>
-    </div>
-
-    <button class="btn play" id="toAvatarBtn"><span id="playLabel">PLAY</span></button>
+    <button class="btn play" id="toModeBtn"><span id="playLabel">▶ PLAY</span></button>
     <div id="dailyCard" class="dailycard"></div>
     <div id="statsCard" class="statscard"></div>
     <div class="menurow">
@@ -514,6 +515,19 @@
       <button class="btn ghost achbtn" id="shopBtn">🛒 Shop</button>
     </div>
     <div class="footer" style="color:#cfe0b3;font-size:12px">A canvas remake · twin-stick survival royale · <span id="verLink" class="verlink"></span></div>
+  </div>
+
+  <!-- ===== Mode select (picked after the main menu) ===== -->
+  <div id="modeScreen" class="screen hidden">
+    <div class="top"><button class="gearbtn" id="modeBack" aria-label="back">←</button>
+      <h2 class="heading">Choose Mode</h2></div>
+    <div class="sub">How do you want to drop in?</div>
+    <div class="modes wide" id="modeCards">
+      <button class="modecard" data-mode="br"><span class="mi">🏆</span><span class="mtxt"><span class="mt">Battle Royale</span><span class="md">15 players · outlast the shrinking zone</span></span></button>
+      <button class="modecard" data-mode="horde"><span class="mi">🧟</span><span class="mtxt"><span class="mt">Endless Horde</span><span class="md">survive escalating zombie waves</span></span></button>
+      <button class="modecard" data-mode="squad"><span class="mi">🛡</span><span class="mtxt"><span class="mt">Squads</span><span class="md">team up · last squad standing</span></span></button>
+    </div>
+    <div class="footer"><button class="btn play" id="toAvatarBtn"><span id="modeLabel">CONTINUE</span></button></div>
   </div>
 
   <!-- ===== Avatar select ===== -->
@@ -693,8 +707,12 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.0.1';
+const GAME_VERSION = '2.1.0';
 const CHANGELOG = [
+  { v:'2.1.0', items:[
+    ['🏠','New main menu','a proper home screen — pick your mode on its own page'],
+    ['🎯','Choose Mode screen','Battle Royale / Horde / Squads with a back button'],
+  ]},
   { v:'2.0.1', items:[
     ['🕹','Landscape fix','power buttons no longer float over your fighter'],
     ['📐','Menu spacing','PLAY button no longer overlaps the Daily Challenge card'],
@@ -2673,15 +2691,15 @@ function loop(now){
 // ============================================================
 //  Screens & flow
 // ============================================================
-function show(id){ ['startScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
-  if(id==='startScreen'){ renderStats(); renderMenu(); } }
+function show(id){ ['startScreen','modeScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
+  if(id==='startScreen'){ renderStats(); renderMenu(); }
+  if(id==='modeScreen'){ renderModeSel(); } }
 const MODE_NAME={br:'BATTLE ROYALE',horde:'ENDLESS HORDE',squad:'SQUADS'};
 function renderMenu(){
   const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
   const xp=el('menuXp'); if(xp) xp.style.width=clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%';
   const co=el('menuCoins'); if(co) co.textContent=meta.coins;
-  const pl=el('playLabel'); if(pl) pl.textContent='PLAY · '+(MODE_NAME[gameMode]||'BATTLE ROYALE');
   const dc=el('dailyCard'); if(dc){ const d=todaysDaily(), done=dailyDoneToday();
     dc.innerHTML='<span class="dic">'+(done?'✅':d.icon)+'</span><div class="dtx"><b>Daily Challenge</b>'
       +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+DAILY_COINS)+'</span>';
@@ -2884,6 +2902,9 @@ function startMatch(){
 // ---------- button wiring ----------
 el('nameInput').value = meta.name==='deegan'?'':meta.name;
 el('nameInput').placeholder = 'deegan';
+el('toModeBtn').addEventListener('click',()=>{ audioInit(); const v=el('nameInput').value.trim(); meta.name=v||'deegan'; saveMeta();
+  screenState='mode'; show('modeScreen'); });
+el('modeBack').addEventListener('click',()=>{ screenState='start'; show('startScreen'); });
 el('toAvatarBtn').addEventListener('click',goAvatar);
 el('fighterPortrait').addEventListener('click',goAvatar);
 el('changeAvatar').addEventListener('click',goAvatar);
@@ -2928,8 +2949,9 @@ el('sMusic').addEventListener('click',()=>{ meta.music=!meta.music; saveMeta();
   el('sMusicTxt').textContent='Music: '+(meta.music?'On':'Off'); if(meta.music){ audioInit(); startMusic(); } else stopMusic(); });
 
 // mode selector
-function renderModeSel(){ document.querySelectorAll('.modecard').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode)); }
-document.querySelectorAll('.modecard').forEach(b=>b.addEventListener('click',()=>{ audioInit(); gameMode=b.dataset.mode; safeSet('dd2_mode',gameMode); renderModeSel(); renderMenu(); }));
+function renderModeSel(){ document.querySelectorAll('.modecard').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode));
+  const ml=el('modeLabel'); if(ml) ml.textContent='CONTINUE · '+(MODE_NAME[gameMode]||'BATTLE ROYALE'); }
+document.querySelectorAll('.modecard').forEach(b=>b.addEventListener('click',()=>{ audioInit(); gameMode=b.dataset.mode; safeSet('dd2_mode',gameMode); renderModeSel(); }));
 renderModeSel();
 // drifting spores behind the menu
 (function(){ const host=el('startScreen'); if(!host) return;
