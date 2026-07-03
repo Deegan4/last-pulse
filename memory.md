@@ -11,6 +11,21 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v1.9.0 "Open Doors"**: 🚪 **enterable buildings** — buildings are hollow: `wallRects(o)` returns
+  4 wall rects with a bottom-centre door gap (`WALL_T=9`, `DOOR_HALF=21` → 42px gap: humans r15 fit,
+  brutes r20 barely). `resolveObstacles`/`bulletInObstacle` collide per-wall via `pushOutRect`, so
+  entities walk in through the door and bullets pass doorways but not walls. Rendering splits into
+  two y-sorted layers: `drawBuildingBase` (shadow + wood floor/rug/crate/table + wall frame,
+  sorted at the building's TOP edge so entities inside draw on top) and `drawBuilding` facade
+  (sorted at bottom edge, `d.fade` → 0.15 when the player is inside or at the door, lerped;
+  computed in the base pass). Interior **loot**: `spawnMatch` drops one `makePickup` inside every
+  building (pickup y-sorts under the facade → hidden until entered). Functional tests: walk in
+  through door / blocked by top wall / blocked by side wall — all pixel-exact. 🔫 **weapon detail
+  pass** (`drawGun` + GUNK flags): trigger guards (`guard`), pistol slide serrations (`serr`),
+  wood-grain waves (`wood`), handguard vents (`vents`), muzzle-brake slots (`brake`), muzzle cap
+  rings (`muzzle`), magnum nickel top + gold trigger/band (`nickel`), hazard stripes on the flame
+  tank (`hazard`), minigun rotary barrel cluster (`cluster`) — cards upgrade automatically via
+  `weaponIcon`. GAME_VERSION 1.9.0.
 - **v1.8.0 "Juice & Hooks"**: ⚡ **kill combos** — kills inside a 3s window chain (`combo`/`comboT`,
   `COMBO_WIN`), XP multiplied up to 3× (`1+(combo-1)*0.25`), gold "COMBO xN" floaters + rising
   `sfx('combo',n)`, an on-screen combo meter w/ draining chain bar (drawn after the streak callout),
