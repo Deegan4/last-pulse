@@ -707,8 +707,11 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.1.0';
+const GAME_VERSION = '2.1.1';
 const CHANGELOG = [
+  { v:'2.1.1', items:[
+    ['👁','Clearer fighters','characters no longer look faded at dusk & night'],
+  ]},
   { v:'2.1.0', items:[
     ['🏠','New main menu','a proper home screen — pick your mode on its own page'],
     ['🎯','Choose Mode screen','Battle Royale / Horde / Squads with a back button'],
@@ -1854,6 +1857,11 @@ function draw(){
   // ground blood decals
   for(const s of splats){ if(!inView(s.x,s.y,s.r)) continue; ctx.globalAlpha=clamp(s.t/7,0,1)*0.5;
     ctx.fillStyle=s.col+'1)'; ctx.beginPath(); ctx.ellipse(s.x,s.y,s.r,s.r*0.6,0,0,TAU); ctx.fill(); } ctx.globalAlpha=1;
+  // day/night tint over the GROUND ONLY — apply it here (screen space) so characters and
+  // decor draw at full brightness on top and never look washed-out / see-through at dusk/night.
+  ctx.restore();
+  drawDayNight();
+  ctx.save(); ctx.translate(-cam.x+shx,-cam.y+shy);
   // tall decor + items + entities sorted by y for depth
   const drawables=[];
   for(const d of decor){ if(d.type!=='tree'&&d.type!=='bush'&&d.type!=='building'&&!TALL_DECOR[d.type]) continue;
@@ -1915,7 +1923,6 @@ function draw(){
   drawReticle();
   if(zoneActive()) drawZone();
   ctx.restore();
-  drawDayNight();
   drawVignette();
 
   // grace banner
@@ -2015,7 +2022,7 @@ function drawDayNight(){
     const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(255,120,40,.16)'); g.addColorStop(1,'rgba(80,30,70,.20)');
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   } else { // night
-    ctx.fillStyle='rgba(18,28,74,.36)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(20,30,72,.30)'; ctx.fillRect(0,0,W,H);
     if(player&&player.alive){ const px=player.x-cam.x, py=player.y-cam.y;
       const g=ctx.createRadialGradient(px,py,18,px,py,280); g.addColorStop(0,'rgba(255,240,200,.20)'); g.addColorStop(1,'rgba(255,240,200,0)');
       ctx.globalCompositeOperation='lighter'; ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.globalCompositeOperation='source-over'; }
