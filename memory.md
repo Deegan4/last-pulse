@@ -11,6 +11,16 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v1.10.0 "Growing World"**: the map scales with `meta.level` in `buildDecor` — buildings
+  `9+floor(lvl/4)` (cap 16, each still hiding interior loot), ponds `7+floor(lvl/8)` (cap 10),
+  trees/bushes/grass/flowers/rocks/dirt get an `xtra=min(lvl,20)` density bonus. **Level-milestone
+  landmarks** (new decor types, y-sorted via `TALL_DECOR` map): `campfire` (Lv3 — stone ring,
+  crossed logs, flickering flame, warm glow at night), `fence` (Lv6 — post-and-rail runs,
+  horizontal/vertical), `well` (Lv10 — stone rim, water hole, posts + gable roof, rope+bucket),
+  `statue` (Lv15 — weathered stone hero on a pedestal w/ cracks + moss). All placed via
+  `decorSpot` (avoid buildings/ponds), decorative only (no collision). Verified scaling
+  lvl 1/5/10/20/30 → buildings 9/10/11/14/16, landmarks appear on schedule; per-landmark
+  screenshots. GAME_VERSION 1.10.0.
 - **v1.9.0 "Open Doors"**: 🚪 **enterable buildings** — buildings are hollow: `wallRects(o)` returns
   4 wall rects with a bottom-centre door gap (`WALL_T=9`, `DOOR_HALF=21` → 42px gap: humans r15 fit,
   brutes r20 barely). `resolveObstacles`/`bulletInObstacle` collide per-wall via `pushOutRect`, so

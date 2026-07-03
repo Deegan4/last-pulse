@@ -598,8 +598,13 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '1.9.0';
+const GAME_VERSION = '1.10.0';
 const CHANGELOG = [
+  { v:'1.10.0', items:[
+    ['🏘','Growing world','more houses, ponds & greenery appear as you level up'],
+    ['🏕','New landmarks','campfires (Lv3), fences (Lv6), wells (Lv10), statues (Lv15)'],
+    ['🎁','More loot','every extra house hides another pickup inside'],
+  ]},
   { v:'1.9.0', items:[
     ['🚪','Enterable buildings','walk in through the door — loot hides inside every house'],
     ['🛡','Real cover','walls block bullets, doorways don\'t — fight room to room'],
@@ -900,13 +905,20 @@ function farSpawn(minFromCenter){
   return {x:fx,y:fy};
 }
 const ROOFS=['#9a4d3a','#5a6a86','#6a8a5a','#7a6a4a','#8a5a7a'];
+const TALL_DECOR={campfire:1,fence:1,well:1,statue:1};   // level-milestone landmarks (y-sorted)
 function buildDecor(){
   decor.length=0; obstacles.length=0;
   timeOfDay = pick(['day','day','dusk','night']);   // mostly day, sometimes dusk/night
+  // the world grows with your level: more houses (each hiding loot), more ponds and
+  // greenery, and new landmarks unlock at level milestones (see below)
+  const lvl = meta.level;
+  const nBuild = Math.min(9 + Math.floor(lvl/4), 16);
+  const nWater = Math.min(7 + Math.floor(lvl/8), 10);
+  const xtra   = Math.min(lvl, 20);                 // generic density bonus
   for(let i=0;i<80;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
-  for(let i=0;i<7;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
+  for(let i=0;i<nWater;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
   // buildings (cover) — kept apart and away from the very centre
-  for(let i=0;i<9;i++){ let b, ok=false, tries=0;
+  for(let i=0;i<nBuild;i++){ let b, ok=false, tries=0;
     do{ const w=rand(110,210), h=rand(90,170); b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, roof:pick(ROOFS)}; ok=true;
       if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
       for(const o of obstacles) if(b.x<o.x+o.w+50 && b.x+b.w+50>o.x && b.y<o.y+o.h+50 && b.y+b.h+50>o.y) ok=false;
@@ -914,12 +926,17 @@ function buildDecor(){
         if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
       tries++; } while(!ok && tries<20);
     if(ok){ obstacles.push(b); decor.push(b); } }
-  for(let i=0;i<26;i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
-  for(let i=0;i<34;i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
-  for(let i=0;i<66;i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
-  for(let i=0;i<26;i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
-  for(let i=0;i<14;i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
-  for(let i=0;i<6;i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
+  for(let i=0;i<26+Math.floor(xtra*0.7);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
+  for(let i=0;i<34+xtra;i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
+  for(let i=0;i<66+xtra*2;i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
+  for(let i=0;i<26+xtra;i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
+  for(let i=0;i<14+Math.floor(xtra/2);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
+  for(let i=0;i<6+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
+  // level-milestone landmarks — the map gains character as you rank up
+  if(lvl>=3)  for(let i=0;i<3;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
+  if(lvl>=6)  for(let i=0;i<5;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
+  if(lvl>=10) for(let i=0;i<2;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
+  if(lvl>=15) for(let i=0;i<2;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
 }
 // Buildings are hollow — 4 solid walls with a door gap at the bottom-centre, so entities
@@ -1697,14 +1714,14 @@ function draw(){
   drawField();
   // ground-level decor — flat pass (no per-frame y-sort), in array order
   for(const d of decor){ const t=d.type;
-    if(t==='patch'||t==='tree'||t==='bush'||t==='building') continue;
+    if(t==='patch'||t==='tree'||t==='bush'||t==='building'||TALL_DECOR[t]) continue;
     if(inView(d.x,d.y,(d.s||14)+40)) drawDecor(d); }
   // ground blood decals
   for(const s of splats){ if(!inView(s.x,s.y,s.r)) continue; ctx.globalAlpha=clamp(s.t/7,0,1)*0.5;
     ctx.fillStyle=s.col+'1)'; ctx.beginPath(); ctx.ellipse(s.x,s.y,s.r,s.r*0.6,0,0,TAU); ctx.fill(); } ctx.globalAlpha=1;
   // tall decor + items + entities sorted by y for depth
   const drawables=[];
-  for(const d of decor){ if(d.type!=='tree'&&d.type!=='bush'&&d.type!=='building') continue;
+  for(const d of decor){ if(d.type!=='tree'&&d.type!=='bush'&&d.type!=='building'&&!TALL_DECOR[d.type]) continue;
     const cx=d.x+(d.w?d.w/2:0), cy=d.y+(d.h?d.h/2:0), pad=d.type==='building'?300:140;
     if(!inView(cx,cy,pad)) continue;
     // buildings split in two layers: the interior floor sorts at the TOP edge (under anyone
@@ -1966,6 +1983,65 @@ function drawBuilding(d){
   ctx.restore();
 }
 function drawDecor(d){
+  if(d.type==='campfire'){ const x=d.x, y=d.y, ni=timeOfDay!=='day';
+    ctx.lineJoin='round';
+    ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(x,y+3,16,6,0,0,TAU); ctx.fill();
+    if(ni){ const gp=0.75+Math.sin(gtime*7+x)*0.25;   // warm glow at night
+      ctx.fillStyle='rgba(255,160,60,'+(0.16*gp)+')'; ctx.beginPath(); ctx.arc(x,y-4,34*gp,0,TAU); ctx.fill(); }
+    ctx.strokeStyle='#4a3018'; ctx.lineWidth=4; ctx.lineCap='round';   // crossed logs
+    ctx.beginPath(); ctx.moveTo(x-8,y+3); ctx.lineTo(x+8,y-3); ctx.moveTo(x-8,y-3); ctx.lineTo(x+8,y+3); ctx.stroke();
+    ctx.fillStyle='#8f8a80'; ctx.strokeStyle=INK; ctx.lineWidth=1.4;   // stone ring
+    for(let k=0;k<7;k++){ const a=k/7*TAU; ctx.beginPath(); ctx.ellipse(x+Math.cos(a)*13,y+Math.sin(a)*6.6,3.2,2.4,a,0,TAU); ctx.fill(); ctx.stroke(); }
+    const f=0.75+Math.sin(gtime*9+x)*0.25;                             // flickering flame
+    ctx.fillStyle='#ff8a2a'; ctx.beginPath(); ctx.moveTo(x-5,y-1);
+    ctx.quadraticCurveTo(x-4,y-9*f,x,y-13*f); ctx.quadraticCurveTo(x+4,y-9*f,x+5,y-1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#ffd24a'; ctx.beginPath(); ctx.moveTo(x-2.5,y-1);
+    ctx.quadraticCurveTo(x-2,y-5*f,x,y-8*f); ctx.quadraticCurveTo(x+2,y-5*f,x+2.5,y-1); ctx.closePath(); ctx.fill();
+    return; }
+  if(d.type==='fence'){ const n=d.n||4, sp=20, hz=d.horiz;
+    const ex = hz? d.x+(n-1)*sp : d.x, ey = hz? d.y : d.y+(n-1)*sp;
+    ctx.lineCap='round';
+    ctx.strokeStyle=INK; ctx.lineWidth=4.6; ctx.beginPath(); ctx.moveTo(d.x,d.y-8); ctx.lineTo(ex,ey-8); ctx.moveTo(d.x,d.y-3); ctx.lineTo(ex,ey-3); ctx.stroke();
+    ctx.strokeStyle='#75552f'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(d.x,d.y-8); ctx.lineTo(ex,ey-8); ctx.moveTo(d.x,d.y-3); ctx.lineTo(ex,ey-3); ctx.stroke();
+    for(let k=0;k<n;k++){ const px=hz?d.x+k*sp:d.x, py=hz?d.y:d.y+k*sp;
+      ctx.fillStyle='rgba(0,0,0,.15)'; ctx.beginPath(); ctx.ellipse(px,py+2,4.5,2,0,0,TAU); ctx.fill();
+      ctx.fillStyle='#8a6a42'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
+      roundRect(px-2.6,py-13,5.2,15,1.5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(px-1.8,py-12,1.4,13); }
+    return; }
+  if(d.type==='well'){ const x=d.x, y=d.y;
+    ctx.lineJoin='round';
+    ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(x,y+4,17,6.5,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#7a4a3a'; ctx.strokeStyle=INK; ctx.lineWidth=2;      // little gable roof
+    ctx.beginPath(); ctx.moveTo(x-16,y-26); ctx.lineTo(x,y-36); ctx.lineTo(x+16,y-26); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle=INK; ctx.lineWidth=4.4; ctx.beginPath(); ctx.moveTo(x-11,y-1); ctx.lineTo(x-11,y-26); ctx.moveTo(x+11,y-1); ctx.lineTo(x+11,y-26); ctx.stroke();
+    ctx.strokeStyle='#6a4a2a'; ctx.lineWidth=2.8; ctx.beginPath(); ctx.moveTo(x-11,y-1); ctx.lineTo(x-11,y-26); ctx.moveTo(x+11,y-1); ctx.lineTo(x+11,y-26); ctx.stroke();
+    ctx.strokeStyle='#caa15a'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(x,y-30); ctx.lineTo(x,y-12); ctx.stroke();  // rope
+    ctx.fillStyle='#8a6a3a'; ctx.strokeStyle=INK; ctx.lineWidth=1.4; roundRect(x-3,y-12,6,5,1); ctx.fill(); ctx.stroke(); // bucket
+    ctx.fillStyle='#8f8a80'; ctx.strokeStyle=INK; ctx.lineWidth=2;      // stone rim
+    ctx.beginPath(); ctx.ellipse(x,y,15,8,0,0,TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#20303a'; ctx.beginPath(); ctx.ellipse(x,y,9.5,4.6,0,0,TAU); ctx.fill();     // dark water hole
+    ctx.fillStyle='rgba(140,200,230,.35)'; ctx.beginPath(); ctx.ellipse(x-2,y-0.8,4,1.6,0,0,TAU); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1.2;               // rim stones
+    for(let k=0;k<6;k++){ const a=k/6*TAU+0.3; ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*15,y+Math.sin(a)*8); ctx.lineTo(x+Math.cos(a)*10,y+Math.sin(a)*5); ctx.stroke(); }
+    return; }
+  if(d.type==='statue'){ const x=d.x, y=d.y;
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(x,y+4,18,6.5,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#9a958b'; ctx.strokeStyle=INK; ctx.lineWidth=2;      // pedestal
+    roundRect(x-14,y-7,28,11,2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#aaa49a'; ctx.beginPath(); ctx.ellipse(x,y-7,14,4,0,0,TAU); ctx.fill(); ctx.stroke();
+    // weathered stone hero, arms raised — a monument to fallen survivors
+    ctx.strokeStyle=INK; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(x-3,y-16); ctx.lineTo(x-9,y-26); ctx.moveTo(x+3,y-16); ctx.lineTo(x+9,y-26); ctx.stroke();
+    ctx.strokeStyle='#b3aea3'; ctx.lineWidth=3.2; ctx.beginPath(); ctx.moveTo(x-3,y-16); ctx.lineTo(x-9,y-26); ctx.moveTo(x+3,y-16); ctx.lineTo(x+9,y-26); ctx.stroke();
+    ctx.fillStyle='#b3aea3'; ctx.strokeStyle=INK; ctx.lineWidth=2;
+    roundRect(x-6,y-19,12,13,3.5); ctx.fill(); ctx.stroke();            // torso
+    ctx.beginPath(); ctx.arc(x,y-24,6.4,0,TAU); ctx.fill(); ctx.stroke();  // head
+    ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.arc(x+2.2,y-23,3.4,0,TAU); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.28)'; ctx.lineWidth=1.1;               // cracks + moss
+    ctx.beginPath(); ctx.moveTo(x-4,y-14); ctx.lineTo(x-1,y-10); ctx.lineTo(x-3,y-8); ctx.stroke();
+    ctx.fillStyle='rgba(90,140,70,.5)'; ctx.beginPath(); ctx.arc(x-9,y-5,2.6,0,TAU); ctx.arc(x+11,y-3,2,0,TAU); ctx.fill();
+    return; }
   if(d.type==='dirt'){ ctx.fillStyle = timeOfDay==='night'?'rgba(80,64,40,.45)':'rgba(150,120,72,.4)';
     ctx.beginPath(); ctx.ellipse(d.x,d.y,d.s,d.s*0.62,0,0,TAU); ctx.fill();
     ctx.fillStyle='rgba(110,86,50,.3)'; ctx.beginPath(); ctx.ellipse(d.x+d.s*0.2,d.y+d.s*0.12,d.s*0.5,d.s*0.3,0,0,TAU); ctx.fill(); return; }
