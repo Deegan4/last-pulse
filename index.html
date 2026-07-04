@@ -143,6 +143,11 @@
   .xpmini{flex:1;height:7px;border-radius:5px;background:rgba(0,0,0,.35);overflow:hidden}
   .xpmini > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#bfff5a,#7bbf2e);transition:width .3s}
   .fighterEdit{font-size:11px;font-weight:700;color:#9fc267;letter-spacing:.2px;cursor:pointer}
+  .rankrow{display:flex;align-items:center;gap:8px;margin:0 0 5px;flex-wrap:wrap}
+  .rankbadge{background:linear-gradient(180deg,rgba(255,210,90,.28),rgba(200,150,40,.16));
+    border:1px solid rgba(255,214,110,.5);color:#ffe6a8;font-weight:800;font-size:11px;
+    padding:2px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.3px}
+  .ranknext{font-size:10.5px;font-weight:700;color:#a9c47f}
 
   .modes{display:flex;flex-direction:column;gap:9px;width:min(84vw,340px);margin:8px auto 2px}
   .modecard{cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;
@@ -504,6 +509,8 @@
         <div class="lvlrow"><span class="lvlbadge">LV <b id="menuLvl">1</b></span>
           <div class="xpmini"><i id="menuXp"></i></div>
           <span class="coinbadge">🪙 <b id="menuCoins">0</b></span></div>
+        <div class="rankrow"><span class="rankbadge" id="menuRank">🐣 Rookie</span>
+          <span class="ranknext" id="menuRankNext"></span></div>
         <div class="fighterEdit" id="changeAvatar">▸ tap portrait to change fighter</div>
       </div>
     </div>
@@ -708,8 +715,13 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.2.0';
+const GAME_VERSION = '2.3.0';
 const CHANGELOG = [
+  { v:'2.3.0', items:[
+    ['🏅','Rank ladder','climb Rookie → Fighter → … → Immortal well past level 25'],
+    ['🪙','Level-up payouts','every level up now rewards coins (more at higher levels)'],
+    ['🎯','Always a goal','results show your next rank once everything else is unlocked'],
+  ]},
   { v:'2.2.0', items:[
     ['🏕','Campfire healing','stand near a campfire to slowly recover health'],
     ['🧟','Smarter zombies','they path to the door when you hole up in a house'],
@@ -791,6 +803,20 @@ const meta = {
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
 };
 function xpNeed(lv){ return 80 + lv*40; }
+// Rank ladder — a title you climb well past the level-25 unlock ceiling, so leveling always
+// has a next goal. rankFor() = current rank; nextRank() = the one you're working toward.
+const RANKS = [
+  {lv:1,  icon:'🐣', name:'Rookie'},   {lv:5,  icon:'🥊', name:'Fighter'},
+  {lv:10, icon:'🎖', name:'Veteran'},  {lv:16, icon:'⭐', name:'Elite'},
+  {lv:22, icon:'🔥', name:'Master'},   {lv:30, icon:'👑', name:'Champion'},
+  {lv:40, icon:'🌟', name:'Legend'},   {lv:55, icon:'💎', name:'Mythic'},
+  {lv:75, icon:'☄️', name:'Immortal'},
+];
+function rankFor(lv){ let r=RANKS[0]; for(const x of RANKS) if(lv>=x.lv) r=x; return r; }
+function nextRank(lv){ for(const x of RANKS) if(x.lv>lv) return x; return null; }
+// coins paid out for reaching a given level (scales, so higher levels are worth chasing)
+function levelReward(lv){ return 20 + lv*4; }
+let lastLevelCoins = 0, lastRankUp = null;   // set by grantXp, shown by levelToast
 function saveMeta(){
   safeSet('dd2_level',meta.level); safeSet('dd2_xp',meta.xp); safeSet('dd2_name',meta.name);
   safeSet('dd2_avatar',meta.avatar); safeSet('dd2_weapon',meta.weapon); safeSet('dd2_music',meta.music?'1':'0');
@@ -892,8 +918,10 @@ function nextUnlock(){
   return best;
 }
 function grantXp(n){
-  meta.xp += n; let leveled=false;
-  while(meta.xp >= xpNeed(meta.level)){ meta.xp -= xpNeed(meta.level); meta.level++; leveled=true; }
+  meta.xp += n; let leveled=false, coins=0; const rank0=rankFor(meta.level).name;
+  while(meta.xp >= xpNeed(meta.level)){ meta.xp -= xpNeed(meta.level); meta.level++; leveled=true; coins += levelReward(meta.level); }
+  if(coins){ meta.coins += coins; lastLevelCoins = coins; }               // every level-up pays coins
+  const rk=rankFor(meta.level); lastRankUp = (rk.name!==rank0) ? rk : null;
   saveMeta(); return leveled;
 }
 function avatarUnlocked(a){ return meta.level >= a.unlock; }
@@ -1417,7 +1445,11 @@ function campfireHeal(h,dt){
 }
 let toastT=0;
 function toast(msg){ const t=el('toast'); t.textContent=msg; t.style.opacity='1'; toastT=1.1; }
-function levelToast(){ toast('LEVEL UP! Lv '+meta.level); sfx('level'); }
+function levelToast(){
+  toast('LEVEL UP! Lv '+meta.level + (lastLevelCoins?(' · +'+lastLevelCoins+' 🪙'):'')); sfx('level');
+  if(lastRankUp){ const r=lastRankUp; setTimeout(()=>{ toast('🏅 NEW RANK — '+r.icon+' '+r.name.toUpperCase()); sfx('level'); }, 1500); }
+  lastLevelCoins=0; lastRankUp=null;
+}
 const STREAKS={2:'DOUBLE KILL!',3:'TRIPLE KILL!',4:'MULTI KILL!',5:'RAMPAGE!',6:'UNSTOPPABLE!',7:'GODLIKE!'};
 function showStreak(n){ streakMsg = STREAKS[Math.min(n,7)] || (n+' KILL STREAK!'); streakT=1.7; sfx('streak', n); }
 
@@ -1873,9 +1905,11 @@ function showResults(win, place){
   el('rXpFill').style.width='0%';
   setTimeout(()=>{ el('rXpFill').style.width = clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%'; }, 120);   // animate the fill
   // "one more run" hook: what does the next level (or a nearby one) unlock?
-  const nu=nextUnlock();
-  if(nu){ let need=-meta.xp; for(let l=meta.level;l<nu.lv;l++) need+=xpNeed(l);
-    el('rNext').innerHTML='🔓 <b>'+nu.name+'</b> unlocks at Lv '+nu.lv+' — <b>'+Math.max(0,need)+'</b> XP to go';
+  const nu=nextUnlock(), nrk=nextRank(meta.level);
+  const xpTo = lv => { let need=-meta.xp; for(let l=meta.level;l<lv;l++) need+=xpNeed(l); return Math.max(0,need); };
+  if(nu){ el('rNext').innerHTML='🔓 <b>'+nu.name+'</b> unlocks at Lv '+nu.lv+' — <b>'+xpTo(nu.lv)+'</b> XP to go';
+    el('rNext').style.display=''; }
+  else if(nrk){ el('rNext').innerHTML='🏅 Rank up to <b>'+nrk.icon+' '+nrk.name+'</b> at Lv '+nrk.lv+' — <b>'+xpTo(nrk.lv)+'</b> XP to go';
     el('rNext').style.display=''; }
   else el('rNext').style.display='none';
   el('rCareer').innerHTML='Career: <b>'+meta.wins+'</b> wins · <b>'+meta.matches+'</b> matches · <b>'+meta.ckills+'</b> kills · K/D <b>'+kd()+'</b>'+(meta.bestWave?(' · wave <b>'+meta.bestWave+'</b>'):'');
@@ -2762,6 +2796,9 @@ function renderMenu(){
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
   const xp=el('menuXp'); if(xp) xp.style.width=clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%';
   const co=el('menuCoins'); if(co) co.textContent=meta.coins;
+  const rk=el('menuRank'); if(rk){ const r=rankFor(meta.level); rk.textContent=r.icon+' '+r.name; }
+  const rn=el('menuRankNext'); if(rn){ const nr=nextRank(meta.level);
+    rn.textContent = nr ? ('▸ '+nr.name+' at Lv '+nr.lv) : '★ max rank'; }
   const dc=el('dailyCard'); if(dc){ const d=todaysDaily(), done=dailyDoneToday();
     dc.innerHTML='<span class="dic">'+(done?'✅':d.icon)+'</span><div class="dtx"><b>Daily Challenge</b>'
       +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+DAILY_COINS)+'</span>';
