@@ -3165,6 +3165,17 @@ show('startScreen');
 maybeShowWhatsNew();
 requestAnimationFrame(loop);
 
+// Debug/automation hook — lets headless smoke tests drive menus without faking tap gestures
+// (the start screen needs a user gesture the sandbox won't supply). Read-only into game state
+// plus the few nav actions a test needs; harmless in production (no UI, no side effects unless called).
+window.__game = {
+  get screenState(){ return screenState; },
+  get avatar(){ return meta.avatar; },
+  get avatarName(){ return AVATARS[meta.avatar]?.name; },
+  goAvatar(){ buildAvatarGrid(); screenState='avatar'; show('avatarScreen'); },
+  selectAvatar(i){ if(i>=0 && i<AVATARS.length && avatarUnlocked(AVATARS[i])){ meta.avatar=i; saveMeta(); buildAvatarGrid(); return true; } return false; },
+};
+
 })();
 </script>
 
@@ -3290,8 +3301,13 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
       const avatarScreen = document.getElementById('avatarScreen');
       if (!avatarScreen || avatarScreen.classList.contains('hidden')) return;
       window.Models3D._tickOnce();
-      const heroKey = Object.keys(models).find(k => k.startsWith('avatar:'));   // first loaded character
-      const t = heroKey && renderTile(heroKey, 1); if (!t) return;
+      // Follow the CURRENTLY SELECTED avatar, not whichever model loaded first. The selected card
+      // carries the avatar name in .nm2; key mirrors the in-game entity ('avatar:'+lowercased name).
+      // If that avatar has no 3D model (or none selected yet), hide the hero and let the 2D card show.
+      const selName = (avatarScreen.querySelector('.card.sel .nm2')?.textContent || '').trim().toLowerCase();
+      const heroKey = selName && ('avatar:' + selName);
+      const t = heroKey && models[heroKey] ? renderTile(heroKey, 1) : null;
+      if (!t) { hero.classList.remove('ready'); return; }
       hero.classList.add('ready');
       hctx.clearRect(0, 0, hero.width, hero.height);
       hctx.drawImage(t, 0, 0, hero.width, hero.height);
