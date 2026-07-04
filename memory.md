@@ -11,6 +11,15 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.4.0 weapon-select UI revamp**: **weapon art upgraded** — `weaponIcon(w)` now renders on a
+  hi-res DPR-scaled canvas (124×58 CSS ×3), ~2× bigger gun (scale cap 1.8→3.6), with a contact
+  shadow + drop shadow ("product shot"); the in-game `drawGun` is untouched (perf). Cards also gained
+  **rarity tiers** (`weaponTier(w)`
+  by unlock level: Common/Rare/Epic/Legendary → `#a7b39a/#5aa8ff/#c08bff/#ffcf3a`) driving a
+  `--tier` CSS var used for a colored top-border, icon-plate ring, and a `.wtier` chip; and a
+  **DPS-vs-equipped delta** (`dpsDelta`, green ▲ / red ▼ / "EQUIPPED") computed against
+  `wstats(WEAPONS[meta.weapon]).dps`. Selecting now rebuilds the grid so all deltas re-baseline to
+  the new pick. Locked cards read "🔒 Unlocks at Lv N". GAME_VERSION 2.4.0.
 - **v2.3.0 rank ladder + level rewards** (user: "need more levels" — progression flattened after
   the level-25 avatar-unlock ceiling): added a `RANKS` table (Rookie→Fighter→Veteran→Elite→Master→
   Champion→Legend→Mythic→Immortal, thresholds 1/5/10/16/22/30/40/55/75) with `rankFor(lv)` /
