@@ -69,7 +69,7 @@
   .wmode{font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 6px;border-radius:999px;
     text-transform:uppercase;color:#12160c;background:#9aa}
   .wmode.semi{background:#8fb6d8} .wmode.auto{background:#ffb04a} .wmode.shotgun{background:#ff7a5a}
-  .wmode.sniper{background:#c08bff} .wmode.flame{background:#ff8a3a}
+  .wmode.sniper{background:#c08bff} .wmode.flame{background:#ff8a3a} .wmode.launcher{background:#e2662f}
   .wdps{display:flex;align-items:baseline;justify-content:center;gap:5px;margin:0 0 7px;flex-wrap:wrap}
   .wdps b{font-size:23px;font-weight:800;color:#ffd24a;line-height:1;text-shadow:0 1px 0 rgba(0,0,0,.35)}
   .wdps span{font-size:10px;font-weight:800;color:#cddcb6;letter-spacing:.5px}
@@ -709,6 +709,8 @@ const AVATARS = [
   {name:'Pixel',  speed:5.7, health:95,  unlock:20, look:{skin:'#e8b48c',hair:'#2a2f3a',outfit:'#2bd6c0',style:'visor'}},
   {name:'Duke',   speed:5.0, health:118, unlock:22, look:{skin:'#d9a079',hair:'#1c1c1c',outfit:'#34303a',style:'tophat'}},
   {name:'Reina',  speed:5.4, health:105, unlock:25, look:{skin:'#f0c8b0',hair:'#3a2a4a',outfit:'#b03a6a',style:'crown'}},
+  {name:'Seraph', speed:5.6, health:110, unlock:28, look:{skin:'#f0c8b0',hair:'#f2e9d0',outfit:'#e6ecff',style:'halo'}},
+  {name:'Diablo', speed:5.2, health:140, unlock:32, look:{skin:'#c86a4a',hair:'#160f10',outfit:'#5a1f22',style:'horns'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -721,6 +723,8 @@ const WEAPONS = [
   {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire'},
   {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds'},
   {name:'Tommy',   icon:'🎻', dmg:11,  mag:30, reload:1.7,  range:190, fireCd:0.085,mode:'auto',    unlock:8,  special:'drum-mag auto — steady spray'},
+  {name:'Launcher',icon:'🚀', dmg:40,  mag:1,  reload:2.6,  range:340, fireCd:1.2,  mode:'launcher',unlock:12, special:'explosive rocket — splash damage'},
+  {name:'Vipers',  icon:'🐍', dmg:9,   mag:24, reload:1.7,  range:210, fireCd:0.09, mode:'auto', twin:true, unlock:15, special:'twin barrels — double the lead'},
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
@@ -728,8 +732,13 @@ const RANGE_SCALE = 1.7;
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.4.0';
+const GAME_VERSION = '2.5.0';
 const CHANGELOG = [
+  { v:'2.5.0', items:[
+    ['🚀','Rocket Launcher','a new weapon that fires explosive splash rockets (Lv 12)'],
+    ['🐍','Vipers','twin-barrel SMG — double the lead downrange (Lv 15)'],
+    ['😇','Seraph & Diablo','two new fighters: an angel (Lv 28) and a demon (Lv 32)'],
+  ]},
   { v:'2.4.0', items:[
     ['🔫','Bigger, crisper guns','weapon art rendered large & sharp on the select cards'],
     ['💎','Rarity tiers','Common → Legendary, with colored accents on each gun'],
@@ -1271,17 +1280,28 @@ function fire(h){
         color: pick(['#ff9b3d','#ff6a2a','#ffd24a']) }); }
     h.mag--; sfx('flame'); if(h.mag<=0) startReload(h); return;
   }
+  if(w.mode==='launcher'){
+    const a=h.aim+(h.isPlayer?rand(-0.01,0.01):rand(-h.acc,h.acc)*0.5), rs=430;
+    bullets.push({ x:h.x+Math.cos(a)*18, y:h.y+Math.sin(a)*18, vx:Math.cos(a)*rs, vy:Math.sin(a)*rs,
+      life:range/rs, owner:h, dmg:w.dmg, boom:true, rocket:true, hits:0,
+      color:'#ffcaa0', lw:5, tl:0.02, glow:9, tip:3, aim:a });
+    h.mag--; h.muzzleT=0.09; h.muzzleR=12; h.recoil=2.4;
+    for(let i=0;i<12;i++) spark(h.x+Math.cos(a)*16, h.y+Math.sin(a)*16, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
+    h.vx-=Math.cos(a)*48; h.vy-=Math.sin(a)*48; if(h.isPlayer) shake=Math.min(shake+6,14);
+    sfx('shoot','launcher'); if(h.mag<=0) startReload(h); return;
+  }
   const spd = w.mode==='sniper'?1040 : w.mode==='shotgun'?560 : 780;
-  const shots = w.mode==='shotgun'?6:1;
+  const shots = w.mode==='shotgun'?6 : w.twin?2 : 1;
   const fx = bulletFx(w);
   // bots shoot wilder during the early-match warmup (see updateBot) — softens a fresh BR drop
   const botAcc = h.isPlayer ? 0 : h.acc * (1 + 1.6*(1-clamp(elapsed/18,0,1)));
   for(let i=0;i<shots;i++){
     const spread = w.mode==='shotgun'? rand(-0.28,0.28) : (h.isPlayer?rand(-0.012,0.012):rand(-botAcc,botAcc));
-    const a=h.aim+spread;
+    const a=h.aim+spread + (w.twin?(i===0?-0.02:0.02):0);
+    const perp = w.twin?(i===0?-3:3):0;   // twin barrels fire from side-by-side muzzles
     let dmg=w.dmg, crit=false;
     if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
-    bullets.push({ x:h.x+Math.cos(a)*16, y:h.y+Math.sin(a)*16, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+    bullets.push({ x:h.x+Math.cos(a)*16 - Math.sin(h.aim)*perp, y:h.y+Math.sin(a)*16 + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
       life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper', hits:0,
       color: crit?'#ffd24a':fx.col, lw: crit?4.2:fx.lw, tl: fx.tl, glow: crit?10:fx.glow, tip: crit?2.2:fx.tip });
   }
@@ -1551,6 +1571,7 @@ function sfx(kind,mode){ if(!actx) return;
   if(kind==='shoot'){ const t=performance.now(); if(t-lastShot<30) return; lastShot=t;
     if(mode==='sniper'){ tone(180,0.18,'sawtooth',0.18,70); noise(0.12,0.12); tone(70,0.16,'sine',0.12,40); }
     else if(mode==='shotgun'){ noise(0.16,0.2); tone(110,0.12,'square',0.14,55); tone(60,0.14,'sine',0.12,35); }
+    else if(mode==='launcher'){ tone(150,0.14,'sawtooth',0.16,60); noise(0.12,0.14); tone(80,0.16,'sine',0.12,40); }
     else { tone(mode==='auto'?520:420,0.06,'square',0.1,200); noise(0.04,0.06); tone(140,0.05,'sine',0.06,80); } }
   else if(kind==='flame'){ const t=performance.now(); if(t-lastShot<45) return; lastShot=t; noise(0.1,0.07); tone(130,0.07,'sawtooth',0.05,90); }
   else if(kind==='tick'){ const t=performance.now(); if(t-lastTick<45) return; lastTick=t; tone(1500,0.03,'square',0.07,1200); }
@@ -1729,17 +1750,26 @@ function separate(){
 function updateBullets(dt){
   for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i];
     b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; let gone=false;
-    if(obstacles.length && bulletInObstacle(b)){ for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue; }
-    for(const z of zombies){ if(!z.alive) continue;
-      if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){ hurt(z,b.dmg,b.owner,false); if(b.flame) ignite(z,b.owner);
+    if(obstacles.length && bulletInObstacle(b)){
+      if(b.boom){ gone=true; }
+      else { for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue; } }
+    if(!gone) for(const z of zombies){ if(!z.alive) continue;
+      if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
+        if(b.boom){ gone=true; break; }
+        hurt(z,b.dmg,b.owner,false); if(b.flame) ignite(z,b.owner);
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
     if(!gone) for(const h of humans){ if(!h.alive||h===b.owner||(b.owner&&h.team===b.owner.team)) continue;
-      if(dist2(b.x,b.y,h.x,h.y)<(R+3)*(R+3)){ hurt(h,b.dmg,b.owner,true); if(b.flame) ignite(h,b.owner);
+      if(dist2(b.x,b.y,h.x,h.y)<(R+3)*(R+3)){
+        if(b.boom){ gone=true; break; }
+        hurt(h,b.dmg,b.owner,true); if(b.flame) ignite(h,b.owner);
         h.vx+=b.vx*0.04; h.vy+=b.vy*0.04;
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
-    if(gone||b.life<=0||b.x<0||b.y<0||b.x>ARENA||b.y>ARENA) bullets.splice(i,1);
+    const oob = b.x<0||b.y<0||b.x>ARENA||b.y>ARENA;
+    if(gone||b.life<=0||oob){
+      if(b.boom && !oob) explode(b);   // rockets detonate on impact / at max range (not off-map)
+      bullets.splice(i,1); }
   }
 }
 function updateBombs(dt){
@@ -2002,6 +2032,15 @@ function draw(){
   ctx.lineCap='round';
   for(const b of bullets){
     if(b.flame){ ctx.globalAlpha=clamp(b.life*3,0,1); ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r||5,0,TAU); ctx.fill(); ctx.globalAlpha=1; continue; }
+    if(b.rocket){ const a=b.aim||Math.atan2(b.vy,b.vx);
+      // fiery exhaust trail
+      spark(b.x-Math.cos(a)*6, b.y-Math.sin(a)*6, pick(['#ffae3a','#ff6a2a','#cfcfcf']), rand(10,60), a+Math.PI+rand(-.4,.4), .35);
+      ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(a);
+      ctx.fillStyle='#e2452f'; ctx.strokeStyle=INK; ctx.lineWidth=1.4;            // warhead
+      ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(1,-2.6); ctx.lineTo(1,2.6); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#4a5a38'; roundRect(-5,-2.4,7,4.8,1.6,ctx); ctx.fill(); ctx.stroke();  // body
+      ctx.fillStyle='#2b2e35'; ctx.beginPath(); ctx.moveTo(-5,-2.4); ctx.lineTo(-8,-4); ctx.lineTo(-5,0); ctx.lineTo(-8,4); ctx.lineTo(-5,2.4); ctx.closePath(); ctx.fill();  // fins
+      ctx.restore(); continue; }
     const tl = b.tl||0.012, lw = b.lw||3, tip = b.tip||1.4;
     if(b.glow){ ctx.shadowColor=b.color; ctx.shadowBlur=b.glow; }
     ctx.strokeStyle=b.color; ctx.lineWidth=lw;
@@ -2412,7 +2451,9 @@ const GUNK={
   Crossbow:{l:16,c:'#6a4e2a',bow:1,wood:1,guard:1},
   Flame:   {l:13,c:'#8a3a2a',tank:1,nozzle:1,hazard:1},
   Minigun: {l:18,c:'#2a2f38',fat:1,cluster:1},
-  Tommy:   {l:16,c:'#5a4a3a',drum:1,stock:1,foregrip:1,wood:1,muzzle:1,guard:1}};
+  Tommy:   {l:16,c:'#5a4a3a',drum:1,stock:1,foregrip:1,wood:1,muzzle:1,guard:1},
+  Launcher:{l:20,c:'#4a5a38',tube:1,stock:1,guard:1},
+  Vipers:  {l:14,c:'#2f333b',twin:1,stock:1,mag:1,muzzle:1,guard:1}};
 function drawGun(name,c){
   c=c||ctx;
   const g=GUNK[name]||{l:14,c:'#3a3f48'}, ink='rgba(0,0,0,.38)';
@@ -2431,9 +2472,20 @@ function drawGun(name,c){
   if(g.fat){ roundRect(-1,-4.2,g.l+1,8.4,2.5,c); c.fill(); c.stroke();
     c.fillStyle='#5a5f68'; for(let i=0;i<4;i++) c.fillRect(2+i*4,-4.2,1.8,8.4);
     c.fillStyle='rgba(0,0,0,.25)'; for(let i=0;i<4;i++) c.fillRect(3.8+i*4,-4.2,0.8,8.4); }
+  else if(g.tube){ // rocket-launcher tube: fat barrel with a flared mouth + optic
+    roundRect(-1,-3.4,g.l+1,6.8,3,c); c.fill(); c.stroke();
+    c.fillStyle='rgba(255,255,255,.16)'; c.fillRect(1,-3,g.l-3,1.1);
+    c.fillStyle='#20261a'; c.strokeStyle=ink; c.beginPath(); c.ellipse(g.l+0.5,0,2.2,4,0,0,TAU); c.fill(); c.stroke();  // flared mouth
+    c.fillStyle='#12160e'; c.beginPath(); c.ellipse(g.l+0.5,0,1.1,2.4,0,0,TAU); c.fill();
+    c.fillStyle='#6a7a4a'; c.strokeStyle=ink; roundRect(g.l*0.32,-6,5,3,1,c); c.fill(); c.stroke();               // top optic
+    c.fillStyle='#e2452f'; c.fillRect(2,1.6,g.l*0.5,1); }                                                          // red warning stripe
   else { roundRect(0,-2,g.l,4,1.4,c); c.fill(); c.stroke();
     c.fillStyle='rgba(255,255,255,.22)'; c.fillRect(1.5,-1.7,g.l-3,1);        // top sheen
     c.fillStyle='rgba(0,0,0,.18)'; c.fillRect(1.5,1.1,g.l-3,0.9); }           // under-shade
+  // twin lower barrel (Vipers)
+  if(g.twin){ c.fillStyle=g.c; c.strokeStyle=ink; roundRect(1,2.4,g.l-2,3,1.2,c); c.fill(); c.stroke();
+    c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(2.5,2.7,g.l-5,0.8);
+    c.fillStyle='#20242a'; roundRect(g.l-2.4,1.9,2.6,4,1,c); c.fill(); c.stroke(); }   // shared muzzle block
   // revolver cylinder
   if(g.cyl){ c.fillStyle='#5b636d'; c.strokeStyle=ink; c.beginPath(); c.arc(4.6,0.6,3.1,0,TAU); c.fill(); c.stroke();
     c.fillStyle='rgba(0,0,0,.45)'; for(let k=0;k<5;k++){ const a=k/5*TAU; c.beginPath(); c.arc(4.6+Math.cos(a)*1.5,0.6+Math.sin(a)*1.5,0.5,0,TAU); c.fill(); } }
@@ -2636,6 +2688,12 @@ function drawHair(L,hy,flip){
       ctx.beginPath(); ctx.moveTo(-8,hy-6); ctx.lineTo(-8,hy-9); ctx.lineTo(-4,hy-6.5); ctx.lineTo(0,hy-11); ctx.lineTo(4,hy-6.5); ctx.lineTo(8,hy-9); ctx.lineTo(8,hy-6); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle='#e2452f'; ctx.beginPath(); ctx.arc(0,hy-7,1.2,0,TAU); ctx.fill();
       ctx.fillStyle='#39a0ff'; ctx.beginPath(); ctx.arc(-5,hy-6.6,0.9,0,TAU); ctx.arc(5,hy-6.6,0.9,0,TAU); ctx.fill(); break;
+    case 'halo': cap(); ctx.strokeStyle='#ffe27a'; ctx.lineWidth=2; ctx.globalAlpha=0.45;    // soft glow ring
+      ctx.beginPath(); ctx.ellipse(0,hy-13,7,2.3,0,0,TAU); ctx.stroke(); ctx.globalAlpha=1;
+      ctx.strokeStyle='#fff3b0'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.ellipse(0,hy-13,6.6,2.1,0,0,TAU); ctx.stroke(); break;
+    case 'horns': cap(); ctx.fillStyle='#e8ddc8'; ctx.strokeStyle=INK; ctx.lineWidth=1.4;      // curved bone horns
+      for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*6,hy-5.5); ctx.quadraticCurveTo(sx*11,hy-10.5,sx*8.5,hy-15.5);
+        ctx.quadraticCurveTo(sx*7,hy-11.5,sx*4.2,hy-7.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } break;
     default: cap();
   }
 }
@@ -2937,6 +2995,12 @@ function portraitChibi(av){
     o.beginPath(); o.moveTo(-8.5,hy-6.5); o.lineTo(-8.5,hy-10); o.lineTo(-4.2,hy-7); o.lineTo(0,hy-12); o.lineTo(4.2,hy-7); o.lineTo(8.5,hy-10); o.lineTo(8.5,hy-6.5); o.closePath(); o.fill(); o.stroke();
     o.fillStyle='#e2452f'; o.beginPath(); o.arc(0,hy-7.5,1.3,0,TAU); o.fill();
     o.fillStyle='#39a0ff'; o.beginPath(); o.arc(-5.3,hy-7,1,0,TAU); o.arc(5.3,hy-7,1,0,TAU); o.fill(); }
+  else if(L.style==='halo'){ cap(); o.strokeStyle='#ffe27a'; o.lineWidth=2.2; o.globalAlpha=0.45;
+    o.beginPath(); o.ellipse(0,hy-14,7.4,2.5,0,0,TAU); o.stroke(); o.globalAlpha=1;
+    o.strokeStyle='#fff3b0'; o.lineWidth=1.7; o.beginPath(); o.ellipse(0,hy-14,7,2.3,0,0,TAU); o.stroke(); }
+  else if(L.style==='horns'){ cap(); o.fillStyle='#e8ddc8'; o.strokeStyle=INK; o.lineWidth=1.5;
+    for(const sx of [-1,1]){ o.beginPath(); o.moveTo(sx*6.5,hy-6); o.quadraticCurveTo(sx*12,hy-11.5,sx*9.2,hy-17);
+      o.quadraticCurveTo(sx*7.5,hy-12.5,sx*4.6,hy-8); o.closePath(); o.fill(); o.stroke(); } }
   else { cap(); if(L.style==='beard'){ o.fillStyle=L.hair; o.beginPath(); o.moveTo(-7.5,hy+1.5); o.quadraticCurveTo(0,hy+12,7.5,hy+1.5); o.closePath(); o.fill(); o.stroke(); } }
   // face (frog / visor draw their own)
   if(L.style!=='frog' && L.style!=='visor'){
@@ -2971,11 +3035,12 @@ function buildAvatarGrid(){
     g.appendChild(card);
   });
 }
-const WMODE={semi:'SEMI',auto:'AUTO',shotgun:'SHOT',sniper:'SNIPE',flame:'FLAME'};
+const WMODE={semi:'SEMI',auto:'AUTO',shotgun:'SHOT',sniper:'SNIPE',flame:'FLAME',launcher:'BOOM'};
 function wstats(w){
-  const pel = w.mode==='shotgun'?6 : w.mode==='flame'?3 : 1;   // projectiles per trigger
-  const perShot = w.dmg*pel;
-  const cyc = w.mag*w.fireCd + w.reload;                       // full mag + reload (s)
+  const pel = w.mode==='shotgun'?6 : w.mode==='flame'?3 : (w.twin?2:1);   // projectiles per trigger
+  let perShot = w.dmg*pel;
+  if(w.mode==='launcher') perShot = 90;                       // splash damage, not the direct hit
+  const cyc = w.mag*w.fireCd + w.reload;                      // full mag + reload (s)
   return { perShot, dps: Math.round(perShot*w.mag/cyc), rpm: Math.round(60/w.fireCd) };
 }
 // rarity tier by unlock level — drives the card's accent colour + chip

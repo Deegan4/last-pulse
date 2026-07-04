@@ -33,16 +33,17 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 _Remaining Alive-World polish (wall streaks, dried blood) parked — they need a splat-system
 refactor for marginal payoff; revisit if doing a broader gore pass._
 
-## v1.12 — "Arsenal & Fighters" (content drop)
+## v1.12 — "Arsenal & Fighters" (weapons + fighters shipped as v2.5.0)
 
-- [ ] **2 new weapons** — candidates: *Launcher* (slow AoE rocket, self-knockback) and *SMG-akimbo*
-      (dual-wield look, wide spray). Table entry + `GUNK` art + `bulletFx` feel each.
-- [ ] **2 new avatars** — fill the Lv 28/30 unlock gap; new `look.style`s need cases in
-      `drawHair` AND `portraitChibi`.
+- [x] **2 new weapons** — **Launcher** (Lv12, `mode:'launcher'`, slow rocket → `explode()` on
+      impact/timeout via `boom` bullet flag; `tube` GUNK art) and **Vipers** (Lv15, twin-barrel
+      SMG: `twin:true` fires 2 side-by-side bullets; `twin` GUNK art).
+- [x] **2 new avatars** — **Seraph** (Lv28, `halo` style) and **Diablo** (Lv32, `horns` style);
+      both styles added to `drawHair` AND `portraitChibi`.
 - [ ] **Trail shop wave 2** — 4 more cosmetic trails (fire, frost, confetti, shadow) + a
-      **banner color** cosmetic slot on the nameplate.
+      **banner color** cosmetic slot on the nameplate. _(not yet)_
 - [ ] **Weekly challenge** — a harder 7-day cousin of the daily (worth 200 🪙), same
-      deterministic day-hash pattern.
+      deterministic day-hash pattern. _(not yet)_
 
 ## v1.13 — "Modes & Bosses"
 
