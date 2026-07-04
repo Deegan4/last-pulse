@@ -11,6 +11,14 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.3.0 rank ladder + level rewards** (user: "need more levels" — progression flattened after
+  the level-25 avatar-unlock ceiling): added a `RANKS` table (Rookie→Fighter→Veteran→Elite→Master→
+  Champion→Legend→Mythic→Immortal, thresholds 1/5/10/16/22/30/40/55/75) with `rankFor(lv)` /
+  `nextRank(lv)`. `grantXp` now pays coins on every level-up (`levelReward(lv)=20+lv*4`, 24→380🪙)
+  and sets `lastLevelCoins`/`lastRankUp`; `levelToast` shows the coin payout + a staggered
+  "NEW RANK" toast on promotion. Fighter card shows a gold rank chip (`#menuRank`) + next-rank hint
+  (`#menuRankNext`) via renderMenu. Results "one-more-run" teaser (`#rNext`) falls back to the next
+  rank once all avatars/weapons are unlocked, so there's always a goal. GAME_VERSION 2.3.0.
 - **v2.2.0 "Alive World"**: 🏕 **campfire heal aura** — `campfireHeal(h,dt)` (called from
   updatePlayer) regens `CAMPFIRE.heal` (6) hp/s within `CAMPFIRE.r` (72px) of any cached
   `campfires` (filtered from decor in buildDecor), green heal sparks; grace/full-hp guarded.
