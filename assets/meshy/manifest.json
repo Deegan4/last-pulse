@@ -24,23 +24,38 @@
         "outfit": "#e6c84d",
         "style": "curly"
       },
-      "prompt": "A chibi human warrior with warm tan skin, dark brown curly hair, wearing a golden-yellow jumpsuit, friendly rounded face, chibi cartoon style, big head small body, low-poly game asset, clean topology, flat saturated colors, bold simple shapes, smooth matte surfaces, T-pose, full body, white background"
+      "prompt": "A chibi human warrior with warm tan skin, dark brown curly hair, wearing a golden-yellow jumpsuit, friendly rounded face, chibi cartoon style, big head small body, low-poly game asset, clean topology, flat saturated colors, bold simple shapes, smooth matte surfaces, T-pose, full body, white background",
+      "metrics": {
+        "tris": 54728,
+        "mb": 2.03,
+        "imgTexPx": 0
+      }
     },
     {
       "id": "emily",
       "type": "character",
       "source": "AVATARS[1]",
       "label": "Emily",
-      "task_id": null,
-      "file": "emily.glb",
-      "status": "queued",
+      "task_id": "019f2e75-af75-7f5f-95f4-a8c2bc7f871c",
+      "refine_task_id": "019f2e7d-a69d-71bf-a62f-097f5ddc6774",
+      "remesh_task_id": "019f2e84-0fd6-7a64-9613-92d53fbed91f",
+      "rig_task_id": "019f2e85-3ee6-736c-8f94-79b39647fdda",
+      "file": "emily-walk.glb",
+      "anim": "emily-walk.glb",
+      "status": "generated",
+      "ai_model": "meshy-6",
       "look": {
         "skin": "#f0c2a2",
         "hair": "#7a4a2a",
         "outfit": "#e85d9a",
         "style": "long"
       },
-      "prompt": "A chibi human girl with light peach skin, long auburn-brown hair, wearing a hot-pink outfit, cheerful face, chibi cartoon style, big head small body, low-poly game asset, clean topology, flat saturated colors, bold simple shapes, smooth matte surfaces, T-pose, full body, white background"
+      "prompt": "Funny cartoon chibi girl character, big oversized round head, tiny short body, huge sparkly expressive eyes, cheerful goofy grin, long flowing brown hair, bright pink hoodie, flat vibrant saturated colors, thick black cartoon outlines, mobile game mascot style, full body, standing T-pose, clean simple shapes",
+      "metrics": {
+        "tris": 61341,
+        "mb": 3.59,
+        "imgTexPx": 512
+      }
     },
     {
       "id": "griffin",
@@ -143,16 +158,26 @@
       "type": "character",
       "source": "AVATARS[8]",
       "label": "Dennis",
-      "task_id": null,
+      "task_id": "019f2e75-c7df-706b-a70a-77043d80fcb4",
+      "refine_task_id": "019f2e7d-b2dd-70e0-b7cc-d2fcb902efbb",
+      "remesh_task_id": "019f2e84-1629-727f-a021-8257c30af255",
+      "rig_task_id": null,
+      "rig_note": "non-humanoid frog body \u2014 Meshy pose estimation fails (422); ships as static billboard",
       "file": "dennis.glb",
-      "status": "queued",
+      "status": "generated",
+      "ai_model": "meshy-6",
       "look": {
         "skin": "#7bbf5a",
         "hair": "#5a8a3a",
         "outfit": "#3a3f4a",
         "style": "frog"
       },
-      "prompt": "A chibi frog-man character with bright green skin, darker green head, wearing a slate-grey outfit, big round eyes, friendly amphibian face, chibi cartoon style, big head small body, low-poly game asset, clean topology, flat saturated colors, bold simple shapes, smooth matte surfaces, T-pose, full body, white background"
+      "prompt": "Funny cartoon chibi frog-man character, big oversized round green head, tiny body, huge googly bulging eyes, silly wide goofy smile, green frog skin, light green hoodie outfit, flat vibrant saturated colors, thick black cartoon outlines, mobile game mascot style, full body, standing T-pose, clean simple shapes",
+      "metrics": {
+        "tris": 61135,
+        "mb": 2.24,
+        "imgTexPx": 512
+      }
     },
     {
       "id": "luna",
@@ -191,16 +216,26 @@
       "type": "character",
       "source": "AVATARS[11]",
       "label": "Bo",
-      "task_id": null,
-      "file": "bo.glb",
-      "status": "queued",
+      "task_id": "019f2e75-ded5-7f62-9e2a-a9c81935a393",
+      "refine_task_id": "019f2e7d-bd10-70e2-b635-6748987ae7db",
+      "remesh_task_id": "019f2e84-27f7-7280-ba2c-5137e4892b45",
+      "rig_task_id": "019f2e85-845b-7ab5-893c-cb5e772cd273",
+      "file": "bo-walk.glb",
+      "anim": "bo-walk.glb",
+      "status": "generated",
+      "ai_model": "meshy-6",
       "look": {
         "skin": "#e8b48c",
         "hair": "#e0a030",
         "outfit": "#d23030",
         "style": "mohawk"
       },
-      "prompt": "A chibi human punk with tan skin, a tall yellow-blonde mohawk, wearing a bright red jacket, energetic grin, chibi cartoon style, big head small body, low-poly game asset, clean topology, flat saturated colors, bold simple shapes, smooth matte surfaces, T-pose, full body, white background"
+      "prompt": "Funny cartoon chibi punk boy character, big oversized round head, tiny body, huge expressive eyes, cocky goofy smirk, tall spiky orange mohawk hair, bright red tank top, flat vibrant saturated colors, thick black cartoon outlines, mobile game mascot style, full body, standing T-pose, clean simple shapes",
+      "metrics": {
+        "tris": 61836,
+        "mb": 3.85,
+        "imgTexPx": 512
+      }
     },
     {
       "id": "pixel",
@@ -254,7 +289,7 @@
       "id": "zombie-normal",
       "type": "zombie",
       "source": "ZTYPES.normal",
-      "label": "Zombie · Normal",
+      "label": "Zombie \u00b7 Normal",
       "task_id": "019f1a88-e219-78a7-9c06-b59a6f4f4637",
       "file": "zombie-normal.glb",
       "status": "generated",
@@ -263,13 +298,18 @@
         "torso": "#566b3a",
         "size": 1
       },
-      "prompt": "A chibi cartoon zombie with sickly green skin, olive-green tattered shirt, slouched posture, empty white eyes, simple stitches, chibi cartoon style, big head small body, low-poly game asset, clean topology, flat saturated colors, bold simple shapes, smooth matte surfaces, T-pose, full body, white background"
+      "prompt": "A chibi cartoon zombie with sickly green skin, olive-green tattered shirt, slouched posture, empty white eyes, simple stitches, chibi cartoon style, big head small body, low-poly game asset, clean topology, flat saturated colors, bold simple shapes, smooth matte surfaces, T-pose, full body, white background",
+      "metrics": {
+        "tris": 55408,
+        "mb": 1.51,
+        "imgTexPx": 0
+      }
     },
     {
       "id": "zombie-runner",
       "type": "zombie",
       "source": "ZTYPES.runner",
-      "label": "Zombie · Runner",
+      "label": "Zombie \u00b7 Runner",
       "task_id": null,
       "file": "zombie-runner.glb",
       "status": "queued",
@@ -284,7 +324,7 @@
       "id": "zombie-brute",
       "type": "zombie",
       "source": "ZTYPES.brute",
-      "label": "Zombie · Brute",
+      "label": "Zombie \u00b7 Brute",
       "task_id": null,
       "file": "zombie-brute.glb",
       "status": "queued",
@@ -303,7 +343,12 @@
       "task_id": "019f1a88-ee86-78a8-b3bf-5ec8b27bbf67",
       "file": "pistol.glb",
       "status": "generated",
-      "prompt": "A stylized cartoon semi-automatic pistol, compact handgun, dark gunmetal body, brown grip, stylized cartoon game prop, low-poly, clean topology, flat saturated colors, bold chunky shapes, smooth matte surfaces, single object, white background"
+      "prompt": "A stylized cartoon semi-automatic pistol, compact handgun, dark gunmetal body, brown grip, stylized cartoon game prop, low-poly, clean topology, flat saturated colors, bold chunky shapes, smooth matte surfaces, single object, white background",
+      "metrics": {
+        "tris": 57266,
+        "mb": 1.46,
+        "imgTexPx": 0
+      }
     },
     {
       "id": "rifle",

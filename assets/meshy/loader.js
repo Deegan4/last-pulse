@@ -17,10 +17,10 @@ export const MODELS = [
     "type": "character",
     "table": "AVATARS",
     "key": 1,
-    "preview": "emily.glb",
+    "preview": "emily-walk.glb",
     "rigged": null,
-    "walk": null,
-    "status": "queued"
+    "walk": "emily-walk.glb",
+    "status": "generated"
   },
   {
     "id": "griffin",
@@ -90,7 +90,7 @@ export const MODELS = [
     "preview": "dennis.glb",
     "rigged": null,
     "walk": null,
-    "status": "queued"
+    "status": "generated"
   },
   {
     "id": "luna",
@@ -117,10 +117,10 @@ export const MODELS = [
     "type": "character",
     "table": "AVATARS",
     "key": 11,
-    "preview": "bo.glb",
+    "preview": "bo-walk.glb",
     "rigged": null,
-    "walk": null,
-    "status": "queued"
+    "walk": "bo-walk.glb",
+    "status": "generated"
   },
   {
     "id": "pixel",

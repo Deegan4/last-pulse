@@ -4,3 +4,12 @@
 node_modules/
 *.log
 .DS_Store
+.vercel
+
+# Meshy intermediates — not shipped in-game (MODEL_FILES loads only the *-walk.glb + dennis.glb).
+# The raw pre-remesh textured meshes (emily.glb/bo.glb ~15-18MB) and review PNGs are regenerable
+# from the manifest task_ids, so keep them out of git history.
+assets/meshy/emily.glb
+assets/meshy/bo.glb
+assets/meshy/*-tex.png
+assets/meshy/*_base_color.png

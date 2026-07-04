@@ -29,7 +29,9 @@ import { createWriteStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { statSync } from 'node:fs';
 import path from 'node:path';
+import { shrinkGlbTextures } from './shrink-glb-textures.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR  = path.join(ROOT, 'assets', 'meshy');
@@ -50,6 +52,7 @@ const LOADER     = has('--emit-loader'); // regenerate loader.js from manifest (
 const ONLY = (valOf('--only') || '').split(',').filter(Boolean);
 
 const AI_MODEL = 'meshy-5', TOPOLOGY = 'quad', POLY = 30000;
+const TEX_CAP = 512;   // embedded-texture cap (px, longest side) applied to every downloaded model GLB
 
 // Style suffixes (mirror PROMPTS.md) — used only if an asset has no explicit `prompt`.
 const CHAR_SUFFIX = 'chibi cartoon style, big head small body, low-poly game asset, clean topology, flat saturated colors, bold simple shapes, smooth matte surfaces, T-pose, full body, white background';
@@ -117,6 +120,19 @@ async function glbTriangleCount(file) {
   return Math.round(tris);
 }
 
+// ---------- download a model GLB, cap its embedded textures, and return drift metrics ----------
+// Every model GLB goes through here so textures are capped at write time (the validate.mjs budget
+// gate then has nothing to catch) and we capture {tris, mb, imgTexPx} for the manifest — the three
+// numbers that drift when Meshy changes its mesh/texture defaults across versions.
+async function downloadModel(url, dest) {
+  await download(url, dest);
+  const shrink = await shrinkGlbTextures(dest, TEX_CAP);   // pure-local, no credits; no-ops if no textures / no magick
+  const tris = await glbTriangleCount(dest);
+  const mb = +(statSync(dest).size / 1e6).toFixed(2);
+  const imgTexPx = shrink.skipped ? (shrink.images ? null : 0) : shrink.texMaxPx;
+  return { tris, mb, imgTexPx };
+}
+
 function promptFor(a) {
   if (a.prompt) return a.prompt;
   if (a.type === 'weapon') return `${a.label} ${WEAPON_SUFFIX}`;
@@ -132,10 +148,9 @@ async function generate(a) {
   const glb = t.model_urls?.glb;
   if (!glb) throw new Error('no glb in result');
   const dest = path.join(DIR, a.file);
-  await download(glb, dest);
-  const tris = await glbTriangleCount(dest);
-  log(`\r  ✓ ${a.id} → ${a.file} (${tris?.toLocaleString()} tris)        `);
-  return { task_id: taskId, tris };
+  const m = await downloadModel(glb, dest);
+  log(`\r  ✓ ${a.id} → ${a.file} (${m.tris?.toLocaleString()} tris, ${m.mb}MB, tex ${m.imgTexPx ?? '—'}px)   `);
+  return { task_id: taskId, tris: m.tris, metrics: m };
 }
 
 // ---------- rig one character, gated on face count ----------
@@ -146,10 +161,12 @@ async function rig(a, tris) {
   const rg = t.result || t;
   const rigged = rg.rigged_character_glb_url || rg.glb_url;
   const walk   = rg.basic_animations?.walking_glb_url;
-  if (rigged) await download(rigged, path.join(DIR, `${a.id}-rigged.glb`));
-  if (walk)   await download(walk,   path.join(DIR, `${a.id}-walk.glb`));
-  log(`\r  ✓ ${a.id} rigged (walk+run)                         `);
-  return { rig_task_id: taskId, rigged: `${a.id}-rigged.glb`, anim: walk ? `${a.id}-walk.glb` : undefined };
+  let walkMetrics = null;
+  if (rigged) await downloadModel(rigged, path.join(DIR, `${a.id}-rigged.glb`));
+  if (walk)   walkMetrics = await downloadModel(walk, path.join(DIR, `${a.id}-walk.glb`));  // the anim GLB actually shipped in-game
+  log(`\r  ✓ ${a.id} rigged (walk+run` + (walkMetrics ? `, ${walkMetrics.mb}MB` : '') + `)                  `);
+  return { rig_task_id: taskId, rigged: `${a.id}-rigged.glb`, anim: walk ? `${a.id}-walk.glb` : undefined,
+           ...(walkMetrics ? { metrics: walkMetrics } : {}) };
 }
 
 // ---------- credit reconciliation ----------
@@ -186,9 +203,10 @@ async function refine(a) {
   const { result: taskId } = await api('POST', '/v2/text-to-3d', { mode: 'refine', preview_task_id: a.task_id, enable_pbr: true });
   const t = await poll(`/v2/text-to-3d/${taskId}`, `${a.id}:refine`);
   const glb = t.model_urls?.glb;
-  if (glb) await download(glb, path.join(DIR, a.file));   // textured GLB overwrites the preview mesh
-  log(`\r  ✓ ${a.id} textured (PBR)                              `);
-  return { refine_task_id: taskId, textured: true };
+  let metrics = null;
+  if (glb) metrics = await downloadModel(glb, path.join(DIR, a.file));   // textured GLB overwrites the preview mesh
+  log(`\r  ✓ ${a.id} textured (PBR` + (metrics ? `, ${metrics.mb}MB tex ${metrics.imgTexPx ?? '—'}px` : '') + `)          `);
+  return { refine_task_id: taskId, textured: true, ...(metrics ? { metrics } : {}) };
 }
 
 // ---------- rubric: snapshot a GLB and score it via a vision model ----------
@@ -253,8 +271,32 @@ async function lint() {
     }
     if (a.status === 'queued' && a.task_id) errs.push(`${a.id}: queued but has a task_id (orphaned?)`);
   }
+
+  // Metric-drift gate — for each generated asset with recorded metrics, re-read the GLB on disk and
+  // assert it still matches. Catches (a) a file swapped/re-remeshed out-of-band, and (b) a Meshy
+  // version bump that silently changed mesh/texture defaults on regen. tris must match exactly;
+  // mb within 5% (image re-encode is non-deterministic byte-for-byte); imgTexPx must not grow past
+  // the cap (drift toward the un-shrunk 4K texture that bloats mobile).
+  const TRI_BUDGET = 80000, MB_BUDGET = 4, TEX_BUDGET = 1024;
+  let checked = 0;
+  for (const a of mf.assets) {
+    if (a.status !== 'generated' || !a.metrics) continue;
+    const file = a.anim || a.file;                        // the GLB that actually ships in-game
+    const abs = path.join(DIR, file);
+    if (!existsSync(abs)) continue;                        // missing-file already flagged above
+    checked++;
+    const tris = await glbTriangleCount(abs);
+    const mb = +(statSync(abs).size / 1e6).toFixed(2);
+    const rec = a.metrics;
+    if (rec.tris != null && tris !== rec.tris) errs.push(`${a.id}: tris drift — manifest ${rec.tris.toLocaleString()} vs disk ${tris.toLocaleString()} (${file})`);
+    if (rec.mb != null && Math.abs(mb - rec.mb) / rec.mb > 0.05) errs.push(`${a.id}: size drift — manifest ${rec.mb}MB vs disk ${mb}MB (${file})`);
+    if (tris > TRI_BUDGET) errs.push(`${a.id}: ${tris.toLocaleString()} tris > ${TRI_BUDGET.toLocaleString()} budget (${file})`);
+    if (mb > MB_BUDGET) errs.push(`${a.id}: ${mb}MB > ${MB_BUDGET}MB budget (${file})`);
+    if (rec.imgTexPx != null && rec.imgTexPx > TEX_BUDGET) errs.push(`${a.id}: texture ${rec.imgTexPx}px > ${TEX_BUDGET}px budget (${file})`);
+  }
+
   if (errs.length) { errs.forEach(e => console.error('✗ manifest:', e)); process.exit(1); }
-  log(`✓ manifest lint: ${mf.assets.length} assets, no drift (${mf.assets.filter(a=>a.prompt).length} prompts, ${mf.assets.filter(a=>a.status==='generated').length} generated)`);
+  log(`✓ manifest lint: ${mf.assets.length} assets, no drift (${mf.assets.filter(a=>a.prompt).length} prompts, ${mf.assets.filter(a=>a.status==='generated').length} generated, ${checked} metric-checked)`);
 }
 
 // ---------- emit loader.js: index-keyed model resolver for the 3D pivot ----------
@@ -305,13 +347,16 @@ async function main() {
   for (const a of queue) {
     log(`\n▸ ${a.label} (${a.type})`);
     try {
+      const strip = o => { const { metrics, ...rest } = o; return rest; };  // keep transient metrics out of the merged fields
       const g = await generate(a); spent += 5;
       a.task_id = g.task_id; a.status = 'generated';
-      if (REFINE) { const x = await refine(a); spent += 10; Object.assign(a, x); }
+      let metrics = g.metrics;                                             // metrics track the latest shippable GLB
+      if (REFINE) { const x = await refine(a); spent += 10; Object.assign(a, strip(x)); metrics = x.metrics || metrics; }
       if (!NO_RIG && a.type === 'character') {
         const r = await rig(a, g.tris); spent += 5;
-        if (r) Object.assign(a, r);
+        if (r) { Object.assign(a, strip(r)); metrics = r.metrics || metrics; }  // walk-anim GLB is what ships
       }
+      if (metrics) a.metrics = metrics;
       await writeFile(MANIFEST, JSON.stringify(mf, null, 2) + '\n');   // persist after every asset (resumable)
     } catch (e) { warn(`${a.id} failed: ${e.message}`); }
   }

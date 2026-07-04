@@ -3191,9 +3191,11 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
 (async () => {
   let THREE, GLTFLoader;
   try {
-    THREE = await import('https://unpkg.com/three@0.169.0/build/three.module.js');
-    ({ GLTFLoader } = await import('https://unpkg.com/three@0.169.0/examples/jsm/loaders/GLTFLoader.js'));
-  } catch { return; }                                // offline / CDN blocked → stay fully 2D
+    // three.js is vendored under assets/vendor/three (r169) — no CDN, so this works offline and in
+    // sandboxed/CI headless renders. GLTFLoader's own imports were rewritten to the local module.
+    THREE = await import('./assets/vendor/three/three.module.js');
+    ({ GLTFLoader } = await import('./assets/vendor/three/GLTFLoader.js'));
+  } catch { return; }                                // missing vendor files → stay fully 2D
 
   // Build the model map from the auto-generated manifest loader so EVERY generated model
   // wires itself in — run scripts/gen-meshy.mjs to produce more and they light up on next
