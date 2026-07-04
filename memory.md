@@ -11,6 +11,17 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.5.0 "Arsenal & Fighters"** (2 weapons + 2 avatars → 12 weapons, 17 avatars): **Launcher**
+  (Lv12, `mode:'launcher'`) fires a single slow rocket bullet flagged `boom:true`/`rocket:true`;
+  `updateBullets` explodes it via the existing `explode()` on any impact / at max range (not
+  off-map), splash 90/scaled — self-damage possible like the bomb. **Vipers** (Lv15, `twin:true`)
+  fires 2 side-by-side bullets (`shots=w.twin?2`, ±0.02 spread + perpendicular muzzle offset).
+  New `drawGun` flags: `tube` (launcher barrel + flared mouth + red stripe) and `twin` (lower
+  barrel). Rocket has its own in-flight sprite (warhead+fins+exhaust) in the bullet draw loop;
+  `sfx('shoot','launcher')` + WMODE `launcher:'BOOM'` + `.wmode.launcher` CSS; `wstats` shows the
+  launcher's 90 splash as its perShot. **Avatars** Seraph (`halo` style — gold ring) + Diablo
+  (`horns` style — bone horns), both added to `drawHair` (in-game) AND `portraitChibi` (menu).
+  GAME_VERSION 2.5.0.
 - **v2.4.0 weapon-select UI revamp**: **weapon art upgraded** — `weaponIcon(w)` now renders on a
   hi-res DPR-scaled canvas (124×58 CSS ×3), ~2× bigger gun (scale cap 1.8→3.6), with a contact
   shadow + drop shadow ("product shot"); the in-game `drawGun` is untouched (perf). Cards also gained
