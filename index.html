@@ -693,24 +693,12 @@ const el = id => document.getElementById(id);
 // ============================================================
 //  Data: avatars & weapons
 // ============================================================
+// Hero roster — hand-drawn chibi sprites (PNG cutouts in assets/img). `img` keys into the IMG
+// cache; drawHuman/portraitChibi billboard the sprite and fall back to the drawn `look` chibi if
+// the image never loads. More fighters get added by dropping a PNG + a row here.
 const AVATARS = [
-  {name:'Alex',   speed:5.0, health:100, unlock:1,  look:{skin:'#e8b48c',hair:'#241c16',outfit:'#e6c84d',style:'curly'}},
-  {name:'Emily',  speed:5.5, health:90,  unlock:1,  look:{skin:'#f0c2a2',hair:'#7a4a2a',outfit:'#e85d9a',style:'long'}},
-  {name:'Griffin',speed:4.8, health:120, unlock:3,  look:{skin:'#d9a079',hair:'#5a3a1a',outfit:'#c2622d',style:'beard'}},
-  {name:'Eric',   speed:5.2, health:110, unlock:5,  look:{skin:'#7a5236',hair:'#171717',outfit:'#5a86c2',style:'dreads'}},
-  {name:'Jimmy',  speed:5.0, health:130, unlock:7,  look:{skin:'#e8b48c',hair:'#d4dcc8',outfit:'#bfe0c0',style:'mask'}},
-  {name:'Astro',  speed:4.5, health:150, unlock:9,  look:{skin:'#6b4630',hair:'#121212',outfit:'#eef0f2',style:'beard'}},
-  {name:'Saki',   speed:5.8, health:85,  unlock:11, look:{skin:'#f0c8b0',hair:'#9a5acb',outfit:'#3a3f4a',style:'glasses'}},
-  {name:'Kaito',  speed:5.5, health:95,  unlock:13, look:{skin:'#e8b48c',hair:'#141414',outfit:'#2a2f3a',style:'ninja'}},
-  {name:'Dennis', speed:6.0, health:80,  unlock:15, look:{skin:'#7bbf5a',hair:'#5a8a3a',outfit:'#3a3f4a',style:'frog'}},
-  {name:'Luna',   speed:5.6, health:95,  unlock:12, look:{skin:'#f0c8b0',hair:'#cfd0e8',outfit:'#7a4ab0',style:'long'}},
-  {name:'Rex',    speed:4.6, health:145, unlock:16, look:{skin:'#caa07a',hair:'#b0413a',outfit:'#3a5a3a',style:'cap'}},
-  {name:'Bo',     speed:6.3, health:75,  unlock:18, look:{skin:'#e8b48c',hair:'#e0a030',outfit:'#d23030',style:'mohawk'}},
-  {name:'Pixel',  speed:5.7, health:95,  unlock:20, look:{skin:'#e8b48c',hair:'#2a2f3a',outfit:'#2bd6c0',style:'visor'}},
-  {name:'Duke',   speed:5.0, health:118, unlock:22, look:{skin:'#d9a079',hair:'#1c1c1c',outfit:'#34303a',style:'tophat'}},
-  {name:'Reina',  speed:5.4, health:105, unlock:25, look:{skin:'#f0c8b0',hair:'#3a2a4a',outfit:'#b03a6a',style:'crown'}},
-  {name:'Seraph', speed:5.6, health:110, unlock:28, look:{skin:'#f0c8b0',hair:'#f2e9d0',outfit:'#e6ecff',style:'halo'}},
-  {name:'Diablo', speed:5.2, health:140, unlock:32, look:{skin:'#c86a4a',hair:'#160f10',outfit:'#5a1f22',style:'horns'}},
+  {name:'Blaze', speed:5.2, health:115, unlock:1, img:'hero-blaze', look:{skin:'#f0c8a0',hair:'#161616',outfit:'#e6b81f',style:'mohawk'}},
+  {name:'Rose',  speed:5.8, health:95,  unlock:1, img:'hero-rose',  look:{skin:'#f2cbb0',hair:'#6a3f22',outfit:'#e85d9a',style:'long'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -729,11 +717,36 @@ const WEAPONS = [
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
 
+// ===== Image assets (fail-safe: everything still draws if these never load) =====
+// PNG cutouts under assets/img/. imgOk(key) returns the loaded <img> only once it's decoded and
+// non-empty, so every draw path can `const im = imgOk(...)` and fall back to canvas shapes.
+const IMG = {};
+function imgOk(k){ const e=IMG[k]; return (e && e.ok && e.img && e.img.naturalWidth>0) ? e.img : null; }
+function loadImg(k, src){
+  const im = new Image();
+  im.onload  = ()=>{ IMG[k].ok=true; groundKey='';           // force the ground pattern to rebuild
+    try{ if(screenState==='start') renderMenu();             // refresh the menu portrait
+      const ag=el('avatarGrid'); if(ag && ag.children.length) buildAvatarGrid(); }catch(e){} };
+  im.onerror = ()=>{ IMG[k].ok=false; };
+  IMG[k]={img:im, ok:false}; im.src=src;
+}
+loadImg('grass',     'assets/img/ground-grass.png');
+loadImg('tree',      'assets/img/decor-tree.png');
+loadImg('bush',      'assets/img/decor-bush.png');
+loadImg('hero-blaze','assets/img/hero-blaze.png');
+loadImg('hero-rose', 'assets/img/hero-rose.png');
+const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
+
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.5.0';
+const GAME_VERSION = '2.6.0';
 const CHANGELOG = [
+  { v:'2.6.0', items:[
+    ['🎨','Hand-drawn heroes','Blaze & Rose now use crisp illustrated sprites'],
+    ['🌳','New scenery art','illustrated grass, trees & bushes across the map'],
+    ['🖼','Fresh look','the whole battlefield got an art upgrade'],
+  ]},
   { v:'2.5.0', items:[
     ['🚀','Rocket Launcher','a new weapon that fires explosive splash rockets (Lv 12)'],
     ['🐍','Vipers','twin-barrel SMG — double the lead downrange (Lv 15)'],
@@ -829,6 +842,8 @@ const meta = {
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
 };
+// roster shrank to the sprite heroes — clamp any stale saved index so nothing indexes past the table
+if(!(meta.avatar>=0 && meta.avatar<AVATARS.length)) meta.avatar=0;
 function xpNeed(lv){ return 80 + lv*40; }
 // Rank ladder — a title you climb well past the level-25 unlock ceiling, so leveling always
 // has a next goal. rankFor() = current rank; nextRank() = the one you're working toward.
@@ -2182,8 +2197,15 @@ function jagLine(x1,y1,x2,y2){ const seg=6; ctx.beginPath(); ctx.moveTo(x1,y1);
 const GROUND_COLS = { day:['#6aa84f','#63a14a','#5f9c46','#74b258'], dusk:['#6f9a48','#689344','#648e41','#79a350'], night:['#4f7a44','#4a7440','#46703d','#56834a'] };
 let groundPat=null, groundKey='';
 function groundPattern(){
-  if(groundKey===timeOfDay && groundPat) return groundPat;
-  groundKey=timeOfDay;
+  const gi=imgOk('grass'), key=timeOfDay+(gi?'-img':'');
+  if(groundKey===key && groundPat) return groundPat;
+  groundKey=key;
+  if(gi){   // seamless grass photo tile, tinted to match dusk/night lighting
+    const T=512, c=document.createElement('canvas'); c.width=c.height=T; const o=c.getContext('2d');
+    o.drawImage(gi,0,0,T,T);
+    const tint=GROUND_TINT[timeOfDay]; if(tint){ o.fillStyle=tint; o.fillRect(0,0,T,T); }
+    groundPat=ctx.createPattern(c,'repeat'); return groundPat;
+  }
   const T=256, c=document.createElement('canvas'); c.width=c.height=T; const o=c.getContext('2d');
   const [base,alt,dark,lite]=GROUND_COLS[timeOfDay]||GROUND_COLS.day;
   o.fillStyle=base; o.fillRect(0,0,T,T);
@@ -2371,6 +2393,10 @@ function drawDecor(d){
     for(let k=0;k<5;k++){ const a=k/5*TAU; ctx.beginPath(); ctx.arc(d.x+Math.cos(a)*2.4,d.y-6+Math.sin(a)*2.4,1.9,0,TAU); ctx.fill(); ctx.stroke(); }
     ctx.fillStyle='#ffd24a'; ctx.beginPath(); ctx.arc(d.x,d.y-6,1.5,0,TAU); ctx.fill(); return; }
   if(d.type==='tree'){ const s=d.s, sw=Math.sin(gtime*0.9+d.x*0.013)*2.2*s;  // canopy sway
+    const ti=imgOk('tree');
+    if(ti){ const DH=100*s, DW=DH*(ti.naturalWidth/ti.naturalHeight);
+      ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(d.x+sw*0.4,d.y+5,27*s,10*s,0,0,TAU); ctx.fill();
+      ctx.drawImage(ti, d.x-DW/2+sw*0.35, d.y+9-DH, DW, DH); return; }
     ctx.lineJoin='round';
     ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(d.x+sw*0.4,d.y+5,27*s,10*s,0,0,TAU); ctx.fill();
     // outlined, shaded trunk
@@ -2389,6 +2415,10 @@ function drawDecor(d){
         ctx.fillStyle=i===0?'#519c41':i===1?'#478f3a':'#3f7d33'; ctx.beginPath(); ctx.moveTo(tx,topY); ctx.lineTo(tx-hw,baseY); ctx.lineTo(tx+hw,baseY); ctx.closePath(); ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.13)'; ctx.beginPath(); ctx.moveTo(tx,topY); ctx.lineTo(tx-hw*0.42,baseY-(baseY-topY)*0.42); ctx.lineTo(tx+hw*0.12,topY+3*s); ctx.closePath(); ctx.fill(); } } }
   else if(d.type==='bush'){ const s=d.s; ctx.lineJoin='round';
+    const bi=imgOk('bush');
+    if(bi){ const DW=52*s, DH=DW*(bi.naturalHeight/bi.naturalWidth);
+      ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+4,20*s,7*s,0,0,TAU); ctx.fill();
+      ctx.drawImage(bi, d.x-DW/2, d.y+6-DH, DW, DH); return; }
     ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+4,20*s,7*s,0,0,TAU); ctx.fill();
     const blobs=[[-10,-2,12],[10,-2,12],[0,-8,12],[0,-3,11]];
     ctx.fillStyle=INK; for(const o of blobs){ ctx.beginPath(); ctx.arc(d.x+o[0]*s,d.y+o[1]*s,o[2]*s+2*s,0,TAU); ctx.fill(); }
@@ -2557,6 +2587,9 @@ function drawHuman(h){
   // 3D model layer (progressive): if a model is loaded for this avatar, billboard it and skip 2D.
   // Falls through to the hand-drawn chibi whenever the 3D system isn't ready/available.
   if(window.Models3D && Models3D.drawHuman(ctx,h)){ drawNameplate(h); return; }
+  // sprite hero layer: if this fighter has a loaded PNG, billboard it and skip the drawn chibi.
+  const heroImg = h.avatar && imgOk(h.avatar.img);
+  if(heroImg){ drawHeroSprite(h, heroImg); drawNameplate(h); return; }
   const x=h.x, y=h.y, L=h.look, flip=h.faceX<0?-1:1;
   const moving=(h.vx*h.vx+h.vy*h.vy)>140;
   const now=performance.now()/1000, seed=h.seed||0;
@@ -2655,6 +2688,32 @@ function drawHuman(h){
       ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); } }
   ctx.restore();
   drawNameplate(h);
+}
+// Billboard a hero PNG in place of the drawn chibi: shadow + player ring under it, a gentle
+// walk-bob / run-lean, a white flash on hit, plus muzzle flash + reload ring so combat still reads.
+function drawHeroSprite(h, img){
+  const flip = h.faceX<0?-1:1;
+  const moving = (h.vx*h.vx+h.vy*h.vy)>140;
+  const now = performance.now()/1000, seed=h.seed||0;
+  const bob = moving ? Math.sin(h.walk)*1.6 : Math.sin(now*2.3+seed)*0.8;
+  const DH = 52, DW = DH*(img.naturalWidth/img.naturalHeight);   // display size, aspect-preserved
+  ctx.save(); ctx.translate(h.x,h.y);
+  ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0,20,15,5,0,0,TAU); ctx.fill();  // shadow
+  if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4;
+    ctx.beginPath(); ctx.ellipse(0,20,17,5.5,0,0,TAU); ctx.stroke(); }
+  ctx.save();
+  ctx.translate(0,bob); ctx.rotate(clamp(h.vx/2600,-0.08,0.08)); ctx.scale(flip,1);
+  if(h.hitFlash>0) ctx.filter='brightness(2.4) saturate(0.5)';       // hit flash (resets on restore)
+  ctx.drawImage(img, -DW/2, 20-DH, DW, DH);                          // feet near y+20
+  ctx.restore();
+  if(h.muzzleT>0){ const mr=h.muzzleR||7, mx=Math.cos(h.aim)*20, my=Math.sin(h.aim)*12-6;   // muzzle flash along aim
+    ctx.save(); ctx.translate(mx,my);
+    ctx.fillStyle='rgba(255,205,80,.5)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
+    ctx.fillStyle='#fff6c0'; ctx.beginPath(); ctx.arc(0,0,mr*0.5,0,TAU); ctx.fill(); ctx.restore(); }
+  if(h.isPlayer && h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1);   // reload ring
+    ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); }
+  ctx.restore();
 }
 function drawHair(L,hy,flip){
   ctx.fillStyle=L.hair; ctx.strokeStyle=INK; ctx.lineWidth=1.4; ctx.lineJoin='round'; ctx.lineCap='round';
@@ -2949,6 +3008,12 @@ function maybeShowWhatsNew(){
   openWhatsNew();
 }
 function portraitChibi(av){
+  const im=av && imgOk(av.img);
+  if(im){   // hero PNG portrait, bottom-aligned in the card
+    const c=document.createElement('canvas'); c.width=70; c.height=84; const o=c.getContext('2d');
+    const DH=82, DW=DH*(im.naturalWidth/im.naturalHeight);
+    o.drawImage(im, 35-DW/2, 84-DH, DW, DH); return c;
+  }
   const c=document.createElement('canvas'); c.width=70; c.height=84; const o=c.getContext('2d');
   const L=av.look; o.translate(35,58); o.lineJoin='round'; o.lineCap='round';
   o.fillStyle='rgba(0,0,0,.18)'; o.beginPath(); o.ellipse(0,19,16,5,0,0,TAU); o.fill();

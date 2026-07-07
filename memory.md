@@ -11,6 +11,22 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.6.0 "Illustrated World"** — first raster-sprite art layer (a deliberate, user-supplied
+  break from the "all art drawn with canvas shapes" pillar; degrades safely to the drawn art).
+  New `assets/img/` holds 5 PNG cutouts (grass, tree, bush, 2 heroes). An `IMG` cache +
+  `loadImg`/`imgOk(key)` load them lazily; every draw path does `const im=imgOk(...)` and falls
+  back to canvas shapes if the image never decodes. `AVATARS` **shrank to 2** image heroes —
+  **Blaze** (yellow jacket, `img:'hero-blaze'`) + **Rose** (pink, `img:'hero-rose'`), both
+  `unlock:1`; each keeps a `look` for the drawn fallback. `meta.avatar` is clamped to the new
+  table length right after the `meta` object (stale saved index would otherwise index past it).
+  `drawHuman` early-returns to new `drawHeroSprite(h,img)` (billboard: shadow + player ring +
+  walk-bob/run-lean + `filter:brightness` hit-flash + muzzle flash along aim + reload ring);
+  `portraitChibi` and the menu `renderMenu` fighter portrait draw the PNG bottom-aligned.
+  `groundPattern()` builds a 512 tile from the seamless grass PNG with a `GROUND_TINT` dusk/night
+  overlay; `drawDecor` tree/bush branches billboard their PNGs (aspect-preserved, feet at anchor).
+  Loader `onload` resets `groundKey` + re-renders menu/grid so a late decode still shows. Verified
+  headless: live BR match (Blaze player + illustrated grass/tree/bush, no boxes/errors) + avatar
+  grid (both hero portraits, correct class chips/stats). More heroes = drop a PNG + a row.
 - **v2.5.0 "Arsenal & Fighters"** (2 weapons + 2 avatars → 12 weapons, 17 avatars): **Launcher**
   (Lv12, `mode:'launcher'`) fires a single slow rocket bullet flagged `boom:true`/`rocket:true`;
   `updateBullets` explodes it via the existing `explode()` on any impact / at max range (not
