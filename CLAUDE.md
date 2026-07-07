@@ -65,7 +65,8 @@ Pipeline (top-down in the file):
    previews — always go through them). `meta` holds level/xp/name/avatar/weapon/music, career
    stats (matches/wins/kills/deaths/best/streaks/bestWave), unlocked achievement ids, and the
    SFX-volume / aim-sensitivity settings; `saveMeta()` writes it all.
-3. **Data tables** — `AVATARS` (15; name, speed, health, unlock level, `look` descriptor),
+3. **Data tables** — `AVATARS` (9; name, speed, health, unlock level, `img` sprite key + `look`
+   fallback descriptor — each ships an illustrated A-pose PNG in `assets/img/hero-*.png`),
    `WEAPONS` (10; dmg, mag, reload, range, fireCd, `mode`, special), `ACHIEVEMENTS` (14;
    `{id,icon,name,desc,test(meta,ctx)}`, checked at match end), and `GAME_VERSION`+`CHANGELOG`.
    To add a character or gun, add a table entry (new `look.style`s need a case in BOTH `drawHair`

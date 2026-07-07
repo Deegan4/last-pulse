@@ -6,6 +6,12 @@ node_modules/
 .DS_Store
 .vercel
 
+# Raw character-art source dump (rork.com "Save Page As" export, ~86MB). The 9 chosen
+# A-pose sprites were extracted + downscaled into assets/img/hero-*.png; the raw export
+# is source material, not shipped — keep it out of git history.
+assets/img/Brawl Arena Revamp.html
+assets/img/Brawl Arena Revamp_files/
+
 # Meshy intermediates — not shipped in-game (MODEL_FILES loads only the *-walk.glb + dennis.glb).
 # The raw pre-remesh textured meshes (emily.glb/bo.glb ~15-18MB) and review PNGs are regenerable
 # from the manifest task_ids, so keep them out of git history.

@@ -11,6 +11,17 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.7.0 — 9-fighter A-pose roster** — expanded `AVATARS` from 2 → 9 illustrated fighters:
+  Blaze, Rose (re-arted), + Kenji, Marcus, Ghost, Dante, Nyx, Kaito, Rex. Source art came from a
+  rork.com "Brawl Arena Revamp" chat export (86MB, gitignored under `assets/img/Brawl Arena
+  Revamp*`); the 9 chosen **A-pose** PNGs were extracted, downscaled to 420px tall (~150KB each,
+  ~1.4MB total) and saved as `assets/img/hero-*.png`. Key fix: the A-pose sprites are
+  **empty-handed**, so `drawHeroSprite` now overlays the weapon along the true aim (rotate by
+  `h.aim`, vertical-flip when aiming left, skin-tinted grip hand) — same origin as the muzzle
+  flash — since the gun is no longer baked into the art like the old top-down Blaze/Rose. Both the
+  in-game sprite and the select-grid portrait already key off `av.img` via `imgOk`, so no grid
+  changes needed. Unlock levels 1–8 gate the newcomers. Verified in the browser preview: 9 cards
+  render, Blaze in-match holds a pistol tracking aim.
 - **infra: rebrand → Last Pulse + prod URL** — the Vercel prod URL is now
   `https://last-pulse.vercel.app` (claimed the vanity domain; retired the legacy
   `brawl-arena-plum.vercel.app` alias → 404). Renamed the skill dir

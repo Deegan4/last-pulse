@@ -53,7 +53,7 @@ On a laptop you can also download [`index.html`](index.html) and open it in any 
 - 🏆 **Three modes** — **Battle Royale** (15 players, shrinking zone), **Endless Horde** (escalating zombie waves), and **Squads** (last team standing).
 - 🧟 **Three zombie types** — `normal`, fast `runner`, and tanky `brute` — that get tougher, faster, and meaner every Horde wave.
 - 🔫 **10 weapons** — Pistol (crit), Rifle, Shotgun, SMG, Magnum, Sniper (pierce), Crossbow, Flamethrower (burn DoT), Minigun, and the drum-mag Tommy — each with its own ammo, reload, range, and feel.
-- 🦸 **15 unlockable avatars** — each with distinct speed / health stats and a hand-drawn cartoon look (cyber visor, top hat, crown, mohawk, ninja…), gated behind your level.
+- 🦸 **9 unlockable fighters** — Blaze, Rose, Kenji, Marcus, Ghost, Dante, Nyx, Kaito & Rex, each a crisp illustrated A-pose sprite with distinct speed / health stats, gated behind your level.
 - 📦 **Loot & supply drops** — health, medkits, armor, ammo, and weapon swaps, plus parachuting crates with a strong gun + armor.
 - ⚡ **Power-ups** — chain-lightning, a throwable AoE bomb, and a 🪝 **grapple hook** (fire at a building, get reeled in on an elastic rope that conserves your swing momentum — release keeps your speed).
 - 🩸 **Game feel** — hit markers, kill-streak callouts, ⚡ **kill combos** (chain kills inside 3 s for up to **3× XP**, with slow-mo hit-stop), directional blood spray with ground splatter, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
