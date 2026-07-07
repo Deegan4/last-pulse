@@ -6,11 +6,11 @@
 
 Pick a character, pick a gun, drop into a field of 15. Outlast the other players, the roaming zombies, and the closing safe zone. **Last one standing wins.**
 
-## ▶ &nbsp; [CLICK HERE TO PLAY](https://rawcdn.githack.com/Deegan4/last-pulse/bb4f9d2bcca1f301d6cffad6831246f5fc25c57b/index.html) &nbsp; ◀
+## ▶ &nbsp; [CLICK HERE TO PLAY](https://last-pulse.vercel.app) &nbsp; ◀
 
 <sup>opens the game in your browser — no install, no sign-up · for a permanent URL see [Play](#-play)</sup>
 
-[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://rawcdn.githack.com/Deegan4/last-pulse/bb4f9d2bcca1f301d6cffad6831246f5fc25c57b/index.html)
+[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://last-pulse.vercel.app)
 &nbsp;
 ![HTML5 Canvas](https://img.shields.io/badge/HTML5-canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![Single file](https://img.shields.io/badge/single_file-no_build-blue?style=for-the-badge)
@@ -31,16 +31,13 @@ Pick a character, pick a gun, drop into a field of 15. Outlast the other players
 
 ## ▶ Play
 
-### ⭐ Best link — enable GitHub Pages once (2 clicks)
+### ⭐ Best link — the live site
 
-The repo is already Pages-ready (`index.html` at root + `.nojekyll`). This gives a fast, permanent URL that never breaks:
+**<https://last-pulse.vercel.app>** — the permanent, clean URL. Vercel auto-deploys it on every push to `main`, so it's always the latest build. No setup, no proxy caching.
 
-1. Repo **Settings → Pages**
-2. **Source: Deploy from a branch** → **Branch: `main`** → **Folder: `/ (root)`** → **Save**
+<sub>Prefer GitHub Pages? The repo is Pages-ready (`index.html` at root + `.nojekyll`): **Settings → Pages → Deploy from a branch → `main` / `/ (root)`**, then play at `https://deegan4.github.io/last-pulse/`.</sub>
 
-Then play at **`https://deegan4.github.io/last-pulse/`** — it rebuilds automatically on every push to `main`.
-
-### Play right now (no setup)
+### Other links (no setup)
 
 These use free third-party proxies for the public `index.html`. If one shows a blank page or error, give it a minute (they cache briefly after a push) or try the next:
 
