@@ -8,10 +8,10 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 try {
   const out = execFileSync('node', [join(root, 'scripts', 'parse-check.mjs')], { encoding: 'utf8' }).trim();
-  console.log('[brawl-arena] ready · ' + out +
+  console.log('[last-pulse] ready · ' + out +
     ' · validate: node scripts/validate.mjs · deploy: push to main (githack serves index.html).');
 } catch (err) {
   const msg = (err.stdout?.toString() || '') + (err.stderr?.toString() || '');
-  console.log('[brawl-arena] WARNING: parse-check failed at session start:\n' + msg.trim());
+  console.log('[last-pulse] WARNING: parse-check failed at session start:\n' + msg.trim());
 }
 process.exit(0);

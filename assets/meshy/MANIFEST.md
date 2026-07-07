@@ -1,4 +1,4 @@
-# Meshy Generation Manifest — Brawl Arena
+# Meshy Generation Manifest — Last Pulse
 
 Tracks every Meshy task: which game-data row it maps to, the task_id (for re-roll/lineage),
 settings, and credits. Keep this updated as the run proceeds.

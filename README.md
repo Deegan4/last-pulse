@@ -6,11 +6,11 @@
 
 Pick a character, pick a gun, drop into a field of 15. Outlast the other players, the roaming zombies, and the closing safe zone. **Last one standing wins.**
 
-## ▶ &nbsp; [CLICK HERE TO PLAY](https://rawcdn.githack.com/Deegan4/last-pulse/bb4f9d2bcca1f301d6cffad6831246f5fc25c57b/index.html) &nbsp; ◀
+## ▶ &nbsp; [CLICK HERE TO PLAY](https://last-pulse.vercel.app) &nbsp; ◀
 
 <sup>opens the game in your browser — no install, no sign-up · for a permanent URL see [Play](#-play)</sup>
 
-[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://rawcdn.githack.com/Deegan4/last-pulse/bb4f9d2bcca1f301d6cffad6831246f5fc25c57b/index.html)
+[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://last-pulse.vercel.app)
 &nbsp;
 ![HTML5 Canvas](https://img.shields.io/badge/HTML5-canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![Single file](https://img.shields.io/badge/single_file-no_build-blue?style=for-the-badge)
@@ -31,16 +31,13 @@ Pick a character, pick a gun, drop into a field of 15. Outlast the other players
 
 ## ▶ Play
 
-### ⭐ Best link — enable GitHub Pages once (2 clicks)
+### ⭐ Best link — the live site
 
-The repo is already Pages-ready (`index.html` at root + `.nojekyll`). This gives a fast, permanent URL that never breaks:
+**<https://last-pulse.vercel.app>** — the permanent, clean URL. Vercel auto-deploys it on every push to `main`, so it's always the latest build. No setup, no proxy caching.
 
-1. Repo **Settings → Pages**
-2. **Source: Deploy from a branch** → **Branch: `main`** → **Folder: `/ (root)`** → **Save**
+<sub>Prefer GitHub Pages? The repo is Pages-ready (`index.html` at root + `.nojekyll`): **Settings → Pages → Deploy from a branch → `main` / `/ (root)`**, then play at `https://deegan4.github.io/last-pulse/`.</sub>
 
-Then play at **`https://deegan4.github.io/last-pulse/`** — it rebuilds automatically on every push to `main`.
-
-### Play right now (no setup)
+### Other links (no setup)
 
 These use free third-party proxies for the public `index.html`. If one shows a blank page or error, give it a minute (they cache briefly after a push) or try the next:
 
@@ -56,7 +53,7 @@ On a laptop you can also download [`index.html`](index.html) and open it in any 
 - 🏆 **Three modes** — **Battle Royale** (15 players, shrinking zone), **Endless Horde** (escalating zombie waves), and **Squads** (last team standing).
 - 🧟 **Three zombie types** — `normal`, fast `runner`, and tanky `brute` — that get tougher, faster, and meaner every Horde wave.
 - 🔫 **10 weapons** — Pistol (crit), Rifle, Shotgun, SMG, Magnum, Sniper (pierce), Crossbow, Flamethrower (burn DoT), Minigun, and the drum-mag Tommy — each with its own ammo, reload, range, and feel.
-- 🦸 **15 unlockable avatars** — each with distinct speed / health stats and a hand-drawn cartoon look (cyber visor, top hat, crown, mohawk, ninja…), gated behind your level.
+- 🦸 **9 unlockable fighters** — Blaze, Rose, Kenji, Marcus, Ghost, Dante, Nyx, Kaito & Rex, each a crisp illustrated A-pose sprite with distinct speed / health stats, gated behind your level.
 - 📦 **Loot & supply drops** — health, medkits, armor, ammo, and weapon swaps, plus parachuting crates with a strong gun + armor.
 - ⚡ **Power-ups** — chain-lightning, a throwable AoE bomb, and a 🪝 **grapple hook** (fire at a building, get reeled in on an elastic rope that conserves your swing momentum — release keeps your speed).
 - 🩸 **Game feel** — hit markers, kill-streak callouts, ⚡ **kill combos** (chain kills inside 3 s for up to **3× XP**, with slow-mo hit-stop), directional blood spray with ground splatter, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.
@@ -89,10 +86,10 @@ open index.html                    # or: python3 -m http.server 8000
 node scripts/validate.mjs
 ```
 
-Want to drive it headlessly (launch, play a match, screenshot, smoke-test)? There's a ready-made skill at [`.claude/skills/run-brawl-arena/`](.claude/skills/run-brawl-arena/):
+Want to drive it headlessly (launch, play a match, screenshot, smoke-test)? There's a ready-made skill at [`.claude/skills/run-last-pulse/`](.claude/skills/run-last-pulse/):
 
 ```sh
-node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde --shoot
+node .claude/skills/run-last-pulse/driver.mjs --play --mode horde --shoot
 ```
 
 See [CLAUDE.md](CLAUDE.md) for architecture notes, [memory.md](memory.md) for the running design log, and [ROADMAP.md](ROADMAP.md) for the future plan.

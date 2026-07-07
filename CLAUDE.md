@@ -65,7 +65,8 @@ Pipeline (top-down in the file):
    previews — always go through them). `meta` holds level/xp/name/avatar/weapon/music, career
    stats (matches/wins/kills/deaths/best/streaks/bestWave), unlocked achievement ids, and the
    SFX-volume / aim-sensitivity settings; `saveMeta()` writes it all.
-3. **Data tables** — `AVATARS` (15; name, speed, health, unlock level, `look` descriptor),
+3. **Data tables** — `AVATARS` (9; name, speed, health, unlock level, `img` sprite key + `look`
+   fallback descriptor — each ships an illustrated A-pose PNG in `assets/img/hero-*.png`),
    `WEAPONS` (10; dmg, mag, reload, range, fireCd, `mode`, special), `ACHIEVEMENTS` (14;
    `{id,icon,name,desc,test(meta,ctx)}`, checked at match end), and `GAME_VERSION`+`CHANGELOG`.
    To add a character or gun, add a table entry (new `look.style`s need a case in BOTH `drawHair`
@@ -119,10 +120,20 @@ After any non-trivial edit, syntax-check both script blocks, then drive the real
 node scripts/validate.mjs
 
 # boot → menu-drive into a live match → screenshots → fails on any page error
-node .claude/skills/run-brawl-arena/driver.mjs --play --mode br --shoot
+node .claude/skills/run-last-pulse/driver.mjs --play --mode br --shoot
 ```
 
-The driver (see `.claude/skills/run-brawl-arena/`) launches the bundled Chromium
+After a deploy lands on `last-pulse.vercel.app`, smoke the live site (no browser needed —
+it inspects the served HTML). `smoke-prod.mjs` also compares the deployed `GAME_VERSION`
+against the repo's, so it catches a **stale deploy** (prod serving old code), not just a
+white screen; `uptime-check.mjs` is a cheap status-only probe for a tight cron:
+
+```sh
+node scripts/smoke-prod.mjs      # HTTP 200 + <title>/#game markers + version-drift gate
+node scripts/uptime-check.mjs    # fast 200/timeout probe — exit 1 on any failure
+```
+
+The driver (see `.claude/skills/run-last-pulse/`) launches the bundled Chromium
 (`/opt/pw-browsers/chromium-*/chrome-linux/chrome`) via the global `playwright` module at
 ~430×932. Verify visually (read the PNGs in `.shots/`) and check for page errors. To test
 closure-scoped internals (e.g. `openSettings`, `buildDecor`), inject a temporary

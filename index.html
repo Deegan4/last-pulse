@@ -697,8 +697,15 @@ const el = id => document.getElementById(id);
 // cache; drawHuman/portraitChibi billboard the sprite and fall back to the drawn `look` chibi if
 // the image never loads. More fighters get added by dropping a PNG + a row here.
 const AVATARS = [
-  {name:'Blaze', speed:5.2, health:115, unlock:1, img:'hero-blaze', look:{skin:'#f0c8a0',hair:'#161616',outfit:'#e6b81f',style:'mohawk'}},
-  {name:'Rose',  speed:5.8, health:95,  unlock:1, img:'hero-rose',  look:{skin:'#f2cbb0',hair:'#6a3f22',outfit:'#e85d9a',style:'long'}},
+  {name:'Blaze',  speed:5.2, health:115, unlock:1, img:'hero-blaze',  look:{skin:'#f0c8a0',hair:'#161616',outfit:'#e6b81f',style:'mohawk'}},
+  {name:'Rose',   speed:5.8, health:95,  unlock:1, img:'hero-rose',   look:{skin:'#f2cbb0',hair:'#6a3f22',outfit:'#e85d9a',style:'long'}},
+  {name:'Kenji',  speed:5.0, health:125, unlock:2, img:'hero-kenji',  look:{skin:'#e8b48c',hair:'#4a2f1c',outfit:'#c0392b',style:'beard'}},
+  {name:'Marcus', speed:5.5, health:105, unlock:3, img:'hero-marcus', look:{skin:'#a86b40',hair:'#141414',outfit:'#2f6fd6',style:'dreads'}},
+  {name:'Ghost',  speed:6.0, health:85,  unlock:4, img:'hero-ghost',  look:{skin:'#efc9ab',hair:'#181818',outfit:'#e8e8e8',style:'mask'}},
+  {name:'Dante',  speed:5.4, health:110, unlock:5, img:'hero-dante',  look:{skin:'#9c6238',hair:'#161616',outfit:'#8a8f98',style:'dreads'}},
+  {name:'Nyx',    speed:6.2, health:80,  unlock:6, img:'hero-nyx',    look:{skin:'#f0c8a8',hair:'#7a3f9d',outfit:'#1c1c22',style:'ninja'}},
+  {name:'Kaito',  speed:5.6, health:100, unlock:7, img:'hero-kaito',  look:{skin:'#eec4a2',hair:'#141414',outfit:'#1a1a1f',style:'mohawk'}},
+  {name:'Rex',    speed:4.8, health:130, unlock:8, img:'hero-rex',    look:{skin:'#e8b48c',hair:'#4caf2f',outfit:'#5a7d3a',style:'cap'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -735,13 +742,25 @@ loadImg('tree',      'assets/img/decor-tree.png');
 loadImg('bush',      'assets/img/decor-bush.png');
 loadImg('hero-blaze','assets/img/hero-blaze.png');
 loadImg('hero-rose', 'assets/img/hero-rose.png');
+loadImg('hero-kenji','assets/img/hero-kenji.png');
+loadImg('hero-marcus','assets/img/hero-marcus.png');
+loadImg('hero-ghost','assets/img/hero-ghost.png');
+loadImg('hero-dante','assets/img/hero-dante.png');
+loadImg('hero-nyx',  'assets/img/hero-nyx.png');
+loadImg('hero-kaito','assets/img/hero-kaito.png');
+loadImg('hero-rex',  'assets/img/hero-rex.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
 
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.6.1';
+const GAME_VERSION = '2.7.0';
 const CHANGELOG = [
+  { v:'2.7.0', items:[
+    ['🧑‍🤝‍🧑','7 new fighters','Kenji, Marcus, Ghost, Dante, Nyx, Kaito & Rex join the roster'],
+    ['🎨','A-pose sprites','all heroes redrawn as crisp illustrated characters'],
+    ['🔓','Unlock by level','new fighters unlock as you level up (Lv 2–8)'],
+  ]},
   { v:'2.6.1', items:[
     ['🔄','Turn to shoot','your fighter now faces the way you aim, even while running'],
   ]},
@@ -2714,6 +2733,16 @@ function drawHeroSprite(h, img){
   if(h.hitFlash>0) ctx.filter='brightness(2.4) saturate(0.5)';       // hit flash (resets on restore)
   ctx.drawImage(img, -DW/2, 20-DH, DW, DH);                          // feet near y+20
   ctx.restore();
+  // weapon overlay — the A-pose sprites are empty-handed, so draw the gun along the TRUE aim
+  // (same origin the muzzle flash uses). Rotate by aim, flip vertical aiming left so it stays upright.
+  { const gname = h.weapon?h.weapon.name:'Pistol';
+    const ga = h.aim, reach = 9 - (h.recoil>0?h.recoil*3:0);
+    ctx.save(); ctx.translate(0,-6); ctx.rotate(ga); ctx.translate(reach,0);
+    if(Math.cos(ga)<0) ctx.scale(1,-1);
+    ctx.fillStyle=(h.look&&h.look.skin)||'#e9b98f'; ctx.strokeStyle=INK; ctx.lineWidth=1.2;   // grip hand
+    ctx.beginPath(); ctx.arc(0,1.6,2.7,0,TAU); ctx.fill(); ctx.stroke();
+    drawGun(gname);
+    ctx.restore(); }
   if(h.muzzleT>0){ const mr=h.muzzleR||7, mx=Math.cos(h.aim)*20, my=Math.sin(h.aim)*12-6;   // muzzle flash along aim
     ctx.save(); ctx.translate(mx,my);
     ctx.fillStyle='rgba(255,205,80,.5)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();

@@ -1,15 +1,15 @@
 ---
-name: run-brawl-arena
-description: Build, launch, drive, and screenshot the "Don't Die — Battle Royale" canvas game headlessly. Use when asked to run, start, launch, play, smoke-test, screenshot, or verify the brawl-arena game (index.html) — drives the real running app into a live match and checks for console/runtime errors.
+name: run-last-pulse
+description: Build, launch, drive, and screenshot the "Last Pulse" canvas game headlessly. Use when asked to run, start, launch, play, smoke-test, screenshot, or verify the last-pulse game (index.html) — drives the real running app into a live match and checks for console/runtime errors.
 ---
 
-# Run: Don't Die — Battle Royale
+# Run: Last Pulse
 
 A single-file HTML5 canvas game — the whole app (markup, styles, logic) is `index.html`.
 **No build step, no dev server, no package manager.** It loads over `file://`.
 
 There is no `chromium-cli` in this container, so the driver is a small Playwright script,
-[`.claude/skills/run-brawl-arena/driver.mjs`](driver.mjs), that launches the **bundled
+[`.claude/skills/run-last-pulse/driver.mjs`](driver.mjs), that launches the **bundled
 Chromium** at portrait phone size, optionally clicks through the menus into a live match,
 screenshots each stage, and **exits non-zero if the page logs any error**. It auto-resolves
 Playwright from the container's global `node_modules` and finds the Chromium binary itself —
@@ -42,15 +42,15 @@ Boot the game and screenshot the start screen (also the fastest smoke test — f
 console/runtime error):
 
 ```bash
-node .claude/skills/run-brawl-arena/driver.mjs
+node .claude/skills/run-last-pulse/driver.mjs
 ```
 
 Drive all the way into a **live match** and screenshot gameplay. `--mode` is `br` (default),
 `horde`, or `squad`:
 
 ```bash
-node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde
-node .claude/skills/run-brawl-arena/driver.mjs --play --mode br
+node .claude/skills/run-last-pulse/driver.mjs --play --mode horde
+node .claude/skills/run-last-pulse/driver.mjs --play --mode br
 ```
 
 To screenshot **combat juice** (muzzle flash, tracers, casings, LOW AMMO / reload), add
@@ -58,7 +58,7 @@ To screenshot **combat juice** (muzzle flash, tracers, casings, LOW AMMO / reloa
 `--seconds` sets how long it fires (default 3.0):
 
 ```bash
-node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde --shoot --seconds 4
+node .claude/skills/run-last-pulse/driver.mjs --play --mode horde --shoot --seconds 4
 ```
 
 Screenshots land in `./.shots/` (gitignored): `01-start.png`, `02-weapon.png`, `03-match.png`.

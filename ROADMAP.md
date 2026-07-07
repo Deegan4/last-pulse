@@ -100,7 +100,7 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 - Bump `GAME_VERSION` + prepend a `CHANGELOG` entry for every player-visible change — the
   update popup depends on it.
 - Validate before pushing: `node scripts/validate.mjs`, then a driver run
-  (`node .claude/skills/run-brawl-arena/driver.mjs --play --mode br --shoot`).
+  (`node .claude/skills/run-last-pulse/driver.mjs --play --mode br --shoot`).
 - Work on the `claude/...` branch → draft PR → merge via GitHub API on "push to main"
   (direct push to main 503s). One session per branch — parallel sessions on one branch have
   collided before (see memory.md v1.8.0).

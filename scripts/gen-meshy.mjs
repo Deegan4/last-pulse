@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================
-//  gen-meshy.mjs — Brawl Arena asset pipeline driver
+//  gen-meshy.mjs — Last Pulse asset pipeline driver
 //
 //  Reads assets/meshy/manifest.json and, for every asset still
 //  status:"queued", drives Meshy text-to-3d → poll → download GLB,

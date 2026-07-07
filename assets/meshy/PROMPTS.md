@@ -1,4 +1,4 @@
-# Meshy Text-to-3D Prompt Pack — Brawl Arena
+# Meshy Text-to-3D Prompt Pack — Last Pulse
 
 **Version:** v1.0
 **Target:** Meshy 5 (text-to-3D)

@@ -11,6 +11,27 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.7.0 — 9-fighter A-pose roster** — expanded `AVATARS` from 2 → 9 illustrated fighters:
+  Blaze, Rose (re-arted), + Kenji, Marcus, Ghost, Dante, Nyx, Kaito, Rex. Source art came from a
+  rork.com "Brawl Arena Revamp" chat export (86MB, gitignored under `assets/img/Brawl Arena
+  Revamp*`); the 9 chosen **A-pose** PNGs were extracted, downscaled to 420px tall (~150KB each,
+  ~1.4MB total) and saved as `assets/img/hero-*.png`. Key fix: the A-pose sprites are
+  **empty-handed**, so `drawHeroSprite` now overlays the weapon along the true aim (rotate by
+  `h.aim`, vertical-flip when aiming left, skin-tinted grip hand) — same origin as the muzzle
+  flash — since the gun is no longer baked into the art like the old top-down Blaze/Rose. Both the
+  in-game sprite and the select-grid portrait already key off `av.img` via `imgOk`, so no grid
+  changes needed. Unlock levels 1–8 gate the newcomers. Verified in the browser preview: 9 cards
+  render, Blaze in-match holds a pistol tracking aim.
+- **infra: rebrand → Last Pulse + prod URL** — the Vercel prod URL is now
+  `https://last-pulse.vercel.app` (claimed the vanity domain; retired the legacy
+  `brawl-arena-plum.vercel.app` alias → 404). Renamed the skill dir
+  `.claude/skills/run-brawl-arena/` → `run-last-pulse/` and purged every "brawl-arena" /
+  "Brawl Arena" string from docs, the session-start hook label, the Meshy pipeline files, and
+  `driver.mjs`. Added post-deploy verification: `scripts/smoke-prod.mjs` (HTTP 200 + title/#game
+  markers + a **stale-deploy gate** comparing deployed `GAME_VERSION` to the repo) and
+  `scripts/uptime-check.mjs` (fast status probe, exit 1 on failure — crontab-ready). `vercel.json`
+  gained a `$schema`. Domain lives in Vercel Project Settings (server-side, survives re-link);
+  the deprecated `alias` field was deliberately **not** used.
 - **v2.6.1** — hero sprites now **turn to face the aim**, not the movement direction. Root cause:
   `integrate()` overwrites `h.faceX` from movement velocity (line ~1750) AFTER `updatePlayer`
   sets it from aim, so a static sprite shot backwards while running (the drawn chibi hid this — its
@@ -340,7 +361,7 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   is the "CI" status check on PRs. GitHub Pages remains an option but needs the one-time
   user-side toggle (Settings → Pages → `main` / root).
 - **Validate**: `node scripts/validate.mjs` (parse-checks both script blocks), then drive the
-  real game headless with `.claude/skills/run-brawl-arena/driver.mjs --play [--mode m --shoot]`
+  real game headless with `.claude/skills/run-last-pulse/driver.mjs --play [--mode m --shoot]`
   (bundled Chromium + global playwright, ~430×932; fails on any page error). Read the PNGs.
   For closure-scoped internals, awk-inject a `window.__hook` into a **throwaway copy** — never
   commit hooks (`grep -c "window.__" index.html` → 0).
