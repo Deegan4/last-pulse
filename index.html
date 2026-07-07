@@ -740,8 +740,11 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.6.0';
+const GAME_VERSION = '2.6.1';
 const CHANGELOG = [
+  { v:'2.6.1', items:[
+    ['🔄','Turn to shoot','your fighter now faces the way you aim, even while running'],
+  ]},
   { v:'2.6.0', items:[
     ['🎨','Hand-drawn heroes','Blaze & Rose now use crisp illustrated sprites'],
     ['🌳','New scenery art','illustrated grass, trees & bushes across the map'],
@@ -2692,7 +2695,12 @@ function drawHuman(h){
 // Billboard a hero PNG in place of the drawn chibi: shadow + player ring under it, a gentle
 // walk-bob / run-lean, a white flash on hit, plus muzzle flash + reload ring so combat still reads.
 function drawHeroSprite(h, img){
-  const flip = h.faceX<0?-1:1;
+  // Face the way we AIM (the whole sprite turns to shoot), not the way we move. `faceX` is set
+  // from movement velocity in integrate(), so a static sprite would shoot backwards while running.
+  // Deadzone near vertical + a sticky `spriteFlip` avoids flicker when aiming straight up/down.
+  const ca = Math.cos(h.aim);
+  if(ca < -0.06) h.spriteFlip = -1; else if(ca > 0.06) h.spriteFlip = 1;
+  const flip = h.spriteFlip || (h.faceX<0?-1:1);
   const moving = (h.vx*h.vx+h.vy*h.vy)>140;
   const now = performance.now()/1000, seed=h.seed||0;
   const bob = moving ? Math.sin(h.walk)*1.6 : Math.sin(now*2.3+seed)*0.8;

@@ -11,6 +11,13 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.6.1** — hero sprites now **turn to face the aim**, not the movement direction. Root cause:
+  `integrate()` overwrites `h.faceX` from movement velocity (line ~1750) AFTER `updatePlayer`
+  sets it from aim, so a static sprite shot backwards while running (the drawn chibi hid this — its
+  gun arm rotated freely). `drawHeroSprite` now derives `flip` from `Math.cos(h.aim)` with a ±0.06
+  deadzone + a sticky `h.spriteFlip` so it doesn't jitter aiming near-vertical. Muzzle flash already
+  used true aim, so it stays consistent. Verified headless: aim-left→faces left / aim-right→faces
+  right while running right.
 - **v2.6.0 "Illustrated World"** — first raster-sprite art layer (a deliberate, user-supplied
   break from the "all art drawn with canvas shapes" pillar; degrades safely to the drawn art).
   New `assets/img/` holds 5 PNG cutouts (grass, tree, bush, 2 heroes). An `IMG` cache +
