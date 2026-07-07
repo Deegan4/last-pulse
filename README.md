@@ -89,10 +89,10 @@ open index.html                    # or: python3 -m http.server 8000
 node scripts/validate.mjs
 ```
 
-Want to drive it headlessly (launch, play a match, screenshot, smoke-test)? There's a ready-made skill at [`.claude/skills/run-brawl-arena/`](.claude/skills/run-brawl-arena/):
+Want to drive it headlessly (launch, play a match, screenshot, smoke-test)? There's a ready-made skill at [`.claude/skills/run-last-pulse/`](.claude/skills/run-last-pulse/):
 
 ```sh
-node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde --shoot
+node .claude/skills/run-last-pulse/driver.mjs --play --mode horde --shoot
 ```
 
 See [CLAUDE.md](CLAUDE.md) for architecture notes, [memory.md](memory.md) for the running design log, and [ROADMAP.md](ROADMAP.md) for the future plan.

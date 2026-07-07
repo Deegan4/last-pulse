@@ -11,6 +11,16 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **infra: rebrand → Last Pulse + prod URL** — the Vercel prod URL is now
+  `https://last-pulse.vercel.app` (claimed the vanity domain; retired the legacy
+  `brawl-arena-plum.vercel.app` alias → 404). Renamed the skill dir
+  `.claude/skills/run-brawl-arena/` → `run-last-pulse/` and purged every "brawl-arena" /
+  "Brawl Arena" string from docs, the session-start hook label, the Meshy pipeline files, and
+  `driver.mjs`. Added post-deploy verification: `scripts/smoke-prod.mjs` (HTTP 200 + title/#game
+  markers + a **stale-deploy gate** comparing deployed `GAME_VERSION` to the repo) and
+  `scripts/uptime-check.mjs` (fast status probe, exit 1 on failure — crontab-ready). `vercel.json`
+  gained a `$schema`. Domain lives in Vercel Project Settings (server-side, survives re-link);
+  the deprecated `alias` field was deliberately **not** used.
 - **v2.6.1** — hero sprites now **turn to face the aim**, not the movement direction. Root cause:
   `integrate()` overwrites `h.faceX` from movement velocity (line ~1750) AFTER `updatePlayer`
   sets it from aim, so a static sprite shot backwards while running (the drawn chibi hid this — its
@@ -340,7 +350,7 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   is the "CI" status check on PRs. GitHub Pages remains an option but needs the one-time
   user-side toggle (Settings → Pages → `main` / root).
 - **Validate**: `node scripts/validate.mjs` (parse-checks both script blocks), then drive the
-  real game headless with `.claude/skills/run-brawl-arena/driver.mjs --play [--mode m --shoot]`
+  real game headless with `.claude/skills/run-last-pulse/driver.mjs --play [--mode m --shoot]`
   (bundled Chromium + global playwright, ~430×932; fails on any page error). Read the PNGs.
   For closure-scoped internals, awk-inject a `window.__hook` into a **throwaway copy** — never
   commit hooks (`grep -c "window.__" index.html` → 0).

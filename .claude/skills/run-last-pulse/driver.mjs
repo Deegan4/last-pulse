@@ -5,10 +5,10 @@
 // process if the page logs any console / runtime error.
 //
 // Usage (run from the repo root):
-//   node .claude/skills/run-brawl-arena/driver.mjs                 # boot, shot the start screen
-//   node .claude/skills/run-brawl-arena/driver.mjs --play          # drive into a Battle Royale match
-//   node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde
-//   node .claude/skills/run-brawl-arena/driver.mjs --play --mode squad --out /tmp/shots
+//   node .claude/skills/run-last-pulse/driver.mjs                 # boot, shot the start screen
+//   node .claude/skills/run-last-pulse/driver.mjs --play          # drive into a Battle Royale match
+//   node .claude/skills/run-last-pulse/driver.mjs --play --mode horde
+//   node .claude/skills/run-last-pulse/driver.mjs --play --mode squad --out /tmp/shots
 //
 // Flags:
 //   --play            click through name → mode → avatar → weapon → Drop In into gameplay
