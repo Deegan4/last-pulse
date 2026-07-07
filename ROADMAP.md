@@ -45,6 +45,19 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 - [ ] **Weekly challenge** — a harder 7-day cousin of the daily (worth 200 🪙), same
       deterministic day-hash pattern. _(not yet)_
 
+## v2.6 — "Illustrated World" (shipped)
+
+- [x] **Raster art layer** — the first hand-drawn PNG sprites (`assets/img/`): illustrated grass
+      ground, tree, bush, and two hero fighters. An `IMG` cache + `imgOk(key)` load them lazily;
+      every draw path falls back to the existing canvas-shape art if an image never decodes, so
+      the "degrades to 2D" pillar holds. _Note: a deliberate, user-approved relaxation of the
+      "all art drawn with canvas shapes" note in the repo overview — still **no build step**,
+      just static asset files served alongside `index.html`._
+- [x] **Sprite heroes** — `AVATARS` shrank to **Blaze** + **Rose** (both `img:`-backed, `unlock:1`);
+      `drawHuman`→`drawHeroSprite`, `portraitChibi`, and the menu portrait all billboard the PNG.
+- [ ] **More fighters** — the user is adding more hero art; each new one is one PNG + one
+      `AVATARS` row (name/speed/health/unlock/img + a `look` fallback). No other code changes.
+
 ## v1.13 — "Modes & Bosses"
 
 - [ ] **Boss waves in Horde** — every 5th wave spawns a boss zombie (huge brute variant: hp bar
