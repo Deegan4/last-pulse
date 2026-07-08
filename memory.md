@@ -11,6 +11,10 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.8.0** — 2 more sprite heroes (roster now **9**): **Onyx** (Lv22, Swift 5.8/100, black hooded
+  assassin, `style:'ninja'` fallback) + **Hopper** (Lv26, Swift 6.2/84, suited frog, `style:'frog'`
+  fallback). Same drop-in pattern (PNG + `loadImg` + `AVATARS` row); guns baked in → `drawHeroSprite`
+  L/R path. Verified: avatar grid renders all 9 with correct gates.
 - **v2.7.0** — **5 new sprite heroes** (roster now 7): **Bjorn** (Lv3, Tank 4.8/135, red/beard),
   **Zane** (Lv6, All-round 5.4/108, blue/dreads), **Wraith** (Lv10, Swift 6.1/82, white hood),
   **Ace** (Lv14, Swift 5.7/100, white/cornrows), **Nova** (Lv18, Swift 5.9/92, purple ninja).

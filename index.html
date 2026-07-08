@@ -704,6 +704,8 @@ const AVATARS = [
   {name:'Wraith', speed:6.1, health:82,  unlock:10, img:'hero-wraith', look:{skin:'#e8d8c8',hair:'#e8ecf0',outfit:'#e8ecf0',style:'ninja'}},
   {name:'Ace',    speed:5.7, health:100, unlock:14, img:'hero-ace',    look:{skin:'#8a5a3a',hair:'#1c1c1c',outfit:'#e8e8ea',style:'dreads'}},
   {name:'Nova',   speed:5.9, health:92,  unlock:18, img:'hero-nova',   look:{skin:'#f0c8b0',hair:'#7a4ab0',outfit:'#2a2f3a',style:'long'}},
+  {name:'Onyx',   speed:5.8, health:100, unlock:22, img:'hero-onyx',   look:{skin:'#e8b48c',hair:'#1a1a1a',outfit:'#1a1a1a',style:'ninja'}},
+  {name:'Hopper', speed:6.2, health:84,  unlock:26, img:'hero-hopper', look:{skin:'#7bbf5a',hair:'#5a8a3a',outfit:'#1a1a1a',style:'frog'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -745,13 +747,19 @@ loadImg('hero-zane',  'assets/img/hero-zane.png');
 loadImg('hero-wraith','assets/img/hero-wraith.png');
 loadImg('hero-ace',   'assets/img/hero-ace.png');
 loadImg('hero-nova',  'assets/img/hero-nova.png');
+loadImg('hero-onyx',  'assets/img/hero-onyx.png');
+loadImg('hero-hopper','assets/img/hero-hopper.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
 
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.7.0';
+const GAME_VERSION = '2.8.0';
 const CHANGELOG = [
+  { v:'2.8.0', items:[
+    ['🥷','Onyx','a hooded assassin joins the roster (Lv 22)'],
+    ['🐸','Hopper','a sharp-dressed frog with a fast trigger (Lv 26)'],
+  ]},
   { v:'2.7.0', items:[
     ['🦸','5 new fighters','Bjorn, Zane, Wraith, Ace & Nova — unlock as you level up'],
     ['🎨','Illustrated heroes','all sprite-art, each with their own look & stats'],
