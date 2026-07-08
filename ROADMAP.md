@@ -55,8 +55,14 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       just static asset files served alongside `index.html`._
 - [x] **Sprite heroes** — `AVATARS` shrank to **Blaze** + **Rose** (both `img:`-backed, `unlock:1`);
       `drawHuman`→`drawHeroSprite`, `portraitChibi`, and the menu portrait all billboard the PNG.
-- [ ] **More fighters** — the user is adding more hero art; each new one is one PNG + one
-      `AVATARS` row (name/speed/health/unlock/img + a `look` fallback). No other code changes.
+- [x] **More fighters** (v2.7.0) — roster now 7: **Bjorn** (Lv3), **Zane** (Lv6), **Wraith**
+      (Lv10), **Ace** (Lv14), **Nova** (Lv18) joined Blaze/Rose. Each was one PNG + one `AVATARS`
+      row — the pipeline held, no other code changes. Still trivially extensible for more.
+- [ ] **Gunless heroes + rotating gun** — _pending gunless art_. Current sprites have guns baked
+      in, so they only flip L/R (can't aim up/down/behind). Plan: when gunless PNGs arrive, anchor
+      the engine's `drawGun` at the hands and rotate it to `h.aim` for true 360° aiming (see the
+      drawn chibi's gun-arm at `index.html`). Full-body rotation was tested and looks broken
+      (front-facing sprite lies sideways) — the rotating-gun overlay is the approach.
 
 ## v1.13 — "Modes & Bosses"
 

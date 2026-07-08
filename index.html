@@ -697,8 +697,13 @@ const el = id => document.getElementById(id);
 // cache; drawHuman/portraitChibi billboard the sprite and fall back to the drawn `look` chibi if
 // the image never loads. More fighters get added by dropping a PNG + a row here.
 const AVATARS = [
-  {name:'Blaze', speed:5.2, health:115, unlock:1, img:'hero-blaze', look:{skin:'#f0c8a0',hair:'#161616',outfit:'#e6b81f',style:'mohawk'}},
-  {name:'Rose',  speed:5.8, health:95,  unlock:1, img:'hero-rose',  look:{skin:'#f2cbb0',hair:'#6a3f22',outfit:'#e85d9a',style:'long'}},
+  {name:'Blaze',  speed:5.2, health:115, unlock:1,  img:'hero-blaze',  look:{skin:'#f0c8a0',hair:'#161616',outfit:'#e6b81f',style:'mohawk'}},
+  {name:'Rose',   speed:5.8, health:95,  unlock:1,  img:'hero-rose',   look:{skin:'#f2cbb0',hair:'#6a3f22',outfit:'#e85d9a',style:'long'}},
+  {name:'Bjorn',  speed:4.8, health:135, unlock:3,  img:'hero-bjorn',  look:{skin:'#e8b48c',hair:'#5a3a1a',outfit:'#b83030',style:'beard'}},
+  {name:'Zane',   speed:5.4, health:108, unlock:6,  img:'hero-zane',   look:{skin:'#7a5236',hair:'#171717',outfit:'#2f6ecc',style:'dreads'}},
+  {name:'Wraith', speed:6.1, health:82,  unlock:10, img:'hero-wraith', look:{skin:'#e8d8c8',hair:'#e8ecf0',outfit:'#e8ecf0',style:'ninja'}},
+  {name:'Ace',    speed:5.7, health:100, unlock:14, img:'hero-ace',    look:{skin:'#8a5a3a',hair:'#1c1c1c',outfit:'#e8e8ea',style:'dreads'}},
+  {name:'Nova',   speed:5.9, health:92,  unlock:18, img:'hero-nova',   look:{skin:'#f0c8b0',hair:'#7a4ab0',outfit:'#2a2f3a',style:'long'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -733,15 +738,24 @@ function loadImg(k, src){
 loadImg('grass',     'assets/img/ground-grass.png');
 loadImg('tree',      'assets/img/decor-tree.png');
 loadImg('bush',      'assets/img/decor-bush.png');
-loadImg('hero-blaze','assets/img/hero-blaze.png');
-loadImg('hero-rose', 'assets/img/hero-rose.png');
+loadImg('hero-blaze', 'assets/img/hero-blaze.png');
+loadImg('hero-rose',  'assets/img/hero-rose.png');
+loadImg('hero-bjorn', 'assets/img/hero-bjorn.png');
+loadImg('hero-zane',  'assets/img/hero-zane.png');
+loadImg('hero-wraith','assets/img/hero-wraith.png');
+loadImg('hero-ace',   'assets/img/hero-ace.png');
+loadImg('hero-nova',  'assets/img/hero-nova.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
 
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.6.1';
+const GAME_VERSION = '2.7.0';
 const CHANGELOG = [
+  { v:'2.7.0', items:[
+    ['🦸','5 new fighters','Bjorn, Zane, Wraith, Ace & Nova — unlock as you level up'],
+    ['🎨','Illustrated heroes','all sprite-art, each with their own look & stats'],
+  ]},
   { v:'2.6.1', items:[
     ['🔄','Turn to shoot','your fighter now faces the way you aim, even while running'],
   ]},
