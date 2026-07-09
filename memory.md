@@ -11,6 +11,15 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.10.0** — **removed the 9 original baked-in-gun heroes** (Blaze, Rose, Bjorn, Zane, Wraith,
+  Ace, Nova, Onyx, Hopper) at the user's request; the roster is now *only* the 9 armless heroes,
+  each with a live 360° gun-arm (see below). Deleted their `assets/img/hero-*.png`, `loadImg` calls
+  and `AVATARS` rows. Re-gated the survivors from Lv 1: Kai/Milo unlock:1 (starters), then
+  3/6/10/14/18/22/26. `meta.avatar` is already clamped (`index.html:894` + match-start `3248`), so a
+  saved index that now points elsewhere/locked falls back to 0 (Kai). 3D layer keys models by avatar
+  NAME and only maps generated GLBs (alex/dennis/emily/bo) — none match our names, so all 9 draw the
+  2D sprite + arm. Verified headless: avatar grid shows 9 (Kai/Milo unlocked), a live match runs with
+  the new heroes as bots (kill feed "Vex 💀 Milo").
 - **v2.9.0 arms** — the 9 new heroes are flagged `armless:true`; `drawHeroSprite` now mounts a live
   **gun-arm** on them via `drawHeroArm(h,bob)` — a sleeve-coloured (`look.outfit`) arm pinned at the
   chest that rotates to `h.aim` a full **360°** with `drawGun` in-hand (skin knuckle at the grip,
