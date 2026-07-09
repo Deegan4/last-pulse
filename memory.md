@@ -11,6 +11,13 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.9.0 arms** — the 9 new heroes are flagged `armless:true`; `drawHeroSprite` now mounts a live
+  **gun-arm** on them via `drawHeroArm(h,bob)` — a sleeve-coloured (`look.outfit`) arm pinned at the
+  chest that rotates to `h.aim` a full **360°** with `drawGun` in-hand (skin knuckle at the grip,
+  support hand on the foregrip for two-handed guns, muzzle flash at the barrel tip). Mirrors the 2D
+  chibi's arm rig; the old baked-in-gun heroes are untouched (no `armless` flag → old muzzle-flash
+  path). Verified headless via a throwaway `window.__hook` (drives `aimVec`): Cypher+Rifle and
+  Lila+Pistol both aim right/up/left/down/diagonal correctly, gun stays upright when aiming left.
 - **v2.9.0** — **9 new sprite heroes** (roster now **18**), from the nine "armless" (arms-at-sides)
   PNG portraits: **Kai** (Lv30, 5.6/104, blue-hair shades, `style:'glasses'`), **Milo** (Lv33,
   5.5/110, orange hoodie, `curly`), **Chip** (Lv36, 6.0/88, green backwards-cap kid, `cap`),
