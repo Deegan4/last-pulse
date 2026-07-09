@@ -706,6 +706,15 @@ const AVATARS = [
   {name:'Nova',   speed:5.9, health:92,  unlock:18, img:'hero-nova',   look:{skin:'#f0c8b0',hair:'#7a4ab0',outfit:'#2a2f3a',style:'long'}},
   {name:'Onyx',   speed:5.8, health:100, unlock:22, img:'hero-onyx',   look:{skin:'#e8b48c',hair:'#1a1a1a',outfit:'#1a1a1a',style:'ninja'}},
   {name:'Hopper', speed:6.2, health:84,  unlock:26, img:'hero-hopper', look:{skin:'#7bbf5a',hair:'#5a8a3a',outfit:'#1a1a1a',style:'frog'}},
+  {name:'Kai',    speed:5.6, health:104, unlock:30, img:'hero-kai',    look:{skin:'#f0c8a0',hair:'#1f52d8',outfit:'#2f6ecc',style:'glasses'}},
+  {name:'Milo',   speed:5.5, health:110, unlock:33, img:'hero-milo',   look:{skin:'#f2cbb0',hair:'#5a3a1a',outfit:'#e8641f',style:'curly'}},
+  {name:'Chip',   speed:6.0, health:88,  unlock:36, img:'hero-chip',   look:{skin:'#f2cbb0',hair:'#3aa83a',outfit:'#2e9a2e',style:'cap'}},
+  {name:'Lila',   speed:6.3, health:80,  unlock:40, img:'hero-lila',   look:{skin:'#f2cbb0',hair:'#e8479a',outfit:'#e85d9a',style:'long'}},
+  {name:'Yuki',   speed:6.0, health:90,  unlock:44, img:'hero-yuki',   look:{skin:'#e8c4a8',hair:'#3a2a4a',outfit:'#232028',style:'long'}},
+  {name:'Vex',    speed:6.1, health:86,  unlock:48, img:'hero-vex',    look:{skin:'#e8c4a8',hair:'#161616',outfit:'#1a1a1a',style:'ninja'}},
+  {name:'Sarge',  speed:4.6, health:140, unlock:52, img:'hero-sarge',  look:{skin:'#e8b48c',hair:'#e8b48c',outfit:'#3f4a2a',style:'beard'}},
+  {name:'Finn',   speed:5.3, health:118, unlock:57, img:'hero-finn',   look:{skin:'#f0c8a0',hair:'#f2c832',outfit:'#6a4a2a',style:'mohawk'}},
+  {name:'Cypher', speed:5.9, health:96,  unlock:62, img:'hero-cypher', look:{skin:'#e8d0c0',hair:'#e6e8ee',outfit:'#241f38',style:'visor'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -749,13 +758,26 @@ loadImg('hero-ace',   'assets/img/hero-ace.png');
 loadImg('hero-nova',  'assets/img/hero-nova.png');
 loadImg('hero-onyx',  'assets/img/hero-onyx.png');
 loadImg('hero-hopper','assets/img/hero-hopper.png');
+loadImg('hero-kai',   'assets/img/hero-kai.png');
+loadImg('hero-milo',  'assets/img/hero-milo.png');
+loadImg('hero-chip',  'assets/img/hero-chip.png');
+loadImg('hero-lila',  'assets/img/hero-lila.png');
+loadImg('hero-yuki',  'assets/img/hero-yuki.png');
+loadImg('hero-vex',   'assets/img/hero-vex.png');
+loadImg('hero-sarge', 'assets/img/hero-sarge.png');
+loadImg('hero-finn',  'assets/img/hero-finn.png');
+loadImg('hero-cypher','assets/img/hero-cypher.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
 
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.8.0';
+const GAME_VERSION = '2.9.0';
 const CHANGELOG = [
+  { v:'2.9.0', items:[
+    ['🦸','9 new heroes','Kai, Milo, Chip, Lila, Yuki, Vex, Sarge, Finn & Cypher join the roster'],
+    ['🔓','More to unlock','fresh sprite fighters gated from Lv 30 all the way to Lv 62'],
+  ]},
   { v:'2.8.0', items:[
     ['🥷','Onyx','a hooded assassin joins the roster (Lv 22)'],
     ['🐸','Hopper','a sharp-dressed frog with a fast trigger (Lv 26)'],

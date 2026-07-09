@@ -11,6 +11,17 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.9.0** — **9 new sprite heroes** (roster now **18**), from the nine "armless" (arms-at-sides)
+  PNG portraits: **Kai** (Lv30, 5.6/104, blue-hair shades, `style:'glasses'`), **Milo** (Lv33,
+  5.5/110, orange hoodie, `curly`), **Chip** (Lv36, 6.0/88, green backwards-cap kid, `cap`),
+  **Lila** (Lv40, 6.3/80 — new fastest, pink tracksuit, `long`), **Yuki** (Lv44, 6.0/90, purple-hair
+  ninja girl, `long`), **Vex** (Lv48, 6.1/86, red-bandana hood, `ninja`), **Sarge** (Lv52, 4.6/140 —
+  new tankiest, bald soldier, `beard`), **Finn** (Lv57, 5.3/118, blonde leather adventurer, `mohawk`),
+  **Cypher** (Lv62, 5.9/96, silver-hair cyber visor, `visor`). Same drop-in pattern: `git mv` each
+  UUID PNG → `assets/img/hero-<name>.png`, a `loadImg()`, an `AVATARS` row (guns bake into the sprite
+  via `drawHeroSprite`; `look` reuses existing `drawHair` styles so the 2D fallback needs no new
+  cases). Verified headless over http: avatar grid renders all 18 with correct stat bars, auto role
+  badges, and unlock gates.
 - **v2.8.0** — 2 more sprite heroes (roster now **9**): **Onyx** (Lv22, Swift 5.8/100, black hooded
   assassin, `style:'ninja'` fallback) + **Hopper** (Lv26, Swift 6.2/84, suited frog, `style:'frog'`
   fallback). Same drop-in pattern (PNG + `loadImg` + `AVATARS` row); guns baked in → `drawHeroSprite`
