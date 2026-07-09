@@ -756,8 +756,12 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.10.1';
+const GAME_VERSION = '2.11.0';
 const CHANGELOG = [
+  { v:'2.11.0', items:[
+    ['🏃','Heroes come alive','characters now bob, sway & step — legs and body animate as you run, not just the arm'],
+    ['🏅','New achievements','Full Roster, Iron Wall (win as Sarge) & Blur (win as Lila)'],
+  ]},
   { v:'2.10.1', items:[
     ['🔓','Faster unlocks','the whole roster is now yours by Lv 15 (Cypher), not Lv 26'],
   ]},
@@ -940,6 +944,9 @@ const ACHIEVEMENTS = [
   {id:'grappler',   tier:'bronze', icon:'🪝', name:'Swinger',      desc:'Use the grapple hook in a match',     test:(m,c)=>c.grappled},
   {id:'untouchable',tier:'gold',   icon:'🛡', name:'Untouchable',  desc:'Win a match without taking damage',   test:(m,c)=>c.win && c.dmgTaken<=0},
   {id:'daily3',     tier:'silver', icon:'📅', name:'Regular',      desc:'Complete 3 daily challenges',         test:m=>m.dailies>=3},
+  {id:'roster',     tier:'gold',   icon:'🦸', name:'Full Roster',  desc:'Unlock every hero (reach level 15)',  test:m=>m.level>=15},
+  {id:'ironwall',   tier:'silver', icon:'💪', name:'Iron Wall',    desc:'Win a match as Sarge',                test:(m,c)=>c.win && AVATARS[m.avatar]?.name==='Sarge'},
+  {id:'blur',       tier:'silver', icon:'💨', name:'Blur',         desc:'Win a match as Lila',                 test:(m,c)=>c.win && AVATARS[m.avatar]?.name==='Lila'},
 ];
 // Evaluate all achievements against current meta + this match's context; toast any newly
 // unlocked and pay out the tier's coin reward.
@@ -2743,29 +2750,51 @@ function drawHeroSprite(h, img){
   const flip = h.spriteFlip || (h.faceX<0?-1:1);
   const moving = (h.vx*h.vx+h.vy*h.vy)>140;
   const now = performance.now()/1000, seed=h.seed||0;
-  const bob = moving ? Math.sin(h.walk)*1.6 : Math.sin(now*2.3+seed)*0.8;
+  // Procedural walk cycle for the static billboard: the torso bobs/sways/leans and the legs step in
+  // anti-phase, so the whole hero animates instead of a spinning arm on a frozen body. `h.walk` only
+  // advances while moving, so it freezes to a clean stance when idle (idle uses a breathing bob).
+  const gait = moving ? Math.sin(h.walk) : 0;                       // -1..1 stride phase
+  const bob  = moving ? -Math.abs(Math.sin(h.walk))*2.1            // body rises between footfalls
+                      : Math.sin(now*2.3+seed)*0.8;                 // idle breathing
+  const sway = moving ? Math.sin(h.walk)*2.0 : 0;                   // weight shifts side to side
+  const lean = clamp(h.vx/2400,-0.10,0.10);
   const DH = 52, DW = DH*(img.naturalWidth/img.naturalHeight);   // display size, aspect-preserved
   ctx.save(); ctx.translate(h.x,h.y);
   ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0,20,15,5,0,0,TAU); ctx.fill();  // shadow
   if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4;
     ctx.beginPath(); ctx.ellipse(0,20,17,5.5,0,0,TAU); ctx.stroke(); }
-  ctx.save();
-  ctx.translate(0,bob); ctx.rotate(clamp(h.vx/2600,-0.08,0.08)); ctx.scale(flip,1);
+  ctx.save(); ctx.translate(sway,bob);                              // torso + gun-arm share the bob/sway (stay attached)
+  ctx.save(); ctx.rotate(lean); ctx.scale(flip,1);                  // body leans into the run & faces the aim
   if(h.hitFlash>0) ctx.filter='brightness(2.4) saturate(0.5)';       // hit flash (resets on restore)
-  ctx.drawImage(img, -DW/2, 20-DH, DW, DH);                          // feet near y+20
+  drawWalkBody(img, DW, DH, gait);
   ctx.restore();
   // "armless" heroes are drawn with their arms at their sides, so we mount a live gun-arm on top
   // that rotates the full 360° to the aim — the weapon shows in-hand and points wherever we shoot.
   const armless = h.avatar && h.avatar.armless;
-  if(armless){ drawHeroArm(h, bob); }
+  if(armless){ drawHeroArm(h, 0); }                                 // pivots at the (already-moved) chest, aims true
   else if(h.muzzleT>0){ const mr=h.muzzleR||7, mx=Math.cos(h.aim)*20, my=Math.sin(h.aim)*12-6;   // muzzle flash along aim
     ctx.save(); ctx.translate(mx,my);
     ctx.fillStyle='rgba(255,205,80,.5)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
     ctx.fillStyle='#fff6c0'; ctx.beginPath(); ctx.arc(0,0,mr*0.5,0,TAU); ctx.fill(); ctx.restore(); }
-  if(h.isPlayer && h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1);   // reload ring
+  ctx.restore();                                                     // close bob/sway frame
+  if(h.isPlayer && h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1);   // reload ring (steady, un-bobbed)
     ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
     ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); }
   ctx.restore();
+}
+// Draw the billboard with an articulated two-part leg walk: the static PNG has no frames, so split
+// the lower portion into left/right halves and lift each in anti-phase — the legs visibly step. The
+// upper body is drawn last so it covers the hip seam of whichever leg is raised.
+function drawWalkBody(img, DW, DH, gait){
+  const sw=img.naturalWidth, sh=img.naturalHeight;
+  const splitF = 0.60;                                              // legs occupy the bottom ~40% of the art
+  const topY = 20-DH, bodyH = DH*splitF, legH = DH*(1-splitF), legY = topY + bodyH;
+  const sBodyH = sh*splitF, sLegY = sh*splitF, sLegH = sh*(1-splitF);
+  const lift = Math.abs(gait)*3.6;                                  // one leg lifts per half-stride
+  const liftL = gait>0 ? lift : 0, liftR = gait<0 ? lift : 0;
+  ctx.drawImage(img, 0,    sLegY, sw/2, sLegH, -DW/2, legY-liftL, DW/2, legH);   // screen-left leg
+  ctx.drawImage(img, sw/2, sLegY, sw/2, sLegH,  0,    legY-liftR, DW/2, legH);   // screen-right leg
+  ctx.drawImage(img, 0, 0, sw, sBodyH, -DW/2, topY, DW, bodyH);                  // upper body over the hip seam
 }
 // A live gun-arm for the "armless" sprite heroes: a sleeve-coloured arm pinned at the chest that
 // rotates to `h.aim` (full 360°) with the weapon in-hand — mirrors the 2D chibi's arm/`drawGun`
@@ -2808,7 +2837,6 @@ function drawHair(L,hy,flip){
     case 'curly': for(const o of [[-6,-5],[0,-8.5],[6,-5],[-3,-7.5],[3,-7.5]]){ ctx.beginPath(); ctx.arc(o[0],hy+o[1],4.2,0,TAU); ctx.fill(); ctx.stroke(); } break;
     case 'long': cap(); ctx.fillStyle=L.hair; ctx.fillRect(-10,hy-4,3.4,13); ctx.fillRect(6.6,hy-4,3.4,13); ctx.strokeRect(-10,hy-4,3.4,13); ctx.strokeRect(6.6,hy-4,3.4,13); break;
     case 'beard': cap(); ctx.fillStyle=L.hair; ctx.beginPath(); ctx.moveTo(-7,hy+1.5); ctx.quadraticCurveTo(0,hy+11,7,hy+1.5); ctx.closePath(); ctx.fill(); ctx.stroke(); break;
-    case 'dreads': cap(); ctx.fillStyle=L.hair; for(let i=-2;i<=2;i++){ ctx.fillRect(i*4-1.1,hy-2,2.3,10); } break;
     case 'mask': cap(); ctx.fillStyle='#cfe8d0'; ctx.beginPath(); roundRect(-9,hy,18,8,2); ctx.fill(); ctx.stroke(); break;
     case 'glasses': cap(); ctx.strokeStyle='#111'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(-3,hy-0.3,3,0,TAU); ctx.arc(4,hy-0.3,3,0,TAU); ctx.stroke(); break;
     case 'ninja': ctx.fillStyle=L.outfit; ctx.beginPath(); ctx.arc(0,hy-1.5,10.5,0,TAU); ctx.fill(); ctx.stroke();
@@ -2818,10 +2846,6 @@ function drawHair(L,hy,flip){
     case 'cap': ctx.fillStyle=L.hair; ctx.beginPath(); ctx.arc(0,hy-2,9.9,Math.PI,0); ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.ellipse(flip*8,hy-1,7.5,2.6,0,0,TAU); ctx.fill(); ctx.stroke();
       ctx.fillStyle='rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(-2,hy-5,3,0,TAU); ctx.fill(); break;
-    case 'frog': ctx.fillStyle=L.skin; ctx.beginPath(); ctx.arc(-5,hy-7.5,4.3,0,TAU); ctx.arc(5,hy-7.5,4.3,0,TAU); ctx.fill(); ctx.stroke();
-      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-5,hy-7.5,2,0,TAU); ctx.arc(5,hy-7.5,2,0,TAU); ctx.fill();
-      ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(-5,hy-7,1,0,TAU); ctx.arc(5,hy-7,1,0,TAU); ctx.fill();
-      ctx.strokeStyle='#2c5a22'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,hy+1.5,5,0.1*Math.PI,0.9*Math.PI); ctx.stroke(); break;
     case 'visor': cap(); ctx.fillStyle='#1d2230'; roundRect(-9,hy-3,18,7,3); ctx.fill(); ctx.stroke();
       ctx.strokeStyle='#39e6d6'; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(-6.5,hy+0.4); ctx.lineTo(6.5,hy+0.4); ctx.stroke();
       ctx.fillStyle='#bafff6'; ctx.beginPath(); ctx.arc(flip*3.5,hy+0.4,1.1,0,TAU); ctx.fill(); break;
@@ -3129,12 +3153,10 @@ function portraitChibi(av){
   const cap=()=>{ o.fillStyle=L.hair; o.beginPath(); o.arc(0,hy-2,10.7,Math.PI*1.02,-0.02); o.lineTo(9,hy+1.5); o.lineTo(-9,hy+1.5); o.closePath(); o.fill(); o.stroke(); };
   if(L.style==='curly'){ for(const p of [[-7,-6],[0,-9.5],[7,-6],[-3.5,-8.5],[3.5,-8.5]]){ o.beginPath(); o.arc(p[0],hy+p[1],4.7,0,TAU); o.fill(); o.stroke(); } }
   else if(L.style==='long'){ cap(); o.fillStyle=L.hair; o.fillRect(-11,hy-4,3.6,14); o.fillRect(7.4,hy-4,3.6,14); o.strokeRect(-11,hy-4,3.6,14); o.strokeRect(7.4,hy-4,3.6,14); }
-  else if(L.style==='dreads'){ cap(); o.fillStyle=L.hair; for(let i=-2;i<=2;i++) o.fillRect(i*4.4-1.2,hy-2,2.5,11); }
   else if(L.style==='mask'){ cap(); o.fillStyle='#cfe8d0'; rr(o,-10,hy,20,9,2); o.fill(); o.stroke(); }
   else if(L.style==='ninja'){ o.fillStyle=L.outfit; o.beginPath(); o.arc(0,hy-1.5,11.5,0,TAU); o.fill(); o.stroke(); o.fillStyle=L.skin; o.fillRect(-9,hy-4,18,5.5); }
   else if(L.style==='mohawk'){ o.fillStyle=L.hair; o.beginPath(); o.moveTo(-2.6,hy-3); o.lineTo(-3.2,hy-15); o.lineTo(0,hy-17); o.lineTo(3.2,hy-15); o.lineTo(2.6,hy-3); o.closePath(); o.fill(); o.stroke(); for(const sx of [-8,8]) o.fillRect(sx-1,hy-6,2,5); }
   else if(L.style==='cap'){ o.fillStyle=L.hair; o.beginPath(); o.arc(0,hy-2,10.6,Math.PI,0); o.fill(); o.stroke(); o.beginPath(); o.ellipse(8.5,hy-1,8,2.8,0,0,TAU); o.fill(); o.stroke(); }
-  else if(L.style==='frog'){ o.fillStyle=L.skin; o.beginPath(); o.arc(-5.5,hy-8,4.6,0,TAU); o.arc(5.5,hy-8,4.6,0,TAU); o.fill(); o.stroke(); o.fillStyle='#fff'; o.beginPath(); o.arc(-5.5,hy-8,2.2,0,TAU); o.arc(5.5,hy-8,2.2,0,TAU); o.fill(); o.fillStyle='#111'; o.beginPath(); o.arc(-5.5,hy-7.5,1.1,0,TAU); o.arc(5.5,hy-7.5,1.1,0,TAU); o.fill(); }
   else if(L.style==='visor'){ cap(); o.fillStyle='#1d2230'; rr(o,-9.5,hy-3,19,7.5,3); o.fill(); o.stroke();
     o.strokeStyle='#39e6d6'; o.lineWidth=1.8; o.beginPath(); o.moveTo(-7,hy+0.6); o.lineTo(7,hy+0.6); o.stroke();
     o.fillStyle='#bafff6'; o.beginPath(); o.arc(3.5,hy+0.6,1.2,0,TAU); o.fill(); }

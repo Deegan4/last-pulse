@@ -11,6 +11,17 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.11.0** — **procedural walk cycle for the sprite heroes** (fixes "arm spins on a frozen body"):
+  `drawHeroSprite` now bobs (`-abs(sin walk)*2.1`), sways (`sin*2.0`) and leans the torso, and a new
+  `drawWalkBody(img,DW,DH,gait)` splits the billboard's bottom 40% into left/right halves and lifts
+  each `abs(gait)*3.6` in anti-phase so the legs visibly step (single PNG has no frames; upper body is
+  drawn last to cover the hip seam). The gun-arm shares the bob/sway frame (`drawHeroArm(h,0)` inside
+  `translate(sway,bob)`) so it stays pinned to the chest instead of floating. Idle = breathing bob,
+  legs square (`h.walk` freezes when not moving). Verified headless by pinning `player.walk` to
+  ±π/2: left-leg-lift vs right-leg-lift stances are clearly distinct, no seam. Also: **+3 achievements**
+  (Full Roster `level>=15`, Iron Wall win-as-Sarge, Blur win-as-Lila) and removed the now-orphaned
+  `dreads`/`frog` style cases from `drawHair`+`portraitChibi`. Speed/health extremes (Lila 6.3,
+  Sarge 140) are ~within the old envelope (was 6.2/135) — left as-is.
 - **v2.10.1** — hardening + tuning: (1) `drawHuman` now **skips the 3D billboard for `armless` heroes**
   (`index.html:2626`, `!armless3D && ...`) so a loaded GLB can never hide the drawn gun-arm — verified
   over **http** with three.js live (`threeD:true`) that Cypher still renders the 2D sprite + rifle
