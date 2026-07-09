@@ -701,13 +701,13 @@ const el = id => document.getElementById(id);
 const AVATARS = [
   {name:'Kai',    speed:5.6, health:104, unlock:1,  img:'hero-kai',    armless:true, look:{skin:'#f0c8a0',hair:'#1f52d8',outfit:'#2f6ecc',style:'glasses'}},
   {name:'Milo',   speed:5.5, health:110, unlock:1,  img:'hero-milo',   armless:true, look:{skin:'#f2cbb0',hair:'#5a3a1a',outfit:'#e8641f',style:'curly'}},
-  {name:'Chip',   speed:6.0, health:88,  unlock:3,  img:'hero-chip',   armless:true, look:{skin:'#f2cbb0',hair:'#3aa83a',outfit:'#2e9a2e',style:'cap'}},
-  {name:'Lila',   speed:6.3, health:80,  unlock:6,  img:'hero-lila',   armless:true, look:{skin:'#f2cbb0',hair:'#e8479a',outfit:'#e85d9a',style:'long'}},
-  {name:'Yuki',   speed:6.0, health:90,  unlock:10, img:'hero-yuki',   armless:true, look:{skin:'#e8c4a8',hair:'#3a2a4a',outfit:'#2a2530',style:'long'}},
-  {name:'Vex',    speed:6.1, health:86,  unlock:14, img:'hero-vex',    armless:true, look:{skin:'#e8c4a8',hair:'#161616',outfit:'#1f1f22',style:'ninja'}},
-  {name:'Sarge',  speed:4.6, health:140, unlock:18, img:'hero-sarge',  armless:true, look:{skin:'#e8b48c',hair:'#e8b48c',outfit:'#3f4a2a',style:'beard'}},
-  {name:'Finn',   speed:5.3, health:118, unlock:22, img:'hero-finn',   armless:true, look:{skin:'#f0c8a0',hair:'#f2c832',outfit:'#6a4a2a',style:'mohawk'}},
-  {name:'Cypher', speed:5.9, health:96,  unlock:26, img:'hero-cypher', armless:true, look:{skin:'#e8d0c0',hair:'#6a5a8a',outfit:'#241f38',style:'visor'}},
+  {name:'Chip',   speed:6.0, health:88,  unlock:2,  img:'hero-chip',   armless:true, look:{skin:'#f2cbb0',hair:'#3aa83a',outfit:'#2e9a2e',style:'cap'}},
+  {name:'Lila',   speed:6.3, health:80,  unlock:3,  img:'hero-lila',   armless:true, look:{skin:'#f2cbb0',hair:'#e8479a',outfit:'#e85d9a',style:'long'}},
+  {name:'Yuki',   speed:6.0, health:90,  unlock:5,  img:'hero-yuki',   armless:true, look:{skin:'#e8c4a8',hair:'#3a2a4a',outfit:'#2a2530',style:'long'}},
+  {name:'Vex',    speed:6.1, health:86,  unlock:7,  img:'hero-vex',    armless:true, look:{skin:'#e8c4a8',hair:'#161616',outfit:'#1f1f22',style:'ninja'}},
+  {name:'Sarge',  speed:4.6, health:140, unlock:9,  img:'hero-sarge',  armless:true, look:{skin:'#e8b48c',hair:'#e8b48c',outfit:'#3f4a2a',style:'beard'}},
+  {name:'Finn',   speed:5.3, health:118, unlock:12, img:'hero-finn',   armless:true, look:{skin:'#f0c8a0',hair:'#f2c832',outfit:'#6a4a2a',style:'mohawk'}},
+  {name:'Cypher', speed:5.9, health:96,  unlock:15, img:'hero-cypher', armless:true, look:{skin:'#e8d0c0',hair:'#6a5a8a',outfit:'#241f38',style:'visor'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -756,12 +756,15 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.10.0';
+const GAME_VERSION = '2.10.1';
 const CHANGELOG = [
+  { v:'2.10.1', items:[
+    ['🔓','Faster unlocks','the whole roster is now yours by Lv 15 (Cypher), not Lv 26'],
+  ]},
   { v:'2.10.0', items:[
     ['✨','Fresh roster','the nine heroes are all-new — Kai, Milo, Chip, Lila, Yuki, Vex, Sarge, Finn & Cypher'],
     ['🔫','Weapon in-hand','every hero now holds their gun and aims it a full 360° as you shoot'],
-    ['🔓','Unlock from Lv 1','Kai & Milo are ready at the start; the rest unlock up to Lv 26'],
+    ['🔓','Unlock from Lv 1','Kai & Milo are ready at the start; the rest unlock quickly as you level'],
   ]},
   { v:'2.9.0', items:[
     ['🦸','9 new heroes','Kai, Milo, Chip, Lila, Yuki, Vex, Sarge, Finn & Cypher join the roster'],
@@ -2622,8 +2625,11 @@ function weaponIcon(w){
 // cartoon character (front-facing chibi, dark-outlined with shading)
 function drawHuman(h){
   // 3D model layer (progressive): if a model is loaded for this avatar, billboard it and skip 2D.
-  // Falls through to the hand-drawn chibi whenever the 3D system isn't ready/available.
-  if(window.Models3D && Models3D.drawHuman(ctx,h)){ drawNameplate(h); return; }
+  // Falls through to the hand-drawn chibi whenever the 3D system isn't ready/available. Skipped for
+  // "armless" heroes — they rely on the 2D sprite + drawHeroArm rig, and a 3D billboard would hide
+  // the drawn gun-arm (leaving them empty-handed), so those always take the sprite path below.
+  const armless3D = h.avatar && h.avatar.armless;
+  if(!armless3D && window.Models3D && Models3D.drawHuman(ctx,h)){ drawNameplate(h); return; }
   // sprite hero layer: if this fighter has a loaded PNG, billboard it and skip the drawn chibi.
   const heroImg = h.avatar && imgOk(h.avatar.img);
   if(heroImg){ drawHeroSprite(h, heroImg); drawNameplate(h); return; }

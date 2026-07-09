@@ -11,6 +11,12 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.10.1** — hardening + tuning: (1) `drawHuman` now **skips the 3D billboard for `armless` heroes**
+  (`index.html:2626`, `!armless3D && ...`) so a loaded GLB can never hide the drawn gun-arm — verified
+  over **http** with three.js live (`threeD:true`) that Cypher still renders the 2D sprite + rifle
+  in-hand. (2) **Compressed the unlock curve** — whole roster by Lv 15 (Kai/Milo 1, Chip 2, Lila 3,
+  Yuki 5, Vex 7, Sarge 9, Finn 12, Cypher 15), down from Lv 26. Arm pivot reviewed at chest height —
+  looks correct, left as-is.
 - **v2.10.0** — **removed the 9 original baked-in-gun heroes** (Blaze, Rose, Bjorn, Zane, Wraith,
   Ace, Nova, Onyx, Hopper) at the user's request; the roster is now *only* the 9 armless heroes,
   each with a live 360° gun-arm (see below). Deleted their `assets/img/hero-*.png`, `loadImg` calls
