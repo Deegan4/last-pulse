@@ -706,15 +706,15 @@ const AVATARS = [
   {name:'Nova',   speed:5.9, health:92,  unlock:18, img:'hero-nova',   look:{skin:'#f0c8b0',hair:'#7a4ab0',outfit:'#2a2f3a',style:'long'}},
   {name:'Onyx',   speed:5.8, health:100, unlock:22, img:'hero-onyx',   look:{skin:'#e8b48c',hair:'#1a1a1a',outfit:'#1a1a1a',style:'ninja'}},
   {name:'Hopper', speed:6.2, health:84,  unlock:26, img:'hero-hopper', look:{skin:'#7bbf5a',hair:'#5a8a3a',outfit:'#1a1a1a',style:'frog'}},
-  {name:'Kai',    speed:5.6, health:104, unlock:30, img:'hero-kai',    look:{skin:'#f0c8a0',hair:'#1f52d8',outfit:'#2f6ecc',style:'glasses'}},
-  {name:'Milo',   speed:5.5, health:110, unlock:33, img:'hero-milo',   look:{skin:'#f2cbb0',hair:'#5a3a1a',outfit:'#e8641f',style:'curly'}},
-  {name:'Chip',   speed:6.0, health:88,  unlock:36, img:'hero-chip',   look:{skin:'#f2cbb0',hair:'#3aa83a',outfit:'#2e9a2e',style:'cap'}},
-  {name:'Lila',   speed:6.3, health:80,  unlock:40, img:'hero-lila',   look:{skin:'#f2cbb0',hair:'#e8479a',outfit:'#e85d9a',style:'long'}},
-  {name:'Yuki',   speed:6.0, health:90,  unlock:44, img:'hero-yuki',   look:{skin:'#e8c4a8',hair:'#3a2a4a',outfit:'#232028',style:'long'}},
-  {name:'Vex',    speed:6.1, health:86,  unlock:48, img:'hero-vex',    look:{skin:'#e8c4a8',hair:'#161616',outfit:'#1a1a1a',style:'ninja'}},
-  {name:'Sarge',  speed:4.6, health:140, unlock:52, img:'hero-sarge',  look:{skin:'#e8b48c',hair:'#e8b48c',outfit:'#3f4a2a',style:'beard'}},
-  {name:'Finn',   speed:5.3, health:118, unlock:57, img:'hero-finn',   look:{skin:'#f0c8a0',hair:'#f2c832',outfit:'#6a4a2a',style:'mohawk'}},
-  {name:'Cypher', speed:5.9, health:96,  unlock:62, img:'hero-cypher', look:{skin:'#e8d0c0',hair:'#e6e8ee',outfit:'#241f38',style:'visor'}},
+  {name:'Kai',    speed:5.6, health:104, unlock:30, img:'hero-kai',    armless:true, look:{skin:'#f0c8a0',hair:'#1f52d8',outfit:'#2f6ecc',style:'glasses'}},
+  {name:'Milo',   speed:5.5, health:110, unlock:33, img:'hero-milo',   armless:true, look:{skin:'#f2cbb0',hair:'#5a3a1a',outfit:'#e8641f',style:'curly'}},
+  {name:'Chip',   speed:6.0, health:88,  unlock:36, img:'hero-chip',   armless:true, look:{skin:'#f2cbb0',hair:'#3aa83a',outfit:'#2e9a2e',style:'cap'}},
+  {name:'Lila',   speed:6.3, health:80,  unlock:40, img:'hero-lila',   armless:true, look:{skin:'#f2cbb0',hair:'#e8479a',outfit:'#e85d9a',style:'long'}},
+  {name:'Yuki',   speed:6.0, health:90,  unlock:44, img:'hero-yuki',   armless:true, look:{skin:'#e8c4a8',hair:'#3a2a4a',outfit:'#2a2530',style:'long'}},
+  {name:'Vex',    speed:6.1, health:86,  unlock:48, img:'hero-vex',    armless:true, look:{skin:'#e8c4a8',hair:'#161616',outfit:'#1f1f22',style:'ninja'}},
+  {name:'Sarge',  speed:4.6, health:140, unlock:52, img:'hero-sarge',  armless:true, look:{skin:'#e8b48c',hair:'#e8b48c',outfit:'#3f4a2a',style:'beard'}},
+  {name:'Finn',   speed:5.3, health:118, unlock:57, img:'hero-finn',   armless:true, look:{skin:'#f0c8a0',hair:'#f2c832',outfit:'#6a4a2a',style:'mohawk'}},
+  {name:'Cypher', speed:5.9, health:96,  unlock:62, img:'hero-cypher', armless:true, look:{skin:'#e8d0c0',hair:'#6a5a8a',outfit:'#241f38',style:'visor'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -776,6 +776,7 @@ const GAME_VERSION = '2.9.0';
 const CHANGELOG = [
   { v:'2.9.0', items:[
     ['🦸','9 new heroes','Kai, Milo, Chip, Lila, Yuki, Vex, Sarge, Finn & Cypher join the roster'],
+    ['🔫','Weapon in-hand','the new heroes hold their gun and aim it a full 360° as you shoot'],
     ['🔓','More to unlock','fresh sprite fighters gated from Lv 30 all the way to Lv 62'],
   ]},
   { v:'2.8.0', items:[
@@ -2758,13 +2759,51 @@ function drawHeroSprite(h, img){
   if(h.hitFlash>0) ctx.filter='brightness(2.4) saturate(0.5)';       // hit flash (resets on restore)
   ctx.drawImage(img, -DW/2, 20-DH, DW, DH);                          // feet near y+20
   ctx.restore();
-  if(h.muzzleT>0){ const mr=h.muzzleR||7, mx=Math.cos(h.aim)*20, my=Math.sin(h.aim)*12-6;   // muzzle flash along aim
+  // "armless" heroes are drawn with their arms at their sides, so we mount a live gun-arm on top
+  // that rotates the full 360° to the aim — the weapon shows in-hand and points wherever we shoot.
+  const armless = h.avatar && h.avatar.armless;
+  if(armless){ drawHeroArm(h, bob); }
+  else if(h.muzzleT>0){ const mr=h.muzzleR||7, mx=Math.cos(h.aim)*20, my=Math.sin(h.aim)*12-6;   // muzzle flash along aim
     ctx.save(); ctx.translate(mx,my);
     ctx.fillStyle='rgba(255,205,80,.5)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
     ctx.fillStyle='#fff6c0'; ctx.beginPath(); ctx.arc(0,0,mr*0.5,0,TAU); ctx.fill(); ctx.restore(); }
   if(h.isPlayer && h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1);   // reload ring
     ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
     ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); }
+  ctx.restore();
+}
+// A live gun-arm for the "armless" sprite heroes: a sleeve-coloured arm pinned at the chest that
+// rotates to `h.aim` (full 360°) with the weapon in-hand — mirrors the 2D chibi's arm/`drawGun`
+// rig so combat reads identically. Called in the sprite's local space (already translated to h.x,h.y).
+function drawHeroArm(h, bob){
+  const L = h.look || (h.avatar && h.avatar.look) || {skin:'#f0c8a0', outfit:'#556'};
+  const ga = h.aim, gname = h.weapon ? h.weapon.name : 'Pistol';
+  const gl = (GUNK[gname]||{l:14}).l;
+  const oneHand = h.weapon && (h.weapon.name==='Pistol' || h.weapon.name==='Magnum');
+  const reach = 12 - (h.recoil>0 ? h.recoil*3 : 0);        // recoil kicks the gun back
+  const sleeve = L.outfit || '#556', skin = L.skin || '#f0c8a0';
+  ctx.save(); ctx.translate(0, -3 + bob*0.6); ctx.rotate(ga);   // shoulder pivot at the chest, bobbing with the body
+  ctx.lineJoin='round'; ctx.lineCap='round';
+  // upper arm: dark outline under a sleeve-coloured limb
+  ctx.strokeStyle=INK; ctx.lineWidth=6.4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,1); ctx.stroke();
+  ctx.strokeStyle=sleeve; ctx.lineWidth=4.2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,1); ctx.stroke();
+  // hand + gun at the wrist; flip the gun upright when aiming left so it never reads upside-down
+  ctx.translate(reach,1); if(Math.cos(ga)<0) ctx.scale(1,-1);
+  ctx.fillStyle=skin; ctx.strokeStyle=INK; ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.arc(0.4,0.4,2.7,0,TAU); ctx.fill(); ctx.stroke();     // trigger hand
+  drawGun(gname);
+  // support hand on the foregrip for two-handed weapons
+  if(!oneHand){ const fx=gl*0.45;
+    ctx.strokeStyle=INK; ctx.lineWidth=4.6; ctx.beginPath(); ctx.moveTo(fx-6.5,6.5); ctx.lineTo(fx,2.4); ctx.stroke();
+    ctx.strokeStyle=sleeve; ctx.lineWidth=2.8; ctx.beginPath(); ctx.moveTo(fx-6.5,6.5); ctx.lineTo(fx,2.4); ctx.stroke();
+    ctx.fillStyle=skin; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
+    ctx.beginPath(); ctx.arc(fx,2.4,2.3,0,TAU); ctx.fill(); ctx.stroke(); }
+  // muzzle flash at the barrel tip (in gun space, so it tracks the aim)
+  if(h.muzzleT>0){ const mr=h.muzzleR||7; ctx.save(); ctx.translate(gl+1,0);
+    ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
+    ctx.fillStyle='#fff6c0'; for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2+0.4);
+      ctx.beginPath(); ctx.moveTo(0,-mr*0.34); ctx.lineTo(mr*1.4+rand(0,3),0); ctx.lineTo(0,mr*0.34); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    ctx.beginPath(); ctx.arc(0,0,mr*0.48,0,TAU); ctx.fill(); ctx.restore(); }
   ctx.restore();
 }
 function drawHair(L,hy,flip){
