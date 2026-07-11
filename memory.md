@@ -11,6 +11,22 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.12.0 "Maps & Modes"** — first **biome/map system** + a **new game mode**, selectable on the mode
+  screen. **BIOMES** table (`meadow` default + `desert`) drives ground palette (`groundPattern` reads
+  `biome().ground[timeOfDay]`; `groundStyle:'sand'` swaps the mowed-checker/blades for dune ripples +
+  sand grains), ambient `tint` (per time-of-day, applied in `drawDayNight`), flora type/density
+  (`buildDecor` uses `B.tree` + `greenMul`/`waterMul`), and `rock`/`flowers` colours. Desert swaps
+  trees→**cactus** (new `drawDecor` saguaro case; added to `TALL_DECOR` for y-sort) and rolls a
+  **sandstorm** hazard (`drawSandstorm`, deterministic 40s cycle/8s storm — tan haze + drifting streaks
+  + label; visual, no damage). Map picker: `#mapCards` on the mode screen built by `buildMapCards()`,
+  persisted as `dd2_biome`; `renderModeSel` highlights it. **King of the Hill** (`gameMode:'koth'`):
+  a capture circle (`hill` state, `KOTH_TARGET=100`, `KOTH_RATE=8`, relocates every `KOTH_MOVE=22s`);
+  your team (0) banks progress while holding uncontested, all bots are team 1. `kothUpdate` scores +
+  decides the win; `zoneActive()` now excludes koth (no shrink); bots gravitate to the hill via a
+  steering pull in `updateBot`; `drawHill()` renders the ring + progress arc + crown; HUD shows
+  `Hold: p% · e%`; minimap + results + GET-READY text all have koth branches. Verified headless:
+  desert renders (dunes/cactus/oasis/sandstorm), KOTH scores while held (26% after 3s), bots converge
+  on the hill, BR/other modes unregressed. GAME_VERSION 2.12.0.
 - **v2.11.0** — **procedural walk cycle for the sprite heroes** (fixes "arm spins on a frozen body"):
   `drawHeroSprite` now bobs (`-abs(sin walk)*2.1`), sways (`sin*2.0`) and leans the torso, and a new
   `drawWalkBody(img,DW,DH,gait)` splits the billboard's bottom 40% into left/right halves and lifts
