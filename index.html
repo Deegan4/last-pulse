@@ -464,6 +464,15 @@
   #modeScreen .modecard .mi{font-size:30px}
   #modeScreen .modecard .mt{font-size:18px}
   #modeScreen .modecard .md{font-size:12.5px}
+  #modeScreen .sub.maplbl{margin:16px 0 0;font-weight:800;opacity:.85;font-size:13px;letter-spacing:.5px}
+  #modeScreen .maps{display:flex;gap:10px;width:min(94%,460px);margin:8px auto 0;justify-content:center;flex-wrap:wrap}
+  #modeScreen .mapcard{flex:1 1 40%;min-width:120px;display:flex;align-items:center;gap:8px;
+    padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);border:2px solid transparent;cursor:pointer;color:#fff}
+  #modeScreen .mapcard.on{border-color:#9bff6e;background:rgba(155,255,110,.14)}
+  #modeScreen .mapcard .mpi{font-size:24px}
+  #modeScreen .mapcard .mpt{display:flex;flex-direction:column;line-height:1.2;text-align:left;min-width:0}
+  #modeScreen .mapcard .mpn{font-size:14px;font-weight:800}
+  #modeScreen .mapcard .mpd{font-size:11px;opacity:.75}
   /* In-game powers in landscape: a v2 safe-area rule (added later in the sheet than the
      original landscape query) had knocked the power buttons back to the portrait
      mid-screen spot, floating over the player. Re-assert the bottom-centre row here. */
@@ -547,7 +556,10 @@
       <button class="modecard" data-mode="br"><span class="mi">🏆</span><span class="mtxt"><span class="mt">Battle Royale</span><span class="md">15 players · outlast the shrinking zone</span></span></button>
       <button class="modecard" data-mode="horde"><span class="mi">🧟</span><span class="mtxt"><span class="mt">Endless Horde</span><span class="md">survive escalating zombie waves</span></span></button>
       <button class="modecard" data-mode="squad"><span class="mi">🛡</span><span class="mtxt"><span class="mt">Squads</span><span class="md">team up · last squad standing</span></span></button>
+      <button class="modecard" data-mode="koth"><span class="mi">👑</span><span class="mtxt"><span class="mt">King of the Hill</span><span class="md">hold the moving zone to score</span></span></button>
     </div>
+    <div class="sub maplbl">Map</div>
+    <div class="maps" id="mapCards"></div>
     <div class="footer"><button class="btn play" id="toAvatarBtn"><span id="modeLabel">CONTINUE</span></button></div>
   </div>
 
@@ -756,8 +768,12 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.11.0';
+const GAME_VERSION = '2.12.0';
 const CHANGELOG = [
+  { v:'2.12.0', items:[
+    ['🏜️','New map — Desert','sun-baked dunes, cacti & an oasis, with rolling sandstorms; pick your map on the mode screen'],
+    ['👑','New mode — King of the Hill','hold the moving capture zone to score; first to 100% wins'],
+  ]},
   { v:'2.11.0', items:[
     ['🏃','Heroes come alive','characters now bob, sway & step — legs and body animate as you run, not just the arm'],
     ['🏅','New achievements','Full Roster, Iron Wall (win as Sarge) & Blur (win as Lila)'],
@@ -1024,7 +1040,24 @@ let screenState = 'start';   // 'start'|'avatar'|'weapon'|'playing'|'results'
 let paused = false;
 let grace = 0;
 const GRACE = 2.6;
-let gameMode = safeGet('dd2_mode','br');   // 'br' | 'horde' | 'squad'
+let gameMode = safeGet('dd2_mode','br');   // 'br' | 'horde' | 'squad' | 'koth'
+// ===== Biomes / maps =====
+// Each biome retextures the arena: ground palette, ambient tint, which flora spawns, water/rock
+// colours, greenery density, and an optional weather hazard. `img:'grass'` uses the photo tile;
+// biomes without an img draw a procedural palette so a new map needs no new assets.
+const BIOMES = {
+  meadow: { name:'Meadow', icon:'🌳', desc:'Lush green fields, ponds & cottages', img:'grass', groundStyle:'grass',
+    ground:{ day:['#6aa84f','#63a14a','#5f9c46','#74b258'], dusk:['#6f9a48','#689344','#648e41','#79a350'], night:['#4f7a44','#4a7440','#46703d','#56834a'] },
+    tint:null, tree:'tree', rock:'#8f9aa0', flowers:['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'],
+    greenMul:1, waterMul:1, hazard:null },
+  desert: { name:'Desert', icon:'🏜️', desc:'Sun-baked dunes, cacti & an oasis', img:null, groundStyle:'sand',
+    ground:{ day:['#e3c485','#d9b978','#d0ad6b','#ecd299'], dusk:['#d3a862','#c99d58','#c0924e','#dcb877'], night:['#a68b57','#9d8351','#94794b','#b19960'] },
+    tint:{ day:'rgba(232,180,90,.10)', dusk:'rgba(226,140,60,.16)', night:'rgba(52,46,88,.13)' },
+    tree:'cactus', rock:'#c39a63', flowers:['#ff9a3d','#ffd166','#ff5a5a'],
+    greenMul:0.42, waterMul:0.4, hazard:'sandstorm' },
+};
+let gameBiome = safeGet('dd2_biome','meadow');
+function biome(){ return BIOMES[gameBiome] || BIOMES.meadow; }
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
 let hordeWave = 0;
 let aimWX = 0, aimWY = 0, aimShow = false;  // reticle world target
@@ -1109,11 +1142,37 @@ function zoneUpdate(dt){
   }
 }
 function outsideZone(e){ return Math.hypot(e.x-zone.cx, e.y-zone.cy) > zone.r; }
-function zoneActive(){ return gameMode!=='horde'; }
+function zoneActive(){ return gameMode!=='horde' && gameMode!=='koth'; }
 function safeText(){
   if(zone.state==='done') return 'FINAL';
   if(zone.state==='shrink') return 'closing';
   return Math.ceil(zone.dur - zone.t) + 's';
+}
+// ===== King of the Hill =====
+// A capture-circle objective that relocates every KOTH_MOVE seconds. Your team banks progress
+// while holding it uncontested; first side to KOTH_TARGET wins. All bots are the enemy team.
+const KOTH_TARGET = 100, KOTH_RATE = 8, KOTH_MOVE = 22, KOTH_R = 175;
+const hill = { x:ARENA/2, y:ARENA/2, r:KOTH_R, pScore:0, eScore:0, moveT:KOTH_MOVE, holder:-1, warn:0 };
+function hillMove(first){
+  const a=rand(0,TAU), off=first?0:rand(ARENA*0.14, ARENA*0.30);
+  hill.x=clamp(ARENA/2+Math.cos(a)*off, 340, ARENA-340);
+  hill.y=clamp(ARENA/2+Math.sin(a)*off, 340, ARENA-340);
+  hill.moveT=KOTH_MOVE; hill.warn=first?0:2.6;
+}
+function kothReset(){ hill.pScore=0; hill.eScore=0; hill.holder=-1; hill.warn=0; hillMove(true); }
+function inHill(e){ return Math.hypot(e.x-hill.x, e.y-hill.y) <= hill.r; }
+function kothUpdate(dt){
+  hill.moveT-=dt; if(hill.warn>0) hill.warn-=dt;
+  if(hill.moveT<=0){ hillMove(false); sfx('warn'); }
+  let pIn=0, eIn=0;
+  for(const h of humans){ if(!h.alive) continue; if(inHill(h)){ if(h.team===0) pIn++; else eIn++; } }
+  hill.holder = (pIn>0&&eIn===0)?0 : (eIn>0&&pIn===0)?1 : -1;
+  if(hill.holder===0) hill.pScore=Math.min(KOTH_TARGET, hill.pScore+dt*KOTH_RATE);
+  else if(hill.holder===1) hill.eScore=Math.min(KOTH_TARGET, hill.eScore+dt*KOTH_RATE);
+  if(!ended){
+    if(hill.pScore>=KOTH_TARGET){ ended=true; if(!spectating) sfx('win'); setTimeout(()=>showResults(!spectating,1),700); }
+    else if(hill.eScore>=KOTH_TARGET){ ended=true; setTimeout(()=>showResults(false, spectating?deathPlace:2),700); }
+  }
 }
 
 // ============================================================
@@ -1161,15 +1220,16 @@ function farSpawn(minFromCenter){
   return {x:fx,y:fy};
 }
 const ROOFS=['#9a4d3a','#5a6a86','#6a8a5a','#7a6a4a','#8a5a7a'];
-const TALL_DECOR={campfire:1,fence:1,well:1,statue:1};   // level-milestone landmarks (y-sorted)
+const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,cactus:1};   // y-sorted upright decor (landmarks + cacti)
 function buildDecor(){
   decor.length=0; obstacles.length=0;
   timeOfDay = pick(['day','day','dusk','night']);   // mostly day, sometimes dusk/night
   // the world grows with your level: more houses (each hiding loot), more ponds and
   // greenery, and new landmarks unlock at level milestones (see below)
-  const lvl = meta.level;
+  const lvl = meta.level, B = biome();
+  const gm = B.greenMul||1;                         // greenery density scale (desert is sparse)
   const nBuild = Math.min(9 + Math.floor(lvl/4), 16);
-  const nWater = Math.min(7 + Math.floor(lvl/8), 10);
+  const nWater = Math.max(1, Math.round(Math.min(7 + Math.floor(lvl/8), 10) * (B.waterMul||1)));
   const xtra   = Math.min(lvl, 20);                 // generic density bonus
   for(let i=0;i<80;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
   for(let i=0;i<nWater;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
@@ -1182,10 +1242,10 @@ function buildDecor(){
         if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
       tries++; } while(!ok && tries<20);
     if(ok){ obstacles.push(b); decor.push(b); } }
-  for(let i=0;i<26+Math.floor(xtra*0.7);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
-  for(let i=0;i<34+xtra;i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
-  for(let i=0;i<66+xtra*2;i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
-  for(let i=0;i<26+xtra;i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
+  for(let i=0;i<Math.round((26+Math.floor(xtra*0.7))*gm);i++){ const p=decorSpot(120); decor.push({type:B.tree, x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
+  for(let i=0;i<Math.round((34+xtra)*gm);i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
+  for(let i=0;i<Math.round((66+xtra*2)*gm);i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
+  for(let i=0;i<Math.round((26+xtra)*gm);i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(B.flowers)}); }
   for(let i=0;i<14+Math.floor(xtra/2);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
   for(let i=0;i<6+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
   // level-milestone landmarks — the map gains character as you rank up
@@ -1279,6 +1339,10 @@ function spawnMatch(){
     for(let i=0;i<12;i++){ const e=newBot(0, null, i); e.team=1+Math.floor(i/4); humans.push(e); } // 3 enemy squads of 4
     for(let i=0;i<8;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
       while(dist2(s.x,s.y,player.x,player.y)<420*420 && tries<12); zombies.push(makeZombie(s.x,s.y)); }
+    for(let i=0;i<9;i++){ const s=farSpawn(ARENA*0.1); pickups.push(makePickup(s.x,s.y)); }
+  } else if(gameMode==='koth'){
+    fieldSize=10; kothReset();
+    for(let i=0;i<9;i++){ const b=newBot(1, null, i); b.team=1; b.name=b.avatar.name + (i>4? ' '+randi(2,9):''); humans.push(b); }
     for(let i=0;i<9;i++){ const s=farSpawn(ARENA*0.1); pickups.push(makePickup(s.x,s.y)); }
   } else { // br
     fieldSize=15;
@@ -1684,6 +1748,10 @@ function updateBot(h,dt){
     } else h.lockT=0;
   } else { h.lockT=0; if(!out){ if(h.think<=0){ h.wanderA=rand(0,TAU); h.think=rand(.8,1.8); } h.think-=dt;
     mvx+=Math.cos(h.wanderA)*0.5; mvy+=Math.sin(h.wanderA)*0.5; h.aim=angLerp(h.aim,h.wanderA,0.08); } }
+  // King of the Hill: bots gravitate to the capture circle (weaker while actively fighting so they still duel)
+  if(gameMode==='koth'){ const hd=Math.hypot(hill.x-h.x,hill.y-h.y);
+    if(hd>hill.r*0.6){ const a=Math.atan2(hill.y-h.y,hill.x-h.x), w=(tgt&&near.d<aggroR)?0.5:1.15;
+      mvx+=Math.cos(a)*w; mvy+=Math.sin(a)*w; } }
   const m=len(mvx,mvy);
   if(m>0){ const sp=h.speed*(out?1.1:0.95); h.vx+=(mvx/m*sp-h.vx)*0.2; h.vy+=(mvy/m*sp-h.vy)*0.2; h.walk+=dt*8; }
   else { h.vx*=0.8; h.vy*=0.8; }
@@ -1954,6 +2022,10 @@ function enemiesLeft(){ let n=0; for(const h of humans) if(h.alive && h.team!==p
 function checkEnd(){
   if(ended||screenState!=='playing') return;
   if(gameMode==='horde'){ if(!player.alive){ ended=true; setTimeout(()=>showResults(false,0),700); } return; }
+  if(gameMode==='koth'){   // score decides it; death = loss, wiping the enemy = win. Scores handled in kothUpdate.
+    if(!player.alive && !spectating){ deathPlace=2; enterSpectate(); }
+    if(enemiesLeft()===0 && !ended){ ended=true; if(!spectating) sfx('win'); setTimeout(()=>showResults(!spectating, spectating?deathPlace:1),700); }
+    return; }
   const alive=aliveHumans();
   // player just died → watch the rest of the match (spectate) instead of cutting to results
   if(!player.alive && !spectating){
@@ -2001,6 +2073,9 @@ function showResults(win, place){
   const pc=el('placard');
   if(horde){ pc.classList.remove('win'); pc.textContent='WAVE '+hordeWave;
     el('placeSub').textContent='🧟 Survived '+Math.floor(elapsed)+'s · best wave '+meta.bestWave; }
+  else if(gameMode==='koth'){ pc.classList.toggle('win',win); pc.textContent = win?'👑 VICTORY':'DEFEATED';
+    el('placeSub').textContent = win ? '👑 You held the hill — '+Math.round(hill.pScore)+'% captured'
+      : '💀 Enemy held the hill — '+Math.round(hill.pScore)+'% vs '+Math.round(hill.eScore)+'%'; }
   else { pc.classList.toggle('win',win); pc.textContent = win?'#1 VICTORY':('#'+place);
     const close = place===2?'🔥 SO CLOSE! ':place===3?'😤 Almost had it! ':'';
     el('placeSub').textContent = win
@@ -2060,6 +2135,7 @@ function draw(){
   ctx.restore();
   drawDayNight();
   ctx.save(); ctx.translate(-cam.x+shx,-cam.y+shy);
+  if(gameMode==='koth') drawHill();   // capture circle sits on the ground, under entities
   // tall decor + items + entities sorted by y for depth
   const drawables=[];
   for(const d of decor){ if(d.type!=='tree'&&d.type!=='bush'&&d.type!=='building'&&!TALL_DECOR[d.type]) continue;
@@ -2138,8 +2214,11 @@ function draw(){
     ctx.fillText('GET READY', W/2, H*0.4);
     ctx.fillStyle='#ffe27a'; ctx.font='800 60px Trebuchet MS, sans-serif'; ctx.fillText(Math.ceil(grace), W/2, H*0.4+58);
     ctx.fillStyle='rgba(255,255,255,.8)'; ctx.font='700 14px Trebuchet MS, sans-serif';
-    const gmTxt = gameMode==='horde'?'Survive the endless horde' : gameMode==='squad'?'Squad up — last team standing' : (fieldSize+' players · survive the safe zone');
+    const gmTxt = gameMode==='horde'?'Survive the endless horde' : gameMode==='squad'?'Squad up — last team standing' : gameMode==='koth'?'Hold the 👑 hill to score' : (fieldSize+' players · survive the safe zone');
     ctx.fillText(gmTxt, W/2, H*0.4-40); ctx.restore(); }
+
+  // desert sandstorm — periodic drifting haze (deterministic 40s cycle, ~8s storm)
+  if(screenState==='playing' && grace<=0 && biome().hazard==='sandstorm') drawSandstorm();
 
   if(screenState==='playing'){
     // kill feed (top-left, under the XP bar)
@@ -2157,6 +2236,10 @@ function draw(){
       ctx.fillStyle='#ffe2e2'; ctx.textAlign='center'; ctx.font='800 17px Trebuchet MS, sans-serif';
       ctx.fillText('⚠ GET TO THE SAFE AREA', W/2, H*0.5+90);
     }
+    // KOTH — prompt when you're off the hill
+    if(gameMode==='koth'&&player&&player.alive&&grace<=0&&!inHill(player)){
+      ctx.fillStyle='rgba(255,236,150,.92)'; ctx.textAlign='center'; ctx.font='800 16px Trebuchet MS, sans-serif';
+      ctx.fillText('👑 CAPTURE THE HILL', W/2, H*0.5+90); }
     // low-health pulse — a breathing red vignette that intensifies toward death
     if(player&&player.alive&&grace<=0){
       const frac=player.maxhp>0?player.hp/player.maxhp:1;
@@ -2212,6 +2295,20 @@ function drawReticle(){
   ctx.restore(); ctx.globalAlpha=1;
 }
 function inView(x,y,pad){ return x>cam.x-pad && x<cam.x+W+pad && y>cam.y-pad && y<cam.y+H+pad; }
+function drawSandstorm(){
+  const cyc=gtime%40, inten = cyc<8 ? Math.sin(cyc/8*Math.PI) : 0;   // storm ramps up then fades
+  if(inten<0.02) return;
+  ctx.save();
+  ctx.fillStyle='rgba(218,184,120,'+(inten*0.30)+')'; ctx.fillRect(0,0,W,H);   // tan haze
+  ctx.globalAlpha=inten*0.55; ctx.strokeStyle='rgba(238,216,170,.8)'; ctx.lineWidth=2; ctx.lineCap='round';
+  const dx=(gtime*430)%(W+260);
+  for(let i=0;i<28;i++){ const y=((i*57 + gtime*34)%(H+40))-20, x=(((i*171 - dx)%(W+260))+W+260)%(W+260)-130;
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+66,y+7); ctx.stroke(); }
+  ctx.globalAlpha=1;
+  if(inten>0.35){ ctx.fillStyle='rgba(90,60,20,'+(0.5*inten)+')'; ctx.textAlign='center'; ctx.font='800 15px Trebuchet MS, sans-serif';
+    ctx.fillText('🌪 SANDSTORM', W/2, 108); }
+  ctx.restore();
+}
 function drawVignette(){
   const key=Math.round(W)+'x'+Math.round(H);
   if(vignetteKey!==key || !vignetteGrad){ vignetteKey=key;
@@ -2223,6 +2320,7 @@ function drawVignette(){
   ctx.drawImage(vignetteGrad,0,0,W,H);   // fast blit of the pre-rendered vignette
 }
 function drawDayNight(){
+  const bt=biome().tint; if(bt&&bt[timeOfDay]){ ctx.save(); ctx.fillStyle=bt[timeOfDay]; ctx.fillRect(0,0,W,H); ctx.restore(); }  // biome ambient
   if(timeOfDay==='day') return;
   ctx.save();
   if(timeOfDay==='dusk'){
@@ -2244,28 +2342,37 @@ function jagLine(x1,y1,x2,y2){ const seg=6; ctx.beginPath(); ctx.moveTo(x1,y1);
 const GROUND_COLS = { day:['#6aa84f','#63a14a','#5f9c46','#74b258'], dusk:['#6f9a48','#689344','#648e41','#79a350'], night:['#4f7a44','#4a7440','#46703d','#56834a'] };
 let groundPat=null, groundKey='';
 function groundPattern(){
-  const gi=imgOk('grass'), key=timeOfDay+(gi?'-img':'');
+  const B=biome(), gi=B.img?imgOk(B.img):null, key=gameBiome+'-'+timeOfDay+(gi?'-img':'');
   if(groundKey===key && groundPat) return groundPat;
   groundKey=key;
-  if(gi){   // seamless grass photo tile, tinted to match dusk/night lighting
+  if(gi){   // seamless photo tile, tinted to match dusk/night lighting
     const T=512, c=document.createElement('canvas'); c.width=c.height=T; const o=c.getContext('2d');
     o.drawImage(gi,0,0,T,T);
     const tint=GROUND_TINT[timeOfDay]; if(tint){ o.fillStyle=tint; o.fillRect(0,0,T,T); }
     groundPat=ctx.createPattern(c,'repeat'); return groundPat;
   }
   const T=256, c=document.createElement('canvas'); c.width=c.height=T; const o=c.getContext('2d');
-  const [base,alt,dark,lite]=GROUND_COLS[timeOfDay]||GROUND_COLS.day;
-  o.fillStyle=base; o.fillRect(0,0,T,T);
-  o.fillStyle=alt; o.fillRect(T/2,0,T/2,T/2); o.fillRect(0,T/2,T/2,T/2);   // mowed checker
-  // deterministic speckles (seeded so the tile never shimmers between rebuilds)
+  const [base,alt,dark,lite]=(B.ground&&B.ground[timeOfDay])||GROUND_COLS[timeOfDay]||GROUND_COLS.day;
   let s=42; const rnd=()=>{ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; };
-  for(let i=0;i<64;i++){ o.fillStyle = rnd()<0.5?dark:lite; o.globalAlpha=0.35+rnd()*0.3;
-    const x=rnd()*T, y=rnd()*T, r=0.8+rnd()*1.6; o.beginPath(); o.arc(x,y,r,0,TAU); o.fill(); }
-  o.globalAlpha=1;
-  // faint blade strokes
-  o.strokeStyle=dark; o.globalAlpha=0.25; o.lineWidth=1;
-  for(let i=0;i<26;i++){ const x=rnd()*T, y=rnd()*T; o.beginPath(); o.moveTo(x,y); o.lineTo(x+1.5-rnd()*3,y-3-rnd()*3); o.stroke(); }
-  o.globalAlpha=1;
+  o.fillStyle=base; o.fillRect(0,0,T,T);
+  if(B.groundStyle==='sand'){
+    // wind-blown dune ripples instead of a mowed checker + blades
+    o.fillStyle=alt; o.globalAlpha=0.5;
+    for(let i=0;i<5;i++){ const y=(i+rnd()*0.6)*T/5; o.beginPath(); o.moveTo(0,y);
+      for(let x=0;x<=T;x+=16){ o.lineTo(x, y+Math.sin(x/34+i)*4); } o.lineTo(T,y+16); o.lineTo(0,y+16); o.closePath(); o.fill(); }
+    o.globalAlpha=1;
+    for(let i=0;i<90;i++){ o.fillStyle = rnd()<0.5?dark:lite; o.globalAlpha=0.22+rnd()*0.28;
+      const x=rnd()*T, y=rnd()*T, r=0.6+rnd()*1.3; o.beginPath(); o.arc(x,y,r,0,TAU); o.fill(); }   // sand grains
+    o.globalAlpha=1;
+  } else {
+    o.fillStyle=alt; o.fillRect(T/2,0,T/2,T/2); o.fillRect(0,T/2,T/2,T/2);   // mowed checker
+    for(let i=0;i<64;i++){ o.fillStyle = rnd()<0.5?dark:lite; o.globalAlpha=0.35+rnd()*0.3;
+      const x=rnd()*T, y=rnd()*T, r=0.8+rnd()*1.6; o.beginPath(); o.arc(x,y,r,0,TAU); o.fill(); }
+    o.globalAlpha=1;
+    o.strokeStyle=dark; o.globalAlpha=0.25; o.lineWidth=1;   // faint blade strokes
+    for(let i=0;i<26;i++){ const x=rnd()*T, y=rnd()*T; o.beginPath(); o.moveTo(x,y); o.lineTo(x+1.5-rnd()*3,y-3-rnd()*3); o.stroke(); }
+    o.globalAlpha=1;
+  }
   groundPat=ctx.createPattern(c,'repeat');
   return groundPat;
 }
@@ -2431,7 +2538,7 @@ function drawDecor(d){
   if(d.type==='building'){ drawBuilding(d); return; }
   if(d.type==='rock'){ const s=d.s; ctx.lineJoin='round';
     ctx.fillStyle='rgba(0,0,0,.15)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+4*s,11*s,4*s,0,0,TAU); ctx.fill();
-    ctx.fillStyle='#8f9aa0'; ctx.strokeStyle=INK; ctx.lineWidth=1.6*s;
+    ctx.fillStyle=biome().rock||'#8f9aa0'; ctx.strokeStyle=INK; ctx.lineWidth=1.6*s;
     ctx.beginPath(); ctx.moveTo(d.x-9*s,d.y+2*s); ctx.lineTo(d.x-5*s,d.y-7*s); ctx.lineTo(d.x+3*s,d.y-8*s); ctx.lineTo(d.x+9*s,d.y); ctx.lineTo(d.x+6*s,d.y+3*s); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle='rgba(0,0,0,.17)'; ctx.beginPath(); ctx.moveTo(d.x+3*s,d.y-8*s); ctx.lineTo(d.x+9*s,d.y); ctx.lineTo(d.x+6*s,d.y+3*s); ctx.lineTo(d.x+1*s,d.y-2*s); ctx.closePath(); ctx.fill();  // dark facet
     ctx.fillStyle='rgba(255,255,255,.22)'; ctx.beginPath(); ctx.moveTo(d.x-5*s,d.y-7*s); ctx.lineTo(d.x+3*s,d.y-8*s); ctx.lineTo(d.x-1*s,d.y-3*s); ctx.closePath(); ctx.fill(); return; }
@@ -2461,6 +2568,19 @@ function drawDecor(d){
         ctx.fillStyle=INK; ctx.beginPath(); ctx.moveTo(tx,topY-2.4*s); ctx.lineTo(tx-hw-2.4*s,baseY+1.4*s); ctx.lineTo(tx+hw+2.4*s,baseY+1.4*s); ctx.closePath(); ctx.fill();
         ctx.fillStyle=i===0?'#519c41':i===1?'#478f3a':'#3f7d33'; ctx.beginPath(); ctx.moveTo(tx,topY); ctx.lineTo(tx-hw,baseY); ctx.lineTo(tx+hw,baseY); ctx.closePath(); ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.13)'; ctx.beginPath(); ctx.moveTo(tx,topY); ctx.lineTo(tx-hw*0.42,baseY-(baseY-topY)*0.42); ctx.lineTo(tx+hw*0.12,topY+3*s); ctx.closePath(); ctx.fill(); } } }
+  else if(d.type==='cactus'){ const s=d.s, sw=Math.sin(gtime*0.8+d.x*0.02)*1.0*s;   // saguaro
+    ctx.lineJoin='round'; ctx.strokeStyle=INK; ctx.lineWidth=2*s;
+    ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+3,14*s,5*s,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#3f8f4a';
+    roundRect(d.x-14*s, d.y-34*s, 6*s, 14*s, 3*s); ctx.fill(); ctx.stroke();   // left arm upright
+    roundRect(d.x-14*s, d.y-24*s, 9*s, 6*s, 3*s);  ctx.fill(); ctx.stroke();   // left elbow
+    roundRect(d.x+8*s,  d.y-40*s, 6*s, 20*s, 3*s); ctx.fill(); ctx.stroke();   // right arm upright
+    roundRect(d.x+5*s,  d.y-40*s, 9*s, 6*s, 3*s);  ctx.fill(); ctx.stroke();   // right elbow
+    roundRect(d.x-5*s+sw, d.y-48*s, 10*s, 50*s, 5*s); ctx.fill(); ctx.stroke();  // trunk (on top)
+    ctx.fillStyle='rgba(0,0,0,.15)'; ctx.fillRect(d.x+1.4*s+sw, d.y-47*s, 3*s, 48*s);
+    ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=1.1*s;
+    ctx.beginPath(); ctx.moveTo(d.x-1.6*s+sw,d.y-46*s); ctx.lineTo(d.x-1.6*s+sw,d.y-3*s); ctx.stroke();
+    if(d.round){ ctx.fillStyle='#ff7a6a'; ctx.strokeStyle=INK; ctx.lineWidth=1*s; ctx.beginPath(); ctx.arc(d.x+sw,d.y-50*s,3.2*s,0,TAU); ctx.fill(); ctx.stroke(); } }
   else if(d.type==='bush'){ const s=d.s; ctx.lineJoin='round';
     const bi=imgOk('bush');
     if(bi){ const DW=52*s, DH=DW*(bi.naturalHeight/bi.naturalWidth);
@@ -2958,6 +3078,25 @@ function drawZombie(z){
 }
 function roundRect(x,y,w,h,r,c){ c=c||ctx; c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
   c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function drawHill(){
+  if(!inView(hill.x,hill.y,hill.r+40)) return;
+  const col = hill.holder===0?[120,225,90] : hill.holder===1?[226,74,60] : [255,205,80];
+  const c='rgba('+col[0]+','+col[1]+','+col[2]+',', pulse=0.5+0.5*Math.sin(gtime*3);
+  ctx.save();
+  ctx.fillStyle=c+'0.14)'; ctx.beginPath(); ctx.arc(hill.x,hill.y,hill.r,0,TAU); ctx.fill();
+  ctx.lineWidth=4; ctx.strokeStyle=c+(0.5+0.35*pulse)+')'; ctx.setLineDash([14,10]); ctx.lineDashOffset=-gtime*22;
+  ctx.beginPath(); ctx.arc(hill.x,hill.y,hill.r,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+  // inner progress ring — whoever leads
+  const lead = hill.pScore>=hill.eScore?0:1, frac=(lead===0?hill.pScore:hill.eScore)/KOTH_TARGET;
+  const lc = lead===0?'rgba(120,225,90,':'rgba(226,74,60,';
+  ctx.lineWidth=6; ctx.strokeStyle=lc+'0.9)'; ctx.beginPath();
+  ctx.arc(hill.x,hill.y,hill.r-10,-Math.PI/2,-Math.PI/2+frac*TAU); ctx.stroke();
+  // crown marker at centre
+  ctx.font='28px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.globalAlpha=0.4+0.3*pulse; ctx.fillText('👑', hill.x, hill.y-2); ctx.globalAlpha=1;
+  ctx.textBaseline='alphabetic';
+  ctx.restore();
+}
 function drawZone(){
   ctx.save(); ctx.beginPath(); ctx.rect(cam.x-50,cam.y-50,W+100,H+100);
   ctx.arc(zone.cx,zone.cy,Math.max(0,zone.r),0,TAU,true);
@@ -2977,6 +3116,9 @@ function drawMini(){
   if(zoneActive()){ mctx.beginPath(); mctx.arc(zone.cx*sc,zone.cy*sc,Math.max(0,zone.r)*sc,0,TAU);
     mctx.strokeStyle='rgba(255,255,255,.85)'; mctx.lineWidth=1.3; mctx.stroke();
     mctx.fillStyle='rgba(255,255,255,.06)'; mctx.fill(); }
+  if(gameMode==='koth'){ const hc = hill.holder===0?'#7be15a':hill.holder===1?'#e24a3c':'#ffcd50';
+    mctx.beginPath(); mctx.arc(hill.x*sc,hill.y*sc,hill.r*sc,0,TAU);
+    mctx.fillStyle='rgba(255,205,80,.16)'; mctx.fill(); mctx.strokeStyle=hc; mctx.lineWidth=1.6; mctx.stroke(); }
   mctx.fillStyle='#cf3a2a'; for(const z of zombies){ if(!z.alive) continue; mctx.fillRect(z.x*sc-1,z.y*sc-1,2,2); }
   for(const h of humans){ if(!h.alive||h.isPlayer) continue;
     mctx.fillStyle = h.team===player.team ? '#7bd0ff' : '#ff5a4a';   // allies blue-ish, enemies red
@@ -2990,6 +3132,9 @@ function refreshHud(){
   if(gameMode==='horde'){ let az=0; for(const z of zombies) if(z.alive) az++;
     el('statPlayers').textContent=az; el('lblPlayers').textContent='zombies';
     el('lblSafe').textContent='Wave'; el('statSafe').textContent=hordeWave;
+  } else if(gameMode==='koth'){
+    el('statPlayers').textContent = aliveHumans()+'/'+fieldSize; el('lblPlayers').textContent='players';
+    el('lblSafe').textContent='Hold:'; el('statSafe').textContent = Math.round(hill.pScore)+'% · '+Math.round(hill.eScore)+'%';
   } else {
     el('statPlayers').textContent = aliveHumans()+'/'+fieldSize; el('lblPlayers').textContent='players';
     el('lblSafe').textContent='Safe area:'; el('statSafe').textContent = safeText();
@@ -3017,7 +3162,8 @@ function loop(now){
     if(hitstop>0){ hitstop-=dt; dt*=0.15; }   // kill slow-mo: world crawls for a beat
     if(grace>0) grace-=dt;
     if(zoneActive()){ if(grace<=0){ zoneUpdate(dt); reinforceZombies(dt); } if(zoneWarn>0) zoneWarn-=dt; }
-    else hordeUpdate(dt);
+    else if(gameMode==='horde') hordeUpdate(dt);
+    if(gameMode==='koth' && grace<=0) kothUpdate(dt);
     updatePlayer(player,dt);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
@@ -3039,7 +3185,7 @@ function loop(now){
 function show(id){ ['startScreen','modeScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
   if(id==='startScreen'){ renderStats(); renderMenu(); }
   if(id==='modeScreen'){ renderModeSel(); } }
-const MODE_NAME={br:'BATTLE ROYALE',horde:'ENDLESS HORDE',squad:'SQUADS'};
+const MODE_NAME={br:'BATTLE ROYALE',horde:'ENDLESS HORDE',squad:'SQUADS',koth:'KING OF THE HILL'};
 function renderMenu(){
   const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
@@ -3320,7 +3466,15 @@ el('sMusic').addEventListener('click',()=>{ meta.music=!meta.music; saveMeta();
   el('sMusicTxt').textContent='Music: '+(meta.music?'On':'Off'); if(meta.music){ audioInit(); startMusic(); } else stopMusic(); });
 
 // mode selector
-function renderModeSel(){ document.querySelectorAll('.modecard').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode));
+function buildMapCards(){ const g=el('mapCards'); if(!g||g.childElementCount) return;
+  for(const key of Object.keys(BIOMES)){ const B=BIOMES[key];
+    const b=document.createElement('button'); b.className='mapcard'; b.dataset.biome=key;
+    b.innerHTML='<span class="mpi">'+B.icon+'</span><span class="mpt"><span class="mpn">'+B.name+'</span><span class="mpd">'+B.desc+'</span></span>';
+    b.addEventListener('click',()=>{ audioInit(); gameBiome=key; safeSet('dd2_biome',gameBiome); groundKey=''; renderModeSel(); });
+    g.appendChild(b); } }
+function renderModeSel(){ buildMapCards();
+  document.querySelectorAll('.modecard').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode));
+  document.querySelectorAll('.mapcard').forEach(b=>b.classList.toggle('on', b.dataset.biome===gameBiome));
   const ml=el('modeLabel'); if(ml) ml.textContent='CONTINUE · '+(MODE_NAME[gameMode]||'BATTLE ROYALE'); }
 document.querySelectorAll('.modecard').forEach(b=>b.addEventListener('click',()=>{ audioInit(); gameMode=b.dataset.mode; safeSet('dd2_mode',gameMode); renderModeSel(); }));
 renderModeSel();
