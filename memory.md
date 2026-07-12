@@ -11,6 +11,17 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.18.0** — **metal soundtrack + meatier guns**: new audio primitives — a static `DIST_CURVE`
+  waveshaper + `dtone(f,d,type,v,slide,cutoff,bus)` (osc → waveshaper → lowpass) for overdriven crunch, and
+  a `bus` param added to `tone`/`noise`/`fnoise` so music can route to a dedicated `musicBus` submix
+  (gain 0.5, under SFX; created in `audioInit`). **Music**: replaced the gentle 8-note triangle `MELODY`
+  with a step sequencer (`startMusic` setInterval 105ms ≈ 143 BPM, 32-step / 2-bar loop) playing an
+  E-Phrygian metal riff — palm-muted gallop chugs (`mChug`, `_GAL`), power-chord accents (`mPower` root+
+  fifth+octave), double-bass kick (`mKick`, `_KICK`), backbeat snare (`mSnare`, `_SNR`), hats, and a lead
+  lick over bar 2 (`_LEAD` E5-D5-C5-B4); roots E2→C2/D2. **Guns**: each `sfx('shoot')` branch gained a
+  `dtone` overdriven body + deeper sine sub (semi/auto/shotgun/sniper/launcher/Magnum); Crossbow left clean.
+  Verified via autoplay throwaway hook (`actx` running): all 12 weapons + boom/flame/etc. `ok`, sequencer
+  ran 1.3s and stopped cleanly, zero page errors. Musicality is on-device-only (headless can't audition).
 - **v2.17.0** — **modern menu backgrounds**: replaced the flat green `.screen` gradient with a living
   **aurora mesh** applied to ALL menu screens (start/mode/avatar/weapon). Base is a deep near-black green
   with a layered multi-radial neon bloom + centre vignette; `.screen::before` is a drifting/rotating/
