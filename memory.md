@@ -11,6 +11,15 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.15.0** — **hero polish** (follow-up to v2.14.0): (1) **signature auras** — each new hero carries an
+  `aura:'#rrggbb'` (Shade green, Nova purple, Blaze orange, Reaper spectral-green, Onyx cyan, Titan red);
+  `drawHeroSprite` draws a soft, gently-pulsing radial halo behind the sprite for any `h.avatar.aura`
+  (player + bots, so it's a hero trait), inserted right after the shadow ellipse. (2) **Quicker unlocks** —
+  new roster compressed Lv 16–32 → **16/18/20/22/24/26**; `Full Roster` achievement retargeted `>=32 →
+  >=26` (desc updated). Verified in live matches (`.shots/pt-13-1.png` Onyx cyan, `.shots/pt-10-3.png`
+  Nova purple) — aura reads without hiding the gun-arm; bots spawn as the new heroes (kill-feed shows
+  Onyx/Titan). Gun-arm rig reads fine on the ~1.4×-wider armored tanks. `now`/`seed` already in scope in
+  `drawHeroSprite`; aura tuned to `globalAlpha 0.32 + 0.09·sin` with a 0.55 solid inner stop.
 - **v2.14.0** — **6 new sprite heroes** (roster 9 → 15): Shade (green hooded assassin), Nova (purple
   cyber-ninja), Blaze (flame-hair commando), Reaper (grim reaper), Onyx (obsidian horned demon), Titan
   (steel horned knight). Added as `AVATARS` entries (`img:'hero-<name>'`, `armless:true`, unlocks 16/19/
