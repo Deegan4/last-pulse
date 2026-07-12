@@ -11,6 +11,18 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.19.0** — **beatdown-metalcore soundtrack** (user asked to "play Knocked Loose — Laugh Tracks"; the
+  actual album can't be used — Spotify is DRM'd + it's copyrighted, so I recreated the *style* per their
+  request). Reworked `startMusic` from the clean E-Phrygian metal riff into a **4-bar (64-step) loop**: 2
+  bars of fast, downtuned, chromatic palm-muted chugs (A1 55Hz → G#1 51.9Hz) with a dissonant **tritone
+  stab** (`mStab` root+×1.414+octave) and blast-ish d-beat drums, then a 2-bar **half-time BREAKDOWN** of
+  crushing syncopated slams (`_BD`, G1 49Hz), double-bass kick, ring-out dissonance, and a **pinch-harmonic
+  squeal** (`mSqueal`, bends up) in the last bar. `mChug` rebuilt darker (low saw + sub octave-down +
+  faint bite, lowpass ~880Hz). Reuses the v2.18 `dtone`/`DIST_CURVE`/`musicBus` infra. **NOTE for future
+  music requests**: streaming-service audio (Spotify/Apple/YT) can't be embedded (DRM) and bundling
+  copyrighted tracks is off-limits — options are the user's own/licensed files, an official embed, or a
+  synth style-recreation like this. Verified via autoplay hook: full 64-step loop (incl. breakdown+squeal)
+  ran 7.2s, clean start/stop, all 12 guns still `ok`, zero page errors. Musicality is on-device-only.
 - **v2.18.0** — **metal soundtrack + meatier guns**: new audio primitives — a static `DIST_CURVE`
   waveshaper + `dtone(f,d,type,v,slide,cutoff,bus)` (osc → waveshaper → lowpass) for overdriven crunch, and
   a `bus` param added to `tone`/`noise`/`fnoise` so music can route to a dedicated `musicBus` submix
