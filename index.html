@@ -31,8 +31,39 @@
   /* ---------- Full-screen menu screens ---------- */
   .screen{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
     padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 16px);
-    overflow-y:auto;background:#52702f;
-    background-image:radial-gradient(120% 80% at 50% 0,#6f9149,#46602c);}
+    overflow-y:auto;overflow-x:hidden;isolation:isolate;background:#0b120a;
+    /* modern mesh-gradient base: layered neon blooms over a deep near-black green + centre vignette */
+    background-image:
+      radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.26), transparent 66%),
+      radial-gradient(52% 48% at 90% 16%, rgba(50,196,180,.22), transparent 62%),
+      radial-gradient(58% 52% at 8% 90%, rgba(128,98,240,.20), transparent 62%),
+      radial-gradient(46% 40% at 82% 96%, rgba(226,120,47,.14), transparent 60%),
+      radial-gradient(130% 95% at 50% 45%, #17280f, #090d07 92%);}
+  /* keep screen content above the ember / glow layers (which stay at z-index:0 via their own rules) */
+  .screen > *{position:relative;z-index:1}
+  /* drifting aurora mesh — slow rotating/scaling neon blobs (below content, above the base) */
+  .screen::before{content:"";position:absolute;inset:-25%;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(38% 38% at 24% 30%, rgba(170,255,100,.34), transparent 60%),
+      radial-gradient(42% 42% at 76% 22%, rgba(56,214,196,.28), transparent 60%),
+      radial-gradient(46% 46% at 66% 80%, rgba(140,104,244,.24), transparent 62%),
+      radial-gradient(40% 40% at 22% 82%, rgba(255,138,58,.18), transparent 60%);
+    animation:aurora 24s ease-in-out infinite alternate;will-change:transform;}
+  /* modern tech grid + top light-beam, softly masked to the centre (below content) */
+  .screen::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background:
+      linear-gradient(180deg, rgba(190,255,100,.06), transparent 26%),
+      repeating-linear-gradient(0deg, rgba(210,255,180,.035) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(210,255,180,.035) 0 1px, transparent 1px 44px);
+    -webkit-mask-image:radial-gradient(82% 80% at 50% 36%, #000, transparent 86%);
+            mask-image:radial-gradient(82% 80% at 50% 36%, #000, transparent 86%);
+    animation:gridpan 26s linear infinite;}
+  @keyframes aurora{
+    0%{transform:translate3d(-3%,-2%,0) rotate(0deg) scale(1.06)}
+    50%{transform:translate3d(3%,2%,0) rotate(7deg) scale(1.2)}
+    100%{transform:translate3d(-2%,3%,0) rotate(-5deg) scale(1.12)}}
+  @keyframes gridpan{from{background-position:0 0, 0 0, 0 0}to{background-position:0 0, 0 -44px, 44px 0}}
+  @media (prefers-reduced-motion:reduce){ .screen::before,.screen::after{animation:none} }
   .screen .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
   .gearbtn{width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;flex:0 0 auto;
     background:#3f5628;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;
@@ -142,16 +173,21 @@
   #startScreen.menu{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top,0px) + 10px);overflow-x:hidden}
   #startScreen.menu > *{position:relative;z-index:1}
   .menuGlow{position:absolute;inset:0;z-index:0;pointer-events:none;
-    background:radial-gradient(58% 40% at 50% 26%, rgba(226,69,47,.22), rgba(226,69,47,0) 70%);
+    background:radial-gradient(56% 38% at 50% 24%, rgba(190,255,90,.20), rgba(120,220,120,0) 70%);
     animation:menuPulse 1.9s ease-in-out infinite}
   @keyframes menuPulse{0%,100%{opacity:.45;transform:scale(1)}16%{opacity:1;transform:scale(1.05)}
     28%{opacity:.55;transform:scale(1)}44%{opacity:.85;transform:scale(1.035)}58%{opacity:.45;transform:scale(1)}}
   #startScreen.menu .logo{animation:beat 1.9s ease-in-out infinite;transform-origin:50% 65%}
   @keyframes beat{0%,100%{transform:scale(1)}16%{transform:scale(1.045)}28%{transform:scale(1)}
     44%{transform:scale(1.028)}58%{transform:scale(1)}}
-  .spore{position:absolute;z-index:0;border-radius:50%;background:rgba(190,230,150,.5);
-    filter:blur(.4px);pointer-events:none;animation:drift linear infinite}
-  @keyframes drift{from{transform:translateY(0);opacity:0}12%{opacity:.55}88%{opacity:.55}to{transform:translateY(-140px);opacity:0}}
+  /* glowing embers rising behind the menus (colour set inline per-particle via --g) */
+  .spore{position:absolute;z-index:0;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle at 50% 40%, #fbffe8, var(--g,rgba(190,255,120,.9)) 55%, transparent 72%);
+    box-shadow:0 0 9px 2px var(--g,rgba(190,255,120,.5));filter:blur(.2px);
+    animation:drift linear infinite}
+  @keyframes drift{from{transform:translate3d(0,0,0) scale(.7);opacity:0}
+    12%{opacity:.85}50%{transform:translate3d(10px,-90px,0) scale(1)}
+    88%{opacity:.7}to{transform:translate3d(-6px,-190px,0) scale(.6);opacity:0}}
 
   .fighter{display:flex;align-items:center;gap:12px;margin:16px auto 6px;
     background:rgba(30,44,20,.55);border:1px solid var(--line);border-radius:16px;padding:9px 16px 9px 9px;
@@ -783,8 +819,11 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.16.0';
+const GAME_VERSION = '2.17.0';
 const CHANGELOG = [
+  { v:'2.17.0', items:[
+    ['🌌','Brand-new menus','a living aurora-mesh background — drifting neon light, a soft tech grid & glowing embers'],
+  ]},
   { v:'2.16.0', items:[
     ['🧟','Nastier enemies','the zombies got a full redraw — glowing eyes, gaping fanged maws, exposed ribs & raking claws'],
     ['💀','Distinct horrors','lean red-eyed Runners, a hulking bone-spiked Brute, and rotting Shamblers — each reads at a glance'],
@@ -3452,13 +3491,16 @@ function renderModeSel(){ document.querySelectorAll('.modecard').forEach(b=>b.cl
   const ml=el('modeLabel'); if(ml) ml.textContent='CONTINUE · '+(MODE_NAME[gameMode]||'BATTLE ROYALE'); }
 document.querySelectorAll('.modecard').forEach(b=>b.addEventListener('click',()=>{ audioInit(); gameMode=b.dataset.mode; safeSet('dd2_mode',gameMode); renderModeSel(); }));
 renderModeSel();
-// drifting spores behind the menu
-(function(){ const host=el('startScreen'); if(!host) return;
-  for(let i=0;i<10;i++){ const s=document.createElement('div'); s.className='spore';
-    const sz=2+Math.random()*4; s.style.width=s.style.height=sz+'px';
-    s.style.left=(5+Math.random()*90)+'%'; s.style.bottom=(2+Math.random()*18)+'%';
-    s.style.animationDuration=(6+Math.random()*8)+'s'; s.style.animationDelay=(-Math.random()*12)+'s';
-    host.appendChild(s); } })();
+// glowing embers rising behind every menu screen (colour-varied to match the aurora)
+(function(){ const EMBER=['rgba(190,255,120,.9)','rgba(90,224,204,.85)','rgba(160,130,255,.85)','rgba(255,170,90,.8)'];
+  for(const id of ['startScreen','modeScreen','avatarScreen','weaponScreen']){ const host=el(id); if(!host) continue;
+    const n = id==='startScreen'?14:9;
+    for(let i=0;i<n;i++){ const s=document.createElement('div'); s.className='spore';
+      const sz=2+Math.random()*4.5; s.style.width=s.style.height=sz+'px';
+      s.style.left=(4+Math.random()*92)+'%'; s.style.bottom=(1+Math.random()*22)+'%';
+      s.style.setProperty('--g', EMBER[(Math.random()*EMBER.length)|0]);
+      s.style.animationDuration=(7+Math.random()*9)+'s'; s.style.animationDelay=(-Math.random()*14)+'s';
+      host.appendChild(s); } } })();
 
 setupTouch();
 buildDecor();
