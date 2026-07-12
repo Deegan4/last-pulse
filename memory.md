@@ -11,6 +11,25 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.20.0** — **Horde: climbable watchtowers + 2 new enemies** (user asked for more Horde enemy variety +
+  2-story buildings to climb & shoot from; design confirmed via AskUserQuestion: auto-climb, melee can't
+  reach the roof, ranged Spitter can). **Towers**: `spawnMatch` horde branch drops **2** `{type:'tower',
+  tower:true,…}` (TOWER_W/H/ELEV consts) into `obstacles`+`decor`. `o.tower` is fully solid (`wallRects`
+  returns the whole rect), excluded from `insideBuilding` door-pathing, and **transparent to bullets**
+  (`bulletInObstacle` skips towers → roof campers shoot out & acid reaches them). Climb is a gameplay
+  state `player.onTower`: auto-climb by walking onto the south **ladder zone** (`towerLadder`), auto-descend
+  by pressing down at the roof's south edge; `integrate` clamps a roof player to `towerRoof` (inset rect)
+  instead of `resolveObstacles`; `drawTower` renders a 2-story stone tower (courses, arrow-slits, rooftop
+  battlements/merlons, ladder, pulsing climb-chevron when near); the roof player is drawn last translated
+  `-TOWER_ELEV` so they stand on top. Melee blocked while `!tgt.onTower` in `updateZombie`. **CRITICAL GOTCHA
+  fixed**: tower objects need BOTH `type:'tower'` (draw) AND `tower:true` (all `o.tower` gameplay logic) —
+  forgetting the flag makes them behave as normal buildings. **Enemies** (Horde-only, `w:0` so never in the
+  default BR mix): **spitter** (ranged; holds ~290px standoff, strafes, lobs an acid gob via `spitAcid` —
+  an `enemy:true` bullet that skips zombies (`!b.enemy` guard) and hits humans incl. roof campers; green
+  glowing-throat tell) and **bloater** (slow tank; `zombieBurst` acid AoE on death via `e.boom` in `die`;
+  pulsing blister tells). `hordeKind` weights them in at waves ≥4/≥5. New `sfx('spit')` + acid-bullet draw.
+  Verified in a live Horde match via throwaway hook: 2 towers spawn, auto-climb works, melee mills at base,
+  spitter acid hits the roof player (damage-dir arcs), no page errors. `.shots/tower-ground|roof.png`.
 - **v2.19.0** — **beatdown-metalcore soundtrack** (user asked to "play Knocked Loose — Laugh Tracks"; the
   actual album can't be used — Spotify is DRM'd + it's copyrighted, so I recreated the *style* per their
   request). Reworked `startMusic` from the clean E-Phrygian metal riff into a **4-bar (64-step) loop**: 2

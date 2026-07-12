@@ -819,8 +819,12 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.19.0';
+const GAME_VERSION = '2.20.0';
 const CHANGELOG = [
+  { v:'2.20.0', items:[
+    ['🗼','Climb the towers','Endless Horde now has 2-story watchtowers — walk onto the ladder to hold the roof & shoot down'],
+    ['🤢','Two new horrors','Spitters lob acid from range (they can hit you on the roof) and Bloaters burst into acid on death'],
+  ]},
   { v:'2.19.0', items:[
     ['💀','Beatdown soundtrack','the music is now downtuned metalcore — chromatic chugs, dissonant stabs & crushing half-time breakdowns'],
   ]},
@@ -1230,14 +1234,22 @@ const ZTYPES = {
   normal:{ hp:60,  dmg:12, sp:[64,98],  r:15, skin:'#86c85a', torso:'#5a6b38', shade:'#4c7a32', eye:'#e6ff46', size:1.0,  w:0.58 },
   runner:{ hp:30,  dmg:8,  sp:[120,150],r:12, skin:'#a7c86a', torso:'#6b4a2e', shade:'#5c7a3e', eye:'#ff4630', size:0.82, w:0.30 },
   brute: { hp:130, dmg:20, sp:[44,62],  r:20, skin:'#5a9a42', torso:'#3c5226', shade:'#3d6e2a', eye:'#ffd23a', size:1.35, w:0.12 },
+  // Horde-only (w:0 → never in the default mix): a ranged acid spitter + a bloated exploder
+  spitter:{ hp:42, dmg:9,  sp:[46,66],  r:14, skin:'#9ed86a', torso:'#4a6b3a', shade:'#5c8a3e', eye:'#c6ff2e', size:0.95, w:0, ranged:true },
+  bloater:{ hp:95, dmg:16, sp:[36,52],  r:19, skin:'#8fb36a', torso:'#5a6b38', shade:'#4c7a32', eye:'#b6ff5a', size:1.28, w:0, boom:true },
 };
+const TOWER_W=88, TOWER_H=72, TOWER_ELEV=46;   // 2-story watchtower: footprint + rooftop rise (climb to shoot down)
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
 function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
   return { x,y, vx:0,vy:0, aim:0, kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
-    seed:rand(0,9), lunge:0, burn:0, burnSrc:null };
+    seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8) };
 }
+// ---- watchtower geometry: solid footprint, an inset walkable roof, and a south-facing ladder zone ----
+function towerRoof(t){ return {x:t.x+11, y:t.y+11, w:t.w-22, h:t.h-22}; }
+function towerLadder(t){ return {x:t.x+t.w/2-16, y:t.y+t.h-6, w:32, h:26}; }
+function clampToRoof(h){ const r=towerRoof(h.onTower); h.x=clamp(h.x,r.x,r.x+r.w); h.y=clamp(h.y,r.y,r.y+r.h); }
 function blockedSpawn(x,y){
   for(const o of obstacles){ if(x>o.x-18 && x<o.x+o.w+18 && y>o.y-18 && y<o.y+o.h+18) return true; }
   for(const d of decor){ if(d.type==='water'){ const dx=(x-d.x)/(d.s+14), dy=(y-d.y)/(d.s*0.64+14); if(dx*dx+dy*dy<1) return true; } }
@@ -1296,6 +1308,7 @@ function buildDecor(){
 const WALL_T = 9, DOOR_HALF = 21;   // gap 42px: humans (r15) fit easily, brutes (r20) barely
 const BIG_HOUSE = 170;              // wider houses get a second door in the top wall (no dead ends)
 function wallRects(o){
+  if(o.tower) return [[o.x,o.y,o.w,o.h]];   // towers are fully solid — you climb to the roof, not through
   const dx0=o.x+o.w/2-DOOR_HALF, dx1=o.x+o.w/2+DOOR_HALF;
   const r = [
     [o.x, o.y, WALL_T, o.h],                       // left
@@ -1330,11 +1343,12 @@ function resolveObstacles(e){
 // which building's interior contains this point (null if none) — used so zombies path to the
 // door when their prey is holed up inside instead of grinding against the wall
 function insideBuilding(x,y){
-  for(const o of obstacles) if(x>o.x+WALL_T && x<o.x+o.w-WALL_T && y>o.y+WALL_T && y<o.y+o.h-WALL_T) return o;
+  for(const o of obstacles) if(!o.tower && x>o.x+WALL_T && x<o.x+o.w-WALL_T && y>o.y+WALL_T && y<o.y+o.h-WALL_T) return o;
   return null;
 }
 function bulletInObstacle(b){
   for(const o of obstacles){
+    if(o.tower) continue;   // bullets fly over towers (so roof campers can shoot out & acid can reach them)
     if(b.x<o.x||b.x>o.x+o.w||b.y<o.y||b.y>o.y+o.h) continue;
     for(const wr of wallRects(o)) if(b.x>wr[0]&&b.x<wr[0]+wr[2]&&b.y>wr[1]&&b.y<wr[1]+wr[3]) return true;
   }
@@ -1366,6 +1380,12 @@ function spawnMatch(){
 
   if(gameMode==='horde'){
     fieldSize=1; hordeWave=1;
+    // two 2-story watchtowers to climb and shoot down from (Horde only)
+    for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
+      while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
+      const tw={type:'tower', tower:true, x:clamp(sp.x-TOWER_W/2,120,ARENA-120-TOWER_W), y:clamp(sp.y-TOWER_H/2,120,ARENA-120-TOWER_H),
+        w:TOWER_W, h:TOWER_H, roof:'#6b7178'};
+      obstacles.push(tw); decor.push(tw); }
     const n=8; for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
   } else if(gameMode==='squad'){
     fieldSize=16;
@@ -1528,7 +1548,8 @@ function die(e, src, isHumanTarget){
     }
   }
   if(!isHumanTarget){ // zombie death pop
-    rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3}); }
+    rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
+    if(e.boom) zombieBurst(e); }   // bloater ruptures into an acid cloud
   if(e.isPlayer){ shake=Math.min(shake+10,18); }
   if(isHumanTarget){
     const victim = e.isPlayer?meta.name:e.name;
@@ -1603,6 +1624,25 @@ function updateGrapple(h,dt){
   }
   const v=Math.hypot(h.vx,h.vy);
   if(v>GRAPPLE.maxV){ h.vx*=GRAPPLE.maxV/v; h.vy*=GRAPPLE.maxV/v; }
+}
+// Spitter acid gob — an enemy projectile (owner=zombie) that only hurts humans, arcs at the prey
+function spitAcid(z,tgt){
+  const spd=306, lead=0.14, tx=tgt.x+(tgt.vx||0)*lead, ty=tgt.y+(tgt.vy||0)*lead;
+  const a=Math.atan2(ty-z.y,tx-z.x);
+  bullets.push({ x:z.x+Math.cos(a)*z.r, y:z.y+Math.sin(a)*z.r-6, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+    life:520/spd, owner:z, dmg:z.dmg, enemy:true, acid:true, hits:0, r:5, color:'#b6ff3a' });
+  sfx('spit');
+}
+// Bloater death burst — an acid AoE that only damages humans (falls off with distance)
+function zombieBurst(e){
+  const RAD=98, RAD2=RAD*RAD;
+  for(let i=0;i<26;i++) spark(e.x,e.y-4, i%2?'#b6ff3a':'#7fd63a', rand(70,260), rand(0,TAU), .75);
+  rings.push({x:e.x, y:e.y, t:0, dur:0.5, r0:10, r1:RAD, col:'150,240,70', lw:4});
+  splats.push({x:e.x, y:e.y+6, r:26, t:6, col:'rgba(96,150,34,'});
+  shake=Math.min(shake+5,14);
+  for(const o of humans){ if(!o.alive) continue; const d2=dist2(e.x,e.y,o.x,o.y);
+    if(d2<RAD2){ const dd=e.dmg*1.7*(1-Math.sqrt(d2)/RAD); if(dd>0){ hurt(o, Math.max(8,dd), null, true); if(o.isPlayer) shake=Math.min(shake+3,15); } } }
+  sfx('boom');
 }
 function explode(b){
   const RAD=130, RAD2=RAD*RAD;
@@ -1779,6 +1819,7 @@ function sfx(kind,mode){ if(!actx) return;
     tone(84,0.55,'sawtooth',0.26,32); fnoise(0.5,0.24,'lowpass',900,0.6,200); tone(46,0.5,'sine',0.2,26); }  // body + debris + sub
   else if(kind==='bolt'){ tone(900,0.15,'square',0.12,200); noise(0.1,0.1); }
   else if(kind==='throw'){ tone(400,0.12,'sine',0.1,700); }
+  else if(kind==='spit'){ fnoise(0.16,0.13,'bandpass',1500,0.8,600); tone(300,0.1,'sawtooth',0.06,120); }   // acid hock
   else if(kind==='heart'){ tone(74,0.13,'sine',0.16,46); setTimeout(()=>tone(60,0.15,'sine',0.12,38),150); }
   else if(kind==='warn'){ tone(440,0.13,'square',0.1); setTimeout(()=>tone(440,0.13,'square',0.1),170); }
   else if(kind==='level'){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'triangle',0.16),i*90)); }
@@ -1858,20 +1899,29 @@ function updateZombie(z,dt){
     if(z.hp<=0){ die(z, z.burnSrc, false); return; } }
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
-  if(tgt && near.d<460){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
-    // if the prey is holed up in a building we aren't in, route to a door gap (around the
-    // walls via the nearer corner when we're on the wrong side) instead of grinding the wall
-    let gx=tgt.x, gy=tgt.y; const b=insideBuilding(tgt.x,tgt.y);
-    if(b && insideBuilding(z.x,z.y)!==b){
-      const cx=b.x+b.w/2, useTop=b.w>BIG_HOUSE && z.y<b.y;   // big house: take the top door from above
-      const doorY=useTop?b.y:b.y+b.h, outside=useTop?b.y-20:b.y+b.h+20;
-      const onDoorSide = useTop ? z.y<=doorY+8 : z.y>=doorY-8;
-      if(onDoorSide){ gx=cx; gy=outside; }                   // aligned with the door → head in
-      else { gx=(z.x<cx)?b.x-28:b.x+b.w+28; gy=outside; }    // skirt the nearer corner to reach it
-    }
-    const a=Math.atan2(gy-z.y,gx-z.x); mvx=Math.cos(a); mvy=Math.sin(a);
-    if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
-      tgt.vx+=Math.cos(a)*120; tgt.vy+=Math.sin(a)*120; if(tgt.isPlayer) shake=Math.min(shake+4,10); } }
+  if(tgt && near.d<(z.ranged?540:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
+    if(z.ranged){                                            // Spitter: hold a standoff distance & lob acid
+      const ideal=290;
+      if(near.d<ideal-70){ mvx=-Math.cos(z.aim); mvy=-Math.sin(z.aim); }      // too close → back off
+      else if(near.d>ideal+70){ mvx=Math.cos(z.aim); mvy=Math.sin(z.aim); }   // too far → close in
+      else { const s=(z.seed|0)%2?1:-1; mvx=Math.cos(z.aim+Math.PI/2)*0.5*s; mvy=Math.sin(z.aim+Math.PI/2)*0.5*s; }  // strafe
+      z.spitCd-=dt;
+      if(z.spitCd<=0 && grace<=0 && near.d<500){ z.spitCd=rand(1.7,2.6); z.lunge=1; spitAcid(z,tgt); }
+    } else {
+      // if the prey is holed up in a building we aren't in, route to a door gap (around the
+      // walls via the nearer corner when we're on the wrong side) instead of grinding the wall
+      let gx=tgt.x, gy=tgt.y; const b=insideBuilding(tgt.x,tgt.y);
+      if(b && insideBuilding(z.x,z.y)!==b){
+        const cx=b.x+b.w/2, useTop=b.w>BIG_HOUSE && z.y<b.y;   // big house: take the top door from above
+        const doorY=useTop?b.y:b.y+b.h, outside=useTop?b.y-20:b.y+b.h+20;
+        const onDoorSide = useTop ? z.y<=doorY+8 : z.y>=doorY-8;
+        if(onDoorSide){ gx=cx; gy=outside; }                   // aligned with the door → head in
+        else { gx=(z.x<cx)?b.x-28:b.x+b.w+28; gy=outside; }    // skirt the nearer corner to reach it
+      }
+      const a=Math.atan2(gy-z.y,gx-z.x); mvx=Math.cos(a); mvy=Math.sin(a);
+      if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0 && !tgt.onTower){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
+        tgt.vx+=Math.cos(a)*120; tgt.vy+=Math.sin(a)*120; if(tgt.isPlayer) shake=Math.min(shake+4,10); }
+    } }
   else { if(z.think<=0){ z.wanderA=rand(0,TAU); z.think=rand(1,2.4); } z.think-=dt;
     mvx=Math.cos(z.wanderA)*0.5; mvy=Math.sin(z.wanderA)*0.5; }
   if(z.lunge>0) z.lunge-=dt*3.2;
@@ -1911,6 +1961,19 @@ function updatePlayer(h,dt){
   }
   else if(m>0){ h.vx+=(mx/m*h.speed-h.vx)*0.25; h.vy+=(my/m*h.speed-h.vy)*0.25; h.walk+=dt*9; }
   else { h.vx*=0.78; h.vy*=0.78; }
+  // --- watchtower climb / descend (auto: walk onto the south ladder to go up, walk off the roof's
+  //     south edge to drop down). Melee zombies can't reach the roof; ranged Spitters still can. ---
+  if(h.climbCd>0) h.climbCd-=dt;
+  if(!h.onTower){
+    if(h.climbCd<=0) for(const o of obstacles){ if(!o.tower) continue; const L=towerLadder(o);
+      if(h.x>L.x-6 && h.x<L.x+L.w+6 && h.y>L.y-6 && h.y<L.y+L.h+12){
+        h.onTower=o; const r=towerRoof(o); h.x=o.x+o.w/2; h.y=r.y+r.h-7; h.vx=h.vy=0; h.climbCd=0.5;
+        toast('🪜 ON THE ROOF — hold it & shoot down'); sfx('pickup'); break; } }
+  } else {
+    const r=towerRoof(h.onTower);
+    if(h.y>=r.y+r.h-1.3 && my>0.3){                                   // press down at the south edge → drop off
+      const t=h.onTower; h.onTower=null; h.x=t.x+t.w/2; h.y=t.y+t.h+R+6; h.vx=0; h.vy=70; h.climbCd=0.5; sfx('throw'); }
+  }
   // aim + fire
   let firing=false, mouseAim=false;
   if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=Math.atan2(gp.ay,gp.ax); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
@@ -1952,7 +2015,7 @@ function readGamepad(){
 }
 function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
-  resolveObstacles(h);
+  if(h.onTower) clampToRoof(h); else resolveObstacles(h);   // roof campers move on the platform, not the ground
   if(h.fireCd>0) h.fireCd-=dt; if(h.hitFlash>0) h.hitFlash-=dt;
   if(h.muzzleT>0) h.muzzleT-=dt; if(h.recoil>0) h.recoil-=dt*7;
   if(Math.abs(h.vx)>4) h.faceX=h.vx<0?-1:1;
@@ -1976,7 +2039,7 @@ function updateBullets(dt){
     if(obstacles.length && bulletInObstacle(b)){
       if(b.boom){ gone=true; }
       else { for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue; } }
-    if(!gone) for(const z of zombies){ if(!z.alive) continue;
+    if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
         hurt(z,b.dmg,b.owner,false); if(b.flame) ignite(z,b.owner);
@@ -2211,7 +2274,7 @@ function draw(){
   drawField();
   // ground-level decor — flat pass (no per-frame y-sort), in array order
   for(const d of decor){ const t=d.type;
-    if(t==='patch'||t==='tree'||t==='bush'||t==='building'||TALL_DECOR[t]) continue;
+    if(t==='patch'||t==='tree'||t==='bush'||t==='building'||t==='tower'||TALL_DECOR[t]) continue;
     if(inView(d.x,d.y,(d.s||14)+40)) drawDecor(d); }
   // ground blood decals
   for(const s of splats){ if(!inView(s.x,s.y,s.r)) continue; ctx.globalAlpha=clamp(s.t/7,0,1)*0.5;
@@ -2223,9 +2286,10 @@ function draw(){
   ctx.save(); ctx.translate(-cam.x+shx,-cam.y+shy);
   // tall decor + items + entities sorted by y for depth
   const drawables=[];
-  for(const d of decor){ if(d.type!=='tree'&&d.type!=='bush'&&d.type!=='building'&&!TALL_DECOR[d.type]) continue;
+  for(const d of decor){ if(d.type!=='tree'&&d.type!=='bush'&&d.type!=='building'&&d.type!=='tower'&&!TALL_DECOR[d.type]) continue;
     const cx=d.x+(d.w?d.w/2:0), cy=d.y+(d.h?d.h/2:0), pad=d.type==='building'?300:140;
     if(!inView(cx,cy,pad)) continue;
+    if(d.type==='tower'){ drawables.push({y:d.y+d.h, fn:()=>drawTower(d)}); continue; }
     // buildings split in two layers: the interior floor sorts at the TOP edge (under anyone
     // standing inside), the facade at the bottom edge (over anyone inside, until it fades)
     if(d.type==='building') drawables.push({y:d.y, fn:()=>drawBuildingBase(d)});
@@ -2233,7 +2297,9 @@ function draw(){
   for(const p of pickups) if(inView(p.x,p.y,40)) drawables.push({y:p.y, fn:()=>drawPickup(p)});
   for(const d of drops) if(inView(d.x,d.y,560)) drawables.push({y:d.landed?d.y:1e9, fn:()=>drawDrop(d)});
   for(const z of zombies) if(z.alive && inView(z.x,z.y,60)) drawables.push({y:z.y, fn:()=>drawZombie(z)});
-  for(const h of humans) if(h.alive && inView(h.x,h.y,60)) drawables.push({y:h.y, fn:()=>drawHuman(h)});
+  for(const h of humans){ if(!h.alive || !inView(h.x,h.y,60)) continue;
+    if(h.onTower) drawables.push({y:1e8, fn:()=>{ ctx.save(); ctx.translate(0,-TOWER_ELEV); drawHuman(h); ctx.restore(); }});  // stand on the roof (drawn last, on top)
+    else drawables.push({y:h.y, fn:()=>drawHuman(h)}); }
   drawables.sort((a,b)=>a.y-b.y);
   for(const d of drawables) d.fn();
 
@@ -2255,6 +2321,9 @@ function draw(){
   ctx.lineCap='round';
   for(const b of bullets){
     if(b.flame){ ctx.globalAlpha=clamp(b.life*3,0,1); ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r||5,0,TAU); ctx.fill(); ctx.globalAlpha=1; continue; }
+    if(b.acid){ ctx.save(); ctx.shadowColor='#b6ff3a'; ctx.shadowBlur=9; ctx.fillStyle='#c6ff4a';   // spitter acid gob + trail
+      ctx.beginPath(); ctx.arc(b.x,b.y,b.r||5,0,TAU); ctx.fill();
+      ctx.globalAlpha=.5; ctx.beginPath(); ctx.arc(b.x-b.vx*0.012,b.y-b.vy*0.012,(b.r||5)*0.7,0,TAU); ctx.fill(); ctx.restore(); continue; }
     if(b.rocket){ const a=b.aim||Math.atan2(b.vy,b.vx);
       // fiery exhaust trail
       spark(b.x-Math.cos(a)*6, b.y-Math.sin(a)*6, pick(['#ffae3a','#ff6a2a','#cfcfcf']), rand(10,60), a+Math.PI+rand(-.4,.4), .35);
@@ -2499,6 +2568,46 @@ function drawBuilding(d){
   // chimney
   ctx.fillStyle='#8a5a4a'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(x+w*0.72,y-26,12,14,2); ctx.fill(); ctx.stroke();
   ctx.restore();
+}
+// 2-story stone watchtower (Horde): a tall front wall rising to a walkable rooftop with battlements,
+// a south-facing ladder to climb, and a highlighted climb prompt when the player is near.
+function drawTower(d){
+  const x=d.x, y=d.y, w=d.w, h=d.h, E=TOWER_ELEV, cx=x+w/2;
+  const rx=x+11, rw=w-22, rTop=y+11-E, rBot=y+h-11-E;        // rooftop floor (footprint lifted by E)
+  ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.fillStyle='rgba(0,0,0,.24)'; roundRect(x+5,y+9,w,h,7); ctx.fill();          // ground shadow
+  // --- tall front wall (from just under the roof slab down to the base) ---
+  const wallTop=rBot-4, wallH=(y+h)-wallTop;
+  ctx.fillStyle='#7c848e'; ctx.strokeStyle=INK; ctx.lineWidth=2.6; roundRect(x,wallTop,w,wallH,6); ctx.fill(); ctx.stroke();
+  ctx.save(); roundRect(x,wallTop,w,wallH,6); ctx.clip();
+  ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(x,wallTop,w*0.5,wallH);      // left light
+  ctx.fillStyle='rgba(0,0,0,.16)'; ctx.fillRect(x+w*0.66,wallTop,w*0.34,wallH);    // right shade
+  ctx.strokeStyle='rgba(0,0,0,.18)'; ctx.lineWidth=1.3;                            // stone courses
+  for(let cyk=wallTop+9; cyk<y+h; cyk+=11){ ctx.beginPath(); ctx.moveTo(x,cyk); ctx.lineTo(x+w,cyk); ctx.stroke();
+    const off=((cyk-wallTop)/11|0)%2?w*0.5:w*0.25; ctx.beginPath(); ctx.moveTo(x+off,cyk); ctx.lineTo(x+off,cyk+11); ctx.stroke(); }
+  ctx.fillStyle='rgba(90,64,34,.55)'; ctx.fillRect(x,wallTop+wallH*0.5,w,3);       // 2nd-story band
+  // arrow-slit windows on each story
+  ctx.fillStyle=timeOfDay!=='day'?'#ffcf6a':'#26303a';
+  for(const sy of [wallTop+wallH*0.24, wallTop+wallH*0.66]) for(const sx of [cx-w*0.22, cx+w*0.22]){
+    if(timeOfDay!=='day'){ ctx.shadowColor='#ffcf6a'; ctx.shadowBlur=7; } roundRect(sx-2.5,sy,5,10,2); ctx.fill(); ctx.shadowBlur=0; }
+  ctx.restore();
+  // --- rooftop: slab overhang, flagstone floor, battlement merlons around the back/sides ---
+  ctx.fillStyle='#9aa1aa'; ctx.strokeStyle=INK; ctx.lineWidth=2.4; roundRect(x-5,rTop-6,w+10,rBot-rTop+12,6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#6d747d'; roundRect(rx-2,rTop-2,rw+4,rBot-rTop+4,4); ctx.fill();  // recessed floor (player stands here)
+  ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.lineWidth=1; for(let fx=rx+7; fx<rx+rw; fx+=9){ ctx.beginPath(); ctx.moveTo(fx,rTop); ctx.lineTo(fx,rBot); ctx.stroke(); }
+  ctx.fillStyle='#9aa1aa'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;                 // merlons (crenellations) along the top edge
+  for(let mx=x-5; mx<x+w+2; mx+=15){ roundRect(mx,rTop-12,9,10,2); ctx.fill(); ctx.stroke(); }
+  // --- ladder on the south face (climb point) ---
+  ctx.strokeStyle='#5a4632'; ctx.lineWidth=3; ctx.beginPath();
+  ctx.moveTo(cx-8,y+h); ctx.lineTo(cx-8,rBot); ctx.moveTo(cx+8,y+h); ctx.lineTo(cx+8,rBot); ctx.stroke();
+  ctx.strokeStyle='#7a5c38'; ctx.lineWidth=2.4; for(let ry=rBot+4; ry<y+h; ry+=8){ ctx.beginPath(); ctx.moveTo(cx-8,ry); ctx.lineTo(cx+8,ry); ctx.stroke(); }
+  // climb prompt: pulse an up-chevron at the base when the player is nearby & on the ground
+  const p=player;
+  if(p && p.alive && !p.onTower && Math.abs(p.x-cx)<70 && p.y>y+h-30 && p.y<y+h+90){
+    const a=0.5+0.5*Math.sin(gtime*6);
+    ctx.strokeStyle='rgba(190,255,90,'+(0.55+0.45*a)+')'; ctx.lineWidth=3;
+    const by=y+h+16; ctx.beginPath(); ctx.moveTo(cx-9,by+6); ctx.lineTo(cx,by-4); ctx.lineTo(cx+9,by+6); ctx.stroke();
+  }
 }
 function drawDecor(d){
   if(d.type==='campfire'){ const x=d.x, y=d.y, ni=timeOfDay!=='day';
@@ -3158,6 +3267,10 @@ function drawZombie(z){
   if(!flash){ ctx.fillStyle='#eae2c4';   // fangs top & bottom
     for(let i=-2;i<=2;i++){ const fx=flip*0.5+i*1.5; ctx.beginPath(); ctx.moveTo(fx-0.8,hy+4.6-open); ctx.lineTo(fx,hy+4.6-open+1.7); ctx.lineTo(fx+0.8,hy+4.6-open); ctx.closePath(); ctx.fill(); }
     for(let i=-1;i<=1;i++){ const fx=flip*0.5+i*1.7; ctx.beginPath(); ctx.moveTo(fx-0.7,hy+4.6+open); ctx.lineTo(fx,hy+4.6+open-1.5); ctx.lineTo(fx+0.7,hy+4.6+open); ctx.closePath(); ctx.fill(); } }
+  if(!flash && z.ranged){ ctx.save(); ctx.globalAlpha=0.55+0.25*Math.sin(now*5+seed);   // Spitter: glowing acid throat sac
+    ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(flip*0.5,hy+7.6,3.2,0,TAU); ctx.fill(); ctx.restore(); }
+  if(!flash && z.boom){ ctx.fillStyle=eye; ctx.globalAlpha=0.45+0.2*Math.sin(now*4+seed);  // Bloater: pulsing acid blisters
+    for(const bp of [[-6.5,-1.5],[6.5,-0.5],[-4,4.5],[5,4.5]]){ ctx.beginPath(); ctx.arc(bp[0],hy+bp[1],1.9,0,TAU); ctx.fill(); } ctx.globalAlpha=1; }
   ctx.restore();
   ctx.restore();
   // tiny hp bar
