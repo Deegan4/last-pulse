@@ -11,6 +11,18 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.14.0** — **6 new sprite heroes** (roster 9 → 15): Shade (green hooded assassin), Nova (purple
+  cyber-ninja), Blaze (flame-hair commando), Reaper (grim reaper), Onyx (obsidian horned demon), Titan
+  (steel horned knight). Added as `AVATARS` entries (`img:'hero-<name>'`, `armless:true`, unlocks 16/19/
+  22/25/28/32; stats span Swift 6.2–6.4/~82 → Tank 4.4–4.7/138–150) + matching `loadImg` calls. Art came
+  from user uploads that were already transparent chibi cutouts (same style as the existing heroes) —
+  processed via a headless-Chromium canvas script (`scratchpad/process.mjs`): killed the faint <14-alpha
+  matte ghost, trimmed to the alpha bbox +8px pad, scaled to 900px tall, re-exported PNG to `assets/img/`.
+  Verified transparent-over-green with a contact sheet (`.shots/new-heroes.png`) and in the live avatar
+  grid (`.shots/av-bottom.png`) — glows (green/purple/cyan/spectral) preserved, class chips + stats +
+  unlock levels correct, no page errors. `look` fallbacks reuse existing `ninja`/`mohawk`/`horns` styles
+  (only shown if a PNG fails to load). **Full Roster** achievement retargeted `level>=15 → >=32` (desc
+  updated) so it still means "every hero". No new `drawHair`/`portraitChibi` style cases needed.
 - **v2.13.0** — **Gun-sound upgrade**: new `fnoise(d,v,type,freq,q,slide)` primitive (biquad-filtered
   noise burst — highpass "crack", bandpass "snap", lowpass "thump", freq can slide) sits beside `noise`.
   The `sfx('shoot',…)` branch now receives the **weapon object** (call sites `fire()` pass `w`, not
