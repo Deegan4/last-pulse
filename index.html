@@ -771,8 +771,12 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.12.0';
+const GAME_VERSION = '2.13.0';
 const CHANGELOG = [
+  { v:'2.13.0', items:[
+    ['🔊','Guns hit harder','every weapon got a punchier, layered gunshot — crack, body & tail, tuned per gun'],
+    ['💥','Signature sounds','Magnum booms like a hand-cannon, the Sniper cracks with a distant echo, rockets thump'],
+  ]},
   { v:'2.12.0', items:[
     ['🔫','Weapon cards leveled up','each gun shows a Power rank (#1 = strongest you own) and a rarity-tinted card'],
     ['✨','Legendary sheen','Legendary weapons sweep a shimmer across their rarity chip'],
@@ -1370,7 +1374,7 @@ function fire(h){
     h.mag--; h.muzzleT=0.09; h.muzzleR=12; h.recoil=2.4;
     for(let i=0;i<12;i++) spark(h.x+Math.cos(a)*16, h.y+Math.sin(a)*16, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
     h.vx-=Math.cos(a)*48; h.vy-=Math.sin(a)*48; if(h.isPlayer) shake=Math.min(shake+6,14);
-    sfx('shoot','launcher'); if(h.mag<=0) startReload(h); return;
+    sfx('shoot',w); if(h.mag<=0) startReload(h); return;
   }
   const spd = w.mode==='sniper'?1040 : w.mode==='shotgun'?560 : 780;
   const shots = w.mode==='shotgun'?6 : w.twin?2 : 1;
@@ -1395,7 +1399,7 @@ function fire(h){
     spark(h.x+Math.cos(h.aim)*7, h.y+Math.sin(h.aim)*7-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
   h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
   if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
-  sfx('shoot', w.mode);
+  sfx('shoot', w);
   if(h.mag<=0) startReload(h);
 }
 function hurt(e, dmg, src, isHumanTarget){
@@ -1648,14 +1652,41 @@ function tone(f,d,type,v,slide){ if(!actx) return; const o=actx.createOscillator
 function noise(d,v){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
   const a=buf.getChannelData(0); for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n); const s=actx.createBufferSource();s.buffer=buf;
   const g=actx.createGain();g.gain.value=v||0.18;s.connect(g);g.connect(master);s.start(); }
+// filtered noise burst — the workhorse for gun texture: a biquad shapes the white noise into a
+// bright "crack" (highpass), a mid "snap" (bandpass) or a low "thump" (lowpass); freq can slide.
+function fnoise(d,v,type,freq,q,slide){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
+  const a=buf.getChannelData(0); for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);
+  const s=actx.createBufferSource();s.buffer=buf;
+  const f=actx.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.value=freq||1000; f.Q.value=q||1;
+  if(slide) f.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
+  const g=actx.createGain(); g.gain.value=v||0.18; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d);
+  s.connect(f); f.connect(g); g.connect(master); s.start(); }
 let lastShot=0, lastTick=0;
 function sfx(kind,mode){ if(!actx) return;
   if(kind==='shoot'){ const t=performance.now(); if(t-lastShot<30) return; lastShot=t;
-    if(mode==='sniper'){ tone(180,0.18,'sawtooth',0.18,70); noise(0.12,0.12); tone(70,0.16,'sine',0.12,40); }
-    else if(mode==='shotgun'){ noise(0.16,0.2); tone(110,0.12,'square',0.14,55); tone(60,0.14,'sine',0.12,35); }
-    else if(mode==='launcher'){ tone(150,0.14,'sawtooth',0.16,60); noise(0.12,0.14); tone(80,0.16,'sine',0.12,40); }
-    else { tone(mode==='auto'?520:420,0.06,'square',0.1,200); noise(0.04,0.06); tone(140,0.05,'sine',0.06,80); } }
-  else if(kind==='flame'){ const t=performance.now(); if(t-lastShot<45) return; lastShot=t; noise(0.1,0.07); tone(130,0.07,'sawtooth',0.05,90); }
+    // `mode` may be the weapon object (preferred — gives per-gun character) or a bare mode string
+    const w = (mode&&typeof mode==='object') ? mode : null; const md = w?w.mode:mode, nm = w?w.name:'';
+    const j = 1 + rand(-0.05,0.05);   // per-shot pitch jitter so full-auto isn't a robotic click-loop
+    if(nm==='Crossbow'){               // "silent" bolt — soft string thwip + airy whoosh, no crack
+      tone(320*j,0.05,'triangle',0.08,150); fnoise(0.09,0.06,'bandpass',1400,1.4,600); tone(180,0.06,'sine',0.05,90); }
+    else if(md==='sniper'){            // high-velocity CRACK + body + a distant tail echo
+      fnoise(0.05,0.22,'highpass',3200*j,0.5); tone(250*j,0.14,'sawtooth',0.17,60);
+      tone(82,0.24,'sine',0.14,36); fnoise(0.22,0.12,'lowpass',520);
+      setTimeout(()=>fnoise(0.16,0.06,'lowpass',680),95); }
+    else if(md==='shotgun'){           // fat gritty blast that sweeps down
+      fnoise(0.14,0.24,'lowpass',1400,0.6,300); fnoise(0.05,0.15,'highpass',2100*j,0.7);
+      tone(140*j,0.11,'square',0.18,46); tone(54,0.17,'sine',0.15,30); }
+    else if(md==='launcher'){          // heavy WHUMP launch (the airburst is the separate 'boom')
+      tone(120*j,0.15,'sawtooth',0.2,44); fnoise(0.17,0.17,'bandpass',700,0.7,300); tone(58,0.2,'sine',0.16,30); }
+    else if(nm==='Magnum'){            // big hand-cannon revolver boom (semi mode, but heavier)
+      fnoise(0.045,0.2,'bandpass',1500*j,0.8); tone(200*j,0.09,'square',0.2,54);
+      tone(70,0.17,'sine',0.16,34); fnoise(0.15,0.14,'lowpass',360); }
+    else if(md==='auto'){              // tight, fast, mechanical — short tail keeps rapid fire clean
+      tone(360*j,0.045,'square',0.13,120); fnoise(0.028,0.12,'highpass',2900*j,0.6); fnoise(0.06,0.07,'lowpass',520); }
+    else {                             // semi (Pistol/Rifle-ish) — snappy crack with a little body
+      tone(300*j,0.05,'square',0.15,90); fnoise(0.03,0.14,'highpass',2500*j,0.7); fnoise(0.09,0.09,'lowpass',420); } }
+  else if(kind==='flame'){ const t=performance.now(); if(t-lastShot<45) return; lastShot=t;
+    fnoise(0.13,0.09,'bandpass',900*(1+rand(-0.1,0.1)),0.6,480); tone(92,0.09,'sawtooth',0.05,72); }
   else if(kind==='tick'){ const t=performance.now(); if(t-lastTick<45) return; lastTick=t; tone(1500,0.03,'square',0.07,1200); }
   else if(kind==='kill'){ tone(880,0.08,'square',0.13,1320); }
   else if(kind==='combo'){ const n=Math.min(mode||2,9); tone(420+n*95,0.1,'square',0.15,560+n*95); tone(210+n*45,0.12,'triangle',0.1); }
@@ -1663,7 +1694,8 @@ function sfx(kind,mode){ if(!actx) return;
   else if(kind==='pickup'){ tone(720,0.1,'sine',0.13,1120); }
   else if(kind==='loot'){ [700,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,0.14,'triangle',0.15),i*80)); }
   else if(kind==='die'){ tone(260,0.35,'sawtooth',0.18,60); noise(0.2,0.12); }
-  else if(kind==='boom'){ tone(90,0.55,'sawtooth',0.28,38); noise(0.45,0.24); tone(50,0.5,'sine',0.2,28); }
+  else if(kind==='boom'){ fnoise(0.05,0.28,'highpass',2600,0.5); tone(120,0.12,'square',0.24,42);   // crack + concussion
+    tone(84,0.55,'sawtooth',0.26,32); fnoise(0.5,0.24,'lowpass',900,0.6,200); tone(46,0.5,'sine',0.2,26); }  // body + debris + sub
   else if(kind==='bolt'){ tone(900,0.15,'square',0.12,200); noise(0.1,0.1); }
   else if(kind==='throw'){ tone(400,0.12,'sine',0.1,700); }
   else if(kind==='heart'){ tone(74,0.13,'sine',0.16,46); setTimeout(()=>tone(60,0.15,'sine',0.12,38),150); }
