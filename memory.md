@@ -11,16 +11,21 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
-- **v2.12.0** — **Weapon-select UI upgrade**: `buildWeaponGrid` now computes a DPS ranking across the
-  whole arsenal (`dpsAll`/`maxDps`/`rankOf`) and renders a tier-tinted **Power** bar — `statBar('pow',
-  'Power','#'+rank, dps/maxDps)` — right under the DPS headline so guns rank at a glance (#1 = strongest;
-  Shotgun #3, Pistol #10). Each card gets a subtle **rarity wash** (`--tw` on `.card.wcard` via a top
-  `linear-gradient`; wash colors added to `weaponTier`), the rarity chip carries its tier class
-  (`.wtier.epic` glow / `.wtier.legendary` `::after` shimmer sweep, `@keyframes wshimmer`), and the
-  **redundant "EQUIPPED" DPS chip is suppressed on the selected card** (`unlocked&&!sel` — the top-left
-  ribbon already says it). `statBar` rows now carry a `<cls>row` class so the Power value can be tinted
-  (`.row.powrow > span:last-child`). Power bar uses `color-mix` with a `@supports` fallback to flat
-  `var(--tier)`. Verified headless (`02-weapon.png`).
+- **v2.12.0** — **Weapon-select UI upgrade**: `buildWeaponGrid` renders a tier-tinted **Power** bar —
+  `statBar('pow','Power','#'+rank, dps/maxDps)` — right under the DPS headline so guns rank at a glance.
+  Bar frac is `dps/maxDps` (vs the strongest gun in the whole arsenal), but the **`#N` rank is computed
+  among *owned* guns only** (`ownedDps = WEAPONS.filter(weaponUnlocked)…`, `rankOf`), so a Lv-1 player
+  sees Pistol #2 / Rifle #1, not #10 — locked cards show the teaser bar with no number. Each card gets a
+  **rarity wash** (`--tw` on `.card.wcard` via a top `linear-gradient`; wash colors + alphas `.12–.20` on
+  `weaponTier`) and a `t-<tier>` class; the rarity chip carries its tier class (`.wtier.epic` glow /
+  `.wtier.legendary` `::after` shimmer sweep, `@keyframes wshimmer`); the **redundant "EQUIPPED" DPS chip
+  is suppressed on the selected card** (`unlocked&&!sel`). `statBar` rows carry a `<cls>row` class so the
+  Power value can be tinted (`.row.powrow > span:last-child`) and its bar min-width is `6%` (was 4) so the
+  weakest sliver stays visible; common's grey Power fill gets a brighter floor (`.card.t-common .bar.pow`).
+  Power fill uses `color-mix` with a `@supports` fallback to flat `var(--tier)`. **In-match tie-in**:
+  `drawNameplate` draws a thin `weaponTier(h.weapon).c` accent line under the *player's* name, carrying the
+  select-screen rarity color into gameplay. Verified headless — `02-weapon.png` (owned ranks), a scrolled
+  Lv-99 grab (epic-purple / legendary-gold washes + tinted Power bars + chips), `03-match.png` (accent).
 - **v2.11.0** — **procedural walk cycle for the sprite heroes** (fixes "arm spins on a frozen body"):
   `drawHeroSprite` now bobs (`-abs(sin walk)*2.1`), sways (`sin*2.0`) and leans the torso, and a new
   `drawWalkBody(img,DW,DH,gait)` splits the billboard's bottom 40% into left/right halves and lifts
