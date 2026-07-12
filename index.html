@@ -783,8 +783,12 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.15.0';
+const GAME_VERSION = '2.16.0';
 const CHANGELOG = [
+  { v:'2.16.0', items:[
+    ['🧟','Nastier enemies','the zombies got a full redraw — glowing eyes, gaping fanged maws, exposed ribs & raking claws'],
+    ['💀','Distinct horrors','lean red-eyed Runners, a hulking bone-spiked Brute, and rotting Shamblers — each reads at a glance'],
+  ]},
   { v:'2.15.0', items:[
     ['🌈','Signature auras','Shade, Nova, Blaze, Reaper, Onyx & Titan now glow with their own color in-match'],
     ['⚡','Quicker unlocks','the new heroes now unlock Lv 16–26 (was 16–32); Full Roster caps at Lv 26'],
@@ -1176,9 +1180,10 @@ function makeHuman(isPlayer, avatar, weapon, name){
   };
 }
 const ZTYPES = {
-  normal:{ hp:60,  dmg:12, sp:[64,98],  r:15, skin:'#7bbf5a', torso:'#566b3a', size:1.0,  w:0.58 },
-  runner:{ hp:30,  dmg:8,  sp:[120,150],r:12, skin:'#9ed86a', torso:'#5e7a36', size:0.82, w:0.30 },
-  brute: { hp:130, dmg:20, sp:[44,62],  r:20, skin:'#4f8a3a', torso:'#3c5226', size:1.35, w:0.12 },
+  // skin / torso / shade (dark limb) / eye (glow) drive the redrawn 2D monsters below
+  normal:{ hp:60,  dmg:12, sp:[64,98],  r:15, skin:'#86c85a', torso:'#5a6b38', shade:'#4c7a32', eye:'#e6ff46', size:1.0,  w:0.58 },
+  runner:{ hp:30,  dmg:8,  sp:[120,150],r:12, skin:'#a7c86a', torso:'#6b4a2e', shade:'#5c7a3e', eye:'#ff4630', size:0.82, w:0.30 },
+  brute: { hp:130, dmg:20, sp:[44,62],  r:20, skin:'#5a9a42', torso:'#3c5226', shade:'#3d6e2a', eye:'#ffd23a', size:1.35, w:0.12 },
 };
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
 function makeZombie(x,y,kind){
@@ -2972,70 +2977,108 @@ function drawNameplate(h){
     ctx.fillStyle='rgba(255,255,255,.8)'; ctx.fillRect(x-bw/2,y+1,bw*(1-h.reloading/h.weapon.reload),3);
   }
 }
+// a raking clawed hand: knuckle + three hooked talons pointing along `dir`
+function zClaw(x,y,dir,fill,sc){ sc=sc||1;
+  ctx.fillStyle=fill; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(x,y,2.3*sc,0,TAU); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle=INK; ctx.lineWidth=1.7*sc; ctx.lineCap='round';
+  for(const a of [-0.55,0,0.55]){ ctx.beginPath(); ctx.moveTo(x,y);
+    ctx.lineTo(x+dir*Math.cos(a)*4.6*sc, y+Math.sin(a)*4.6*sc-0.4); ctx.stroke(); }
+}
 function drawZombie(z){
-  if(window.Models3D && Models3D.drawZombie(ctx,z)){ return; }   // 3D model if available, else 2D below
+  // 2D monsters only — the old 3D billboard is disabled so these always render.
+  const t=ZTYPES[z.kind]||ZTYPES.normal;
   const s=z.size, flip=z.faceX<0?-1:1, flash=z.hitFlash>0;
   const now=performance.now()/1000, seed=z.seed||0;
   const moving=(z.vx*z.vx+z.vy*z.vy)>200;
   const lunge=Math.max(0,z.lunge||0);
+  const runner=z.kind==='runner', brute=z.kind==='brute';
+  const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
+  const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
-  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*3:0;
+  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute?2.4:3.4):0;
+  const tw=brute?11.5:runner?6.4:8, th=brute?16:runner?13.5:15;   // torso half-width / height per kind
+  const night = timeOfDay!=='day';
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
-  ctx.fillStyle='rgba(0,0,0,.20)'; ctx.beginPath(); ctx.ellipse(0,18,15,5,0,0,TAU); ctx.fill();
+  // ground shadow + a faint, pulsing eye-coloured menace pool
+  ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0,18,15,5,0,0,TAU); ctx.fill();
+  if(!flash){ ctx.save(); ctx.globalAlpha=0.13+0.05*Math.sin(now*3+seed); ctx.fillStyle=eye;
+    ctx.beginPath(); ctx.ellipse(0,18,11,3.2,0,0,TAU); ctx.fill(); ctx.restore(); }
   // lurch lean: pitched into the shamble with an uneven stagger (shadow stays flat)
   ctx.rotate(moving ? clamp(z.vx/1400,-0.1,0.1) + flip*0.05 + Math.sin(z.walk*0.5+seed)*0.055 + Math.sin(z.walk)*0.03
                     : Math.sin(now*1.6+seed)*0.03);
+  if(runner) ctx.rotate(flip*0.16);                          // runners hunch aggressively forward
   // attack lunge: snap toward the prey and swell up for a beat
   if(lunge>0){ ctx.translate(flip*lunge*6, -lunge*2); ctx.scale(1+lunge*0.12, 1+lunge*0.06); }
-  // reaching arm (front): claws forward, pawing with the shamble; thrown out on a lunge
-  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=13+lunge*5;
-  ctx.strokeStyle=INK; ctx.lineWidth=6.5; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
-  ctx.strokeStyle=flash?'#fff':z.skin; ctx.lineWidth=4.5; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
-  ctx.fillStyle=flash?'#fff':z.skin; ctx.beginPath(); ctx.arc(flip*(rx+0.5),-2.6+paw,2.2,0,TAU); ctx.fill();
-  if(!flash){ // stubby claw fingers on the reaching hand
-    ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath();
-    ctx.moveTo(flip*(rx+0.5),-2.6+paw); ctx.lineTo(flip*(rx+3.5),-4.2+paw);
-    ctx.moveTo(flip*(rx+0.5),-2.6+paw); ctx.lineTo(flip*(rx+3.9),-1.6+paw); ctx.stroke(); }
-  // dragging arm (back): hangs limp behind, knuckles trailing near the ground
+
+  // ---- BACK dragging arm (behind the body) ----
   const drag=moving?Math.sin(z.walk*0.5+seed)*1.6:sway*0.6;
-  ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(flip*-8+drag*flip,11+Math.abs(drag)*0.4); ctx.stroke();
-  ctx.strokeStyle=flash?'#fff':z.skin; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(flip*-8+drag*flip,11+Math.abs(drag)*0.4); ctx.stroke();
-  ctx.fillStyle=flash?'#fff':z.skin; ctx.beginPath(); ctx.arc(flip*-8.3+drag*flip,12+Math.abs(drag)*0.4,2.1,0,TAU); ctx.fill();
-  // legs
-  ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(-4,8); ctx.lineTo(-5,16+step); ctx.moveTo(4,8); ctx.lineTo(5,16-step); ctx.stroke();
-  ctx.strokeStyle='#384824'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(-4,8); ctx.lineTo(-5,16+step); ctx.moveTo(4,8); ctx.lineTo(5,16-step); ctx.stroke();
-  // torso (tattered, outlined)
+  const bex=flip*(-tw-1)+drag*flip, bey=(brute?10:12)+Math.abs(drag)*0.4;
+  ctx.strokeStyle=INK; ctx.lineWidth=brute?8.5:runner?5:6.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
+  ctx.strokeStyle=SH; ctx.lineWidth=brute?6:runner?3.4:4.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
+  if(!flash) zClaw(bex,bey,-flip,skin,brute?1.35:runner?0.9:1);
+
+  // ---- BRUTE shoulder bone-spikes (behind the torso) ----
+  if(brute && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*8,-9); ctx.lineTo(sx*13.5,-16); ctx.lineTo(sx*10.5,-8.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+
+  // ---- LEGS (wide, planted stance; brute stomps) ----
+  const lw=brute?7:runner?4.6:5.4;
+  ctx.strokeStyle=INK; ctx.lineWidth=brute?8:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
+  ctx.strokeStyle=SH; ctx.lineWidth=brute?5.4:runner?3.4:4; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
+  ctx.fillStyle='#20301a'; ctx.beginPath(); ctx.ellipse(-lw-1,17.4+step,3,1.8,0,0,TAU); ctx.ellipse(lw+1,17.4-step,3,1.8,0,0,TAU); ctx.fill();  // rotted feet
+
+  // ---- TORSO (tattered, exposed ribcage) ----
   const zty=-6+bob*0.2;
-  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=flash?'#fff':z.torso; roundRect(-8,zty,16,15,4); ctx.fill(); ctx.stroke();
-  if(!flash){ ctx.save(); roundRect(-8,zty,16,15,4); ctx.clip();
-    ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(-8,zty,5,17);                          // dim sheen
-    ctx.fillStyle='rgba(0,0,0,.16)'; ctx.fillRect(4,zty,4,17);
-    ctx.strokeStyle='rgba(20,30,12,.55)'; ctx.lineWidth=1; ctx.beginPath();                      // ragged tears
-    ctx.moveTo(-3,zty+4); ctx.lineTo(-1,zty+8); ctx.lineTo(-3,zty+11); ctx.moveTo(3,zty+3); ctx.lineTo(2,zty+7); ctx.stroke(); ctx.restore();
-    ctx.fillStyle=z.torso; for(let k=-1;k<=1;k++){ ctx.beginPath(); ctx.moveTo(k*4-2,zty+15); ctx.lineTo(k*4,zty+18.5); ctx.lineTo(k*4+2,zty+15); ctx.closePath(); ctx.fill(); } }  // torn hem
-  // head — lolls side to side as it shambles
-  const hy=-15+bob, hx=Math.sin(z.walk*0.7+seed)*1.6;
-  ctx.save(); ctx.translate(hx,0); ctx.rotate(Math.sin(z.walk*0.7+seed)*0.09);
-  ctx.fillStyle=flash?'#fff':z.skin; ctx.strokeStyle=INK; ctx.beginPath(); ctx.arc(0,hy,8.6,0,TAU); ctx.fill(); ctx.stroke();
-  if(!flash){ ctx.fillStyle='rgba(0,0,0,.12)'; ctx.beginPath(); ctx.arc(3,hy+1.8,4.5,0,TAU); ctx.fill();
-    ctx.strokeStyle='rgba(190,230,150,.35)'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(0,hy,7.5,Math.PI*1.05,Math.PI*1.5); ctx.stroke(); }  // sickly rim light
-  // eyes glow in the dark
-  if(timeOfDay!=='day' && !flash){ ctx.fillStyle='rgba(214,255,138,.28)';
-    ctx.beginPath(); ctx.arc(flip*-3,hy-1.5,4.6,0,TAU); ctx.arc(flip*3.5,hy-1,4.2,0,TAU); ctx.fill(); }
-  // sunken eyes + angry brow + drool
-  ctx.fillStyle='#28401e'; ctx.beginPath(); ctx.arc(flip*-3,hy-1.5,2.4,0,TAU); ctx.arc(flip*3.5,hy-1,2,0,TAU); ctx.fill();
-  ctx.fillStyle='#d6ff8a'; ctx.beginPath(); ctx.arc(flip*-3,hy-1.5,0.9,0,TAU); ctx.arc(flip*3.5,hy-1,0.8,0,TAU); ctx.fill();
-  ctx.strokeStyle='#1f3015'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(flip*-5.5,hy-4); ctx.lineTo(flip*-1,hy-2.5); ctx.moveTo(flip*1.5,hy-2.6); ctx.lineTo(flip*5.5,hy-3.8); ctx.stroke();
-  if(lunge>0.25){ // jaw drops open mid-lunge
-    ctx.fillStyle='#1c2a12'; ctx.beginPath(); ctx.ellipse(flip*0.5,hy+4.4,2.6,1.6+lunge*1.8,0,0,TAU); ctx.fill();
-    ctx.fillStyle='#cfe0a0'; ctx.fillRect(flip*0.5-2,hy+3.2,1.4,1.2); ctx.fillRect(flip*0.5+0.8,hy+3.2,1.4,1.2); }
-  else { ctx.strokeStyle='#2c5a22'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(flip*-1,hy+4); ctx.lineTo(flip*-1,hy+7); ctx.stroke(); }
-  if(z.kind==='brute'){ ctx.fillStyle='#cfe0a0'; ctx.beginPath(); ctx.moveTo(flip*-2,hy+3); ctx.lineTo(flip*-3,hy+6); ctx.lineTo(flip*-1,hy+5); ctx.closePath(); ctx.fill(); }
+  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=TO; roundRect(-tw,zty,tw*2,th,4); ctx.fill(); ctx.stroke();
+  if(!flash){ ctx.save(); roundRect(-tw,zty,tw*2,th,4); ctx.clip();
+    ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(-tw,zty,tw*0.6,th+2);                 // dim sheen
+    ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(tw*0.5,zty,tw*0.5,th+2);
+    // exposed ribs (bone) — a sickly belly wound; brutes show muscle striations instead
+    if(brute){ ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.lineWidth=1.4;
+      for(let i=0;i<3;i++){ const yy=zty+4+i*4; ctx.beginPath(); ctx.moveTo(-tw+2,yy); ctx.quadraticCurveTo(0,yy+2.4,tw-2,yy); ctx.stroke(); } }
+    else { ctx.fillStyle='rgba(20,10,8,.5)'; ctx.beginPath(); ctx.ellipse(flip*2.5,zty+7,4.4,5.2,0,0,TAU); ctx.fill();  // dark gut cavity
+      ctx.strokeStyle='#e6e0cc'; ctx.lineWidth=1.5;
+      for(let i=0;i<3;i++){ const yy=zty+3.5+i*3.2; ctx.beginPath(); ctx.moveTo(-tw+1.5,yy); ctx.quadraticCurveTo(-1,yy+1.8,tw-1.5,yy-0.6); ctx.stroke(); }
+      ctx.strokeStyle='#f2ecd8'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(flip*1,zty+1.5); ctx.lineTo(flip*1,zty+th-2); ctx.stroke(); }  // sternum
+    ctx.restore();
+    // torn hem
+    ctx.fillStyle=torso; for(let k=-1;k<=1;k++){ const kx=k*tw*0.62; ctx.beginPath(); ctx.moveTo(kx-2.4,zty+th); ctx.lineTo(kx,zty+th+3.4); ctx.lineTo(kx+2.4,zty+th); ctx.closePath(); ctx.fill(); }
+    ctx.strokeStyle='rgba(120,20,16,.6)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-tw*0.4,zty+2); ctx.lineTo(-tw*0.15,zty+6); ctx.stroke(); }  // blood streak
+
+  // ---- FRONT reaching arm (claws forward, thrown out on a lunge) ----
+  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(brute?12:runner?15:13)+lunge*5;
+  ctx.strokeStyle=INK; ctx.lineWidth=brute?8.5:runner?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  ctx.strokeStyle=SK; ctx.lineWidth=brute?6:runner?3.8:4.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  if(!flash) zClaw(flip*(rx+1),-2.6+paw,flip,skin,brute?1.5:runner?1.05:1.1);
+  else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(flip*(rx+1),-2.6+paw,2.4,0,TAU); ctx.fill(); }
+
+  // ---- HEAD (lolls as it shambles; sits low & sunken on the brute) ----
+  const hy=-15+bob+(brute?3.5:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=brute?7.6:runner?7.4:8.6;
+  ctx.save(); ctx.translate(hx,0); ctx.rotate(Math.sin(z.walk*0.7+seed)*0.09 + (runner?flip*0.12:0));
+  ctx.fillStyle=SK; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,hy,hr,0,TAU); ctx.fill(); ctx.stroke();
+  if(!flash){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.arc(2.6,hy+1.8,hr*0.55,0,TAU); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.30)'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(0,hy,hr-1.2,Math.PI*1.05,Math.PI*1.5); ctx.stroke();  // rim light
+    // always-on glowing eyes (brighter at night) — the signature menace
+    const eox=flip*-3.2, eoy=hy-1.6, ex2=flip*3.4, ey2=hy-1;
+    ctx.save(); ctx.globalAlpha=night?0.55:0.34; ctx.fillStyle=eye;
+    ctx.beginPath(); ctx.arc(eox,eoy,4.6,0,TAU); ctx.arc(ex2,ey2,4.2,0,TAU); ctx.fill(); ctx.restore();
+    ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(eox,eoy,1.9,0,TAU); ctx.arc(ex2,ey2,1.7,0,TAU); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(eox-0.5,eoy-0.6,0.7,0,TAU); ctx.arc(ex2-0.5,ey2-0.6,0.6,0,TAU); ctx.fill();
+    // heavy angry brow
+    ctx.strokeStyle=INK; ctx.lineWidth=1.7; ctx.beginPath(); ctx.moveTo(flip*-6,hy-4.4); ctx.lineTo(flip*-1,hy-2.6); ctx.moveTo(flip*1.6,hy-2.7); ctx.lineTo(flip*6,hy-4.2); ctx.stroke();
+  } else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(flip*-3.2,hy-1.6,2,0,TAU); ctx.arc(flip*3.4,hy-1,1.8,0,TAU); ctx.fill(); }
+  // gaping maw with jagged fangs — snaps wide open on a lunge
+  const open=1.2+lunge*3.4;
+  ctx.fillStyle='#160f0a'; ctx.beginPath(); ctx.ellipse(flip*0.5,hy+4.6,3.4,open,0,0,TAU); ctx.fill();
+  if(!flash){ ctx.fillStyle='#eae2c4';   // fangs top & bottom
+    for(let i=-2;i<=2;i++){ const fx=flip*0.5+i*1.5; ctx.beginPath(); ctx.moveTo(fx-0.8,hy+4.6-open); ctx.lineTo(fx,hy+4.6-open+1.7); ctx.lineTo(fx+0.8,hy+4.6-open); ctx.closePath(); ctx.fill(); }
+    for(let i=-1;i<=1;i++){ const fx=flip*0.5+i*1.7; ctx.beginPath(); ctx.moveTo(fx-0.7,hy+4.6+open); ctx.lineTo(fx,hy+4.6+open-1.5); ctx.lineTo(fx+0.7,hy+4.6+open); ctx.closePath(); ctx.fill(); } }
   ctx.restore();
   ctx.restore();
   // tiny hp bar
-  const hc=clamp(z.hp/z.maxhp,0,1), bw=24*s; if(hc<1){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(z.x-bw/2,z.y-30*s,bw,3);
-    ctx.fillStyle= z.kind==='brute'?'#ff7a4a':'#9bdb5a'; ctx.fillRect(z.x-bw/2,z.y-30*s,bw*hc,3); }
+  const hc=clamp(z.hp/z.maxhp,0,1), bw=24*s; if(hc<1){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(z.x-bw/2,z.y-32*s,bw,3);
+    ctx.fillStyle= brute?'#ff7a4a':runner?'#ff5a4a':'#9bdb5a'; ctx.fillRect(z.x-bw/2,z.y-32*s,bw*hc,3); }
 }
 function roundRect(x,y,w,h,r,c){ c=c||ctx; c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
   c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -3452,7 +3495,7 @@ window.__game = {
 // Fallback used only if the generated loader can't be imported — keeps the pilot assets working.
 const FALLBACK_FILES = {
   'avatar:alex':   'assets/meshy/alex-walk.glb',
-  'zombie:normal': 'assets/meshy/zombie-normal.glb',
+  // zombies are hand-drawn 2D monsters now — no 3D billboard (drawZombie no longer calls the 3D layer)
 };
 const SPRITE = 256;                                  // offscreen render-tile size (px)
 const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to draw the billboard
@@ -3477,7 +3520,7 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
     for (const m of MODELS) {
       if (m.status !== 'generated') continue;
       if (m.type === 'character') map['avatar:' + m.id] = 'assets/meshy/' + (m.walk || m.preview);
-      else if (m.type === 'zombie') map['zombie:' + m.key] = 'assets/meshy/' + m.preview;
+      // zombie models intentionally skipped — enemies are hand-drawn 2D monsters
     }
     if (Object.keys(map).length) MODEL_FILES = map;
   } catch {}                                          // loader missing → fall back to pilots
