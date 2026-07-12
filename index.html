@@ -819,8 +819,11 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.18.0';
+const GAME_VERSION = '2.19.0';
 const CHANGELOG = [
+  { v:'2.19.0', items:[
+    ['💀','Beatdown soundtrack','the music is now downtuned metalcore — chromatic chugs, dissonant stabs & crushing half-time breakdowns'],
+  ]},
   { v:'2.18.0', items:[
     ['🤘','Metal soundtrack','a driving, distorted riff — galloping chugs, power chords & double-bass drums'],
     ['🔊','Meatier guns','every gun got extra crunch & low-end punch — overdriven bodies and a deeper thump'],
@@ -1781,28 +1784,38 @@ function sfx(kind,mode){ if(!actx) return;
   else if(kind==='level'){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'triangle',0.16),i*90)); }
   else if(kind==='win'){ [523,659,784,1046,1318,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.26,'triangle',0.2),i*120)); }
 }
-// ===== Metal soundtrack — a driving E-Phrygian riff: palm-muted gallop chugs, power-chord accents,
-// double-bass kick, backbeat snare, hats, and a lead lick over the 2nd bar. All routed to musicBus. =====
-const _GAL =[1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1];             // gallop rhythm  [X . X X] per beat
-const _KICK=[1,0,1,1, 1,0,0,1, 1,0,1,1, 1,0,0,1];             // driving double-bass
-const _SNR =[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1];             // backbeat + a ghost pickup
-const _LEAD=[659.3,0,0,587.3, 0,0,523.3,0, 493.9,0,0,523.3, 0,0,587.3,0];  // E5 D5 C5 B4 … (2nd bar only)
-function mChug(f,v){ dtone(f,0.11,'sawtooth',v,f*0.985,1500,musicBus); dtone(f*2.01,0.08,'square',v*0.4,0,2400,musicBus); }
-function mPower(f,d,v){ dtone(f,d,'sawtooth',v,0,2600,musicBus); dtone(f*1.5,d,'sawtooth',v*0.8,0,2600,musicBus); dtone(f*2,d,'sawtooth',v*0.5,0,2600,musicBus); }
-function mKick(){ tone(115,0.13,'sine',0.55,42,musicBus); noise(0.025,0.14,musicBus); }
-function mSnare(){ fnoise(0.15,0.34,'highpass',1700,0.7,null,musicBus); fnoise(0.1,0.22,'bandpass',420,1,null,musicBus); tone(190,0.06,'triangle',0.12,130,musicBus); }
+// ===== Beatdown-metalcore soundtrack (Knocked Loose "Laugh Tracks" vibe) — a 4-bar loop: two bars of
+// downtuned, chromatic palm-muted chugs with dissonant tritone stabs + blast-ish drums, then a two-bar
+// half-time BREAKDOWN of crushing syncopated slams, double-bass, ring-out dissonance & a pinch squeal. =====
+const _GAL =[1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1];             // fast gallop chug rhythm
+const _BD  =[1,0,0,1, 1,0,1,0, 1,0,0,1, 1,0,1,1];             // breakdown slam (syncopated, half-time)
+// crushing palm-muted chug: dark low saw + a sub octave-down + a faint bite up top
+function mChug(f,v,d){ dtone(f,d||0.12,'sawtooth',v,f*0.99,880,musicBus); dtone(f*0.5,d||0.12,'square',v*0.55,0,560,musicBus); dtone(f*2.01,0.05,'square',v*0.22,0,1900,musicBus); }
+// dissonant stab: root + tritone + octave — the "wrong", ugly metalcore chord
+function mStab(f,d,v){ dtone(f,d,'sawtooth',v,0,1700,musicBus); dtone(f*1.414,d,'sawtooth',v*0.7,0,1700,musicBus); dtone(f*2,d,'sawtooth',v*0.5,0,1900,musicBus); }
+function mSqueal(f){ dtone(f,0.5,'sawtooth',0.13,f*1.04,4400,musicBus); }   // pinch-harmonic squeal, bends up
+function mKick(v){ tone(110,0.12,'sine',v||0.6,38,musicBus); noise(0.02,0.12,musicBus); }
+function mSnare(v){ fnoise(0.14,v||0.36,'highpass',1700,0.7,null,musicBus); fnoise(0.09,0.22,'bandpass',400,1,null,musicBus); tone(200,0.05,'triangle',0.12,140,musicBus); }
 function startMusic(){ if(!actx||musicTimer) return; let s=0;
   musicTimer=setInterval(()=>{ if(!meta.music) return;
-    const b=(s/16|0)%2, i=s%16;                               // 2-bar loop: E … then C/D
-    const root = b===0 ? 82.41 : (i<8 ? 65.41 : 73.42);       // E2 / C2 / D2 chug roots
-    if(_GAL[i]) mChug(root, 0.26);                             // palm-muted gallop chug
-    if(i===0||i===8) mPower(root, 0.24, 0.2);                 // accented power chord on the beat
-    if(_KICK[i]) mKick();
-    if(_SNR[i]) mSnare();
-    fnoise(0.028, i%2?0.045:0.085, 'highpass', 9000, 0.6, null, musicBus);   // hats (accent on 8ths)
-    if(b===1 && _LEAD[i]) dtone(_LEAD[i], 0.16, 'sawtooth', 0.09, 0, 2900, musicBus);  // lead lick over bar 2
-    s=(s+1)%32;
-  }, 105); }                                                  // ~143 BPM sixteenths
+    const bar=(s/16|0), i=s%16, breakdown=bar>=2;             // 4-bar loop: riff, riff, BREAKDOWN, BREAKDOWN
+    if(!breakdown){                                            // ---- fast downtuned riff / verse ----
+      const root = bar===0 ? 55.0 : 51.91;                    // A1 → G#1 (chromatic dread)
+      if(_GAL[i]) mChug(root, 0.26);
+      if(i===0) mStab(root*2, 0.16, 0.15);                    // dissonant tritone stab up an octave
+      if(i%2===0) mKick(0.5); if(i%4===2) mSnare(0.3);        // blast-ish d-beat
+      if(i===7||i===15) mSnare(0.34);
+      fnoise(0.026, i%2?0.04:0.075, 'highpass', 9000, 0.6, null, musicBus);   // hats
+    } else {                                                  // ---- half-time BREAKDOWN ----
+      const root = 49.0;                                      // G1 crush
+      if(_BD[i]){ mChug(root, 0.36, 0.17); mKick(0.64); }     // slam + kick together
+      if(i%2===0) mKick(0.42);                                // double-bass rumble under the slams
+      if(i===0||i===8) mSnare(0.42);                          // half-time snare on the down-slams
+      if(i===0) mStab(root, 0.5, 0.13);                       // ring-out dissonant chord
+      if(bar===3 && i===8) mSqueal(root*6);                   // pinch-harmonic squeal in the last bar
+    }
+    s=(s+1)%64;
+  }, 105); }                                                  // ~143 BPM sixteenths (breakdown reads half-time)
 function stopMusic(){ if(musicTimer){ clearInterval(musicTimer); musicTimer=null; } }
 
 // ============================================================
