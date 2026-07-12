@@ -11,6 +11,19 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.16.0** — **enemy redraw** (the circled on-device "dark blob" was the 3D zombie GLB billboard): (1)
+  **disabled the 3D zombie path** — `drawZombie` no longer calls `Models3D.drawZombie` (removed the early
+  return), and the `zombie:*` entries were dropped from the 3D layer's `FALLBACK_FILES` + loader map so the
+  GLB never loads; heroes were already `armless` so 3D is now player-only-nonexistent for zombies. (2)
+  **completely rewrote 2D `drawZombie`** into distinct, menacing monsters sharing the walk/lunge rig: a new
+  `zClaw(x,y,dir,fill,sc)` helper draws hooked talons; always-on **glowing eyes** (per-kind `eye` color in
+  `ZTYPES`, brighter at night), a **gaping fanged maw** that snaps wide on lunge, **exposed ribcage +
+  sternum + gut wound** (normal/runner) or **muscle striations + shoulder bone-spikes** (brute), rotted
+  feet, blood streaks, and a faint eye-colored ground pool. Per-kind silhouettes via `tw`/`th`/`lw`/`hr`:
+  **Runner** lean + hunched-forward (extra `flip*0.16` lean) with red eyes, **Brute** huge with a low sunken
+  head + bone spikes + yellow eyes, **Shambler** standard green with toxic-yellow eyes. `ZTYPES` gained
+  `shade`/`eye` (skin/torso tweaked). Verified in a live Horde match day + night + a scaled close-up
+  (`.shots/z-day.png` / `z-night.png` / `z-big.png`) — no page errors; hp-bar tint now red for runner too.
 - **v2.15.0** — **hero polish** (follow-up to v2.14.0): (1) **signature auras** — each new hero carries an
   `aura:'#rrggbb'` (Shade green, Nova purple, Blaze orange, Reaper spectral-green, Onyx cyan, Titan red);
   `drawHeroSprite` draws a soft, gently-pulsing radial halo behind the sprite for any `h.avatar.aura`
