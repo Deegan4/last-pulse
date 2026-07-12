@@ -11,6 +11,17 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.17.0** — **modern menu backgrounds**: replaced the flat green `.screen` gradient with a living
+  **aurora mesh** applied to ALL menu screens (start/mode/avatar/weapon). Base is a deep near-black green
+  with a layered multi-radial neon bloom + centre vignette; `.screen::before` is a drifting/rotating/
+  scaling neon-blob mesh (`@keyframes aurora`, 24s), `.screen::after` is a soft masked tech grid + top
+  light-beam that pans (`@keyframes gridpan`, 26s). Pseudo-layers sit at `z-index:-2/-1` (below in-flow
+  content) and `.screen > *{position:relative;z-index:1}` keeps content above the ember/glow layers.
+  Particles: `.spore` restyled to **glowing embers** (inline `--g` colour: lime/teal/violet/amber, box-
+  shadow glow) with a richer `drift` keyframe (x-drift + scale), now sprinkled behind **all four** screens
+  (14 on start, 9 elsewhere) via the generalized IIFE. `.menuGlow` recolored red→lime to match.
+  `prefers-reduced-motion` disables the two aurora animations. Verified all four screens headless
+  (`.shots/m-start|mode|avatar|weapon.png`) — content readable, no page errors.
 - **Start-screen footer** — removed the "A canvas remake · twin-stick survival royale ·" tagline from the
   start-screen `.footer` (index.html ~L553); kept the `#verLink` version / "what's new" link. No version
   bump (trivial cosmetic text removal — not worth a "Game Updated!" popup).
