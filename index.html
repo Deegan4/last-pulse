@@ -723,6 +723,12 @@ const AVATARS = [
   {name:'Sarge',  speed:4.6, health:140, unlock:9,  img:'hero-sarge',  armless:true, look:{skin:'#e8b48c',hair:'#e8b48c',outfit:'#3f4a2a',style:'beard'}},
   {name:'Finn',   speed:5.3, health:118, unlock:12, img:'hero-finn',   armless:true, look:{skin:'#f0c8a0',hair:'#f2c832',outfit:'#6a4a2a',style:'mohawk'}},
   {name:'Cypher', speed:5.9, health:96,  unlock:15, img:'hero-cypher', armless:true, look:{skin:'#e8d0c0',hair:'#6a5a8a',outfit:'#241f38',style:'visor'}},
+  {name:'Shade',  speed:6.2, health:84,  unlock:16, img:'hero-shade',  armless:true, look:{skin:'#2a2f26',hair:'#141414',outfit:'#1c221a',style:'ninja'}},
+  {name:'Nova',   speed:6.4, health:82,  unlock:19, img:'hero-nova',   armless:true, look:{skin:'#efc9a6',hair:'#2a1f38',outfit:'#241a30',style:'ninja'}},
+  {name:'Blaze',  speed:5.5, health:112, unlock:22, img:'hero-blaze',  armless:true, look:{skin:'#f0c090',hair:'#ff6a1a',outfit:'#2f3320',style:'mohawk'}},
+  {name:'Reaper', speed:5.8, health:96,  unlock:25, img:'hero-reaper', armless:true, look:{skin:'#d8d2bc',hair:'#141414',outfit:'#17171a',style:'ninja'}},
+  {name:'Onyx',   speed:4.7, health:138, unlock:28, img:'hero-onyx',   armless:true, look:{skin:'#3a4048',hair:'#141414',outfit:'#191b1f',style:'horns'}},
+  {name:'Titan',  speed:4.4, health:150, unlock:32, img:'hero-titan',  armless:true, look:{skin:'#e8b48c',hair:'#3a3f47',outfit:'#33373d',style:'horns'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -766,13 +772,23 @@ loadImg('hero-vex',   'assets/img/hero-vex.png');
 loadImg('hero-sarge', 'assets/img/hero-sarge.png');
 loadImg('hero-finn',  'assets/img/hero-finn.png');
 loadImg('hero-cypher','assets/img/hero-cypher.png');
+loadImg('hero-shade', 'assets/img/hero-shade.png');
+loadImg('hero-nova',  'assets/img/hero-nova.png');
+loadImg('hero-blaze', 'assets/img/hero-blaze.png');
+loadImg('hero-reaper','assets/img/hero-reaper.png');
+loadImg('hero-onyx',  'assets/img/hero-onyx.png');
+loadImg('hero-titan', 'assets/img/hero-titan.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
 
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.13.0';
+const GAME_VERSION = '2.14.0';
 const CHANGELOG = [
+  { v:'2.14.0', items:[
+    ['🦹','6 new heroes','Shade, Nova, Blaze, Reaper, Onyx & Titan — assassins, a commando, a reaper & armored tanks'],
+    ['🔓','Deeper unlocks','the new roster unlocks Lv 16–32; Full Roster now caps at Lv 32'],
+  ]},
   { v:'2.13.0', items:[
     ['🔊','Guns hit harder','every weapon got a punchier, layered gunshot — crack, body & tail, tuned per gun'],
     ['💥','Signature sounds','Magnum booms like a hand-cannon, the Sniper cracks with a distant echo, rockets thump'],
@@ -968,7 +984,7 @@ const ACHIEVEMENTS = [
   {id:'grappler',   tier:'bronze', icon:'🪝', name:'Swinger',      desc:'Use the grapple hook in a match',     test:(m,c)=>c.grappled},
   {id:'untouchable',tier:'gold',   icon:'🛡', name:'Untouchable',  desc:'Win a match without taking damage',   test:(m,c)=>c.win && c.dmgTaken<=0},
   {id:'daily3',     tier:'silver', icon:'📅', name:'Regular',      desc:'Complete 3 daily challenges',         test:m=>m.dailies>=3},
-  {id:'roster',     tier:'gold',   icon:'🦸', name:'Full Roster',  desc:'Unlock every hero (reach level 15)',  test:m=>m.level>=15},
+  {id:'roster',     tier:'gold',   icon:'🦸', name:'Full Roster',  desc:'Unlock every hero (reach level 32)',  test:m=>m.level>=32},
   {id:'ironwall',   tier:'silver', icon:'💪', name:'Iron Wall',    desc:'Win a match as Sarge',                test:(m,c)=>c.win && AVATARS[m.avatar]?.name==='Sarge'},
   {id:'blur',       tier:'silver', icon:'💨', name:'Blur',         desc:'Win a match as Lila',                 test:(m,c)=>c.win && AVATARS[m.avatar]?.name==='Lila'},
 ];
