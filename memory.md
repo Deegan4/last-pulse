@@ -11,6 +11,16 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.12.0** — **Weapon-select UI upgrade**: `buildWeaponGrid` now computes a DPS ranking across the
+  whole arsenal (`dpsAll`/`maxDps`/`rankOf`) and renders a tier-tinted **Power** bar — `statBar('pow',
+  'Power','#'+rank, dps/maxDps)` — right under the DPS headline so guns rank at a glance (#1 = strongest;
+  Shotgun #3, Pistol #10). Each card gets a subtle **rarity wash** (`--tw` on `.card.wcard` via a top
+  `linear-gradient`; wash colors added to `weaponTier`), the rarity chip carries its tier class
+  (`.wtier.epic` glow / `.wtier.legendary` `::after` shimmer sweep, `@keyframes wshimmer`), and the
+  **redundant "EQUIPPED" DPS chip is suppressed on the selected card** (`unlocked&&!sel` — the top-left
+  ribbon already says it). `statBar` rows now carry a `<cls>row` class so the Power value can be tinted
+  (`.row.powrow > span:last-child`). Power bar uses `color-mix` with a `@supports` fallback to flat
+  `var(--tier)`. Verified headless (`02-weapon.png`).
 - **v2.11.0** — **procedural walk cycle for the sprite heroes** (fixes "arm spins on a frozen body"):
   `drawHeroSprite` now bobs (`-abs(sin walk)*2.1`), sways (`sin*2.0`) and leans the torso, and a new
   `drawWalkBody(img,DW,DH,gait)` splits the billboard's bottom 40% into left/right halves and lifts
