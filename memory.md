@@ -11,6 +11,9 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **Start-screen footer** — removed the "A canvas remake · twin-stick survival royale ·" tagline from the
+  start-screen `.footer` (index.html ~L553); kept the `#verLink` version / "what's new" link. No version
+  bump (trivial cosmetic text removal — not worth a "Game Updated!" popup).
 - **v2.16.0** — **enemy redraw** (the circled on-device "dark blob" was the 3D zombie GLB billboard): (1)
   **disabled the 3D zombie path** — `drawZombie` no longer calls `Models3D.drawZombie` (removed the early
   return), and the `zombie:*` entries were dropped from the 3D layer's `FALLBACK_FILES` + loader map so the
