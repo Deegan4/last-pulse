@@ -11,6 +11,18 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.13.0** — **Gun-sound upgrade**: new `fnoise(d,v,type,freq,q,slide)` primitive (biquad-filtered
+  noise burst — highpass "crack", bandpass "snap", lowpass "thump", freq can slide) sits beside `noise`.
+  The `sfx('shoot',…)` branch now receives the **weapon object** (call sites `fire()` pass `w`, not
+  `w.mode`) so sounds are per-gun: `sniper` = highpass crack + sawtooth body + low tail + a delayed echo
+  (`setTimeout`), `shotgun` = down-sweeping lowpass blast + crack, `launcher` = low sawtooth WHUMP +
+  bandpass whoosh, **Magnum** (`nm==='Magnum'`) = heavy revolver boom, **Crossbow**
+  (`nm==='Crossbow'`, shares `mode:'sniper'`) = soft "silent" bolt thwip (no crack), `auto` = tight
+  short-tail mechanical, `semi` = snappy crack + body. Each shot gets a `±5%` pitch jitter (`j`) so full-auto isn't
+  a robotic click-loop. `flame` reworked to bandpass hiss + low roar; `boom` (rocket airburst) upgraded
+  with a crack transient + lowpass debris + sub. `sfx` stays backward-compatible with a bare mode string
+  (`typeof mode==='object'` guard). Verified: `node scripts/validate.mjs` + `--shoot` driver run (no new
+  page errors; WebAudio actually resumes under Playwright's trusted click gestures).
 - **v2.12.0** — **Weapon-select UI upgrade**: `buildWeaponGrid` renders a tier-tinted **Power** bar —
   `statBar('pow','Power','#'+rank, dps/maxDps)` — right under the DPS headline so guns rank at a glance.
   Bar frac is `dps/maxDps` (vs the strongest gun in the whole arsenal), but the **`#N` rank is computed
