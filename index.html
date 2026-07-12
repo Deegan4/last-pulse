@@ -78,14 +78,27 @@
   .wdelta.up{color:#0e2a10;background:linear-gradient(180deg,#a6ef62,#6fbf2c)}
   .wdelta.down{color:#2a0e10;background:linear-gradient(180deg,#ff9a8a,#e2452f)}
   .wdelta.same{color:#dfeccb;background:rgba(255,255,255,.12)}
-  /* rarity tier — colored top accent, icon-plate ring, and a chip */
-  .card.wcard{border-top:3px solid var(--tier,rgba(255,255,255,.2))}
+  /* rarity tier — colored top accent, icon-plate ring, rarity wash, and a chip */
+  .card.wcard{border-top:3px solid var(--tier,rgba(255,255,255,.2));
+    background-image:linear-gradient(180deg, var(--tw,transparent), transparent 55%)}
   .card.wcard.sel{box-shadow:0 0 0 2px var(--tier), 0 0 22px -4px var(--tier), var(--shadow-md,0 8px 22px rgba(0,0,0,.3))}
   .wcard .wicon{height:60px;border-radius:12px;margin:4px 0 4px;overflow:hidden;
     background:radial-gradient(circle at 50% 38%, rgba(255,255,255,.08), rgba(0,0,0,.28));
     box-shadow:inset 0 0 0 1.5px var(--tier), inset 0 0 16px rgba(0,0,0,.32)}
   .wtier{font-size:8.5px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:999px;
     text-transform:uppercase;color:#0e1408;background:var(--tier);white-space:nowrap}
+  /* epic gets a soft glow; legendary sweeps a sheen across the chip */
+  .wtier.epic{box-shadow:0 0 10px -1px var(--tier)}
+  .wtier.legendary{box-shadow:0 0 12px -1px var(--tier);position:relative;overflow:hidden}
+  .wtier.legendary::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.85) 50%,transparent 70%);
+    transform:translateX(-120%);animation:wshimmer 2.6s ease-in-out infinite}
+  @keyframes wshimmer{0%,55%{transform:translateX(-120%)}80%,100%{transform:translateX(120%)}}
+  /* normalized Power bar — DPS vs the strongest gun, tinted by rarity */
+  .row.powrow > span:last-child{color:var(--tier);font-weight:800}
+  .bar.pow{background:rgba(0,0,0,.34)}
+  .bar.pow > i{background:linear-gradient(90deg, color-mix(in srgb, var(--tier) 55%, #fff), var(--tier))}
+  @supports not (color: color-mix(in srgb, red, blue)){ .bar.pow > i{background:var(--tier)} }
   .bar.dmg > i{background:linear-gradient(90deg,#ffb06a,#e2452f)}
   .bar.fire > i{background:linear-gradient(90deg,#fff07a,#ffb02e)}
   .bar.mag > i{background:linear-gradient(90deg,#bfff5a,#5fb32e)}
@@ -756,8 +769,12 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.11.0';
+const GAME_VERSION = '2.12.0';
 const CHANGELOG = [
+  { v:'2.12.0', items:[
+    ['🔫','Weapon cards leveled up','each gun now shows a Power rank (#1 = strongest) and a rarity-tinted card'],
+    ['✨','Legendary sheen','Legendary weapons sweep a shimmer across their rarity chip'],
+  ]},
   { v:'2.11.0', items:[
     ['🏃','Heroes come alive','characters now bob, sway & step — legs and body animate as you run, not just the arm'],
     ['🏅','New achievements','Full Roster, Iron Wall (win as Sarge) & Blur (win as Lila)'],
@@ -3218,13 +3235,13 @@ function wstats(w){
 }
 // rarity tier by unlock level — drives the card's accent colour + chip
 function weaponTier(w){ const u=w.unlock||1;
-  if(u>=9) return {k:'legendary', t:'Legendary', c:'#ffcf3a'};
-  if(u>=6) return {k:'epic',      t:'Epic',      c:'#c08bff'};
-  if(u>=3) return {k:'rare',      t:'Rare',      c:'#5aa8ff'};
-  return    {k:'common',    t:'Common',    c:'#a7b39a'};
+  if(u>=9) return {k:'legendary', t:'Legendary', c:'#ffcf3a', w:'rgba(255,207,58,.16)'};
+  if(u>=6) return {k:'epic',      t:'Epic',      c:'#c08bff', w:'rgba(192,139,255,.15)'};
+  if(u>=3) return {k:'rare',      t:'Rare',      c:'#5aa8ff', w:'rgba(90,168,255,.13)'};
+  return    {k:'common',    t:'Common',    c:'#a7b39a', w:'rgba(167,179,154,.10)'};
 }
 function statBar(cls,label,val,frac){
-  return '<div class="row"><span>'+label+'</span><span>'+val+'</span></div>'+
+  return '<div class="row '+cls+'row"><span>'+label+'</span><span>'+val+'</span></div>'+
          '<div class="bar '+cls+'"><i style="width:'+clamp(frac*100,4,100)+'%"></i></div>';
 }
 function dpsDelta(dps, eqDps){
@@ -3234,15 +3251,19 @@ function dpsDelta(dps, eqDps){
 function buildWeaponGrid(){
   const g=el('weaponGrid'); g.innerHTML='';
   const eqDps = wstats(WEAPONS[meta.weapon]).dps;
+  const dpsAll = WEAPONS.map(w=>wstats(w).dps);
+  const maxDps = Math.max(...dpsAll);                      // strongest gun → full Power bar
+  const rankOf = d => dpsAll.filter(x=>x>d).length + 1;     // 1 = best DPS in the arsenal
   WEAPONS.forEach((w,i)=>{
     const unlocked=weaponUnlocked(w), sel=i===meta.weapon, s=wstats(w), tier=weaponTier(w);
     const card=document.createElement('div'); card.className='card wcard'+(sel?' sel':'')+(unlocked?'':' locked');
-    card.style.setProperty('--tier', tier.c);
+    card.style.setProperty('--tier', tier.c); card.style.setProperty('--tw', tier.w);
     const ic=document.createElement('div'); ic.className='wicon'; ic.appendChild(weaponIcon(w)); card.appendChild(ic);
     card.insertAdjacentHTML('beforeend',
-      '<div class="wtop"><span class="nm2">'+w.name+'</span><span class="wtier">'+tier.t+'</span></div>'+
+      '<div class="wtop"><span class="nm2">'+w.name+'</span><span class="wtier '+tier.k+'">'+tier.t+'</span></div>'+
       '<div class="wtop" style="margin-top:-2px"><span class="wmode '+w.mode+'">'+(WMODE[w.mode]||w.mode)+'</span></div>'+
-      '<div class="wdps"><b>'+s.dps+'</b><span>DPS</span>'+(unlocked?dpsDelta(s.dps,eqDps):'')+'</div>'+
+      '<div class="wdps"><b>'+s.dps+'</b><span>DPS</span>'+(unlocked&&!sel?dpsDelta(s.dps,eqDps):'')+'</div>'+
+      statBar('pow','Power', '#'+rankOf(s.dps), s.dps/maxDps)+
       statBar('dmg','Damage', s.perShot, Math.min(s.perShot,250)/250)+
       statBar('fire','Fire rate', s.rpm+'/m', Math.min(s.rpm,1200)/1200)+
       statBar('mag','Mag', w.mag, Math.min(w.mag/60,1))+
