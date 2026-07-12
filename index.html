@@ -819,8 +819,12 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.17.0';
+const GAME_VERSION = '2.18.0';
 const CHANGELOG = [
+  { v:'2.18.0', items:[
+    ['🤘','Metal soundtrack','a driving, distorted riff — galloping chugs, power chords & double-bass drums'],
+    ['🔊','Meatier guns','every gun got extra crunch & low-end punch — overdriven bodies and a deeper thump'],
+  ]},
   { v:'2.17.0', items:[
     ['🌌','Brand-new menus','a living aurora-mesh background — drifting neon light, a soft tech grid & glowing embers'],
   ]},
@@ -1705,50 +1709,60 @@ function setupTouch(){
 // ============================================================
 //  Audio
 // ============================================================
-let actx=null, master=null, musicTimer=null;
+let actx=null, master=null, musicTimer=null, musicBus=null;
+// static waveshaper curve — soft-clips oscillators into a gritty, overdriven tone (for metal + guns)
+const DIST_CURVE=(()=>{ const n=1024,c=new Float32Array(n),k=16; for(let i=0;i<n;i++){ const x=i/n*2-1; c[i]=(1+k)*x/(1+k*Math.abs(x)); } return c; })();
 function audioInit(){ if(actx) return;
   try{ actx=new (window.AudioContext||window.webkitAudioContext)(); master=actx.createGain();
-    master.gain.value=0.36*meta.sfxVol; master.connect(actx.destination); if(meta.music) startMusic(); }catch(e){ actx=null; } }
+    master.gain.value=0.36*meta.sfxVol; master.connect(actx.destination);
+    musicBus=actx.createGain(); musicBus.gain.value=0.5; musicBus.connect(master);   // music submix, under the SFX
+    if(meta.music) startMusic(); }catch(e){ actx=null; } }
 function applyVolume(){ if(master) master.gain.value = 0.36*meta.sfxVol; }
-function tone(f,d,type,v,slide){ if(!actx) return; const o=actx.createOscillator(),g=actx.createGain();
+function tone(f,d,type,v,slide,bus){ if(!actx) return; const o=actx.createOscillator(),g=actx.createGain();
   o.type=type||'square'; o.frequency.value=f; if(slide)o.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
-  g.gain.value=v||0.2; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d); o.connect(g);g.connect(master);o.start();o.stop(actx.currentTime+d); }
-function noise(d,v){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
+  g.gain.value=v||0.2; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d); o.connect(g);g.connect(bus||master);o.start();o.stop(actx.currentTime+d); }
+// distorted (overdriven) tone — oscillator → waveshaper → lowpass; the crunch behind metal chugs & meaty guns
+function dtone(f,d,type,v,slide,cutoff,bus){ if(!actx) return; const o=actx.createOscillator(),ws=actx.createWaveShaper(),lp=actx.createBiquadFilter(),g=actx.createGain();
+  o.type=type||'sawtooth'; o.frequency.value=f; if(slide)o.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
+  ws.curve=DIST_CURVE; ws.oversample='2x'; lp.type='lowpass'; lp.frequency.value=cutoff||2200;
+  g.gain.value=v||0.2; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d);
+  o.connect(ws); ws.connect(lp); lp.connect(g); g.connect(bus||master); o.start(); o.stop(actx.currentTime+d); }
+function noise(d,v,bus){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
   const a=buf.getChannelData(0); for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n); const s=actx.createBufferSource();s.buffer=buf;
-  const g=actx.createGain();g.gain.value=v||0.18;s.connect(g);g.connect(master);s.start(); }
+  const g=actx.createGain();g.gain.value=v||0.18;s.connect(g);g.connect(bus||master);s.start(); }
 // filtered noise burst — the workhorse for gun texture: a biquad shapes the white noise into a
 // bright "crack" (highpass), a mid "snap" (bandpass) or a low "thump" (lowpass); freq can slide.
-function fnoise(d,v,type,freq,q,slide){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
+function fnoise(d,v,type,freq,q,slide,bus){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
   const a=buf.getChannelData(0); for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);
   const s=actx.createBufferSource();s.buffer=buf;
   const f=actx.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.value=freq||1000; f.Q.value=q||1;
   if(slide) f.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
   const g=actx.createGain(); g.gain.value=v||0.18; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d);
-  s.connect(f); f.connect(g); g.connect(master); s.start(); }
+  s.connect(f); f.connect(g); g.connect(bus||master); s.start(); }
 let lastShot=0, lastTick=0;
 function sfx(kind,mode){ if(!actx) return;
   if(kind==='shoot'){ const t=performance.now(); if(t-lastShot<30) return; lastShot=t;
     // `mode` may be the weapon object (preferred — gives per-gun character) or a bare mode string
     const w = (mode&&typeof mode==='object') ? mode : null; const md = w?w.mode:mode, nm = w?w.name:'';
     const j = 1 + rand(-0.05,0.05);   // per-shot pitch jitter so full-auto isn't a robotic click-loop
-    if(nm==='Crossbow'){               // "silent" bolt — soft string thwip + airy whoosh, no crack
+    if(nm==='Crossbow'){               // "silent" bolt — soft string thwip + airy whoosh, no crack (kept clean)
       tone(320*j,0.05,'triangle',0.08,150); fnoise(0.09,0.06,'bandpass',1400,1.4,600); tone(180,0.06,'sine',0.05,90); }
-    else if(md==='sniper'){            // high-velocity CRACK + body + a distant tail echo
-      fnoise(0.05,0.22,'highpass',3200*j,0.5); tone(250*j,0.14,'sawtooth',0.17,60);
-      tone(82,0.24,'sine',0.14,36); fnoise(0.22,0.12,'lowpass',520);
-      setTimeout(()=>fnoise(0.16,0.06,'lowpass',680),95); }
-    else if(md==='shotgun'){           // fat gritty blast that sweeps down
-      fnoise(0.14,0.24,'lowpass',1400,0.6,300); fnoise(0.05,0.15,'highpass',2100*j,0.7);
-      tone(140*j,0.11,'square',0.18,46); tone(54,0.17,'sine',0.15,30); }
-    else if(md==='launcher'){          // heavy WHUMP launch (the airburst is the separate 'boom')
-      tone(120*j,0.15,'sawtooth',0.2,44); fnoise(0.17,0.17,'bandpass',700,0.7,300); tone(58,0.2,'sine',0.16,30); }
-    else if(nm==='Magnum'){            // big hand-cannon revolver boom (semi mode, but heavier)
-      fnoise(0.045,0.2,'bandpass',1500*j,0.8); tone(200*j,0.09,'square',0.2,54);
-      tone(70,0.17,'sine',0.16,34); fnoise(0.15,0.14,'lowpass',360); }
-    else if(md==='auto'){              // tight, fast, mechanical — short tail keeps rapid fire clean
-      tone(360*j,0.045,'square',0.13,120); fnoise(0.028,0.12,'highpass',2900*j,0.6); fnoise(0.06,0.07,'lowpass',520); }
-    else {                             // semi (Pistol/Rifle-ish) — snappy crack with a little body
-      tone(300*j,0.05,'square',0.15,90); fnoise(0.03,0.14,'highpass',2500*j,0.7); fnoise(0.09,0.09,'lowpass',420); } }
+    else if(md==='sniper'){            // high-velocity CRACK + overdriven body + a distant tail echo
+      fnoise(0.05,0.24,'highpass',3200*j,0.5); dtone(240*j,0.15,'sawtooth',0.2,58,2400); tone(250*j,0.1,'square',0.12,60);
+      tone(72,0.26,'sine',0.18,34); fnoise(0.24,0.13,'lowpass',520);
+      setTimeout(()=>fnoise(0.18,0.07,'lowpass',680),95); }
+    else if(md==='shotgun'){           // fat, gritty, overdriven blast that sweeps down + deep sub
+      fnoise(0.15,0.26,'lowpass',1400,0.6,300); fnoise(0.05,0.16,'highpass',2100*j,0.7);
+      dtone(96*j,0.13,'sawtooth',0.22,42,1200); tone(46,0.2,'sine',0.2,26); }
+    else if(md==='launcher'){          // heavy overdriven WHUMP launch (the airburst is the separate 'boom')
+      dtone(120*j,0.16,'sawtooth',0.24,42,1500); fnoise(0.18,0.18,'bandpass',700,0.7,300); tone(52,0.22,'sine',0.2,28); }
+    else if(nm==='Magnum'){            // big hand-cannon revolver boom — overdriven body + sub
+      fnoise(0.045,0.22,'bandpass',1500*j,0.8); dtone(150*j,0.11,'sawtooth',0.22,48,1900); tone(200*j,0.07,'square',0.14,54);
+      tone(60,0.19,'sine',0.2,30); fnoise(0.16,0.15,'lowpass',360); }
+    else if(md==='auto'){              // tight, fast, mechanical — a touch of crunch, short tail stays clean
+      dtone(300*j,0.05,'sawtooth',0.14,150,2200); fnoise(0.03,0.13,'highpass',2900*j,0.6); tone(64,0.05,'sine',0.1,44); fnoise(0.06,0.07,'lowpass',520); }
+    else {                             // semi (Pistol/Rifle-ish) — snappy crack + overdriven growl + sub thump
+      fnoise(0.03,0.15,'highpass',2500*j,0.7); dtone(230*j,0.06,'sawtooth',0.16,70,2000); tone(58,0.08,'sine',0.14,40); fnoise(0.09,0.09,'lowpass',420); } }
   else if(kind==='flame'){ const t=performance.now(); if(t-lastShot<45) return; lastShot=t;
     fnoise(0.13,0.09,'bandpass',900*(1+rand(-0.1,0.1)),0.6,480); tone(92,0.09,'sawtooth',0.05,72); }
   else if(kind==='tick'){ const t=performance.now(); if(t-lastTick<45) return; lastTick=t; tone(1500,0.03,'square',0.07,1200); }
@@ -1767,10 +1781,28 @@ function sfx(kind,mode){ if(!actx) return;
   else if(kind==='level'){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'triangle',0.16),i*90)); }
   else if(kind==='win'){ [523,659,784,1046,1318,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.26,'triangle',0.2),i*120)); }
 }
-const MELODY=[330,392,440,392,330,294,330,262];
-function startMusic(){ if(!actx||musicTimer) return; let i=0;
-  musicTimer=setInterval(()=>{ if(!meta.music) return; const f=MELODY[i%MELODY.length]; i++;
-    tone(f,0.32,'triangle',0.05); tone(f/2,0.32,'sine',0.04); }, 360); }
+// ===== Metal soundtrack — a driving E-Phrygian riff: palm-muted gallop chugs, power-chord accents,
+// double-bass kick, backbeat snare, hats, and a lead lick over the 2nd bar. All routed to musicBus. =====
+const _GAL =[1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1];             // gallop rhythm  [X . X X] per beat
+const _KICK=[1,0,1,1, 1,0,0,1, 1,0,1,1, 1,0,0,1];             // driving double-bass
+const _SNR =[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1];             // backbeat + a ghost pickup
+const _LEAD=[659.3,0,0,587.3, 0,0,523.3,0, 493.9,0,0,523.3, 0,0,587.3,0];  // E5 D5 C5 B4 … (2nd bar only)
+function mChug(f,v){ dtone(f,0.11,'sawtooth',v,f*0.985,1500,musicBus); dtone(f*2.01,0.08,'square',v*0.4,0,2400,musicBus); }
+function mPower(f,d,v){ dtone(f,d,'sawtooth',v,0,2600,musicBus); dtone(f*1.5,d,'sawtooth',v*0.8,0,2600,musicBus); dtone(f*2,d,'sawtooth',v*0.5,0,2600,musicBus); }
+function mKick(){ tone(115,0.13,'sine',0.55,42,musicBus); noise(0.025,0.14,musicBus); }
+function mSnare(){ fnoise(0.15,0.34,'highpass',1700,0.7,null,musicBus); fnoise(0.1,0.22,'bandpass',420,1,null,musicBus); tone(190,0.06,'triangle',0.12,130,musicBus); }
+function startMusic(){ if(!actx||musicTimer) return; let s=0;
+  musicTimer=setInterval(()=>{ if(!meta.music) return;
+    const b=(s/16|0)%2, i=s%16;                               // 2-bar loop: E … then C/D
+    const root = b===0 ? 82.41 : (i<8 ? 65.41 : 73.42);       // E2 / C2 / D2 chug roots
+    if(_GAL[i]) mChug(root, 0.26);                             // palm-muted gallop chug
+    if(i===0||i===8) mPower(root, 0.24, 0.2);                 // accented power chord on the beat
+    if(_KICK[i]) mKick();
+    if(_SNR[i]) mSnare();
+    fnoise(0.028, i%2?0.045:0.085, 'highpass', 9000, 0.6, null, musicBus);   // hats (accent on 8ths)
+    if(b===1 && _LEAD[i]) dtone(_LEAD[i], 0.16, 'sawtooth', 0.09, 0, 2900, musicBus);  // lead lick over bar 2
+    s=(s+1)%32;
+  }, 105); }                                                  // ~143 BPM sixteenths
 function stopMusic(){ if(musicTimer){ clearInterval(musicTimer); musicTimer=null; } }
 
 // ============================================================
