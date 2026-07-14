@@ -102,5 +102,32 @@ try {
   console.error('✗ name-drift check failed:', err.message); process.exit(1);
 }
 
+// Version ↔ changelog coherence gate — the "Game Updated!" popup is driven by GAME_VERSION and
+// CHANGELOG[0].v; if they drift, returning players see a version that doesn't match the notes (or
+// no popup at all). Assert they agree so a bump can't ship half-done.
+try {
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const gv  = (html.match(/GAME_VERSION\s*=\s*'([^']+)'/) || [])[1];
+  const clv = (html.match(/CHANGELOG\s*=\s*\[\s*\{\s*v:\s*'([^']+)'/) || [])[1];
+  if (!gv || !clv) { console.error('✗ version gate: could not read GAME_VERSION / CHANGELOG[0].v'); process.exit(1); }
+  if (gv !== clv) { console.error(`✗ version gate: GAME_VERSION='${gv}' ≠ CHANGELOG top v='${clv}' — bump both together`); process.exit(1); }
+  console.log(`✓ version consistent: GAME_VERSION == CHANGELOG top (${gv})`);
+} catch (err) { console.error('✗ version gate failed:', err.message); process.exit(1); }
+
+// Horde-spawn reachability gate — every enemy kind defined in ZTYPES with a Horde-only flag must be
+// reachable by a spawn path, or it's dead content (as spitter/bloater were: defined in v2.20.0 but
+// hordeKind never returned them). Assert each is referenced by hordeKind (mix) or a makeZombie call.
+try {
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const hkStart = html.indexOf('function hordeKind');
+  const hkBody = hkStart >= 0 ? html.slice(hkStart, html.indexOf('\nfunction ', hkStart + 1)) : '';
+  const inMix   = k => new RegExp(`['"]${k}['"]`).test(hkBody);
+  const spawned = k => new RegExp(`makeZombie\\([^)]*['"]${k}['"]`).test(html);
+  const gated = ['spitter', 'bloater', 'stalker', 'juggernaut'];
+  const dead = gated.filter(k => new RegExp(`\\b${k}\\s*:\\s*\\{`).test(html) && !inMix(k) && !spawned(k));
+  if (dead.length) { console.error('✗ horde-spawn gate: defined but never spawned →', dead.join(', ')); process.exit(1); }
+  console.log(`✓ horde-spawn reachable: ${gated.join(', ')} all have a spawn path`);
+} catch (err) { console.error('✗ horde-spawn gate failed:', err.message); process.exit(1); }
+
 console.log('Next: render headless to verify visually (~430x932) with the bundled Chromium at');
 console.log('  /opt/pw-browsers/chromium-1194/chrome-linux/chrome — see CLAUDE.md "Validation".');
