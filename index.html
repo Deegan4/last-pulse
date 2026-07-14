@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b120a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Last Pulse</title>
 <style>
   :root{
@@ -13,14 +16,14 @@
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
     font-family:"Trebuchet MS",system-ui,"Segoe UI",Roboto,sans-serif}
-  html,body{height:100%;overflow:hidden;background:#0a0d07;color:var(--txt);
+  html,body{height:100%;overflow:hidden;background:#0b120a;color:var(--txt);
     user-select:none;-webkit-user-select:none;touch-action:none}
   /* portrait stage, centered with letterbox on desktop. Size is computed in JS
      (resize()) for reliability — iOS Safari mis-evaluates min()/calc() viewport math
      and can collapse the stage to zero height. CSS here is just a full-screen fallback. */
-  #game{position:fixed;inset:0;margin:auto;overflow:hidden;background:#0a0d07;
+  #game{position:fixed;inset:0;margin:auto;overflow:hidden;background:#0b120a;
     width:100%;height:100%;
-    box-shadow:0 0 0 100vmax #0a0d07;}
+    box-shadow:0 0 0 100vmax #0b120a;}
   #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 
   .hidden{display:none!important}
@@ -702,6 +705,16 @@ const ctx = cv.getContext('2d');
 const mini = document.getElementById('minimap');
 const mctx = mini.getContext('2d');
 let W = 0, H = 0, DPR = 1;
+// measure env(safe-area-inset-top) in px — iPhones report the notch/status-bar height here.
+// The layout viewport starts BELOW it, so unless we paint into it the OS shows the bare page
+// background there (the "black bar at the top" on notched phones).
+let safeTopEl = null;
+function safeTopPx(){
+  if(!safeTopEl){ safeTopEl=document.createElement('div');
+    safeTopEl.style.cssText='position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
+    document.documentElement.appendChild(safeTopEl); }
+  return safeTopEl.getBoundingClientRect().height || 0;
+}
 function resize(){
   // Fill the entire viewport, computed in JS (iOS Safari mis-evaluates CSS min()/calc()
   // viewport sizing and can collapse the stage to zero height). The game fills the whole
@@ -711,6 +724,13 @@ function resize(){
   let gw = vw, gh = vh;
   if (!(gw > 0)) gw = 360;                   // fallbacks if anything went sideways
   if (!(gh > 0)) gh = 640;
+  // pull the stage up under the notch and add that height back, so the canvas + menu
+  // gradients paint the status-bar region instead of the page background showing as a bar.
+  // HUD / .screen content already offsets itself with env(safe-area-inset-top), so nothing
+  // playable ends up hidden behind the notch.
+  const st = safeTopPx();
+  stage.style.top = (-st) + 'px';
+  gh += st;
   stage.style.width = gw + 'px';
   stage.style.height = gh + 'px';
   DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -852,8 +872,11 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.21.0';
+const GAME_VERSION = '2.21.1';
 const CHANGELOG = [
+  { v:'2.21.1', items:[
+    ['📱','No more black bar','the game now paints all the way up under the iPhone notch / status bar'],
+  ]},
   { v:'2.21.0', items:[
     ['🧟','Bigger, meaner hordes','waves now throw more enemies and ramp harder — HP, damage & speed climb every wave'],
     ['🤢','New horrors in the mix','Spitters & Bloaters now actually spawn, plus fast Stalkers that swarm you'],
