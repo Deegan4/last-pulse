@@ -725,6 +725,39 @@ window.addEventListener('load', () => setTimeout(resize, 50));
 resize();
 setTimeout(resize, 200);                     // re-measure after iOS settles its viewport
 
+// ---- black-bar diagnostic (dormant unless the URL has ?safeprobe) --------------------------
+// Reproduces device-only "black bar at top" reports that don't show in desktop emulation.
+// On a real phone, load  ...index.html?safeprobe  and screenshot the overlay: it reports the
+// safe-area insets and how the stage/canvas rects compare to the visual viewport. A top gap
+// == safe-area-inset-top means the notch region isn't being painted; a stage shorter than the
+// viewport means the letterbox box-shadow is showing through.
+(function safeProbe(){
+  if(!/(?:\?|&)safeprobe\b/.test(location.search)) return;
+  const box=document.createElement('div');
+  box.style.cssText='position:fixed;left:6px;top:6px;z-index:99999;max-width:92vw;padding:8px 10px;'
+    +'font:600 11px/1.4 monospace;color:#bfff5a;background:rgba(0,0,0,.82);border:1px solid #6f9a25;'
+    +'border-radius:8px;white-space:pre;pointer-events:none';
+  const read=()=>{
+    const cs=getComputedStyle(document.documentElement);
+    const si=p=>cs.getPropertyValue('--sa-'+p)||'?';
+    const g=document.getElementById('game').getBoundingClientRect();
+    const c=document.getElementById('cv').getBoundingClientRect();
+    const vv=window.visualViewport;
+    box.textContent='SAFE-AREA PROBE\n'
+      +'inset T/R/B/L: '+si('t')+' '+si('r')+' '+si('b')+' '+si('l')+'\n'
+      +'inner: '+window.innerWidth+'x'+window.innerHeight+'\n'
+      +'visualVP: '+(vv?Math.round(vv.width)+'x'+Math.round(vv.height)+' @'+Math.round(vv.offsetTop):'n/a')+'\n'
+      +'#game rect: top='+g.top.toFixed(1)+' h='+g.height.toFixed(1)+'\n'
+      +'#cv   rect: top='+c.top.toFixed(1)+' h='+c.height.toFixed(1);
+  };
+  // expose the raw insets as CSS custom props so the probe can read them numerically
+  const st=document.createElement('style');
+  st.textContent=':root{--sa-t:env(safe-area-inset-top,0px);--sa-r:env(safe-area-inset-right,0px);'
+    +'--sa-b:env(safe-area-inset-bottom,0px);--sa-l:env(safe-area-inset-left,0px)}';
+  document.head.appendChild(st); document.body.appendChild(box);
+  read(); setInterval(read, 500);
+})();
+
 // ---------- Persistence ----------
 function safeGet(k, d){ try{ const v = localStorage.getItem(k); return v==null?d:v; }catch(e){ return d; } }
 function safeSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
@@ -819,8 +852,13 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.20.1';
+const GAME_VERSION = '2.21.0';
 const CHANGELOG = [
+  { v:'2.21.0', items:[
+    ['🧟','Bigger, meaner hordes','waves now throw more enemies and ramp harder — HP, damage & speed climb every wave'],
+    ['🤢','New horrors in the mix','Spitters & Bloaters now actually spawn, plus fast Stalkers that swarm you'],
+    ['☠️','Elite waves','every 5th wave sends armored Juggernaut mini-bosses'],
+  ]},
   { v:'2.20.1', items:[
     ['🪜','Ladders fixed','the watchtower climb now actually works — walk onto the south ladder to hop up onto the roof'],
   ]},
@@ -1165,6 +1203,9 @@ let matchStat = {dmgTaken:0, grappled:false};
 
 // FPS counter
 let fps = 60, fpsAcc = 0, fpsFrames = 0;
+// perf-guard: sample sim+draw cost on heavy frames (many scaled zombies + acid) and warn if the
+// budget blows past ~1 frame; helps catch a late-wave mobile slowdown before players report it.
+let perfAcc = 0, perfN = 0, perfPeakZ = 0, perfLog = 0;
 
 // ---------- Tunables ----------
 const R = 15;                 // collision radius (humans)
@@ -1239,9 +1280,11 @@ const ZTYPES = {
   normal:{ hp:60,  dmg:12, sp:[64,98],  r:15, skin:'#86c85a', torso:'#5a6b38', shade:'#4c7a32', eye:'#e6ff46', size:1.0,  w:0.58 },
   runner:{ hp:30,  dmg:8,  sp:[120,150],r:12, skin:'#a7c86a', torso:'#6b4a2e', shade:'#5c7a3e', eye:'#ff4630', size:0.82, w:0.30 },
   brute: { hp:130, dmg:20, sp:[44,62],  r:20, skin:'#5a9a42', torso:'#3c5226', shade:'#3d6e2a', eye:'#ffd23a', size:1.35, w:0.12 },
-  // Horde-only (w:0 → never in the default mix): a ranged acid spitter + a bloated exploder
-  spitter:{ hp:42, dmg:9,  sp:[46,66],  r:14, skin:'#9ed86a', torso:'#4a6b3a', shade:'#5c8a3e', eye:'#c6ff2e', size:0.95, w:0, ranged:true },
-  bloater:{ hp:95, dmg:16, sp:[36,52],  r:19, skin:'#8fb36a', torso:'#5a6b38', shade:'#4c7a32', eye:'#b6ff5a', size:1.28, w:0, boom:true },
+  // Horde-only (w:0 → never in the default random mix; spawned by hordeKind/boss waves):
+  spitter:{ hp:42, dmg:9,  sp:[46,66],  r:14, skin:'#9ed86a', torso:'#4a6b3a', shade:'#5c8a3e', eye:'#c6ff2e', size:0.95, w:0, ranged:true },  // ranged acid lobber
+  bloater:{ hp:95, dmg:16, sp:[36,52],  r:19, skin:'#8fb36a', torso:'#5a6b38', shade:'#4c7a32', eye:'#b6ff5a', size:1.28, w:0, boom:true },     // bursts into acid on death
+  stalker:{ hp:26, dmg:11, sp:[132,168],r:11, skin:'#b7d86a', torso:'#3a4a2e', shade:'#7a3a86', eye:'#ff2ea0', size:0.80, w:0 },                 // fast, fragile swarm rusher (mid-game)
+  juggernaut:{ hp:420,dmg:30,sp:[30,44], r:26, skin:'#4c6a3a', torso:'#28331f', shade:'#28401e', eye:'#ff7a1a', size:1.70, w:0, boss:true },      // armored mini-boss (milestone waves)
 };
 const TOWER_W=88, TOWER_H=72, TOWER_ELEV=46;   // 2-story watchtower: footprint + rooftop rise (climb to shoot down)
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
@@ -2140,17 +2183,26 @@ let ended=false;
 // hitting harder, and a meaner mix (more runners, then brutes) so late waves stay deadly
 // instead of plateauing once the spawn count maxes out.
 function hordeKind(wave){
-  if(wave<=3) return undefined;                            // early waves: the default mix
-  const brute = Math.min(0.12 + wave*0.012, 0.34);
-  const runner= Math.min(0.22 + wave*0.010, 0.44);
-  const r=Math.random();
-  return r<brute ? 'brute' : r<brute+runner ? 'runner' : 'normal';
+  // weighted spawn table — new threats unlock and ramp as waves climb, and the plain
+  // "normal" share bleeds off so late waves are dominated by specials.
+  const t=[
+    ['normal',  Math.max(0.10, 0.62 - wave*0.030)],
+    ['runner',  Math.min(0.20 + wave*0.010, 0.40)],
+  ];
+  if(wave>=3) t.push(['brute',   Math.min(0.10 + wave*0.012, 0.30)]);
+  if(wave>=4) t.push(['spitter', Math.min(0.05 + (wave-4)*0.010, 0.18)]);  // ranged pressure
+  if(wave>=5) t.push(['bloater', Math.min(0.05 + (wave-5)*0.008, 0.16)]);  // area denial on death
+  if(wave>=7) t.push(['stalker', Math.min(0.06 + (wave-7)*0.012, 0.24)]);  // swarm rush
+  let sum=0; for(const e of t) sum+=e[1];
+  let r=Math.random()*sum;
+  for(const e of t){ r-=e[1]; if(r<=0) return e[0]; }
+  return 'normal';
 }
 function hordeScale(z, wave){
   const w=Math.max(0, wave-1);
-  z.hp = z.maxhp = Math.round(z.maxhp*(1 + w*0.09));        // +9% HP per wave
-  z.dmg = Math.round(z.dmg*(1 + Math.min(w*0.04, 1.2)));   // up to +120% damage
-  z.speed *= 1 + Math.min(w*0.015, 0.45);                  // up to +45% speed
+  z.hp = z.maxhp = Math.round(z.maxhp*(1 + w*0.12));        // +12% HP per wave (unbounded — tanks the longer you last)
+  z.dmg = Math.round(z.dmg*(1 + Math.min(w*0.05, 1.8)));   // up to +180% damage
+  z.speed *= 1 + Math.min(w*0.018, 0.55);                  // up to +55% speed
 }
 // BR / Squad keep a light, steady zombie presence so the field doesn't go quiet
 // mid-match once the early roamers are cleared. Horde has its own wave system, so this
@@ -2172,11 +2224,17 @@ function hordeUpdate(dt){
   let aliveZ=0; for(const z of zombies) if(z.alive) aliveZ++;
   if(aliveZ<=3){
     for(let i=zombies.length-1;i>=0;i--) if(!zombies[i].alive) zombies.splice(i,1);  // prune
-    hordeWave++; toast('WAVE '+hordeWave); sfx('warn');
-    const n=Math.min(8+hordeWave*2, 32);
+    hordeWave++;
+    const boss = hordeWave>=5 && hordeWave%5===0;                 // every 5th wave: armored elites
+    toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave); sfx('warn');
+    const n=Math.min(7+hordeWave*2, 40);                          // steeper ramp, higher ceiling than the old 8+w*2/32
     for(let i=0;i<n;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
       while(dist2(s.x,s.y,player.x,player.y)<500*500 && tries<10);
       const z=makeZombie(s.x,s.y,hordeKind(hordeWave)); hordeScale(z,hordeWave); zombies.push(z); }
+    if(boss){ const nb=1+Math.floor(hordeWave/10);                // 1 juggernaut @w5, 2 @w10-15, 3 @w20…
+      for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
+        while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
+        const z=makeZombie(s.x,s.y,'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
   }
 }
 function enemiesLeft(){ let n=0; for(const h of humans) if(h.alive && h.team!==player.team) n++; return n; }
@@ -3338,6 +3396,7 @@ function refreshHud(){
 function loop(now){
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
+  const perfT0 = (screenState==='playing' && zombies.length>30) ? performance.now() : 0;   // heavy-frame sample
   if(screenState==='playing' && !paused){
     elapsed=(now-startTime)/1000;
     if(hitstop>0){ hitstop-=dt; dt*=0.15; }   // kill slow-mo: world crawls for a beat
@@ -3356,6 +3415,10 @@ function loop(now){
     refreshHud(); drawMini();
   } else { updateParticles(dt); }
   draw();
+  if(perfT0){ perfAcc+=performance.now()-perfT0; perfN++; perfPeakZ=Math.max(perfPeakZ,zombies.length);
+    if(now-perfLog>2000){ const ms=perfAcc/Math.max(1,perfN);
+      if(ms>20) console.warn('[perf] sim+draw '+ms.toFixed(1)+'ms · peak '+perfPeakZ+' zombies · wave '+hordeWave+' (budget 16.7ms)');
+      perfAcc=0; perfN=0; perfPeakZ=0; perfLog=now; } }
   requestAnimationFrame(loop);
 }
 
