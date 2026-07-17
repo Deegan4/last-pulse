@@ -300,8 +300,12 @@
   .gly.aim::before{left:50%;top:-8px;width:2.6px;height:54px;transform:translateX(-50%)}
   .gly.aim::after{top:50%;left:-8px;height:2.6px;width:54px;transform:translateY(-50%)}
   .gly.aim b{position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;background:#fff;transform:translate(-50%,-50%)}
-  #powers{position:absolute;right:16px;bottom:210px;display:flex;flex-direction:column;gap:14px;z-index:16;pointer-events:none}
-  .power{width:66px;height:66px;border-radius:50%;pointer-events:auto;cursor:pointer;border:3px solid rgba(255,255,255,.5);
+  /* Powers consolidated into a compact 2x2 corner cluster (scrap counter spans the top) so the
+     four ability buttons tuck into the bottom-right instead of running a tall strip up the map. */
+  #powers{position:absolute;right:14px;bottom:150px;display:grid;grid-template-columns:repeat(2,auto);
+    gap:11px;justify-items:center;align-content:end;z-index:16;pointer-events:none}
+  #powers #scrapHud{grid-column:1 / -1;justify-self:end}
+  .power{width:60px;height:60px;border-radius:50%;pointer-events:auto;cursor:pointer;border:3px solid rgba(255,255,255,.5);
     display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden;
     box-shadow:0 4px 10px rgba(0,0,0,.4);transition:box-shadow .18s,border-color .18s}
   .power.ready{border-color:rgba(255,255,255,.95);box-shadow:0 0 0 2px rgba(255,255,255,.3),0 0 15px rgba(255,255,255,.32),0 4px 10px rgba(0,0,0,.4)}
@@ -333,7 +337,9 @@
   /* Landscape / short viewports: the bottom-anchored vertical power stack rides up into the
      top-right minimap. Lay the powers out as a compact bottom-centre row and shrink the map. */
   @media (max-height:560px){
-    #powers{flex-direction:row;bottom:12px;top:auto;right:auto;left:50%;transform:translateX(-50%);gap:12px}
+    /* short/landscape: lay the four out as one bottom-centre row (scrap chip spans it) */
+    #powers{grid-template-columns:repeat(4,auto);bottom:12px;top:auto;right:auto;left:50%;transform:translateX(-50%);gap:12px}
+    #powers #scrapHud{justify-self:center}
     .power{width:54px;height:54px;font-size:23px}
     #mmwrap{transform:scale(.82);transform-origin:top right}
     #xpwrap{width:min(40%,180px)}
@@ -519,7 +525,7 @@
   #gearHud,#xpwrap{top:calc(10px + env(safe-area-inset-top,0px))}
   #mmwrap{top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px))}
   #xpbar{box-shadow:inset 0 2px 5px rgba(0,0,0,.45)}
-  #powers{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
+  #powers{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
   .power{border:2.5px solid rgba(255,255,255,.55);box-shadow:0 8px 20px rgba(0,0,0,.4)}
   #specBar{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);background:rgba(14,22,9,.7)}
   #toast{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);background:rgba(10,16,6,.72);
@@ -552,8 +558,9 @@
      original landscape query) had knocked the power buttons back to the portrait
      mid-screen spot, floating over the player. Re-assert the bottom-centre row here. */
   @media (max-height:560px){
-    #powers{flex-direction:row;left:50%;right:auto;top:auto;
+    #powers{grid-template-columns:repeat(4,auto);left:50%;right:auto;top:auto;
       bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);gap:14px}
+    #powers #scrapHud{justify-self:center}
     .power{width:54px;height:54px;font-size:23px}
   }
 </style>
@@ -922,8 +929,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.26.0';
+const GAME_VERSION = '2.27.0';
 const CHANGELOG = [
+  { v:'2.27.0', items:[
+    ['🎛️','Compact ability buttons','the four action buttons are now a tidy 2×2 cluster in the corner instead of a tall strip — more of the map stays in view'],
+  ]},
   { v:'2.26.0', items:[
     ['🧍','Bigger fighters','characters are drawn a little larger on the field — easier to read at a glance'],
     ['🏘️','Tidier village','buildings now spread out with more breathing room and keep well clear of the ponds'],
