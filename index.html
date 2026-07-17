@@ -1982,30 +1982,29 @@ function audioInit(){ if(actx) return;
   try{ actx=new (window.AudioContext||window.webkitAudioContext)(); master=actx.createGain();
     master.gain.value=0.36*meta.sfxVol; master.connect(actx.destination); }catch(e){ actx=null; } }
 function applyVolume(){ if(master) master.gain.value = 0.36*meta.sfxVol; }
-// Each voice takes an optional trailing `when` (an actx.currentTime-based start stamp). SFX callers
-// omit it → the note plays "now"; the music scheduler passes precise future stamps so the loop is
-// clock-accurate (events anchored via setValueAtTime at t0) instead of riding jittery setInterval firings.
-function tone(f,d,type,v,slide,bus,when){ if(!actx) return; const t0=when||actx.currentTime; const o=actx.createOscillator(),g=actx.createGain();
-  o.type=type||'square'; o.frequency.setValueAtTime(f,t0); if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+d);
-  g.gain.setValueAtTime(v||0.2,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+d); o.connect(g);g.connect(bus||master);o.start(t0);o.stop(t0+d); }
-// distorted (overdriven) tone — oscillator → waveshaper → lowpass; the crunch behind metal chugs & meaty guns
-function dtone(f,d,type,v,slide,cutoff,bus,when){ if(!actx) return; const t0=when||actx.currentTime; const o=actx.createOscillator(),ws=actx.createWaveShaper(),lp=actx.createBiquadFilter(),g=actx.createGain();
-  o.type=type||'sawtooth'; o.frequency.setValueAtTime(f,t0); if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+d);
+// Fire-and-forget SFX voices — all play "now" and route to `master`. (These carried optional
+// bus/when params for the old music scheduler; removed with the soundtrack in v2.24.0.)
+function tone(f,d,type,v,slide){ if(!actx) return; const o=actx.createOscillator(),g=actx.createGain();
+  o.type=type||'square'; o.frequency.value=f; if(slide)o.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
+  g.gain.value=v||0.2; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d); o.connect(g);g.connect(master);o.start();o.stop(actx.currentTime+d); }
+// distorted (overdriven) tone — oscillator → waveshaper → lowpass; the crunch behind meaty guns
+function dtone(f,d,type,v,slide,cutoff){ if(!actx) return; const o=actx.createOscillator(),ws=actx.createWaveShaper(),lp=actx.createBiquadFilter(),g=actx.createGain();
+  o.type=type||'sawtooth'; o.frequency.value=f; if(slide)o.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
   ws.curve=DIST_CURVE; ws.oversample='2x'; lp.type='lowpass'; lp.frequency.value=cutoff||2200;
-  g.gain.setValueAtTime(v||0.2,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
-  o.connect(ws); ws.connect(lp); lp.connect(g); g.connect(bus||master); o.start(t0); o.stop(t0+d); }
-function noise(d,v,bus,when){ if(!actx) return; const t0=when||actx.currentTime; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
+  g.gain.value=v||0.2; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d);
+  o.connect(ws); ws.connect(lp); lp.connect(g); g.connect(master); o.start(); o.stop(actx.currentTime+d); }
+function noise(d,v){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
   const a=buf.getChannelData(0); for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n); const s=actx.createBufferSource();s.buffer=buf;
-  const g=actx.createGain();g.gain.value=v||0.18;s.connect(g);g.connect(bus||master);s.start(t0); }
+  const g=actx.createGain();g.gain.value=v||0.18;s.connect(g);g.connect(master);s.start(); }
 // filtered noise burst — the workhorse for gun texture: a biquad shapes the white noise into a
 // bright "crack" (highpass), a mid "snap" (bandpass) or a low "thump" (lowpass); freq can slide.
-function fnoise(d,v,type,freq,q,slide,bus,when){ if(!actx) return; const t0=when||actx.currentTime; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
+function fnoise(d,v,type,freq,q,slide){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
   const a=buf.getChannelData(0); for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);
   const s=actx.createBufferSource();s.buffer=buf;
-  const f=actx.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.setValueAtTime(freq||1000,t0); f.Q.value=q||1;
-  if(slide) f.frequency.exponentialRampToValueAtTime(slide,t0+d);
-  const g=actx.createGain(); g.gain.setValueAtTime(v||0.18,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
-  s.connect(f); f.connect(g); g.connect(bus||master); s.start(t0); }
+  const f=actx.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.value=freq||1000; f.Q.value=q||1;
+  if(slide) f.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
+  const g=actx.createGain(); g.gain.value=v||0.18; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d);
+  s.connect(f); f.connect(g); g.connect(master); s.start(); }
 let lastShot=0, lastTick=0;
 function sfx(kind,mode){ if(!actx) return;
   if(kind==='shoot'){ const t=performance.now(); if(t-lastShot<30) return; lastShot=t;
