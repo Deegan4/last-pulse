@@ -608,7 +608,7 @@
       <button class="btn ghost achbtn" id="achBtn">🏅 Achievements <span id="achCount" class="achcount"></span></button>
       <button class="btn ghost achbtn" id="shopBtn">🛒 Shop</button>
     </div>
-    <button class="btn ghost donatebtn" id="donateBtn">💜 Support the game</button>
+    <div class="menurow"><button class="btn ghost achbtn donatebtn" id="donateBtn">💜 Support the game</button></div>
     <div class="footer" style="color:#cfe0b3;font-size:12px"><span id="verLink" class="verlink"></span></div>
   </div>
 
@@ -651,7 +651,6 @@
       <button class="opt" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
       <button class="opt" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
       <button class="opt" id="sName"><span class="oic">✏️</span>Change Name</button>
-      <button class="opt" id="sMusic"><span class="oic">🔊</span><span id="sMusicTxt">Music: On</span></button>
       <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
         <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
@@ -911,8 +910,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.23.0';
+const GAME_VERSION = '2.24.0';
 const CHANGELOG = [
+  { v:'2.24.0', items:[
+    ['🔇','Music removed','the looping soundtrack is gone — the game is now sound-effects only (guns, hits & UI still play)'],
+    ['💜','Tidier menu','the “Support the game” button now matches the Achievements / Shop pill styling'],
+  ]},
   { v:'2.23.0', items:[
     ['💜','Support the game','a new Donate button on the main menu — tip the creator via Stripe’s secure checkout to fuel more updates'],
   ]},
@@ -1078,7 +1081,6 @@ const meta = {
   name: safeGet('dd2_name','deegan'),
   avatar: parseInt(safeGet('dd2_avatar','0'),10) || 0,
   weapon: parseInt(safeGet('dd2_weapon','0'),10) || 0,
-  music: safeGet('dd2_music','1') === '1',
   // career stats
   matches: parseInt(safeGet('dd2_matches','0'),10) || 0,
   wins: parseInt(safeGet('dd2_wins','0'),10) || 0,
@@ -1117,7 +1119,7 @@ function levelReward(lv){ return 20 + lv*4; }
 let lastLevelCoins = 0, lastRankUp = null;   // set by grantXp, shown by levelToast
 function saveMeta(){
   safeSet('dd2_level',meta.level); safeSet('dd2_xp',meta.xp); safeSet('dd2_name',meta.name);
-  safeSet('dd2_avatar',meta.avatar); safeSet('dd2_weapon',meta.weapon); safeSet('dd2_music',meta.music?'1':'0');
+  safeSet('dd2_avatar',meta.avatar); safeSet('dd2_weapon',meta.weapon);
   safeSet('dd2_matches',meta.matches); safeSet('dd2_wins',meta.wins); safeSet('dd2_ckills',meta.ckills);
   safeSet('dd2_deaths',meta.deaths); safeSet('dd2_best',meta.best);
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);
@@ -1973,14 +1975,12 @@ function setupTouch(){
 // ============================================================
 //  Audio
 // ============================================================
-let actx=null, master=null, musicTimer=null, musicBus=null;
+let actx=null, master=null;
 // static waveshaper curve — soft-clips oscillators into a gritty, overdriven tone (for metal + guns)
 const DIST_CURVE=(()=>{ const n=1024,c=new Float32Array(n),k=16; for(let i=0;i<n;i++){ const x=i/n*2-1; c[i]=(1+k)*x/(1+k*Math.abs(x)); } return c; })();
 function audioInit(){ if(actx) return;
   try{ actx=new (window.AudioContext||window.webkitAudioContext)(); master=actx.createGain();
-    master.gain.value=0.36*meta.sfxVol; master.connect(actx.destination);
-    musicBus=actx.createGain(); musicBus.gain.value=0.5; musicBus.connect(master);   // music submix, under the SFX
-    if(meta.music) startMusic(); }catch(e){ actx=null; } }
+    master.gain.value=0.36*meta.sfxVol; master.connect(actx.destination); }catch(e){ actx=null; } }
 function applyVolume(){ if(master) master.gain.value = 0.36*meta.sfxVol; }
 // Each voice takes an optional trailing `when` (an actx.currentTime-based start stamp). SFX callers
 // omit it → the note plays "now"; the music scheduler passes precise future stamps so the loop is
@@ -2051,52 +2051,8 @@ function sfx(kind,mode){ if(!actx) return;
   else if(kind==='build'){ fnoise(0.06,0.16,'lowpass',900,1); tone(180,0.09,'square',0.12,120); tone(360,0.07,'square',0.08,300); }  // hammer thunk
   else if(kind==='turret'){ const t=performance.now(); if(t-lastShot<40) return; lastShot=t; fnoise(0.04,0.12,'highpass',2400,0.6); tone(520,0.05,'square',0.07,240); }  // light pop
 }
-// ===== Beatdown-metalcore soundtrack (Knocked Loose "Laugh Tracks" vibe) — a 4-bar loop: two bars of
-// downtuned, chromatic palm-muted chugs with dissonant tritone stabs + blast-ish drums, then a two-bar
-// half-time BREAKDOWN of crushing syncopated slams, double-bass, ring-out dissonance & a pinch squeal. =====
-const _GAL =[1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1];             // fast gallop chug rhythm
-const _BD  =[1,0,0,1, 1,0,1,0, 1,0,0,1, 1,0,1,1];             // breakdown slam (syncopated, half-time)
-// crushing palm-muted chug: dark low saw + a sub octave-down + a faint bite up top
-function mChug(f,v,d,w){ dtone(f,d||0.12,'sawtooth',v,f*0.99,880,musicBus,w); dtone(f*0.5,d||0.12,'square',v*0.55,0,560,musicBus,w); dtone(f*2.01,0.05,'square',v*0.22,0,1900,musicBus,w); }
-// dissonant stab: root + tritone + octave — the "wrong", ugly metalcore chord
-function mStab(f,d,v,w){ dtone(f,d,'sawtooth',v,0,1700,musicBus,w); dtone(f*1.414,d,'sawtooth',v*0.7,0,1700,musicBus,w); dtone(f*2,d,'sawtooth',v*0.5,0,1900,musicBus,w); }
-function mSqueal(f,w){ dtone(f,0.5,'sawtooth',0.13,f*1.04,4400,musicBus,w); }   // pinch-harmonic squeal, bends up
-function mKick(v,w){ tone(110,0.12,'sine',v||0.6,38,musicBus,w); noise(0.02,0.12,musicBus,w); }
-function mSnare(v,w){ fnoise(0.14,v||0.36,'highpass',1700,0.7,null,musicBus,w); fnoise(0.09,0.22,'bandpass',400,1,null,musicBus,w); tone(200,0.05,'triangle',0.12,140,musicBus,w); }
-// Emit one 16th-note step of the 4-bar loop at precise audio-clock time `t`.
-function musicStep(s, t){
-  const bar=(s/16|0), i=s%16, breakdown=bar>=2;             // 4-bar loop: riff, riff, BREAKDOWN, BREAKDOWN
-  if(!breakdown){                                            // ---- fast downtuned riff / verse ----
-    const root = bar===0 ? 55.0 : 51.91;                    // A1 → G#1 (chromatic dread)
-    if(_GAL[i]) mChug(root, 0.26, 0.12, t);
-    if(i===0) mStab(root*2, 0.16, 0.15, t);                 // dissonant tritone stab up an octave
-    if(i%2===0) mKick(0.5, t); if(i%4===2) mSnare(0.3, t);  // blast-ish d-beat
-    if(i===7||i===15) mSnare(0.34, t);
-    fnoise(0.026, i%2?0.04:0.075, 'highpass', 9000, 0.6, null, musicBus, t);   // hats
-  } else {                                                  // ---- half-time BREAKDOWN ----
-    const root = 49.0;                                      // G1 crush
-    if(_BD[i]){ mChug(root, 0.36, 0.17, t); mKick(0.64, t); }  // slam + kick together
-    if(i%2===0) mKick(0.42, t);                             // double-bass rumble under the slams
-    if(i===0||i===8) mSnare(0.42, t);                       // half-time snare on the down-slams
-    if(i===0) mStab(root, 0.5, 0.13, t);                    // ring-out dissonant chord
-    if(bar===3 && i===8) mSqueal(root*6, t);                // pinch-harmonic squeal in the last bar
-  }
-}
-// Lookahead scheduler ("two clocks"): a coarse 25ms wall-clock timer queues every step that falls
-// inside a ~150ms window ahead of actx.currentTime, stamped with an exact start time. The audio
-// clock — not setInterval jitter/throttling — decides when notes sound, so the loop stays tight.
-const STEP_DUR=0.105, LOOKAHEAD=0.15;   // seconds per 16th (~143 BPM) · schedule-ahead window
-let mStepN=0, mNextT=0;
-function startMusic(){ if(!actx||musicTimer) return;
-  mStepN=0; mNextT=actx.currentTime+0.08;
-  musicTimer=setInterval(()=>{
-    if(!meta.music){ mNextT=actx.currentTime+0.08; return; }   // paused-off: rebase so we never burst-catch-up
-    while(mNextT < actx.currentTime+LOOKAHEAD){
-      musicStep(mStepN, mNextT);
-      mNextT += STEP_DUR; mStepN=(mStepN+1)%64;
-    }
-  }, 25); }
-function stopMusic(){ if(musicTimer){ clearInterval(musicTimer); musicTimer=null; } }
+// Background music was removed in v2.24.0 — the game ships SFX-only. (The tone/dtone/noise/fnoise
+// voices above are still used by all the sound effects; only the looping soundtrack is gone.)
 
 // ============================================================
 //  AI
@@ -3984,7 +3940,7 @@ el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100
 el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings
-function openSettings(){ paused=true; el('settings').classList.remove('hidden'); el('sMusicTxt').textContent='Music: '+(meta.music?'On':'Off'); syncSliders(); }
+function openSettings(){ paused=true; el('settings').classList.remove('hidden'); syncSliders(); }
 function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; }
 el('gearHud').addEventListener('click',openSettings);
 el('avatarGear').addEventListener('click',openSettings);
@@ -3996,8 +3952,6 @@ el('sWeapon').addEventListener('click',()=>{ closeSettings(); buildWeaponGrid();
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); });
 el('sName').addEventListener('click',()=>{ closeSettings(); screenState='start'; show('startScreen');
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); el('nameInput').focus(); });
-el('sMusic').addEventListener('click',()=>{ meta.music=!meta.music; saveMeta();
-  el('sMusicTxt').textContent='Music: '+(meta.music?'On':'Off'); if(meta.music){ audioInit(); startMusic(); } else stopMusic(); });
 
 // mode selector
 function renderModeSel(){ document.querySelectorAll('.modecard').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode));

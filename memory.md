@@ -11,6 +11,18 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.24.0** — **Music removed + donate-button restyle** (user: music "still is not working. Take out the
+  music completely", plus a screenshot marking the Support button as visually inconsistent). **Music fully
+  removed** (SFX kept): deleted the whole soundtrack block (`_GAL`/`_BD`, `mChug`/`mStab`/`mSqueal`/`mKick`/
+  `mSnare`, `musicStep`, the lookahead scheduler, `startMusic`/`stopMusic`), the `musicTimer`/`musicBus` vars,
+  the `musicBus` submix + `startMusic()` call in `audioInit`, `meta.music` (init + `dd2_music` persistence), the
+  `#sMusic` settings toggle + its handler + the `openSettings` label line. `tone`/`dtone`/`noise`/`fnoise` (with
+  their now-unused trailing `bus`/`when` params) stay — every SFX still routes to `master`. **Restyle:** the
+  `#donateBtn` is now `class="btn ghost achbtn donatebtn"` wrapped in its own `.menurow`, so it inherits the
+  same glassy pill shape as the Achievements/Shop buttons (kept the subtle purple border/text for donate
+  identity, `width:min(86%,360px)` to align with PLAY/daily width). Verified headless: 0 music refs remain
+  (grep), live match --shoot has 0 page errors (SFX path intact), settings has no `#sMusic`, menu screenshot
+  shows the pill-consistent button. STRIPE_DONATE_URL (live link) unchanged.
 - **v2.23.0** — **Donate / "Support the game" button** (user: "add a donate option in the main menu with the
   stripe connector"). **No Stripe MCP connector exists in this session** (searched: stripe/payment/checkout/
   invoice/subscription → none; connectors present are Canva/dot/Jam/Semrush/Vercel/GitHub). Told the user, and
