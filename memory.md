@@ -23,6 +23,10 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   identity, `width:min(86%,360px)` to align with PLAY/daily width). Verified headless: 0 music refs remain
   (grep), live match --shoot has 0 page errors (SFX path intact), settings has no `#sMusic`, menu screenshot
   shows the pill-consistent button. STRIPE_DONATE_URL (live link) unchanged.
+  Follow-up cleanup (no version bump — SFX output identical): stripped the now-dead trailing `bus`/`when`
+  params from `tone`/`dtone`/`noise`/`fnoise` (verified no SFX caller passed them; max arg used is
+  slide/cutoff/q), so the voices route straight to `master` and play "now" as before. Verified: parses,
+  0 `bus||master`/`when||actx` refs remain, live --shoot match fires all voices with 0 page errors.
 - **v2.23.0** — **Donate / "Support the game" button** (user: "add a donate option in the main menu with the
   stripe connector"). **No Stripe MCP connector exists in this session** (searched: stripe/payment/checkout/
   invoice/subscription → none; connectors present are Canva/dot/Jam/Semrush/Vercel/GitHub). Told the user, and
