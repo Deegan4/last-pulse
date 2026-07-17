@@ -35,6 +35,16 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.26.0** — **Bigger fighters + tidier village.** (1) Hero sprites are drawn larger on the
+  field: introduced `HERO_H` (=58, was a hardcoded `DH=52` in `drawHeroSprite`); shadow/aura/
+  player-ring bumped to match, and `drawNameplate`'s vertical anchor is now `h.y+18-HERO_H` so
+  the name/HP plate tracks the sprite's head instead of a fixed `-34`. (2) Building placement in
+  `buildDecor` spreads out: inter-building gap `50→90`px and pond clearance `30→60`px (retry
+  budget `20→40` so all wanted buildings still place). Verified headless across lvl 1/20/40: full
+  building counts (9/14/16), **zero** pond overlaps, avg min inter-building gap up from as low as
+  50px to ~120–140px. Note: the earlier "buildings on ponds" report traced to v2.25.0's
+  verification screenshots (a temp `__hook` had *forced* buildings onto pond coords to photograph
+  the kinds side-by-side) — real generation never overlapped; the spacing bump is pure polish.
 - **v2.25.0** — **New building types.** Buildings now come in four flavours via a `b.kind` tag
   (`BKINDS` table near `ROOFS`) assigned in `buildDecor`: **house** (classic cottage), **shop**
   (teal roof, `SHOP` sign, striped scalloped awning + wide shopfront window), **barn** (red

@@ -922,8 +922,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.25.0';
+const GAME_VERSION = '2.26.0';
 const CHANGELOG = [
+  { v:'2.26.0', items:[
+    ['🧍','Bigger fighters','characters are drawn a little larger on the field — easier to read at a glance'],
+    ['🏘️','Tidier village','buildings now spread out with more breathing room and keep well clear of the ponds'],
+  ]},
   { v:'2.25.0', items:[
     ['🏘️','New building types','the world now mixes shops (striped awning + sign), red barns (X-brace doors + hayloft) and log cabins alongside the classic houses — all still enterable with loot inside'],
   ]},
@@ -1304,6 +1308,7 @@ let perfAcc = 0, perfN = 0, perfPeakZ = 0, perfLog = 0;
 
 // ---------- Tunables ----------
 const R = 15;                 // collision radius (humans)
+const HERO_H = 58;            // on-field hero sprite height (px) — nameplate offset tracks this
 let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
 const CAMPFIRE = { r:72, heal:6 };   // heal radius (px) and hp/sec near a fire
 
@@ -1440,10 +1445,11 @@ function buildDecor(){
                                : pick(['house','house','shop','cabin']);
       b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, kind, roof:pick(BKINDS[kind].roof)}; ok=true;
       if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
-      for(const o of obstacles) if(b.x<o.x+o.w+50 && b.x+b.w+50>o.x && b.y<o.y+o.h+50 && b.y+b.h+50>o.y) ok=false;
-      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+30, ph=wd.s*0.64+30;   // keep houses out of ponds
+      // GAP: wide, even spacing between buildings so they read as a tidy settlement, not a clump
+      for(const o of obstacles) if(b.x<o.x+o.w+90 && b.x+b.w+90>o.x && b.y<o.y+o.h+90 && b.y+b.h+90>o.y) ok=false;
+      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+60, ph=wd.s*0.64+60;   // keep houses well clear of ponds
         if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
-      tries++; } while(!ok && tries<20);
+      tries++; } while(!ok && tries<40);
     if(ok){ obstacles.push(b); decor.push(b); } }
   for(let i=0;i<26+Math.floor(xtra*0.7);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
   for(let i=0;i<34+xtra;i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
@@ -3379,17 +3385,17 @@ function drawHeroSprite(h, img){
                       : Math.sin(now*2.3+seed)*0.8;                 // idle breathing
   const sway = moving ? Math.sin(h.walk)*2.0 : 0;                   // weight shifts side to side
   const lean = clamp(h.vx/2400,-0.10,0.10);
-  const DH = 52, DW = DH*(img.naturalWidth/img.naturalHeight);   // display size, aspect-preserved
+  const DH = HERO_H, DW = DH*(img.naturalWidth/img.naturalHeight);   // display size, aspect-preserved
   ctx.save(); ctx.translate(h.x,h.y);
-  ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0,20,15,5,0,0,TAU); ctx.fill();  // shadow
+  ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0,20,16.5,5.5,0,0,TAU); ctx.fill();  // shadow
   // signature aura — a soft, gently-pulsing colored halo behind heroes that have one (a per-hero trait,
   // shown for the player and bots alike), tying the sprite's own glow into gameplay
   if(h.avatar && h.avatar.aura){ ctx.save();
     const gr=ctx.createRadialGradient(0,-4,2, 0,-4,28); gr.addColorStop(0,h.avatar.aura); gr.addColorStop(0.55,h.avatar.aura); gr.addColorStop(1,'transparent');
     ctx.globalAlpha=0.32+0.09*Math.sin(now*2.2+seed); ctx.fillStyle=gr;
-    ctx.beginPath(); ctx.ellipse(0,-4,21,27,0,0,TAU); ctx.fill(); ctx.restore(); }
+    ctx.beginPath(); ctx.ellipse(0,-4,23,30,0,0,TAU); ctx.fill(); ctx.restore(); }
   if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4;
-    ctx.beginPath(); ctx.ellipse(0,20,17,5.5,0,0,TAU); ctx.stroke(); }
+    ctx.beginPath(); ctx.ellipse(0,20,19,6,0,0,TAU); ctx.stroke(); }
   ctx.save(); ctx.translate(sway,bob);                              // torso + gun-arm share the bob/sway (stay attached)
   ctx.save(); ctx.rotate(lean); ctx.scale(flip,1);                  // body leans into the run & faces the aim
   if(h.hitFlash>0) ctx.filter='brightness(2.4) saturate(0.5)';       // hit flash (resets on restore)
@@ -3494,7 +3500,7 @@ function drawHair(L,hy,flip){
   }
 }
 function drawNameplate(h){
-  const x=h.x, y=h.y-34;
+  const x=h.x, y=h.y+18-HERO_H;   // sit just above the sprite's head (feet at +20, top at +20-HERO_H)
   ctx.textAlign='center'; ctx.font='800 11px Trebuchet MS, sans-serif';
   ctx.fillStyle = h.isPlayer?'#9bff6e' : (!h.isPlayer && h.team===player.team)?'#8fd6ff' : '#ffffff'; ctx.fillText(h.name, x, y-9);
   // rarity accent under the player's name — ties the weapon-select rarity color into gameplay
