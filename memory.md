@@ -11,6 +11,22 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.22.0** — **Builders / in-match build mode** (user asked "add a builders feature for buildings and
+  other things"; scope confirmed via AskUserQuestion: **in-match build mode** + **find resources to build**).
+  New currency **scrap** (`player.scrap`): zombies drop `scraps[]` bits on death (`die`, ~62% chance, more from
+  brutes/bosses) and **10 caches** scatter at match start (`spawnMatch`, `makeScrap`/`updateScraps`). HUD chip
+  `#scrapHud` 🔩. **Build mode**: 🔨 button / `B` cycles `player.buildSel` wall→spikes→turret→off (`cycleBuild`);
+  while selected the fire input is hijacked to drop the snapped ghost (`updatePlayer` → `placeBuild`, `PLACE_CD`
+  debounce, `CELL=46` grid, `canPlace` rejects overlaps/ponds/bodies). `BUILDS` table (cost/hp/w/h): **Wall**
+  🧱 (solid cover), **Spikes** 🔺 (walkable ground trap, `dps` DoT on a 0.35s tick, wears down), **Turret** 🔫
+  (auto-guns nearest zombie in `range`, `owner:b team:0` so it never hits player/allies, no XP/combo spam).
+  Solid pieces get `built:true` and are pushed into `obstacles` (so `wallRects`/`bulletInObstacle` treat them
+  as full solid, `insideBuilding` skips them); `removeBuild` splices both arrays. Zombies **chew** adjacent
+  solids (`updateZombie` melee-vs-build via `attackCd`). `updateBuilds` drives turret fire + spike ticks + death.
+  Draw: spikes in the flat ground pass; walls/turrets + scrap y-sorted with entities; green/red dashed
+  **ghost** (`drawBuildGhost`, turret shows range ring). New SFX `build`/`turret`. Verified headless (hooked
+  throwaway copy): placement/obstacle-membership/scrap-deduction/cycle-wrap all correct, turret spawns a
+  bullet at its target, 0 page errors; screenshot shows all three pieces + scrap chip + selected-wall button.
 - **v2.20.0** — **Horde: climbable watchtowers + 2 new enemies** (user asked for more Horde enemy variety +
   2-story buildings to climb & shoot from; design confirmed via AskUserQuestion: auto-climb, melee can't
   reach the roof, ranged Spitter can). **Towers**: `spawnMatch` horde branch drops **2** `{type:'tower',
