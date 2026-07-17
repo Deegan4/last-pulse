@@ -35,6 +35,15 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.27.0** — **Compact ability buttons.** The four in-match power buttons (🔨 build / ⚡ / 💣 /
+  🪝) were a tall vertical strip (`#powers` flex-column, `right:16px bottom:210px`) that ran up the
+  right edge into the mid-map view. Reworked `#powers` into a **2×2 CSS grid** (`repeat(2,auto)`,
+  `bottom:150px`, buttons `66→60px`) with `#scrapHud` spanning the top row (`grid-column:1/-1`).
+  Both `@media (max-height:560px)` landscape rules updated from `flex-direction:row` to
+  `grid-template-columns:repeat(4,auto)` (a single bottom-centre row) plus the safe-area `bottom`
+  offset (`210→150px`). Visibility is still class-only (`.hidden`), no inline `display`, so grid
+  survives show/hide. Verified in a live BR match: cluster tucks into the bottom-right, mid-right
+  map is clear.
 - **v2.26.0** — **Bigger fighters + tidier village.** (1) Hero sprites are drawn larger on the
   field: introduced `HERO_H` (=58, was a hardcoded `DH=52` in `drawHeroSprite`); shadow/aura/
   player-ring bumped to match, and `drawNameplate`'s vertical anchor is now `h.y+18-HERO_H` so
