@@ -35,6 +35,18 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.31.0** — **Extended Magazines shop upgrade** (user: "need a way to get extended magazines" → chose
+  permanent coin-bought upgrade via AskUserQuestion). New `meta.magLvl` (0..`MAG_MAX`=3, persisted `dd2_maglvl`),
+  each tier `+MAG_STEP`=20% capacity (up to +60%), costs `MAG_COST=[250,500,900]`. Core: `magCap(h)=round(
+  h.weapon.mag*(h.magMul||1))` — replaced every capacity ref (`startReload`, both reload-completion sites,
+  `applyPickup` ammo/weapon, ammo-pickup skip guard, supply-drop weapon, low-ammo reticle threshold, nameplate
+  ammo-pip count) so the boost flows through reload/ammo/HUD. Bots have no `magMul` → 1×; `spawnMatch` sets
+  `player.magMul=magMulMeta()` and `player.mag=magCap(player)` (starts full extended). Shop: `magInfo()` +
+  amber `.upgcard` "Extended Magazines" card rendered above the trails (data-upg), `buyMag()` deducts coins /
+  bumps `magLvl` / applies live if bought mid-session; grid click listener now handles `[data-upg]`. Weapon-
+  select stat card still shows base `w.mag` (weapon spec). Verified headless: buy 2 tiers → magLvl2, coins
+  −750, persisted; in-match Pistol 5→cap 7 at 1.4×, starts full, reload fills to 7; caps at Lv3=+60% (1.6×);
+  shop card renders; 0 page errors.
 - **Social share preview** (no version bump — `<head>` metadata + a preview asset, no in-game change; on the
   v2.30.0 branch). Added Open Graph + Twitter Card tags to `index.html <head>` so pasting the play link into
   Facebook / X / Discord / iMessage / LinkedIn renders a rich card. `og:image`/`twitter:image` →
