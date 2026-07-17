@@ -35,6 +35,17 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.30.0** — **Collapsible ability FAB.** (user: make the four buttons smaller + hide them in a collapsible
+  push button; "use react if you have to" — declined React: single-file no-build game, a CSS class-toggle is
+  the right fit and keeps zero deps.) Wrapped the 4 power buttons + `#scrapHud` in `#powerBtns` and added a
+  round `#powerFab` toggle. `#powers` is now a 52px anchor (bottom-right); `#powerBtns` is `position:absolute`
+  above the FAB (`bottom:62px`) so collapsing it doesn't move the FAB. `#powers.collapsed #powerBtns` →
+  `transform:scale(.12);opacity:0;pointer-events:none` (genie in/out via `transition`, `transform-origin:bottom
+  right`). FAB = green + up-chevron when collapsed, red + down-chevron (`rotate(180)`) when open. Buttons
+  shrank `60→48px` (landscape `54→46`, FAB 48). `togglePowers()` flips `.collapsed` (bound via the touch/mouse
+  `bind` helper); **defaults collapsed** (HTML `class="hidden collapsed"`), persists across matches in-session.
+  Keyboard Q/E/F/B still fire regardless of collapse. Verified headless (repo-root hooked copy, real sprites):
+  default collapsed=true, tap FAB → collapsed=false, screenshots of both states clean, 0 page errors.
 - **v2.29.0** — **Horde wave fix + harder ramp** (user: "hoard mode is way too easy and the levels are not
   advancing when all enemies are killed"). Root cause of the stuck counter: `hordeUpdate` advanced at
   `aliveZ<=3`, so ≥4 zombies stranded out of reach (behind geometry / while camping a watchtower) froze the
