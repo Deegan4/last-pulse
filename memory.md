@@ -35,6 +35,23 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.31.5** — **Bottom black bar fixed** (user screenshot from the installed Home Screen app, v2.31.4: dead
+  black strip ~51pt at the bottom; the RECURRING "black bar" family — `?safeprobe` exists from earlier rounds).
+  Root cause: `resize()` pinned the stage to `window.innerHeight` px, and iOS **standalone** cold-launch
+  reports innerHeight SHORT (by roughly the status-bar/home-indicator strip) and never fires a corrective
+  `resize` — the 200ms re-measure was too early, so the stage stayed short and the page's `#090d07` base
+  (painted by iOS beyond the layout viewport) showed as "black". Layered fix in `measureViewport()`:
+  (1) take max(innerHeight, clientHeight, visualViewport.height) — max not trust, since visualViewport
+  shrinks for the keyboard; (2) when `inStandalone()`, clamp up to `screen.width/height` (CSS px on iOS;
+  orientation-aware swap since screen dims don't rotate) because the webview genuinely covers the screen;
+  (3) new wake-ups: `visualViewport.resize` listener (iOS updates it without window resize), `pageshow`,
+  settle timers 600ms+1500ms; (4) invisible ink — html/body base `#090d07`→`#111d0c` to match the stage, so
+  any future mis-measure paints stage-green not black. NOTE `inStandalone()` (defined ~4014) hoists into
+  resize()'s boot call — same IIFE. Verified: spoofed the exact lie headless (standalone, innerHeight 801,
+  screen 852 → stage 852px, body rgb(17,29,12)); desktop regression exact-fit 1280×800; live BR match over
+  **http** (three.js loads; file:// CORS-blocks it — drive via `python3 -m http.server` when it matters);
+  0 errors. ALSO learned from the same screenshot: the installed app has SEPARATE localStorage from Safari —
+  the user's progress "reset" to Lv 1 in the app; would need export/import or a backend to bridge (parked).
 - **v2.31.4** — **New app icon + PWA manifest** (pairs with the a2hs work on the #69 branch). Designed a mark:
   a glowing lime **EKG "pulse" waveform inside a shooter reticle** on the game's green mesh gradient (on-brand:
   "Last Pulse" + twin-stick shooter). Rendered headless from a throwaway `_icon.html` canvas via `drawIcon(S)`

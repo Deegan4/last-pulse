@@ -46,7 +46,9 @@
   /* Page background mirrors the .screen menu mesh (same green blooms), so the iOS status-bar /
      notch strip — which on standalone / in-app contexts falls through to the page bg — shows the
      game's glowing green and blends into the menu, instead of a black band. */
-  html,body{height:100%;overflow:hidden;background:#090d07;color:var(--txt);
+  /* base color matches the #game stage (#111d0c): iOS paints this beyond the layout viewport
+     when it mis-measures, so a mismatch shows as a black bar at the bottom on real devices */
+  html,body{height:100%;overflow:hidden;background:#111d0c;color:var(--txt);
     background-image:
       radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.26), transparent 66%),
       radial-gradient(52% 48% at 90% 16%, rgba(50,196,180,.22), transparent 62%),
@@ -845,13 +847,32 @@ function safeTopPx(){
     document.documentElement.appendChild(safeTopEl); }
   return safeTopEl.getBoundingClientRect().height || 0;
 }
+function measureViewport(){
+  // Take the LARGEST honest answer from every viewport API — each one has an iOS mode where it
+  // under-reports (innerHeight lies short at standalone cold-launch and never fires resize;
+  // clientHeight lags rotation; visualViewport shrinks for the keyboard, hence max() not trust).
+  const vv = window.visualViewport;
+  let vw = Math.max(window.innerWidth||0,  document.documentElement.clientWidth||0,  vv?Math.round(vv.width):0)  || 360;
+  let vh = Math.max(window.innerHeight||0, document.documentElement.clientHeight||0, vv?Math.round(vv.height):0) || 640;
+  // Installed Home Screen app: the web view genuinely covers the entire screen, but WebKit can
+  // report innerHeight short by the home-indicator strip at launch with no corrective resize
+  // event — the classic "black bar at the bottom". screen.* is in CSS px on iOS, so clamp up
+  // to the true screen size (orientation-aware: screen.width/height don't swap on rotation).
+  if(inStandalone()){
+    const s1 = screen.width||0, s2 = screen.height||0;
+    const fullW = vw >= vh ? Math.max(s1,s2) : Math.min(s1,s2);
+    const fullH = vw >= vh ? Math.min(s1,s2) : Math.max(s1,s2);
+    if(fullW > vw) vw = fullW;
+    if(fullH > vh) vh = fullH;
+  }
+  return { vw, vh };
+}
 function resize(){
   // Fill the entire viewport, computed in JS (iOS Safari mis-evaluates CSS min()/calc()
   // viewport sizing and can collapse the stage to zero height). The game fills the whole
   // browser window on every device; the camera + HUD adapt to whatever W/H we get.
-  const vw = window.innerWidth || document.documentElement.clientWidth || 360;
-  const vh = window.innerHeight || document.documentElement.clientHeight || 640;
-  let gw = vw, gh = vh;
+  const m = measureViewport();
+  let gw = m.vw, gh = m.vh;
   if (!(gw > 0)) gw = 360;                   // fallbacks if anything went sideways
   if (!(gh > 0)) gh = 640;
   // The stage fills the viewport at inset:0. We deliberately do NOT pull it up under the notch
@@ -871,8 +892,14 @@ function resize(){
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 150));
 window.addEventListener('load', () => setTimeout(resize, 50));
+// iOS often updates visualViewport WITHOUT firing a window resize (toolbar collapse,
+// standalone launch settling) — listen to it directly.
+if(window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+window.addEventListener('pageshow', () => setTimeout(resize, 50));   // resumed from app switcher
 resize();
 setTimeout(resize, 200);                     // re-measure after iOS settles its viewport
+setTimeout(resize, 600);                     // standalone cold-launch settles later than 200ms
+setTimeout(resize, 1500);                    // last-chance sweep — cheap, and kills stragglers
 
 // ---- black-bar diagnostic (dormant unless the URL has ?safeprobe) --------------------------
 // Reproduces device-only "black bar at top" reports that don't show in desktop emulation.
@@ -1009,8 +1036,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.31.4';
+const GAME_VERSION = '2.31.5';
 const CHANGELOG = [
+  { v:'2.31.5', items:[
+    ['📏','Black bar at the bottom — fixed','the game now fills the whole screen on iPhones (especially the installed Home Screen app), reclaiming the dead strip above the home indicator'],
+  ]},
   { v:'2.31.4', items:[
     ['📱','New app icon','Last Pulse has a fresh icon — a glowing pulse in a shooter reticle — for your Home Screen, browser tab & installs'],
   ]},
