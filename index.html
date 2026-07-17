@@ -302,11 +302,24 @@
   .gly.aim b{position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;background:#fff;transform:translate(-50%,-50%)}
   /* Powers consolidated into a compact 2x2 corner cluster (scrap counter spans the top) so the
      four ability buttons tuck into the bottom-right instead of running a tall strip up the map. */
-  #powers{position:absolute;right:14px;bottom:150px;display:grid;grid-template-columns:repeat(2,auto);
-    gap:11px;justify-items:center;align-content:end;z-index:16;pointer-events:none}
-  #powers #scrapHud{grid-column:1 / -1;justify-self:end}
-  .power{width:60px;height:60px;border-radius:50%;pointer-events:auto;cursor:pointer;border:3px solid rgba(255,255,255,.5);
-    display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden;
+  /* The four abilities live in a collapsible cluster that genies into a single round FAB toggle,
+     so they take almost no screen space until you tap to open them. */
+  #powers{position:absolute;right:14px;bottom:150px;width:52px;z-index:16;pointer-events:none}
+  #powerBtns{position:absolute;right:0;bottom:62px;display:grid;grid-template-columns:repeat(2,auto);
+    gap:9px;justify-items:center;align-content:end;transform-origin:bottom right;
+    transition:transform .22s cubic-bezier(.2,1.5,.4,1),opacity .16s}
+  #powers.collapsed #powerBtns{transform:scale(.12);opacity:0;pointer-events:none}
+  #powerBtns #scrapHud{grid-column:1 / -1;justify-self:end}
+  /* the push button that opens / closes the cluster */
+  #powerFab{width:52px;height:52px;border-radius:50%;pointer-events:auto;cursor:pointer;position:absolute;right:0;bottom:0;
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:800;
+    border:3px solid rgba(255,255,255,.65);background:radial-gradient(circle at 38% 32%,#8fe6c6,#219a76);
+    box-shadow:0 4px 10px rgba(0,0,0,.4)}
+  #powerFab .fabChevron{transition:transform .22s;line-height:1;transform:rotate(0deg)}
+  #powers:not(.collapsed) #powerFab{background:radial-gradient(circle at 38% 32%,#ff9a9a,#c23a3a)}
+  #powers:not(.collapsed) #powerFab .fabChevron{transform:rotate(180deg)}
+  .power{width:48px;height:48px;border-radius:50%;pointer-events:auto;cursor:pointer;border:2.5px solid rgba(255,255,255,.5);
+    display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;overflow:hidden;
     box-shadow:0 4px 10px rgba(0,0,0,.4);transition:box-shadow .18s,border-color .18s}
   .power.ready{border-color:rgba(255,255,255,.95);box-shadow:0 0 0 2px rgba(255,255,255,.3),0 0 15px rgba(255,255,255,.32),0 4px 10px rgba(0,0,0,.4)}
   #boltBtn{background:radial-gradient(circle at 38% 32%,#9fd2ff,#39a0ff)}
@@ -334,13 +347,14 @@
   .power .key{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);z-index:3;font-size:8.5px;
     font-weight:800;color:rgba(255,255,255,.8);letter-spacing:.3px;pointer-events:none}
   body.touch .power .key{display:none}
-  /* Landscape / short viewports: the bottom-anchored vertical power stack rides up into the
-     top-right minimap. Lay the powers out as a compact bottom-centre row and shrink the map. */
+  /* Landscape / short viewports: keep the FAB in the bottom-right and open the cluster as a single
+     row above it, and shrink the minimap so nothing collides. */
   @media (max-height:560px){
-    /* short/landscape: lay the four out as one bottom-centre row (scrap chip spans it) */
-    #powers{grid-template-columns:repeat(4,auto);bottom:12px;top:auto;right:auto;left:50%;transform:translateX(-50%);gap:12px}
-    #powers #scrapHud{justify-self:center}
-    .power{width:54px;height:54px;font-size:23px}
+    #powers{bottom:12px}
+    #powerBtns{grid-template-columns:repeat(4,auto);bottom:56px;gap:10px}
+    #powerBtns #scrapHud{grid-column:1 / -1;justify-self:end}
+    .power{width:46px;height:46px;font-size:21px}
+    #powerFab{width:48px;height:48px;font-size:20px}
     #mmwrap{transform:scale(.82);transform-origin:top right}
     #xpwrap{width:min(40%,180px)}
   }
@@ -595,12 +609,15 @@
     <div class="stickbase" id="aimBase"><div class="gly aim"><b></b></div></div>
     <div class="stickknob" id="aimKnob"></div>
   </div>
-  <div id="powers" class="hidden">
-    <div id="scrapHud" title="Scrap — spend it to build (B)"><span class="sc">🔩</span><b id="scrapCount">0</b></div>
-    <div class="power" id="buildBtn"><div class="cool" id="buildCost"></div><span id="buildIcon">🔨</span><span class="key">B</span></div>
-    <div class="power" id="boltBtn"><div class="cool" id="boltCool"></div><span>⚡</span><span class="key">Q</span></div>
-    <div class="power" id="bombBtn"><div class="cool" id="bombCool"></div><span>💣</span><span class="key">E</span></div>
-    <div class="power" id="grapBtn"><div class="cool" id="grapCool"></div><span>🪝</span><span class="key">F</span></div>
+  <div id="powers" class="hidden collapsed">
+    <div id="powerBtns">
+      <div id="scrapHud" title="Scrap — spend it to build (B)"><span class="sc">🔩</span><b id="scrapCount">0</b></div>
+      <div class="power" id="buildBtn"><div class="cool" id="buildCost"></div><span id="buildIcon">🔨</span><span class="key">B</span></div>
+      <div class="power" id="boltBtn"><div class="cool" id="boltCool"></div><span>⚡</span><span class="key">Q</span></div>
+      <div class="power" id="bombBtn"><div class="cool" id="bombCool"></div><span>💣</span><span class="key">E</span></div>
+      <div class="power" id="grapBtn"><div class="cool" id="grapCool"></div><span>🪝</span><span class="key">F</span></div>
+    </div>
+    <div id="powerFab" role="button" aria-label="Abilities" title="Abilities (tap to open)"><span class="fabChevron">︿</span></div>
   </div>
 
   <!-- ===== Start / name screen ===== -->
@@ -929,8 +946,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.29.0';
+const GAME_VERSION = '2.30.0';
 const CHANGELOG = [
+  { v:'2.30.0', items:[
+    ['🎛️','Tidier action buttons','the four abilities now tuck into a single push-button in the corner — tap it to fan them out, tap again to hide; buttons are smaller too, so the field stays clear'],
+  ]},
   { v:'2.29.0', items:[
     ['🌊','Horde waves fixed & harder','a wave now advances only when you fully clear it (stranded stragglers get pulled back in so it never stalls), and each wave throws more, tougher zombies'],
   ]},
@@ -2027,7 +2047,9 @@ function setupTouch(){
   bind('bombBtn',()=>player&&throwBomb(player));
   bind('grapBtn',()=>player&&castGrapple(player));
   bind('buildBtn',()=>player&&cycleBuild(player));
+  bind('powerFab', togglePowers);   // open / close the ability cluster
 }
+function togglePowers(){ const p=el('powers'); if(p){ p.classList.toggle('collapsed'); sfx('tick'); } }
 
 // ============================================================
 //  Audio
