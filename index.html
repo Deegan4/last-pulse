@@ -398,6 +398,16 @@
     padding:7px 14px;margin-top:2px;transition:opacity .15s,background .15s}
   .rdonate:hover{opacity:1;background:rgba(150,90,230,.24)}
   #donate{z-index:50}   /* sit above the results modal when opened from its nudge */
+  /* Add to Home Screen (iOS) */
+  .a2hsBlurb{color:#eaf6d6;font-size:14px;line-height:1.5;text-align:center;margin:2px 4px 4px}
+  .a2hsSteps{list-style:none;display:flex;flex-direction:column;gap:10px;margin:4px 0;text-align:left}
+  .a2hsSteps li{display:flex;align-items:flex-start;gap:12px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 13px;color:#eef7e2;font-size:14px;line-height:1.45}
+  .a2hsSteps .a2n{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:#7bbf2e;color:#12280a;
+    font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .a2hsSteps .a2ic{display:inline-block;background:#0a66ff;color:#fff;border-radius:6px;padding:0 6px;font-weight:800}
+  .a2hsSteps .a2sub{color:#a9c48a;font-size:12px}
+  .a2hsNote{color:#a9c48a;font-size:12px;text-align:center;margin-top:6px}
   /* Close stays pinned to the bottom while the option list scrolls under it (tall / short screens) */
   .modal .close{flex:0 0 auto;position:sticky;bottom:0;background:#445c2a;color:#fff;font-weight:800;
     border:none;border-radius:12px;padding:11px 30px;cursor:pointer;font-size:15px;margin-top:4px;
@@ -675,6 +685,7 @@
       <button class="btn ghost achbtn" id="shopBtn">🛒 Shop</button>
     </div>
     <div class="menurow"><button class="btn ghost achbtn donatebtn" id="donateBtn">💜 Support the game</button></div>
+    <button class="btn ghost achbtn a2hsbtn hidden" id="a2hsBtn">📲 Add to Home Screen</button>
     <div class="footer" style="color:#cfe0b3;font-size:12px"><span id="verLink" class="verlink"></span></div>
   </div>
 
@@ -768,6 +779,20 @@
     <div class="donateSecure" id="donateSecure">🔒 You choose your amount securely on Stripe’s own page — the game never sees your card details.</div>
     <div id="donateNote" class="donateNote" hidden></div>
     <button class="close" id="donateClose">Close</button>
+  </div>
+
+  <!-- ===== Add to Home Screen (iOS instructions) ===== -->
+  <div id="a2hs" class="modal hidden">
+    <div class="wnburst">📲</div>
+    <h2 class="heading">Add to Home Screen</h2>
+    <div class="a2hsBlurb">Install Last Pulse like a real app — it opens <b>fullscreen</b> with no browser bars, and it’s one tap from your Home Screen.</div>
+    <ol class="a2hsSteps">
+      <li><span class="a2n">1</span><div>In <b>Safari</b>, tap the <b>Share</b> button — a square with an arrow pointing up <span class="a2ic">↑</span> — at the bottom of the screen <span class="a2sub">(top-right on iPad)</span>.</div></li>
+      <li><span class="a2n">2</span><div>Scroll down the list and tap <b>Add to Home Screen</b> <span class="a2ic">＋</span>.</div></li>
+      <li><span class="a2n">3</span><div>Tap <b>Add</b> — a <b>Last Pulse</b> icon appears on your Home Screen. Launch it from there for the best experience.</div></li>
+    </ol>
+    <div class="a2hsNote">Already in the app? You’re all set — this only shows in Safari.</div>
+    <button class="close" id="a2hsClose">Got it</button>
   </div>
 
   <!-- ===== Game-updated notification ===== -->
@@ -977,8 +1002,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.31.2';
+const GAME_VERSION = '2.31.3';
 const CHANGELOG = [
+  { v:'2.31.3', items:[
+    ['📲','Add to Home Screen','iPhone & iPad players get a quick guide to install Last Pulse to the Home Screen — it launches fullscreen like a real app'],
+  ]},
   { v:'2.31.2', items:[
     ['💜','Support the game','if you’re enjoying Last Pulse, you can now tip the dev right from the results screen — every bit helps keep the updates coming'],
   ]},
@@ -3942,6 +3970,14 @@ function openDonate(){
   el('donate').classList.remove('hidden');
 }
 function closeDonate(){ el('donate').classList.add('hidden'); }
+// ----- Add to Home Screen (iOS) -----
+// iPhone/iPad Safari can't trigger install programmatically, so we show step-by-step instructions.
+function isApple(){ return /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1); }   // iPadOS 13+ masquerades as Mac
+function inStandalone(){ return navigator.standalone===true || matchMedia('(display-mode: standalone)').matches; }
+function syncA2HS(){ const b=el('a2hsBtn'); if(b) b.classList.toggle('hidden', !(isApple() && !inStandalone())); }
+function openA2HS(){ el('a2hs').classList.remove('hidden'); }
+function closeA2HS(){ el('a2hs').classList.add('hidden'); }
 function donateGo(){
   if(!donateConfigured()) return;
   window.open(STRIPE_DONATE_URL, '_blank', 'noopener,noreferrer');   // Stripe-hosted, secure, new tab
@@ -4146,6 +4182,10 @@ el('shopGrid').addEventListener('click',e=>{ const u=e.target.closest('[data-upg
 el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
 el('donateGo').addEventListener('click',donateGo);
 el('donateClose').addEventListener('click',closeDonate);
+// add to home screen (iOS)
+el('a2hsBtn').addEventListener('click',openA2HS);
+el('a2hsClose').addEventListener('click',closeA2HS);
+syncA2HS();
 // what's-new
 el('wnClose').addEventListener('click',closeWhatsNew);
 el('verLink').textContent='v'+GAME_VERSION+' · what’s new';
