@@ -35,6 +35,16 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.25.0** — **New building types.** Buildings now come in four flavours via a `b.kind` tag
+  (`BKINDS` table near `ROOFS`) assigned in `buildDecor`: **house** (classic cottage), **shop**
+  (teal roof, `SHOP` sign, striped scalloped awning + wide shopfront window), **barn** (red
+  vertical planks, white trim band, round hayloft window, X-braced double doors flanking the real
+  door gap; wide footprints `w>BIG_HOUSE` bias to barn), and **cabin** (horizontal log-course
+  walls, green roof, single window, thin grey stovepipe + a night smoke puff). Purely a facade
+  change — `drawBuilding` branches on `kind`; the hollow-walls/door/`wallRects`/interior-loot/
+  zombie-pathing system is untouched, so all four are enterable with loot inside and degrade
+  identically. Verified headless: forced one of each kind side-by-side and screenshotted — all
+  render distinct with no page errors.
 - **v2.24.1** — **Black status-bar bar fixed (root cause found)** (user reported it twice; screenshot marked
   the top strip). Real culprit: `#game`'s `box-shadow:0 0 0 100vmax #0b120a` — a huge near-black letterbox that
   **overpaints every region the stage doesn't cover**, including the iOS status-bar / notch strip when the

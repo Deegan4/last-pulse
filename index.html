@@ -922,8 +922,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.24.1';
+const GAME_VERSION = '2.25.0';
 const CHANGELOG = [
+  { v:'2.25.0', items:[
+    ['🏘️','New building types','the world now mixes shops (striped awning + sign), red barns (X-brace doors + hayloft) and log cabins alongside the classic houses — all still enterable with loot inside'],
+  ]},
   { v:'2.24.1', items:[
     ['📱','No more black bar (for real)','the status-bar / notch strip now shows the game’s green instead of a black band on iPhone'],
   ]},
@@ -1408,6 +1411,15 @@ function farSpawn(minFromCenter){
   return {x:fx,y:fy};
 }
 const ROOFS=['#9a4d3a','#5a6a86','#6a8a5a','#7a6a4a','#8a5a7a'];
+// Building kinds — all share the hollow-walls/door/interior system (collision, loot, zombie
+// pathing are identical); only the facade art (drawBuilding) differs. `kind` picks the look;
+// `roof` is the kind's palette. Barns bias to wider footprints (see buildDecor).
+const BKINDS={
+  house: {roof:['#9a4d3a','#7a6a4a','#8a5a7a']},   // classic cottage (windows + chimney)
+  shop:  {roof:['#3f8f96','#c06a3a']},             // striped awning + hanging sign
+  barn:  {roof:['#4a3730','#5a4038']},             // red planks, X-braced big doors, hayloft
+  cabin: {roof:['#4a6a44','#6a5a3a']},             // log-course walls + stovepipe
+};
 const TALL_DECOR={campfire:1,fence:1,well:1,statue:1};   // level-milestone landmarks (y-sorted)
 function buildDecor(){
   decor.length=0; obstacles.length=0;
@@ -1422,7 +1434,11 @@ function buildDecor(){
   for(let i=0;i<nWater;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
   // buildings (cover) — kept apart and away from the very centre
   for(let i=0;i<nBuild;i++){ let b, ok=false, tries=0;
-    do{ const w=rand(110,210), h=rand(90,170); b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, roof:pick(ROOFS)}; ok=true;
+    do{ const w=rand(110,210), h=rand(90,170);
+      // pick a look: wide footprints lean barn; otherwise a shop/cabin/house mix
+      const kind = w>BIG_HOUSE ? (Math.random()<0.6?'barn':pick(['shop','house']))
+                               : pick(['house','house','shop','cabin']);
+      b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, kind, roof:pick(BKINDS[kind].roof)}; ok=true;
       if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
       for(const o of obstacles) if(b.x<o.x+o.w+50 && b.x+b.w+50>o.x && b.y<o.y+o.h+50 && b.y+b.h+50>o.y) ok=false;
       for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+30, ph=wd.s*0.64+30;   // keep houses out of ponds
@@ -2775,41 +2791,85 @@ function drawBuildingBase(d){
     for(const wr of wallRects(d)){ ctx.fillRect(wr[0],wr[1],wr[2],wr[3]); ctx.strokeRect(wr[0],wr[1],wr[2],wr[3]); }
   }
 }
-// facade layer — y-sorted at the bottom edge; fades away while the player is inside
+// facade layer — y-sorted at the bottom edge; fades away while the player is inside.
+// The four kinds (house/shop/barn/cabin) share the wall+roof scaffold; each swaps its
+// wall texture, windows, door dressing and rooftop trim for a distinct silhouette.
 function drawBuilding(d){
-  const x=d.x,y=d.y,w=d.w,h=d.h, lit=timeOfDay!=='day';   // windows glow at dusk/night
+  const x=d.x,y=d.y,w=d.w,h=d.h, lit=timeOfDay!=='day', cx=x+w/2;   // windows glow at dusk/night
+  const kind=d.kind||'house';
   if((d.fade===undefined?1:d.fade)<=0.02) return;
   ctx.lineJoin='round';
   ctx.save(); ctx.globalAlpha=(d.fade===undefined?1:d.fade);
-  // wall + soft top-light / right-shade
-  ctx.fillStyle='#ddd0b8'; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x,y,w,h,5); ctx.fill(); ctx.stroke();
+  // --- wall + soft top-light / right-shade (fill colour per kind) ---
+  const wallFill = kind==='barn'?'#b0503f' : kind==='cabin'?'#b78a52' : kind==='shop'?'#e6dcc4' : '#ddd0b8';
+  ctx.fillStyle=wallFill; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x,y,w,h,5); ctx.fill(); ctx.stroke();
   ctx.save(); roundRect(x,y,w,h,5); ctx.clip();
   ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x,y,w,h*0.3);
   ctx.fillStyle='rgba(0,0,0,.10)'; ctx.fillRect(x+w*0.64,y,w*0.36,h);
-  ctx.fillStyle='rgba(120,90,50,.16)'; ctx.fillRect(x,y+h*0.5,w,2.5);          // wall trim line
+  if(kind==='cabin'){                                                         // horizontal log courses
+    ctx.strokeStyle='rgba(80,54,26,.4)'; ctx.lineWidth=1.4;
+    for(let ly=y+11; ly<y+h-3; ly+=12){ ctx.beginPath(); ctx.moveTo(x,ly); ctx.lineTo(x+w,ly); ctx.stroke(); }
+  } else if(kind==='barn'){                                                   // vertical red planks + white trim
+    ctx.strokeStyle='rgba(70,26,20,.35)'; ctx.lineWidth=1.4;
+    for(let px=x+16; px<x+w-6; px+=18){ ctx.beginPath(); ctx.moveTo(px,y); ctx.lineTo(px,y+h); ctx.stroke(); }
+    ctx.fillStyle='rgba(240,235,225,.85)'; ctx.fillRect(x,y+h*0.5,w,3);
+  } else ctx.fillStyle='rgba(120,90,50,.16)', ctx.fillRect(x,y+h*0.5,w,2.5); // house/shop wall trim line
   ctx.restore();
-  // windows (lit at night)
-  ctx.strokeStyle=INK; ctx.lineWidth=2;
-  for(const wx of [x+w*0.24, x+w*0.76]){
-    if(lit){ ctx.shadowColor='#ffcf6a'; ctx.shadowBlur=10; ctx.fillStyle='#ffd98a'; }
-    else ctx.fillStyle='#9fd0e6';
-    roundRect(wx-13,y+h*0.34,26,21,3); ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
-    if(!lit){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(wx-11,y+h*0.34+2); ctx.lineTo(wx-3,y+h*0.34+2); ctx.lineTo(wx-11,y+h*0.34+10); ctx.closePath(); ctx.fill(); }  // glass glint
-    ctx.strokeStyle='rgba(20,40,60,.5)'; ctx.lineWidth=1.4; ctx.beginPath();
-    ctx.moveTo(wx,y+h*0.34); ctx.lineTo(wx,y+h*0.34+21); ctx.moveTo(wx-13,y+h*0.34+10.5); ctx.lineTo(wx+13,y+h*0.34+10.5); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2; }
-  // door with panel + knob
-  ctx.fillStyle='#5a4632'; const dw=22,dh=28; roundRect(x+w/2-dw/2,y+h-dh,dw,dh,3); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1.2; roundRect(x+w/2-dw/2+3,y+h-dh+4,dw-6,dh-7,2); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2;
-  ctx.fillStyle='#caa24a'; ctx.beginPath(); ctx.arc(x+w/2+5,y+h-dh/2,1.8,0,TAU); ctx.fill();
-  // roof slab with shingle courses + ridge highlight
+  if(kind==='shop'){
+    // --- SHOP: low shopfront window + striped awning + hanging sign ---
+    ctx.strokeStyle=INK; ctx.lineWidth=2;
+    if(lit){ ctx.shadowColor='#ffcf6a'; ctx.shadowBlur=10; ctx.fillStyle='#ffe6a0'; } else ctx.fillStyle='#bfe3ef';
+    roundRect(x+14,y+h*0.4,w-28,h*0.34,4); ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
+    ctx.strokeStyle='rgba(20,40,60,.5)'; ctx.lineWidth=1.4;
+    for(let mx=x+14+(w-28)/4; mx<x+w-14; mx+=(w-28)/4){ ctx.beginPath(); ctx.moveTo(mx,y+h*0.4); ctx.lineTo(mx,y+h*0.4+h*0.34); ctx.stroke(); }
+    // striped awning band over the shopfront
+    const ay=y+h*0.4-11; ctx.strokeStyle=INK; ctx.lineWidth=2;
+    for(let i=0;i<Math.ceil((w-20)/16);i++){ ctx.fillStyle=i%2?'#e8524f':'#f6f1ea';
+      roundRect(x+10+i*16, ay, Math.min(16,x+w-10-(x+10+i*16)), 11, 2); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle='#f6f1ea'; for(let i=0;i<Math.ceil((w-20)/16);i++){ ctx.beginPath();  // scalloped hem
+      ctx.moveTo(x+10+i*16,ay+11); ctx.lineTo(x+10+i*16+8,ay+16); ctx.lineTo(x+10+i*16+16,ay+11); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    // hanging sign near the top corner
+    ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle='#caa24a';
+    roundRect(x+w*0.5-16,y+10,32,13,3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#6a4a24'; ctx.font='700 9px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('SHOP', cx, y+17);
+  } else if(kind==='barn'){
+    // --- BARN: round hayloft window up high + big X-braced double doors flanking the gap ---
+    ctx.strokeStyle=INK; ctx.lineWidth=2;
+    if(lit){ ctx.shadowColor='#ffcf6a'; ctx.shadowBlur=9; ctx.fillStyle='#ffd98a'; } else ctx.fillStyle='#7a4230';
+    ctx.beginPath(); ctx.arc(cx,y+h*0.26,11,0,TAU); ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
+    ctx.strokeStyle='rgba(30,10,6,.5)'; ctx.lineWidth=1.4; ctx.beginPath();
+    ctx.moveTo(cx-11,y+h*0.26); ctx.lineTo(cx+11,y+h*0.26); ctx.moveTo(cx,y+h*0.26-11); ctx.lineTo(cx,y+h*0.26+11); ctx.stroke();
+    const dw2=26,dh2=40, dy=y+h-dh2;                                          // two doors either side of the real gap
+    for(const dx of [cx-DOOR_HALF-dw2, cx+DOOR_HALF]){
+      ctx.fillStyle='#8f3a2c'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(dx,dy,dw2,dh2,2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='rgba(240,235,225,.7)'; ctx.lineWidth=2;                // white X-brace
+      ctx.beginPath(); ctx.moveTo(dx+2,dy+2); ctx.lineTo(dx+dw2-2,dy+dh2-2); ctx.moveTo(dx+dw2-2,dy+2); ctx.lineTo(dx+2,dy+dh2-2); ctx.stroke(); }
+  } else {
+    // --- HOUSE / CABIN: two (or one for cabin) glass windows + a plank door ---
+    ctx.strokeStyle=INK; ctx.lineWidth=2;
+    const wins = kind==='cabin' ? [cx] : [x+w*0.24, x+w*0.76];
+    for(const wx of wins){
+      if(lit){ ctx.shadowColor='#ffcf6a'; ctx.shadowBlur=10; ctx.fillStyle='#ffd98a'; } else ctx.fillStyle='#9fd0e6';
+      roundRect(wx-13,y+h*0.34,26,21,3); ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
+      if(!lit){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(wx-11,y+h*0.34+2); ctx.lineTo(wx-3,y+h*0.34+2); ctx.lineTo(wx-11,y+h*0.34+10); ctx.closePath(); ctx.fill(); }  // glass glint
+      ctx.strokeStyle='rgba(20,40,60,.5)'; ctx.lineWidth=1.4; ctx.beginPath();
+      ctx.moveTo(wx,y+h*0.34); ctx.lineTo(wx,y+h*0.34+21); ctx.moveTo(wx-13,y+h*0.34+10.5); ctx.lineTo(wx+13,y+h*0.34+10.5); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2; }
+    ctx.fillStyle='#5a4632'; const dw=22,dh=28; roundRect(cx-dw/2,y+h-dh,dw,dh,3); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1.2; roundRect(cx-dw/2+3,y+h-dh+4,dw-6,dh-7,2); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2;
+    ctx.fillStyle='#caa24a'; ctx.beginPath(); ctx.arc(cx+5,y+h-dh/2,1.8,0,TAU); ctx.fill();
+  }
+  // --- roof slab with shingle courses + ridge highlight (shared) ---
   ctx.fillStyle=d.roof; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x-6,y-16,w+12,26,6); ctx.fill(); ctx.stroke();
   ctx.save(); roundRect(x-6,y-16,w+12,26,6); ctx.clip();
   ctx.strokeStyle='rgba(0,0,0,.16)'; ctx.lineWidth=1.4;
   for(let ry=y-8; ry<y+10; ry+=6){ ctx.beginPath(); ctx.moveTo(x-6,ry); ctx.lineTo(x+w+6,ry); ctx.stroke(); }
   ctx.restore();
   ctx.fillStyle='rgba(255,255,255,.14)'; ctx.fillRect(x-2,y-13,w+4,5);
-  // chimney
-  ctx.fillStyle='#8a5a4a'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(x+w*0.72,y-26,12,14,2); ctx.fill(); ctx.stroke();
+  // rooftop trim per kind: cabin gets a thin stovepipe, shops skip the chimney, others a brick chimney
+  if(kind==='cabin'){ ctx.fillStyle='#4a4a4e'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(x+w*0.72,y-30,7,18,2); ctx.fill(); ctx.stroke();
+    if(lit){ ctx.fillStyle='rgba(200,200,210,.4)'; ctx.beginPath(); ctx.arc(x+w*0.72+3.5,y-34,5,0,TAU); ctx.fill(); } }   // smoke puff at night
+  else if(kind!=='shop'){ ctx.fillStyle='#8a5a4a'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(x+w*0.72,y-26,12,14,2); ctx.fill(); ctx.stroke(); }
   ctx.restore();
 }
 // 2-story stone watchtower (Horde): a tall front wall rising to a walkable rooftop with battlements,
