@@ -392,6 +392,12 @@
   .modal .opt:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
   .modal .opt .oic{font-size:20px;width:24px;text-align:center;flex:0 0 auto}
   .modal .opt.danger{background:#7a1f24;color:#ffd9dd;box-shadow:0 4px 0 rgba(0,0,0,.35)}   /* quit to menu */
+  /* subtle, occasional donation nudge on the results screen */
+  .rdonate{font-size:13px;color:#e2c8ff;opacity:.9;cursor:pointer;text-align:center;
+    background:rgba(150,90,230,.14);border:1px solid rgba(190,140,255,.35);border-radius:999px;
+    padding:7px 14px;margin-top:2px;transition:opacity .15s,background .15s}
+  .rdonate:hover{opacity:1;background:rgba(150,90,230,.24)}
+  #donate{z-index:50}   /* sit above the results modal when opened from its nudge */
   /* Close stays pinned to the bottom while the option list scrolls under it (tall / short screens) */
   .modal .close{flex:0 0 auto;position:sticky;bottom:0;background:#445c2a;color:#fff;font-weight:800;
     border:none;border-radius:12px;padding:11px 30px;cursor:pointer;font-size:15px;margin-top:4px;
@@ -730,6 +736,7 @@
       <div class="xpbar"><i id="rXpFill"></i></div></div>
     <div id="rNext" class="rnext"></div>
     <div id="rCareer" class="career"></div>
+    <div id="rDonate" class="rdonate hidden">💜 Enjoying Last Pulse? <u>Support the game</u> — every tip helps.</div>
     <div class="btnrow">
       <button class="btn" id="againBtn">Play Again</button>
       <button class="btn ghost" id="menuBtn">Menu</button>
@@ -970,8 +977,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.31.1';
+const GAME_VERSION = '2.31.2';
 const CHANGELOG = [
+  { v:'2.31.2', items:[
+    ['💜','Support the game','if you’re enjoying Last Pulse, you can now tip the dev right from the results screen — every bit helps keep the updates coming'],
+  ]},
   { v:'2.31.1', items:[
     ['🏳️','Quit to main menu','you can now leave a match anytime — tap the ⚙ gear and hit “Quit to Main Menu”'],
   ]},
@@ -2605,6 +2615,8 @@ function showResults(win, place){
     el('rNext').style.display=''; }
   else el('rNext').style.display='none';
   el('rCareer').innerHTML='Career: <b>'+meta.wins+'</b> wins · <b>'+meta.matches+'</b> matches · <b>'+meta.ckills+'</b> kills · K/D <b>'+kd()+'</b>'+(meta.bestWave?(' · wave <b>'+meta.bestWave+'</b>'):'');
+  // subtle donation nudge — only when donations are set up, and only every 3rd match so it never nags
+  const dn=el('rDonate'); if(dn) dn.classList.toggle('hidden', !(donateConfigured() && meta.matches>=3 && meta.matches%3===0));
   // unlock banner: coins earned + any new achievement badges + daily-challenge completion
   let ub='<div class="ru coin">🪙 +'+coinsEarned+' <span>coins</span></div>';
   for(const a of newAch) ub+='<div class="ru '+a.tier+'">'+a.icon+' '+a.name+' <span>'+TIER_ICON[a.tier]+' unlocked</span></div>';
@@ -3832,8 +3844,15 @@ function loop(now){
 //  Screens & flow
 // ============================================================
 function show(id){ ['startScreen','modeScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
-  if(id==='startScreen'){ renderStats(); renderMenu(); }
+  if(id==='startScreen'){ renderStats(); renderMenu(); maybeDonateToast(); }
   if(id==='modeScreen'){ renderModeSel(); } }
+// one gentle, once-per-session menu nudge after a couple of matches (only if donations are set up)
+let donateToastShown=false;
+function maybeDonateToast(){
+  if(donateToastShown || !donateConfigured() || meta.matches<2) return;
+  donateToastShown=true;
+  setTimeout(()=>{ if(screenState==='start') toast('💜 Enjoying Last Pulse? Tap “Support the game” to tip the dev'); }, 1100);
+}
 const MODE_NAME={br:'BATTLE ROYALE',horde:'ENDLESS HORDE',squad:'SQUADS'};
 function renderMenu(){
   const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
@@ -4114,6 +4133,7 @@ el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState=
 el('dropInBtn').addEventListener('click', startMatch);
 el('againBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); startMatch(); });
 el('menuBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); screenState='start'; show('startScreen'); });
+el('rDonate').addEventListener('click', openDonate);   // results-screen donation nudge → donate modal
 // achievements
 el('achBtn').addEventListener('click',()=>{ audioInit(); openAchievements(); });
 el('achClose').addEventListener('click',closeAchievements);

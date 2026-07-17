@@ -35,6 +35,14 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.31.2** — **Subtle donation nudges** (user: add subtle reminders to donate). Two gentle, non-naggy
+  prompts, **both gated on `donateConfigured()`** (auto-hide if no Stripe link): (1) results-screen `#rDonate`
+  chip ("💜 Enjoying Last Pulse? Support the game — every tip helps") between career + buttons, shown only
+  every 3rd match (`meta.matches>=3 && %3===0`), click → `openDonate()`; (2) a **once-per-session** menu toast
+  after 2+ matches (`maybeDonateToast()` in `show('startScreen')`, `donateToastShown` guard). `#donate` bumped
+  to `z-index:50` so it opens above the results modal (z-40). Framed positively in CHANGELOG (a support option,
+  not a nag). Verified headless: chip hidden match 2 / visible match 3, donate opens over results (z 50>40),
+  click works; 0 page errors. Tunables: the `%3` cadence and the `matches>=2` toast gate.
 - **v2.31.1** — **Quit to Main Menu** (user: no way back to the menu mid-match). The in-match ⚙ gear opened
   Settings which had Change Avatar/Weapon/Name + sliders but **no quit** (the only "Menu" button was on the
   results screen). Added a red `.opt.danger` **"🏳️ Quit to Main Menu"** button in the settings stack, shown
