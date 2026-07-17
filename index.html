@@ -295,6 +295,14 @@
   #boltBtn{background:radial-gradient(circle at 38% 32%,#9fd2ff,#39a0ff)}
   #bombBtn{background:radial-gradient(circle at 38% 32%,#3a3f4a,#15181f)}
   #grapBtn{background:radial-gradient(circle at 38% 32%,#e8cf9a,#8a6a3a)}
+  /* Donate / support */
+  .donatebtn{width:min(86%,360px);border-color:rgba(200,140,255,.5);color:#f0dcff}
+  .donatebtn:hover{border-color:rgba(210,150,255,.9)}
+  .donateBlurb{width:min(88%,360px);text-align:center;color:#e8ecff;font-size:14px;line-height:1.45}
+  .donateCta{width:min(80%,320px);background:linear-gradient(135deg,#7a4dff,#c86bff);border:none}
+  .donateSecure{width:min(86%,360px);text-align:center;color:#b9c6a6;font-size:11.5px;line-height:1.4}
+  .donateNote{width:min(86%,360px);text-align:center;color:#ffd27a;font-size:12.5px;line-height:1.45;
+    background:rgba(60,44,10,.5);border:1px solid rgba(255,190,90,.4);border-radius:10px;padding:10px 12px}
   #buildBtn{background:radial-gradient(circle at 38% 32%,#d8b070,#7a4a1f)}
   /* build mode active → pulsing amber ring so you know taps place structures */
   #buildBtn.sel{border-color:#ffd27a;box-shadow:0 0 0 2px rgba(255,190,90,.5),0 0 18px rgba(255,180,60,.55),0 4px 10px rgba(0,0,0,.4)}
@@ -600,6 +608,7 @@
       <button class="btn ghost achbtn" id="achBtn">🏅 Achievements <span id="achCount" class="achcount"></span></button>
       <button class="btn ghost achbtn" id="shopBtn">🛒 Shop</button>
     </div>
+    <button class="btn ghost donatebtn" id="donateBtn">💜 Support the game</button>
     <div class="footer" style="color:#cfe0b3;font-size:12px"><span id="verLink" class="verlink"></span></div>
   </div>
 
@@ -681,6 +690,17 @@
     <div id="shopCoins" class="career"></div>
     <div class="achgrid" id="shopGrid"></div>
     <button class="close" id="shopClose">Close</button>
+  </div>
+
+  <!-- ===== Donate / support (opens the creator's Stripe Payment Link in a new tab) ===== -->
+  <div id="donate" class="modal hidden">
+    <div class="wnburst">💜</div>
+    <h2 class="heading">Support Last Pulse</h2>
+    <div class="donateBlurb">Last Pulse is free and made by one person. If you’re having fun, a small tip keeps new modes, weapons &amp; fixes coming. Thank you!</div>
+    <button class="btn blue donateCta" id="donateGo">❤ Donate via Stripe →</button>
+    <div class="donateSecure" id="donateSecure">🔒 You choose your amount securely on Stripe’s own page — the game never sees your card details.</div>
+    <div id="donateNote" class="donateNote" hidden></div>
+    <button class="close" id="donateClose">Close</button>
   </div>
 
   <!-- ===== Game-updated notification ===== -->
@@ -880,11 +900,22 @@ loadImg('hero-onyx',  'assets/img/hero-onyx.png');
 loadImg('hero-titan', 'assets/img/hero-titan.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
 
+// ===== Donations (Stripe) =====
+// PASTE YOUR STRIPE PAYMENT LINK HERE to turn on the "Support the game" button.
+// Create it in your Stripe Dashboard → Payment Links (set "Customers choose what to pay" for
+// tip-jar style), then drop the https://buy.stripe.com/... URL below. Backend-free: the button
+// just opens Stripe's own secure hosted page in a new tab — no keys or card data live in this file.
+// Leave it blank and the button politely explains donations aren't set up yet.
+const STRIPE_DONATE_URL = '';   // e.g. 'https://buy.stripe.com/00g1234abcd5678'
+
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.22.1';
+const GAME_VERSION = '2.23.0';
 const CHANGELOG = [
+  { v:'2.23.0', items:[
+    ['💜','Support the game','a new Donate button on the main menu — tip the creator via Stripe’s secure checkout to fuel more updates'],
+  ]},
   { v:'2.22.1', items:[
     ['🎵','Smoother soundtrack','the in-game music now rides the audio clock — no more stutter or timing drift, especially on mobile'],
   ]},
@@ -3725,6 +3756,23 @@ function shopTap(id){
 }
 function openShop(){ renderShop(); el('shop').classList.remove('hidden'); }
 function closeShop(){ el('shop').classList.add('hidden'); }
+// ----- donate / support (opens the owner's Stripe Payment Link) -----
+function donateConfigured(){ return /^https:\/\/(buy\.stripe\.com|[a-z0-9-]+\.stripe\.com)\//i.test(STRIPE_DONATE_URL); }
+function openDonate(){
+  const note=el('donateNote'), go=el('donateGo'), sec=el('donateSecure');
+  if(donateConfigured()){ note.hidden=true; go.style.display=''; sec.style.display=''; }
+  else {                                   // not set up yet — explain instead of opening a dead link
+    go.style.display='none'; sec.style.display='none'; note.hidden=false;
+    note.textContent='Donations aren’t set up yet. The game owner can enable this by pasting a Stripe Payment Link into STRIPE_DONATE_URL in index.html.';
+  }
+  el('donate').classList.remove('hidden');
+}
+function closeDonate(){ el('donate').classList.add('hidden'); }
+function donateGo(){
+  if(!donateConfigured()) return;
+  window.open(STRIPE_DONATE_URL, '_blank', 'noopener,noreferrer');   // Stripe-hosted, secure, new tab
+  sfx('pickup');
+}
 // ----- game-updated notification -----
 function openWhatsNew(){
   const c=CHANGELOG[0];
@@ -3918,6 +3966,10 @@ el('achClose').addEventListener('click',closeAchievements);
 el('shopBtn').addEventListener('click',()=>{ audioInit(); openShop(); });
 el('shopClose').addEventListener('click',closeShop);
 el('shopGrid').addEventListener('click',e=>{ const c=e.target.closest('[data-shop]'); if(c) shopTap(c.dataset.shop); });
+// donate / support
+el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
+el('donateGo').addEventListener('click',donateGo);
+el('donateClose').addEventListener('click',closeDonate);
 // what's-new
 el('wnClose').addEventListener('click',closeWhatsNew);
 el('verLink').textContent='v'+GAME_VERSION+' · what’s new';

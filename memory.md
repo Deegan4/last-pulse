@@ -11,6 +11,19 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.23.0** — **Donate / "Support the game" button** (user: "add a donate option in the main menu with the
+  stripe connector"). **No Stripe MCP connector exists in this session** (searched: stripe/payment/checkout/
+  invoice/subscription → none; connectors present are Canva/dot/Jam/Semrush/Vercel/GitHub). Told the user, and
+  noted a connector wouldn't run in the game anyway — `index.html` is static/backend-free, so donations use the
+  standard client-only path: a **Stripe Payment Link** (hosted `buy.stripe.com` URL) opened in a new tab. New
+  owner-config const **`STRIPE_DONATE_URL`** (near GAME_VERSION, blank by default) — paste a Payment Link to
+  enable. New `💜 Support the game` button under the menu's Achievements/Shop row → `openDonate()` shows the
+  `#donate` `.modal` (heart burst, blurb, purple `Donate via Stripe →` CTA, secure note). `donateConfigured()`
+  regex-gates on `https://…stripe.com/`; when unset the CTA+secure line hide and an amber note tells the owner
+  to set the const (never opens a dead link). `donateGo()` = `window.open(url,'_blank','noopener,noreferrer')`.
+  No keys/card data in the file — Stripe hosts checkout. Verified headless (real file + scratch copy with a test
+  URL): configured → CTA shown, opens the URL; unconfigured → note shown, no open; 0 page errors; screenshots
+  of both states clean. **NOTE:** owner must paste their real Payment Link into `STRIPE_DONATE_URL` to go live.
 - **v2.22.1** — **Music timing fix** (user: "fix the in game music" → symptom confirmed via AskUserQuestion:
   *stutters / timing off*). Root cause: the soundtrack was sequenced by a `setInterval(…,105)` firing one
   16th-note per tick — setInterval jitter/throttle (bad on mobile / when FPS dips) desynced the loop. Fix:
