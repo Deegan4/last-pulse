@@ -6,6 +6,13 @@
 <meta name="theme-color" content="#101c0b" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Last Pulse" />
+<meta name="mobile-web-app-capable" content="yes" />
+<!-- App icons + PWA manifest -->
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icon/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon/icon-192.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icon/apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />
 <title>Last Pulse</title>
 <meta name="description" content="A cartoon twin-stick zombie survival royale you can play free in your browser — build cover, blast the horde, and outlast the shrinking safe zone. No install, no sign-up." />
 <link rel="canonical" href="https://deegan4.github.io/last-pulse/" />
@@ -1002,8 +1009,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.31.3';
+const GAME_VERSION = '2.31.4';
 const CHANGELOG = [
+  { v:'2.31.4', items:[
+    ['📱','New app icon','Last Pulse has a fresh icon — a glowing pulse in a shooter reticle — for your Home Screen, browser tab & installs'],
+  ]},
   { v:'2.31.3', items:[
     ['📲','Add to Home Screen','iPhone & iPad players get a quick guide to install Last Pulse to the Home Screen — it launches fullscreen like a real app'],
   ]},
