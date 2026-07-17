@@ -35,6 +35,15 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.31.3** — **Add to Home Screen (iOS)**. iPhone/iPad Safari can't trigger PWA install programmatically, so
+  we show instructions. New menu button `#a2hsBtn` ("📲 Add to Home Screen", `.a2hsbtn`, hidden by default) +
+  `#a2hs` modal with a 3-step guide (Share → Add to Home Screen → Add), styled `.a2hsSteps` (green number
+  badges, blue `.a2ic` icon chips). `isApple()` = iPhone/iPad UA **or** `MacIntel`+`maxTouchPoints>1` (iPadOS 13+
+  masquerades as Mac); `inStandalone()` = `navigator.standalone` or `display-mode:standalone`. `syncA2HS()`
+  shows the button only when `isApple() && !inStandalone()` (called at init) — hidden on desktop/Android and
+  once installed. Step 1 describes the Share icon in words (no reliable emoji for it) rather than a glyph.
+  Verified headless via UA spoof: button visible+opens on iPhone Safari UA, hidden on desktop Chrome; 0 errors.
+  NOTE: this is post-#68-merge work → needs a NEW PR (branch was reset to main after the #68 rebase-merge).
 - **v2.31.2** — **Subtle donation nudges** (user: add subtle reminders to donate). Two gentle, non-naggy
   prompts, **both gated on `donateConfigured()`** (auto-hide if no Stripe link): (1) results-screen `#rDonate`
   chip ("💜 Enjoying Last Pulse? Support the game — every tip helps") between career + buttons, shown only
