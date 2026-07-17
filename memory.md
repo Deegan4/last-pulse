@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
-_Last updated: 2026-07-03. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v1.8.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+_Last updated: 2026-07-17. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
+v2.24.1). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -9,6 +9,30 @@ A single-file HTML5 canvas game — portrait, mobile-first, cartoon **twin-stick
 royale** — a from-scratch remake inspired by the StickyGames title _Don't Die_ (all art is
 canvas-drawn; no original sprites). Everything lives in [`index.html`](index.html): the game
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
+
+## Session handoff — 2026-07-17
+_Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below._
+
+- **Where things stand:** production is **v2.24.1**, everything below is merged to `main` (HEAD `fdc61f8`)
+  and live via Vercel. Working branch `claude/builders-feature-buildings-p0jpez` is synced to `main`.
+- **Shipped this session (all merged):** v2.22.0 **Builders** (in-match build mode + scrap) → v2.22.1 music
+  timing fix → v2.23.0 **Donate** button (Stripe Payment Link) → v2.24.0 **music removed** (SFX kept) + donate
+  restyle → SFX param cleanup → v2.24.1 **black status-bar bar fix** (the `#game` box-shadow letterbox recolor).
+- **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
+  `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
+- **Open / parked:**
+  1. **On-device confirm the black-bar fix** — device-only symptom; if the home-screen icon still shows black,
+     delete & re-add it (iOS caches the standalone config from first save).
+  2. **Stripe "After payment → Redirect"** to the production URL so donors return to the game (Stripe Dashboard
+     setting). **A Stripe MCP connector (`mcp__Stripe__*`) became available late in the session** — earlier it
+     wasn't; a future session can inspect/configure via `get_stripe_account_info` + `stripe_api_read/write`
+     (ToolSearch to load schemas) before touching the live Payment Link.
+  3. Optional seam tweak: if the green status-bar strip reads darker than the menu top, nudge `#111d0c`→`#16260f`.
+  4. Parked ideas: achievement hook for the builder (`matchStat.built` already tracked), donation amount tiers
+     (needs one fixed-price Payment Link each), file-based `<audio loop>` soundtrack if music is ever wanted back.
+- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v`; drive with the run-brawl-arena
+  driver (three.js CORS + suspended WebAudio headless are non-failures); never commit `window.__hook` test hooks
+  (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
 - **v2.24.1** — **Black status-bar bar fixed (root cause found)** (user reported it twice; screenshot marked
