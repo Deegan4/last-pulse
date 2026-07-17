@@ -391,6 +391,7 @@
     font-weight:800;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.25);display:flex;align-items:center;gap:12px;text-align:left}
   .modal .opt:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
   .modal .opt .oic{font-size:20px;width:24px;text-align:center;flex:0 0 auto}
+  .modal .opt.danger{background:#7a1f24;color:#ffd9dd;box-shadow:0 4px 0 rgba(0,0,0,.35)}   /* quit to menu */
   /* Close stays pinned to the bottom while the option list scrolls under it (tall / short screens) */
   .modal .close{flex:0 0 auto;position:sticky;bottom:0;background:#445c2a;color:#fff;font-weight:800;
     border:none;border-radius:12px;padding:11px 30px;cursor:pointer;font-size:15px;margin-top:4px;
@@ -714,6 +715,7 @@
         <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
         <input type="range" id="aimSens" min="30" max="200" step="10"></div>
+      <button class="opt danger hidden" id="sQuit"><span class="oic">🏳️</span>Quit to Main Menu</button>
     </div>
     <button class="close" id="sClose">Close</button>
   </div>
@@ -968,8 +970,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.31.0';
+const GAME_VERSION = '2.31.1';
 const CHANGELOG = [
+  { v:'2.31.1', items:[
+    ['🏳️','Quit to main menu','you can now leave a match anytime — tap the ⚙ gear and hit “Quit to Main Menu”'],
+  ]},
   { v:'2.31.0', items:[
     ['📦','Extended Magazines','a new Shop upgrade — spend coins to permanently widen every weapon’s magazine (up to +60%), so you reload less and shoot more'],
   ]},
@@ -4135,9 +4140,19 @@ el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100
 el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings
-function openSettings(){ paused=true; el('settings').classList.remove('hidden'); syncSliders(); }
+function openSettings(){ paused=true; el('settings').classList.remove('hidden');
+  el('sQuit').classList.toggle('hidden', screenState!=='playing');   // only offer "quit to menu" mid-match
+  syncSliders(); }
 function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; }
+// abandon the current match and return to the main menu (state is overwritten on the next Play)
+function quitToMenu(){
+  el('settings').classList.add('hidden'); el('results').classList.add('hidden'); el('specBar').classList.add('hidden');
+  paused=false; ended=true; spectating=false; specTarget=null;
+  el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden');
+  screenState='start'; show('startScreen');
+}
 el('gearHud').addEventListener('click',openSettings);
+el('sQuit').addEventListener('click',quitToMenu);
 el('avatarGear').addEventListener('click',openSettings);
 el('weaponGear').addEventListener('click',openSettings);
 el('sClose').addEventListener('click',closeSettings);

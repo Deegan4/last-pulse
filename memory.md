@@ -35,6 +35,14 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.31.1** — **Quit to Main Menu** (user: no way back to the menu mid-match). The in-match ⚙ gear opened
+  Settings which had Change Avatar/Weapon/Name + sliders but **no quit** (the only "Menu" button was on the
+  results screen). Added a red `.opt.danger` **"🏳️ Quit to Main Menu"** button in the settings stack, shown
+  only mid-match (`openSettings` toggles `#sQuit.hidden` on `screenState!=='playing'` so it's hidden when
+  Settings is opened from the avatar/weapon screens). `quitToMenu()` hides settings/results/specBar + HUD/ctrl/
+  powers, clears `paused`/`spectating`, sets `ended=true`, `screenState='start'`, `show('startScreen')`;
+  abandons the match (no stats recorded — state is overwritten on next Play). Verified headless: button visible
+  in-match / hidden on menu; after quit → screen 'start', HUD+powers hidden, start shown, paused false; 0 errors.
 - **v2.31.0** — **Extended Magazines shop upgrade** (user: "need a way to get extended magazines" → chose
   permanent coin-bought upgrade via AskUserQuestion). New `meta.magLvl` (0..`MAG_MAX`=3, persisted `dd2_maglvl`),
   each tier `+MAG_STEP`=20% capacity (up to +60%), costs `MAG_COST=[250,500,900]`. Core: `magCap(h)=round(
