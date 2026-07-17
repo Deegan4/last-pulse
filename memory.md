@@ -35,6 +35,17 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.28.0** — **Dynamic movement feel.** Reworked player movement + shared fighter animation so runs read
+  weighty and alive. New `MOVE={accel:0.30, friction:0.80, camLead:0.16}` tunable (near `GRACE`). `updatePlayer`:
+  velocity lerps toward target at `MOVE.accel` (was 0.25 — snappier start), coasts at `MOVE.friction` on release
+  (a little skid, was 0.78), and `h.walk` cadence now tracks real speed (`dt*(2.5+9*s01)`, `s01=|v|/speed`) so
+  legs pump faster the faster you go (grapple keeps its own `dt*10`). `drawHuman` (all humans): `spd01`
+  fraction-of-top-speed scales stride/bob (`1.8+3.2*spd01`) and lean strength (`clamp(vx/1700,±0.16)`, was
+  `/2400,±0.1`) + a speed-scaled run bounce; idle uses breath only. `draw()`: camera target leads by
+  `v*MOVE.camLead` so the view opens up in the direction you're heading. Verified headless (hooked copy): accel
+  ramps 71→196→235 px/s over frames 1/5/20 to top speed, `walk` advances at run, release skids 235→16 over 12
+  frames; 0 page errors. Levers: `MOVE.accel`/`friction`/`camLead`, `drawHuman` stride/lean coefficients.
+  **Device playtest pending** — feel is the real judge.
 - **v2.27.0** — **Compact ability buttons.** The four in-match power buttons (🔨 build / ⚡ / 💣 /
   🪝) were a tall vertical strip (`#powers` flex-column, `right:16px bottom:210px`) that ran up the
   right edge into the mid-map view. Reworked `#powers` into a **2×2 CSS grid** (`repeat(2,auto)`,
