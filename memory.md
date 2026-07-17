@@ -35,6 +35,16 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **Social share preview** (no version bump — `<head>` metadata + a preview asset, no in-game change; on the
+  v2.30.0 branch). Added Open Graph + Twitter Card tags to `index.html <head>` so pasting the play link into
+  Facebook / X / Discord / iMessage / LinkedIn renders a rich card. `og:image`/`twitter:image` →
+  `https://raw.githack.com/Deegan4/last-pulse/main/docs/img/social-card.png` (raw.githack serves images with a
+  correct MIME + CDN); `og:url`/canonical → `https://deegan4.github.io/last-pulse/` (**needs GitHub Pages
+  enabled** to resolve — README has the 2-click steps; previews still work when sharing the raw.githack link).
+  Kept `<title>Last Pulse</title>` (the validate name-drift gate compares it to the logo/README H1) and put the
+  richer "Last Pulse — Survive the Swarm" only in `og:title`/`twitter:title`. New **`docs/img/social-card.png`**
+  (1920×1008, 1.91:1): game-green card with the logo, tagline, PLAY-FREE pill, and three real hero sprites
+  (Lila/Kai/Reaper) — rendered headless from a throwaway `_card.html` at repo root (assets loaded, 0 hero 404s).
 - **v2.30.0** — **Collapsible ability FAB.** (user: make the four buttons smaller + hide them in a collapsible
   push button; "use react if you have to" — declined React: single-file no-build game, a CSS class-toggle is
   the right fit and keeps zero deps.) Wrapped the 4 power buttons + `#scrapHud` in `#powerBtns` and added a
