@@ -432,6 +432,8 @@
     background:rgba(0,0,0,.3);border-radius:999px;padding:4px 10px}
   .dailycard.done .drw{color:#9de07a}
   .shopcard{cursor:pointer}
+  .upgcard{background:linear-gradient(180deg,#fff3d8,#ffe6b0)}   /* upgrades stand apart from cosmetic trails */
+  .upgcard .aic{filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
   .shopcard.equipped{outline:2px solid #7bbf2e}
   .shopcard.poor{opacity:.75}
   .shopbtn{margin-left:auto;flex:0 0 auto;cursor:pointer;border:none;border-radius:999px;padding:7px 12px;
@@ -966,8 +968,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.30.0';
+const GAME_VERSION = '2.31.0';
 const CHANGELOG = [
+  { v:'2.31.0', items:[
+    ['📦','Extended Magazines','a new Shop upgrade — spend coins to permanently widen every weapon’s magazine (up to +60%), so you reload less and shoot more'],
+  ]},
   { v:'2.30.0', items:[
     ['🎛️','Tidier action buttons','the four abilities now tuck into a single push-button in the corner — tap it to fan them out, tap again to hide; buttons are smaller too, so the field stays clear'],
   ]},
@@ -1175,6 +1180,7 @@ const meta = {
   coins: parseInt(safeGet('dd2_coins','0'),10) || 0,
   owned: (safeGet('dd2_owned','')||'').split(',').filter(Boolean),   // purchased shop item ids
   trail: safeGet('dd2_trail','none'),                                // equipped trail id
+  magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
 };
@@ -1204,6 +1210,7 @@ function saveMeta(){
   safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_sens',meta.aimSens);
   safeSet('dd2_ach', meta.achieved.join(','));
   safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
+  safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
 }
 
@@ -1290,6 +1297,13 @@ const SHOP_ITEMS = [
   {id:'royal',  icon:'👑', name:'Royal Trail',   desc:'Gold & violet — walk like a king',cost:500, colors:['#ffd166','#c08bff']},
 ];
 function shopItem(id){ return SHOP_ITEMS.find(s=>s.id===id); }
+// Extended Magazines — a permanent, coin-bought upgrade (meta.magLvl) that widens every weapon's
+// magazine. Tunables: capacity bonus per level and the coin cost of each tier.
+const MAG_MAX=3, MAG_STEP=0.20;          // up to +60% magazine capacity across all guns
+const MAG_COST=[250, 500, 900];          // coin cost for tier 1 / 2 / 3
+function magMulMeta(){ return 1 + Math.min(meta.magLvl||0, MAG_MAX)*MAG_STEP; }
+function magInfo(){ const lvl=Math.min(meta.magLvl||0, MAG_MAX), maxed=lvl>=MAG_MAX;
+  return { lvl, bonus:Math.round(lvl*MAG_STEP*100), maxed, nextCost:maxed?null:MAG_COST[lvl] }; }
 function weaponUnlocked(w){ return meta.level >= (w.unlock||1); }
 // nearest still-locked avatar/weapon — the "one more run" carrot on the results screen
 function nextUnlock(){
@@ -1600,6 +1614,7 @@ function spawnMatch(){
   player.team=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
   player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null;
   player.scrap=0; player.buildSel=-1; player.placeCd=0;   // builder state (start with mode off)
+  player.magMul=magMulMeta(); player.mag=magCap(player);  // Extended Magazines upgrade → wider mag, start full
   humans.push(player);
   // scattered scrap caches — a reason to explore; seeds your first walls before the first kills
   for(let i=0;i<10;i++){ const s=decorSpot(90); scraps.push(makeScrap(s.x,s.y,randi(4,8))); }
@@ -1655,7 +1670,10 @@ function botTarget(e){
 }
 
 // ---------- Combat ----------
-function startReload(h){ if(h.reloading<=0 && h.mag<h.weapon.mag) h.reloading=h.weapon.reload; }
+// effective magazine capacity for a fighter (base weapon mag × their extended-mag multiplier).
+// Bots have no magMul → 1×; the player's is set from the shop upgrade at match start.
+function magCap(h){ return Math.max(1, Math.round(h.weapon.mag * (h.magMul||1))); }
+function startReload(h){ if(h.reloading<=0 && h.mag<magCap(h)) h.reloading=h.weapon.reload; }
 // per-weapon firing feel: tracer look (col/lw/tl/glow/tip), muzzle radius (mz),
 // recoil kick, spark count/spread, knockback push, and player screen shake.
 function bulletFx(w){
@@ -2156,7 +2174,7 @@ function sfx(kind,mode){ if(!actx) return;
 //  AI
 // ============================================================
 function updateBot(h,dt){
-  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=h.weapon.mag; }
+  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=magCap(h); }
   const near=botTarget(h); const tgt=near.o;
   let mvx=0,mvy=0; const out=outsideZone(h);
   const dc=Math.hypot(h.x-zone.cx,h.y-zone.cy);
@@ -2248,7 +2266,7 @@ function updateZombie(z,dt){
 // ============================================================
 function updatePlayer(h,dt){
   if(!h.alive) return;
-  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=h.weapon.mag; }
+  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=magCap(h); }
   const gp=readGamepad();
   let mx=0,my=0;
   if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
@@ -2374,8 +2392,8 @@ function applyPickup(h,p){
   if(p.kind==='health'){ h.hp=Math.min(h.maxhp,h.hp+30); }
   else if(p.kind==='medkit'){ h.hp=h.maxhp; }
   else if(p.kind==='armor'){ h.shield=Math.min(100,(h.shield||0)+50); }
-  else if(p.kind==='ammo'){ h.mag=h.weapon.mag; h.reloading=0; }
-  else if(p.kind==='weapon'){ h.weapon=p.w; h.mag=p.w.mag; h.reloading=0; }
+  else if(p.kind==='ammo'){ h.mag=magCap(h); h.reloading=0; }
+  else if(p.kind==='weapon'){ h.weapon=p.w; h.mag=magCap(h); h.reloading=0; }
   if(h.isPlayer){ sfx('pickup'); toast(PKMSG[p.kind]); }
   for(let i=0;i<10;i++) spark(p.x,p.y,PKCOL[p.kind].line,rand(50,160),rand(0,TAU),.5);
 }
@@ -2385,7 +2403,7 @@ function updatePickups(dt){
       if(dist2(p.x,p.y,h.x,h.y) < (R+p.r+2)*(R+p.r+2)){
         if((p.kind==='health'||p.kind==='medkit') && h.hp>=h.maxhp) continue;
         if(p.kind==='armor' && (h.shield||0)>=100) continue;
-        if(p.kind==='ammo' && h.mag>=h.weapon.mag) continue;
+        if(p.kind==='ammo' && h.mag>=magCap(h)) continue;
         applyPickup(h,p); taken=true; break; } }
     if(taken) pickups.splice(i,1);
   }
@@ -2410,7 +2428,7 @@ function updatePickups(dt){
       for(const h of humans){ if(!h.alive) continue;
         if(dist2(d.x,d.y,h.x,h.y)<(R+17)*(R+17)){
           const goodW=pick(WEAPONS.filter(w=>['Minigun','Sniper','Crossbow','Flame'].includes(w.name)));
-          h.weapon=goodW; h.mag=goodW.mag; h.reloading=0;
+          h.weapon=goodW; h.mag=magCap(h); h.reloading=0;
           h.shield=Math.min(100,(h.shield||0)+60); h.hp=Math.min(h.maxhp,h.hp+30);
           if(h.isPlayer){ sfx('loot'); toast('📦 '+goodW.name.toUpperCase()+' + ARMOR'); }
           for(let k=0;k<16;k++) spark(d.x,d.y,'#ffd24a',rand(60,200),rand(0,TAU),.6);
@@ -2777,7 +2795,7 @@ function draw(){
 function drawReticle(){
   if(!(screenState==='playing' && !spectating && player && player.alive && grace<=0 && aimShow)) return;
   const x=aimWX, y=aimWY;
-  const low = player.reloading<=0 && player.mag<=Math.max(1,Math.ceil(player.weapon.mag*0.25));
+  const low = player.reloading<=0 && player.mag<=Math.max(1,Math.ceil(magCap(player)*0.25));
   ctx.save(); ctx.globalAlpha=0.9; ctx.lineWidth=2; ctx.lineCap='round';
   ctx.strokeStyle = player.reloading>0?'#ffd166' : low?'#ff6a6a' : '#ffffff';
   ctx.beginPath(); ctx.arc(x,y,9,0,TAU); ctx.stroke();
@@ -3595,7 +3613,7 @@ function drawNameplate(h){
   if(h.shield>0){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(x-bw/2,y-10,bw,3);
     ctx.fillStyle='#5fa8ff'; ctx.fillRect(x-bw/2,y-10,bw*clamp(h.shield/100,0,1),3); }
   // ammo pips (orange) for player, mini for bots
-  if(h.isPlayer){ const w=h.weapon, n=w.mag;
+  if(h.isPlayer){ const w=h.weapon, n=magCap(h);
     const seg=Math.min(n,10), gap=2, tot=bw, sw=(tot-(seg-1)*gap)/seg;
     const low = h.reloading<=0 && h.mag<=Math.max(1,Math.ceil(n*0.25));
     const pulse = low ? (0.45+0.55*Math.abs(Math.sin(performance.now()/130))) : 1;
@@ -3853,8 +3871,15 @@ function closeAchievements(){ el('achievements').classList.add('hidden'); }
 // ----- shop (cosmetic trails) -----
 function renderShop(){
   el('shopCoins').innerHTML='Your coins: <b>🪙 '+meta.coins+'</b> — earn more from kills, wins & dailies';
-  el('shopGrid').innerHTML =
-    '<div class="achcard shopcard'+(meta.trail==='none'?' equipped':'')+'" data-shop="none"><span class="aic">🚫</span>'
+  // ---- Upgrades: Extended Magazines (permanent, all weapons) ----
+  const m=magInfo();
+  const magCard='<div class="achcard shopcard upgcard'+(m.maxed?' equipped':(meta.coins<m.nextCost?' poor':''))+'" data-upg="extmag">'
+    +'<span class="aic">📦</span><div class="atxt"><b>Extended Magazines</b>'
+    +'<span>'+(m.bonus?('+'+m.bonus+'% mag'):'wider mags for every gun')
+    +(m.maxed?' · MAX':' · Lv '+m.lvl+'/'+MAG_MAX)+'</span></div>'
+    +'<button class="shopbtn'+(m.maxed?' on':'')+'">'+(m.maxed?'MAXED':('🪙 '+m.nextCost))+'</button></div>';
+  el('shopGrid').innerHTML = magCard
+    + '<div class="achcard shopcard'+(meta.trail==='none'?' equipped':'')+'" data-shop="none"><span class="aic">🚫</span>'
     +'<div class="atxt"><b>No Trail</b><span>Plain footsteps</span></div>'
     +'<button class="shopbtn'+(meta.trail==='none'?' on':'')+'">'+(meta.trail==='none'?'EQUIPPED':'EQUIP')+'</button></div>'
     + SHOP_ITEMS.map(s=>{ const owned=meta.owned.includes(s.id), eq=meta.trail===s.id;
@@ -3862,6 +3887,14 @@ function renderShop(){
       return '<div class="achcard shopcard'+(eq?' equipped':'')+(!owned&&meta.coins<s.cost?' poor':'')+'" data-shop="'+s.id+'">'
         +'<span class="aic">'+s.icon+'</span><div class="atxt"><b>'+s.name+'</b><span>'+s.desc+'</span></div>'
         +'<button class="shopbtn'+(eq?' on':'')+'">'+btn+'</button></div>'; }).join('');
+}
+function buyMag(){ const m=magInfo();
+  if(m.maxed){ toast('Extended Magazines already maxed!'); return; }
+  if(meta.coins<m.nextCost){ toast('Not enough coins — earn more in matches!'); return; }
+  meta.coins-=m.nextCost; meta.magLvl=(meta.magLvl||0)+1; saveMeta();
+  toast('📦 EXTENDED MAGS Lv '+meta.magLvl+' — +'+Math.round(meta.magLvl*MAG_STEP*100)+'% mag capacity!'); sfx('level');
+  if(player && player.alive){ player.magMul=magMulMeta(); }   // apply live if bought mid-session
+  renderShop(); renderMenu();
 }
 function shopTap(id){
   if(id!=='none' && !meta.owned.includes(id)){ const s=shopItem(id); if(!s) return;
@@ -4082,7 +4115,8 @@ el('achClose').addEventListener('click',closeAchievements);
 // shop
 el('shopBtn').addEventListener('click',()=>{ audioInit(); openShop(); });
 el('shopClose').addEventListener('click',closeShop);
-el('shopGrid').addEventListener('click',e=>{ const c=e.target.closest('[data-shop]'); if(c) shopTap(c.dataset.shop); });
+el('shopGrid').addEventListener('click',e=>{ const u=e.target.closest('[data-upg]'); if(u){ buyMag(); return; }
+  const c=e.target.closest('[data-shop]'); if(c) shopTap(c.dataset.shop); });
 // donate / support
 el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
 el('donateGo').addEventListener('click',donateGo);
