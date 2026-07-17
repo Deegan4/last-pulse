@@ -35,6 +35,17 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.31.4** — **New app icon + PWA manifest** (pairs with the a2hs work on the #69 branch). Designed a mark:
+  a glowing lime **EKG "pulse" waveform inside a shooter reticle** on the game's green mesh gradient (on-brand:
+  "Last Pulse" + twin-stick shooter). Rendered headless from a throwaway `_icon.html` canvas via `drawIcon(S)`
+  (all coords scale by `S/1024`, full-bleed so iOS applies its own squircle mask) → `assets/icon/`:
+  `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png` (also the maskable — content sits inside the
+  center-80% safe zone), `favicon-32.png`. Added head links (`icon` 32+192, `apple-touch-icon` 180, `manifest`)
+  + `apple-mobile-web-app-title`/`mobile-web-app-capable`, and a root **`manifest.webmanifest`** (name, portrait,
+  standalone, `start_url:./index.html`, `scope:./`, bg `#0c1707`, theme `#101c0b`, 192/512/maskable icons).
+  Relative paths resolve on raw.githack + Vercel. Verified: validate green (2.31.4), manifest JSON parses, all
+  icon/manifest links load with no 4xx, 0 page errors. (favicon-32 is a bit busy at tab size but stays
+  consistent with the home-screen icon — acceptable.)
 - **v2.31.3** — **Add to Home Screen (iOS)**. iPhone/iPad Safari can't trigger PWA install programmatically, so
   we show instructions. New menu button `#a2hsBtn` ("📲 Add to Home Screen", `.a2hsbtn`, hidden by default) +
   `#a2hs` modal with a 3-step guide (Share → Add to Home Screen → Add), styled `.a2hsSteps` (green number

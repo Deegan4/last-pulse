@@ -1,0 +1,16 @@
+{
+  "name": "Last Pulse",
+  "short_name": "Last Pulse",
+  "description": "A cartoon twin-stick zombie survival royale — build cover, blast the horde, and outlast the shrinking zone.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c1707",
+  "theme_color": "#101c0b",
+  "icons": [
+    { "src": "assets/icon/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
