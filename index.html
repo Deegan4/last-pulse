@@ -883,8 +883,11 @@ const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.22.0';
+const GAME_VERSION = '2.22.1';
 const CHANGELOG = [
+  { v:'2.22.1', items:[
+    ['🎵','Smoother soundtrack','the in-game music now rides the audio clock — no more stutter or timing drift, especially on mobile'],
+  ]},
   { v:'2.22.0', items:[
     ['🔨','Build mode','tap 🔨 (or press B) to cycle Wall → Spikes → Turret, then fire to drop it — build cover on the fly'],
     ['🔩','Scrap to build','zombies drop scrap and caches are scattered around the map — spend it on structures'],
@@ -1948,27 +1951,30 @@ function audioInit(){ if(actx) return;
     musicBus=actx.createGain(); musicBus.gain.value=0.5; musicBus.connect(master);   // music submix, under the SFX
     if(meta.music) startMusic(); }catch(e){ actx=null; } }
 function applyVolume(){ if(master) master.gain.value = 0.36*meta.sfxVol; }
-function tone(f,d,type,v,slide,bus){ if(!actx) return; const o=actx.createOscillator(),g=actx.createGain();
-  o.type=type||'square'; o.frequency.value=f; if(slide)o.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
-  g.gain.value=v||0.2; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d); o.connect(g);g.connect(bus||master);o.start();o.stop(actx.currentTime+d); }
+// Each voice takes an optional trailing `when` (an actx.currentTime-based start stamp). SFX callers
+// omit it → the note plays "now"; the music scheduler passes precise future stamps so the loop is
+// clock-accurate (events anchored via setValueAtTime at t0) instead of riding jittery setInterval firings.
+function tone(f,d,type,v,slide,bus,when){ if(!actx) return; const t0=when||actx.currentTime; const o=actx.createOscillator(),g=actx.createGain();
+  o.type=type||'square'; o.frequency.setValueAtTime(f,t0); if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+d);
+  g.gain.setValueAtTime(v||0.2,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+d); o.connect(g);g.connect(bus||master);o.start(t0);o.stop(t0+d); }
 // distorted (overdriven) tone — oscillator → waveshaper → lowpass; the crunch behind metal chugs & meaty guns
-function dtone(f,d,type,v,slide,cutoff,bus){ if(!actx) return; const o=actx.createOscillator(),ws=actx.createWaveShaper(),lp=actx.createBiquadFilter(),g=actx.createGain();
-  o.type=type||'sawtooth'; o.frequency.value=f; if(slide)o.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
+function dtone(f,d,type,v,slide,cutoff,bus,when){ if(!actx) return; const t0=when||actx.currentTime; const o=actx.createOscillator(),ws=actx.createWaveShaper(),lp=actx.createBiquadFilter(),g=actx.createGain();
+  o.type=type||'sawtooth'; o.frequency.setValueAtTime(f,t0); if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+d);
   ws.curve=DIST_CURVE; ws.oversample='2x'; lp.type='lowpass'; lp.frequency.value=cutoff||2200;
-  g.gain.value=v||0.2; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d);
-  o.connect(ws); ws.connect(lp); lp.connect(g); g.connect(bus||master); o.start(); o.stop(actx.currentTime+d); }
-function noise(d,v,bus){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
+  g.gain.setValueAtTime(v||0.2,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
+  o.connect(ws); ws.connect(lp); lp.connect(g); g.connect(bus||master); o.start(t0); o.stop(t0+d); }
+function noise(d,v,bus,when){ if(!actx) return; const t0=when||actx.currentTime; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
   const a=buf.getChannelData(0); for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n); const s=actx.createBufferSource();s.buffer=buf;
-  const g=actx.createGain();g.gain.value=v||0.18;s.connect(g);g.connect(bus||master);s.start(); }
+  const g=actx.createGain();g.gain.value=v||0.18;s.connect(g);g.connect(bus||master);s.start(t0); }
 // filtered noise burst — the workhorse for gun texture: a biquad shapes the white noise into a
 // bright "crack" (highpass), a mid "snap" (bandpass) or a low "thump" (lowpass); freq can slide.
-function fnoise(d,v,type,freq,q,slide,bus){ if(!actx) return; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
+function fnoise(d,v,type,freq,q,slide,bus,when){ if(!actx) return; const t0=when||actx.currentTime; const n=Math.floor(actx.sampleRate*d),buf=actx.createBuffer(1,n,actx.sampleRate);
   const a=buf.getChannelData(0); for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);
   const s=actx.createBufferSource();s.buffer=buf;
-  const f=actx.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.value=freq||1000; f.Q.value=q||1;
-  if(slide) f.frequency.exponentialRampToValueAtTime(slide,actx.currentTime+d);
-  const g=actx.createGain(); g.gain.value=v||0.18; g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d);
-  s.connect(f); f.connect(g); g.connect(bus||master); s.start(); }
+  const f=actx.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.setValueAtTime(freq||1000,t0); f.Q.value=q||1;
+  if(slide) f.frequency.exponentialRampToValueAtTime(slide,t0+d);
+  const g=actx.createGain(); g.gain.setValueAtTime(v||0.18,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
+  s.connect(f); f.connect(g); g.connect(bus||master); s.start(t0); }
 let lastShot=0, lastTick=0;
 function sfx(kind,mode){ if(!actx) return;
   if(kind==='shoot'){ const t=performance.now(); if(t-lastShot<30) return; lastShot=t;
@@ -2020,32 +2026,45 @@ function sfx(kind,mode){ if(!actx) return;
 const _GAL =[1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1];             // fast gallop chug rhythm
 const _BD  =[1,0,0,1, 1,0,1,0, 1,0,0,1, 1,0,1,1];             // breakdown slam (syncopated, half-time)
 // crushing palm-muted chug: dark low saw + a sub octave-down + a faint bite up top
-function mChug(f,v,d){ dtone(f,d||0.12,'sawtooth',v,f*0.99,880,musicBus); dtone(f*0.5,d||0.12,'square',v*0.55,0,560,musicBus); dtone(f*2.01,0.05,'square',v*0.22,0,1900,musicBus); }
+function mChug(f,v,d,w){ dtone(f,d||0.12,'sawtooth',v,f*0.99,880,musicBus,w); dtone(f*0.5,d||0.12,'square',v*0.55,0,560,musicBus,w); dtone(f*2.01,0.05,'square',v*0.22,0,1900,musicBus,w); }
 // dissonant stab: root + tritone + octave — the "wrong", ugly metalcore chord
-function mStab(f,d,v){ dtone(f,d,'sawtooth',v,0,1700,musicBus); dtone(f*1.414,d,'sawtooth',v*0.7,0,1700,musicBus); dtone(f*2,d,'sawtooth',v*0.5,0,1900,musicBus); }
-function mSqueal(f){ dtone(f,0.5,'sawtooth',0.13,f*1.04,4400,musicBus); }   // pinch-harmonic squeal, bends up
-function mKick(v){ tone(110,0.12,'sine',v||0.6,38,musicBus); noise(0.02,0.12,musicBus); }
-function mSnare(v){ fnoise(0.14,v||0.36,'highpass',1700,0.7,null,musicBus); fnoise(0.09,0.22,'bandpass',400,1,null,musicBus); tone(200,0.05,'triangle',0.12,140,musicBus); }
-function startMusic(){ if(!actx||musicTimer) return; let s=0;
-  musicTimer=setInterval(()=>{ if(!meta.music) return;
-    const bar=(s/16|0), i=s%16, breakdown=bar>=2;             // 4-bar loop: riff, riff, BREAKDOWN, BREAKDOWN
-    if(!breakdown){                                            // ---- fast downtuned riff / verse ----
-      const root = bar===0 ? 55.0 : 51.91;                    // A1 → G#1 (chromatic dread)
-      if(_GAL[i]) mChug(root, 0.26);
-      if(i===0) mStab(root*2, 0.16, 0.15);                    // dissonant tritone stab up an octave
-      if(i%2===0) mKick(0.5); if(i%4===2) mSnare(0.3);        // blast-ish d-beat
-      if(i===7||i===15) mSnare(0.34);
-      fnoise(0.026, i%2?0.04:0.075, 'highpass', 9000, 0.6, null, musicBus);   // hats
-    } else {                                                  // ---- half-time BREAKDOWN ----
-      const root = 49.0;                                      // G1 crush
-      if(_BD[i]){ mChug(root, 0.36, 0.17); mKick(0.64); }     // slam + kick together
-      if(i%2===0) mKick(0.42);                                // double-bass rumble under the slams
-      if(i===0||i===8) mSnare(0.42);                          // half-time snare on the down-slams
-      if(i===0) mStab(root, 0.5, 0.13);                       // ring-out dissonant chord
-      if(bar===3 && i===8) mSqueal(root*6);                   // pinch-harmonic squeal in the last bar
+function mStab(f,d,v,w){ dtone(f,d,'sawtooth',v,0,1700,musicBus,w); dtone(f*1.414,d,'sawtooth',v*0.7,0,1700,musicBus,w); dtone(f*2,d,'sawtooth',v*0.5,0,1900,musicBus,w); }
+function mSqueal(f,w){ dtone(f,0.5,'sawtooth',0.13,f*1.04,4400,musicBus,w); }   // pinch-harmonic squeal, bends up
+function mKick(v,w){ tone(110,0.12,'sine',v||0.6,38,musicBus,w); noise(0.02,0.12,musicBus,w); }
+function mSnare(v,w){ fnoise(0.14,v||0.36,'highpass',1700,0.7,null,musicBus,w); fnoise(0.09,0.22,'bandpass',400,1,null,musicBus,w); tone(200,0.05,'triangle',0.12,140,musicBus,w); }
+// Emit one 16th-note step of the 4-bar loop at precise audio-clock time `t`.
+function musicStep(s, t){
+  const bar=(s/16|0), i=s%16, breakdown=bar>=2;             // 4-bar loop: riff, riff, BREAKDOWN, BREAKDOWN
+  if(!breakdown){                                            // ---- fast downtuned riff / verse ----
+    const root = bar===0 ? 55.0 : 51.91;                    // A1 → G#1 (chromatic dread)
+    if(_GAL[i]) mChug(root, 0.26, 0.12, t);
+    if(i===0) mStab(root*2, 0.16, 0.15, t);                 // dissonant tritone stab up an octave
+    if(i%2===0) mKick(0.5, t); if(i%4===2) mSnare(0.3, t);  // blast-ish d-beat
+    if(i===7||i===15) mSnare(0.34, t);
+    fnoise(0.026, i%2?0.04:0.075, 'highpass', 9000, 0.6, null, musicBus, t);   // hats
+  } else {                                                  // ---- half-time BREAKDOWN ----
+    const root = 49.0;                                      // G1 crush
+    if(_BD[i]){ mChug(root, 0.36, 0.17, t); mKick(0.64, t); }  // slam + kick together
+    if(i%2===0) mKick(0.42, t);                             // double-bass rumble under the slams
+    if(i===0||i===8) mSnare(0.42, t);                       // half-time snare on the down-slams
+    if(i===0) mStab(root, 0.5, 0.13, t);                    // ring-out dissonant chord
+    if(bar===3 && i===8) mSqueal(root*6, t);                // pinch-harmonic squeal in the last bar
+  }
+}
+// Lookahead scheduler ("two clocks"): a coarse 25ms wall-clock timer queues every step that falls
+// inside a ~150ms window ahead of actx.currentTime, stamped with an exact start time. The audio
+// clock — not setInterval jitter/throttling — decides when notes sound, so the loop stays tight.
+const STEP_DUR=0.105, LOOKAHEAD=0.15;   // seconds per 16th (~143 BPM) · schedule-ahead window
+let mStepN=0, mNextT=0;
+function startMusic(){ if(!actx||musicTimer) return;
+  mStepN=0; mNextT=actx.currentTime+0.08;
+  musicTimer=setInterval(()=>{
+    if(!meta.music){ mNextT=actx.currentTime+0.08; return; }   // paused-off: rebase so we never burst-catch-up
+    while(mNextT < actx.currentTime+LOOKAHEAD){
+      musicStep(mStepN, mNextT);
+      mNextT += STEP_DUR; mStepN=(mStepN+1)%64;
     }
-    s=(s+1)%64;
-  }, 105); }                                                  // ~143 BPM sixteenths (breakdown reads half-time)
+  }, 25); }
 function stopMusic(){ if(musicTimer){ clearInterval(musicTimer); musicTimer=null; } }
 
 // ============================================================

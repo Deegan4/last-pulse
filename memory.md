@@ -11,6 +11,19 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.22.1** — **Music timing fix** (user: "fix the in game music" → symptom confirmed via AskUserQuestion:
+  *stutters / timing off*). Root cause: the soundtrack was sequenced by a `setInterval(…,105)` firing one
+  16th-note per tick — setInterval jitter/throttle (bad on mobile / when FPS dips) desynced the loop. Fix:
+  standard Web Audio **lookahead scheduler** ("two clocks"). Added an optional trailing `when` (an
+  `actx.currentTime` stamp) to `tone`/`dtone`/`noise`/`fnoise` — SFX callers omit it (play "now"); events
+  now anchor via `setValueAtTime(…,t0)` + ramps to `t0+d`, `start(t0)`/`stop(t0+d)`. The `m*` helpers pass
+  `when` through. New `musicStep(s,t)` emits one step at a precise time; `startMusic` runs a coarse 25ms
+  timer that queues every step inside a `LOOKAHEAD=0.15s` window ahead of `actx.currentTime` (`STEP_DUR=0.105`,
+  64-step/4-bar loop unchanged). Paused-off rebases `mNextT` so re-enable never burst-catches-up. Verified
+  headless (hooked copy, `--autoplay-policy=no-user-gesture-required`): context running, `musicStep` doesn't
+  throw, `mNextT` stays ahead of the audio clock (the anti-jitter invariant), steps advance ~105ms each, 0
+  page errors; live match --shoot exercises the `when`-omitted SFX path with 0 errors. **NOTE:** headless
+  WebAudio can't be *heard* — timing verified structurally, not audibly; on-device playtest confirms feel.
 - **v2.22.0** — **Builders / in-match build mode** (user asked "add a builders feature for buildings and
   other things"; scope confirmed via AskUserQuestion: **in-match build mode** + **find resources to build**).
   New currency **scrap** (`player.scrap`): zombies drop `scraps[]` bits on death (`die`, ~62% chance, more from
