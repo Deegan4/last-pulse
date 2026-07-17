@@ -35,6 +35,16 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.29.0** — **Horde wave fix + harder ramp** (user: "hoard mode is way too easy and the levels are not
+  advancing when all enemies are killed"). Root cause of the stuck counter: `hordeUpdate` advanced at
+  `aliveZ<=3`, so ≥4 zombies stranded out of reach (behind geometry / while camping a watchtower) froze the
+  wave — and being stuck on an early wave kept it trivial. Fix: advance only on a **true clear** (`aliveZ===0`,
+  matching "kill everything → next wave"), guarded by a **stall watchdog** (`hordeStallT`/`hordeLastAlive`,
+  reset in `spawnMatch`): while `aliveZ<=6` and no kill for 5s, any zombie >700px from the player is teleported
+  to a 320–460px ring around them so the wave can be finished. Harder: initial spawn `8→10`, per-wave count
+  `min(7+w*2,40)→min(8+w*3,42)`, HP scaling `+12%→+14%`/wave. Wave toast now reads "WAVE n — CLEARED, next
+  wave!". Verified headless (hooked copy): 3 left → stays wave 1 (old code would've advanced); stranded trio at
+  ~3677px pulled to ~260–350px after ~6s; full clear → wave 2 with 14 (was 11); 0 page errors.
 - **v2.28.0** — **Dynamic movement feel.** Reworked player movement + shared fighter animation so runs read
   weighty and alive. New `MOVE={accel:0.30, friction:0.80, camLead:0.16}` tunable (near `GRACE`). `updatePlayer`:
   velocity lerps toward target at `MOVE.accel` (was 0.25 — snappier start), coasts at `MOVE.friction` on release

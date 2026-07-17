@@ -929,8 +929,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.28.0';
+const GAME_VERSION = '2.29.0';
 const CHANGELOG = [
+  { v:'2.29.0', items:[
+    ['🌊','Horde waves fixed & harder','a wave now advances only when you fully clear it (stranded stragglers get pulled back in so it never stalls), and each wave throws more, tougher zombies'],
+  ]},
   { v:'2.28.0', items:[
     ['🏃','Punchier movement','fighters now accelerate with weight, lean into their run, and their stride speeds up the faster they move — plus the camera leads the way you’re heading'],
   ]},
@@ -1278,6 +1281,7 @@ const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast
 let gameMode = safeGet('dd2_mode','br');   // 'br' | 'horde' | 'squad'
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
 let hordeWave = 0;
+let hordeStallT = 0, hordeLastAlive = 0;    // wave-clear stall watchdog (unsticks stranded stragglers)
 let aimWX = 0, aimWY = 0, aimShow = false;  // reticle world target
 let spectating = false, specTarget = null, deathPlace = 0, spectateT = 0;
 let gtime = 0;                              // animation clock (grass sway, etc.)
@@ -1545,6 +1549,7 @@ function spawnMatch(){
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   builds.length=0; scraps.length=0;
   killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14);
+  hordeStallT=0; hordeLastAlive=0;
   combo=0; comboT=0; hitstop=0;
   matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
   buildDecor();
@@ -1567,7 +1572,7 @@ function spawnMatch(){
       const tw={type:'tower', tower:true, x:clamp(sp.x-TOWER_W/2,120,ARENA-120-TOWER_W), y:clamp(sp.y-TOWER_H/2,120,ARENA-120-TOWER_H),
         w:TOWER_W, h:TOWER_H, roof:'#6b7178'};
       obstacles.push(tw); decor.push(tw); }
-    const n=8; for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
+    const n=10; for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
   } else if(gameMode==='squad'){
     fieldSize=16;
     const allyNames=['Buddy','Scout','Doc','Tank'];
@@ -2412,7 +2417,7 @@ function hordeKind(wave){
 }
 function hordeScale(z, wave){
   const w=Math.max(0, wave-1);
-  z.hp = z.maxhp = Math.round(z.maxhp*(1 + w*0.12));        // +12% HP per wave (unbounded — tanks the longer you last)
+  z.hp = z.maxhp = Math.round(z.maxhp*(1 + w*0.14));        // +14% HP per wave (unbounded — tanks the longer you last)
   z.dmg = Math.round(z.dmg*(1 + Math.min(w*0.05, 1.8)));   // up to +180% damage
   z.speed *= 1 + Math.min(w*0.018, 0.55);                  // up to +55% speed
 }
@@ -2434,20 +2439,33 @@ function reinforceZombies(dt){
 function hordeUpdate(dt){
   if(grace>0) return;
   let aliveZ=0; for(const z of zombies) if(z.alive) aliveZ++;
-  if(aliveZ<=3){
-    for(let i=zombies.length-1;i>=0;i--) if(!zombies[i].alive) zombies.splice(i,1);  // prune
-    hordeWave++;
-    const boss = hordeWave>=5 && hordeWave%5===0;                 // every 5th wave: armored elites
-    toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave); sfx('warn');
-    const n=Math.min(7+hordeWave*2, 40);                          // steeper ramp, higher ceiling than the old 8+w*2/32
-    for(let i=0;i<n;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
-      while(dist2(s.x,s.y,player.x,player.y)<500*500 && tries<10);
-      const z=makeZombie(s.x,s.y,hordeKind(hordeWave)); hordeScale(z,hordeWave); zombies.push(z); }
-    if(boss){ const nb=1+Math.floor(hordeWave/10);                // 1 juggernaut @w5, 2 @w10-15, 3 @w20…
-      for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
-        while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
-        const z=makeZombie(s.x,s.y,'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
-  }
+  // Wave-clear watchdog: the wave only advances on a FULL clear, so a few stragglers stuck out of
+  // reach (behind geometry, or while you camp a watchtower) used to freeze the counter. If kills
+  // stall for a few seconds with a handful left, haul the distant stragglers back toward you so the
+  // wave can actually be finished.
+  if(aliveZ>0){
+    if(aliveZ<hordeLastAlive) hordeStallT=0; else hordeStallT+=dt;   // reset the timer whenever something dies
+    if(aliveZ<=6 && hordeStallT>=5){ hordeStallT=0;
+      for(const z of zombies){ if(!z.alive) continue;
+        if(dist2(z.x,z.y,player.x,player.y) > 700*700){             // only relocate the far, stranded ones
+          const a=rand(0,TAU), rr=rand(320,460);
+          z.x=clamp(player.x+Math.cos(a)*rr, R, ARENA-R); z.y=clamp(player.y+Math.sin(a)*rr, R, ARENA-R); z.vx=z.vy=0; } } }
+  } else hordeStallT=0;
+  hordeLastAlive=aliveZ;
+  if(aliveZ>0) return;                                              // wave not cleared → keep fighting
+  // ---- wave cleared → next wave ----
+  for(let i=zombies.length-1;i>=0;i--) if(!zombies[i].alive) zombies.splice(i,1);  // prune corpses
+  hordeWave++; hordeStallT=0;
+  const boss = hordeWave>=5 && hordeWave%5===0;                     // every 5th wave: armored elites
+  toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave+' — CLEARED, next wave!'); sfx('warn');
+  const n=Math.min(8+hordeWave*3, 42);                             // steeper ramp so it doesn't stay trivial
+  for(let i=0;i<n;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
+    while(dist2(s.x,s.y,player.x,player.y)<500*500 && tries<10);
+    const z=makeZombie(s.x,s.y,hordeKind(hordeWave)); hordeScale(z,hordeWave); zombies.push(z); }
+  if(boss){ const nb=1+Math.floor(hordeWave/10);                    // 1 juggernaut @w5, 2 @w10-15, 3 @w20…
+    for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
+      while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
+      const z=makeZombie(s.x,s.y,'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
 }
 function enemiesLeft(){ let n=0; for(const h of humans) if(h.alive && h.team!==player.team) n++; return n; }
 function checkEnd(){
