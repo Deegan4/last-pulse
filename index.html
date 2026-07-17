@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#0b120a" />
+<meta name="theme-color" content="#101c0b" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Last Pulse</title>
@@ -16,14 +16,27 @@
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
     font-family:"Trebuchet MS",system-ui,"Segoe UI",Roboto,sans-serif}
-  html,body{height:100%;overflow:hidden;background:#0b120a;color:var(--txt);
+  /* Page background mirrors the .screen menu mesh (same green blooms), so the iOS status-bar /
+     notch strip — which on standalone / in-app contexts falls through to the page bg — shows the
+     game's glowing green and blends into the menu, instead of a black band. */
+  html,body{height:100%;overflow:hidden;background:#090d07;color:var(--txt);
+    background-image:
+      radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.26), transparent 66%),
+      radial-gradient(52% 48% at 90% 16%, rgba(50,196,180,.22), transparent 62%),
+      radial-gradient(58% 52% at 8% 90%, rgba(128,98,240,.20), transparent 62%),
+      radial-gradient(46% 40% at 82% 96%, rgba(226,120,47,.14), transparent 60%),
+      radial-gradient(130% 95% at 50% 45%, #17280f, #090d07 92%);
+    background-attachment:fixed;
     user-select:none;-webkit-user-select:none;touch-action:none}
   /* portrait stage, centered with letterbox on desktop. Size is computed in JS
      (resize()) for reliability — iOS Safari mis-evaluates min()/calc() viewport math
      and can collapse the stage to zero height. CSS here is just a full-screen fallback. */
-  #game{position:fixed;inset:0;margin:auto;overflow:hidden;background:#0b120a;
+  /* The 100vmax box-shadow is the desktop letterbox AND whatever fills the iOS status-bar /
+     notch strip when the stage doesn't reach it — so it's tinted the game's dark green, not
+     near-black, which is what used to read as a black bar at the top of the screen. */
+  #game{position:fixed;inset:0;margin:auto;overflow:hidden;background:#111d0c;
     width:100%;height:100%;
-    box-shadow:0 0 0 100vmax #0b120a;}
+    box-shadow:0 0 0 100vmax #111d0c;}
   #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 
   .hidden{display:none!important}
@@ -754,13 +767,12 @@ function resize(){
   let gw = vw, gh = vh;
   if (!(gw > 0)) gw = 360;                   // fallbacks if anything went sideways
   if (!(gh > 0)) gh = 640;
-  // pull the stage up under the notch and add that height back, so the canvas + menu
-  // gradients paint the status-bar region instead of the page background showing as a bar.
-  // HUD / .screen content already offsets itself with env(safe-area-inset-top), so nothing
-  // playable ends up hidden behind the notch.
-  const st = safeTopPx();
-  stage.style.top = (-st) + 'px';
-  gh += st;
+  // The stage fills the viewport at inset:0. We deliberately do NOT pull it up under the notch
+  // anymore: that hack cancelled against the .screen safe-area padding (jamming the title on some
+  // devices) and depended on a flaky env() probe. Instead the notch/status-bar strip is covered by
+  // the page's green background (html,body) so it never shows as a black bar, and .screen / HUD
+  // content still offsets itself with env(safe-area-inset-top) so nothing hides behind the notch.
+  stage.style.top = '0px';
   stage.style.width = gw + 'px';
   stage.style.height = gh + 'px';
   DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -910,8 +922,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.24.0';
+const GAME_VERSION = '2.24.1';
 const CHANGELOG = [
+  { v:'2.24.1', items:[
+    ['📱','No more black bar (for real)','the status-bar / notch strip now shows the game’s green instead of a black band on iPhone'],
+  ]},
   { v:'2.24.0', items:[
     ['🔇','Music removed','the looping soundtrack is gone — the game is now sound-effects only (guns, hits & UI still play)'],
     ['💜','Tidier menu','the “Support the game” button now matches the Achievements / Shop pill styling'],

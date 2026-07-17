@@ -11,6 +11,19 @@ canvas-drawn; no original sprites). Everything lives in [`index.html`](index.htm
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state (done)
+- **v2.24.1** — **Black status-bar bar fixed (root cause found)** (user reported it twice; screenshot marked
+  the top strip). Real culprit: `#game`'s `box-shadow:0 0 0 100vmax #0b120a` — a huge near-black letterbox that
+  **overpaints every region the stage doesn't cover**, including the iOS status-bar / notch strip when the
+  layout viewport starts below it (standalone / in-app contexts where `viewport-fit=cover` + `black-translucent`
+  don't extend content upward). The v2.21.1 `resize()` pull-up (`stage.top=-safeTopPx(); gh+=st`) tried to cover
+  the strip but **cancelled against** `.screen`'s `padding-top:env(safe-area-inset-top)` (jamming the title when
+  the probe read nonzero) and no-op'd when the probe read 0. Fix: (1) recolored the `#game` box-shadow + bg from
+  `#0b120a` → **`#111d0c`** (game dark-green) so the strip/desktop letterbox reads green, not black; (2) removed
+  the pull-up — `resize()` now just fills the viewport at `top:0` (no cancel, no jam); (3) gave `html,body` the
+  `.screen` green mesh + `theme-color=#101c0b` as defense-in-depth. `safeTopPx()` now unused (left in place,
+  harmless). Verified headless: forcing `#game{top:60px}` to expose the strip shows **dark green, not black**
+  (screenshot); normal render unregressed; 0 page errors. NOTE: device-only symptom — verified structurally via
+  the forced-strip simulation, not on a real notch.
 - **v2.24.0** — **Music removed + donate-button restyle** (user: music "still is not working. Take out the
   music completely", plus a screenshot marking the Support button as visually inconsistent). **Music fully
   removed** (SFX kept): deleted the whole soundtrack block (`_GAL`/`_BD`, `mChug`/`mStab`/`mSqueal`/`mKick`/
