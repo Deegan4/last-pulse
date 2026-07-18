@@ -35,6 +35,17 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.32.1** — **True edge-to-edge (bar complaint #3, angry user screenshot on v2.32.0)**. The 2.32.0
+  translucent menus EXPOSED the safe-area strips: the areas outside the layout viewport (behind the status
+  bar / past the home indicator) paint the flat body background, which blended invisibly when menus were
+  equally dark but reads as top+bottom "black bars" next to the bright live field. Fix: `resize()` now pulls
+  the stage UP by `safeTopPx()` (`stage.top=-st`) and extends height by the same amount, so the CANVAS paints
+  the notch strip; `.screen` env(safe-area-inset-top) padding keeps the title below the clock (the guard whose
+  absence killed the previous under-notch attempt — see the old comment this replaces) and the HUD already
+  pins with env offsets. Also toned html/body fallback to dark-olive (#243418 + subdued gradient) matching the
+  scrimmed-field look so ANY residual sliver blends. Headless env insets are 0 → regressions prove no-op
+  there (top 0/exact fit; standalone spoof 852; menu animates; match starts; 0 errors) — **the inset path
+  itself only runs on real devices; if a band survives, `?safeprobe` prints which API lied.**
 - **v2.32.0** — **Living menu backdrop** (user: "free upgraded assets via MCP" → "can the zombies be
   enhanced… animated and running?"). Evolved twice: (1) Canva MCP generated 4 key-art candidates (saved to
   user's Canva, design `DAHPvNMkBa4`) but the sandbox network policy 403s the pixel domains

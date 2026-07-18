@@ -48,13 +48,13 @@
      game's glowing green and blends into the menu, instead of a black band. */
   /* base color matches the #game stage (#111d0c): iOS paints this beyond the layout viewport
      when it mis-measures, so a mismatch shows as a black bar at the bottom on real devices */
-  html,body{height:100%;overflow:hidden;background:#111d0c;color:var(--txt);
+  /* fallback paint for any strip a lying viewport leaves uncovered — tuned to the same
+     dark-olive the translucent menus produce over the field, so a residual sliver blends
+     instead of reading as a black bar (the recurring iOS complaint) */
+  html,body{height:100%;overflow:hidden;background:#243418;color:var(--txt);
     background-image:
-      radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.26), transparent 66%),
-      radial-gradient(52% 48% at 90% 16%, rgba(50,196,180,.22), transparent 62%),
-      radial-gradient(58% 52% at 8% 90%, rgba(128,98,240,.20), transparent 62%),
-      radial-gradient(46% 40% at 82% 96%, rgba(226,120,47,.14), transparent 60%),
-      radial-gradient(130% 95% at 50% 45%, #17280f, #090d07 92%);
+      radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.12), transparent 66%),
+      radial-gradient(130% 95% at 50% 45%, #2a3b1c, #1a2610 92%);
     background-attachment:fixed;
     user-select:none;-webkit-user-select:none;touch-action:none}
   /* portrait stage, centered with letterbox on desktop. Size is computed in JS
@@ -877,14 +877,17 @@ function resize(){
   let gw = m.vw, gh = m.vh;
   if (!(gw > 0)) gw = 360;                   // fallbacks if anything went sideways
   if (!(gh > 0)) gh = 640;
-  // The stage fills the viewport at inset:0. We deliberately do NOT pull it up under the notch
-  // anymore: that hack cancelled against the .screen safe-area padding (jamming the title on some
-  // devices) and depended on a flaky env() probe. Instead the notch/status-bar strip is covered by
-  // the page's green background (html,body) so it never shows as a black bar, and .screen / HUD
-  // content still offsets itself with env(safe-area-inset-top) so nothing hides behind the notch.
-  stage.style.top = '0px';
+  // Pull the stage up under the status bar and extend it by the same amount, so the CANVAS
+  // (field + ambient menu horde) paints the notch strip instead of the flat page background.
+  // Since v2.32.0 the menus are translucent over the live field, so a flat strip up there reads
+  // as a "black bar" — the field must go edge-to-edge. Safe because .screen pads its content
+  // with env(safe-area-inset-top) (title stays below the clock) and the HUD pins itself with the
+  // same env offsets. In Safari (no inset) st is 0 and this is a no-op.
+  const st = safeTopPx();
+  stage.style.top = (-st) + 'px';
   stage.style.width = gw + 'px';
-  stage.style.height = gh + 'px';
+  stage.style.height = (gh + st) + 'px';
+  gh += st;
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = gw; H = gh;
   cv.width = Math.max(1, Math.floor(W * DPR));
@@ -1038,8 +1041,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.32.0';
+const GAME_VERSION = '2.32.1';
 const CHANGELOG = [
+  { v:'2.32.1', items:[
+    ['📏','True edge-to-edge','the field now paints under the status bar and home indicator — no more dark strips framing the menus on iPhone'],
+  ]},
   { v:'2.32.0', items:[
     ['🎨','Living menu backdrop','the menus now sit over the real field with a live horde shambling — and runners sprinting — past behind them'],
   ]},
