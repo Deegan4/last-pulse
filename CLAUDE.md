@@ -27,8 +27,8 @@ Omit the section only when the reply is itself purely a list of next steps.
 ## Repository
 
 A single-file HTML5 canvas game: **Last Pulse** (repo `Deegan4/last-pulse`), a portrait,
-mobile-first, cartoon twin-stick survival royale with three modes (Battle Royale / Endless
-Horde / Squads). It is a from-scratch **canvas remake** inspired by the StickyGames title
+mobile-first, cartoon twin-stick zombie survival game — a single mode, **Endless Horde**
+(Battle Royale & Squads were retired in v2.33.0; their engine paths remain dormant). It is a from-scratch **canvas remake** inspired by the StickyGames title
 _Don't Die_ (no original sprites — all art is drawn with canvas shapes). The entire game —
 markup, styles, and logic — lives in [index.html](index.html): one big game IIFE plus a second
 `<script type="module">` that progressively loads an optional 3D character layer (Meshy GLBs

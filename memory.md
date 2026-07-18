@@ -35,6 +35,19 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.33.0** — **BR & Squads retired; horde kill counting FIXED** (user: "take out battle royale and
+  squads"). Flow: `#modeScreen` deleted; `toModeBtn` (PLAY) → `goAvatar()` directly; `gameMode` hard-set
+  `'horde'` (ignores stored `dd2_mode` — old saves held 'br'); `show()` array, `renderModeSel`, `MODE_NAME`,
+  modecard listeners removed. **BR/Squad/zone/bot engine paths kept dormant, not deleted** (single-file risk).
+  Retiring BR made the parked kill bug fatal (only mode had dead counters), so: `hurt()` now credits EVERY
+  player kill (killsTotal++, kill-streaks; XP stays 28 human / 8 zombie ×combo; dropped the '+1 KILL' toast —
+  spammy at horde rates). Economy rebalanced for ~10× kill volume: horde end-of-match `killsTotal*1` coins
+  (was *5) + `hordeWave*6` (was *4), kill XP `*2` (was *10). Dailies: 'Win a match' → 'Reach wave 4';
+  'Top 3 in BR' → '15+ kills'. Achievements: 6 win-based tests → wave-based (SAME ids so earned trophies
+  survive: firstwin→wave3 "Survivor", champ5→wave8, champ15→wave15, untouchable→wave3 no-damage,
+  ironwall/blur→wave5 as Sarge/Lila). Menu tiles: Wins/Best-place/Win-streak → **Wave / Dailies / best
+  kill-Streak**. README + CLAUDE.md updated to single-mode. Verified headless: PLAY→fighter select directly;
+  long fight → first zombie kill ticked statKills 0→1 (10z→9z) — the counter provably works; 0 errors.
 - **v2.32.3** — **Save health + save codes + Screen Fit diagnostic** (user: bars STILL not fixed even in
   Safari + "app tester's progress is not saving"). VERIFIED the delivery chain from the sandbox: Vercel prod
   (`last-pulse.vercel.app`, also `brawl-arena-plum.vercel.app`) serves 2.32.2 byte-confirmed with

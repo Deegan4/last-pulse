@@ -706,17 +706,7 @@
   </div>
 
   <!-- ===== Mode select (picked after the main menu) ===== -->
-  <div id="modeScreen" class="screen hidden">
-    <div class="top"><button class="gearbtn" id="modeBack" aria-label="back">←</button>
-      <h2 class="heading">Choose Mode</h2></div>
-    <div class="sub">How do you want to drop in?</div>
-    <div class="modes wide" id="modeCards">
-      <button class="modecard" data-mode="br"><span class="mi">🏆</span><span class="mtxt"><span class="mt">Battle Royale</span><span class="md">15 players · outlast the shrinking zone</span></span></button>
-      <button class="modecard" data-mode="horde"><span class="mi">🧟</span><span class="mtxt"><span class="mt">Endless Horde</span><span class="md">survive escalating zombie waves</span></span></button>
-      <button class="modecard" data-mode="squad"><span class="mi">🛡</span><span class="mtxt"><span class="mt">Squads</span><span class="md">team up · last squad standing</span></span></button>
-    </div>
-    <div class="footer"><button class="btn play" id="toAvatarBtn"><span id="modeLabel">CONTINUE</span></button></div>
-  </div>
+  <!-- mode select removed: Endless Horde is the game (BR & Squads retired in v2.33.0) -->
 
   <!-- ===== Avatar select ===== -->
   <div id="avatarScreen" class="screen hidden">
@@ -1070,8 +1060,13 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.32.3';
+const GAME_VERSION = '2.33.0';
 const CHANGELOG = [
+  { v:'2.33.0', items:[
+    ['🧟','All-in on the horde','Battle Royale & Squads are retired — Last Pulse is now a pure zombie-survival game. PLAY drops you straight toward the waves'],
+    ['💀','Kills finally count','zombie kills now feed your kill counter, streaks, coins & XP (they used to count humans only — the horde was working for free)'],
+    ['🏅','Achievements & dailies reworked','win-based goals became wave-based (already-earned trophies stay), and the menu stats now show your best wave'],
+  ]},
   { v:'2.32.3', items:[
     ['💾','Save codes','copy your save as a code and load it on any device or browser — your progress can finally travel (Settings → Copy Save Code)'],
     ['⚠️','Save-loss warning','the game now tells you when a browser (private tabs, TikTok/Instagram in-app browsers) can’t save progress'],
@@ -1377,9 +1372,9 @@ const ACHIEVEMENTS = [
   {id:'rampage',    tier:'gold',   icon:'💥', name:'Rampage',      desc:'Get 10+ kills in a single match',     test:(m,c)=>c.matchKills>=10},
   {id:'combo4',     tier:'silver', icon:'⚡', name:'Chain Reaction',desc:'Chain a 4-kill combo',                test:(m,c)=>c.bestCombo>=4},
   {id:'combo6',     tier:'gold',   icon:'🔗', name:'Kill Frenzy',  desc:'Chain a 6-kill combo',                test:(m,c)=>c.bestCombo>=6},
-  {id:'firstwin',   tier:'bronze', icon:'🏆', name:'Winner',       desc:'Win your first match',                test:m=>m.wins>=1},
-  {id:'champ5',     tier:'silver', icon:'👑', name:'Champion',     desc:'Win 5 matches',                       test:m=>m.wins>=5},
-  {id:'champ15',    tier:'gold',   icon:'🏰', name:'Dynasty',      desc:'Win 15 matches',                      test:m=>m.wins>=15},
+  {id:'firstwin',   tier:'bronze', icon:'🌊', name:'Survivor',     desc:'Reach wave 3',                        test:m=>m.bestWave>=3},
+  {id:'champ5',     tier:'silver', icon:'👑', name:'Champion',     desc:'Reach wave 8',                        test:m=>m.bestWave>=8},
+  {id:'champ15',    tier:'gold',   icon:'🏰', name:'Dynasty',      desc:'Reach wave 15',                       test:m=>m.bestWave>=15},
   {id:'streak3',    tier:'silver', icon:'🔥', name:'Unstoppable',  desc:'Win 3 matches in a row',              test:m=>m.bestStreak>=3},
   {id:'streak5',    tier:'gold',   icon:'☄️', name:'Legendary',    desc:'Win 5 matches in a row',              test:m=>m.bestStreak>=5},
   {id:'wave5',      tier:'bronze', icon:'🌊', name:'Survivor',     desc:'Reach wave 5 in Endless Horde',       test:m=>m.bestWave>=5},
@@ -1393,11 +1388,11 @@ const ACHIEVEMENTS = [
   {id:'lvl10',      tier:'silver', icon:'🌟', name:'Elite',        desc:'Reach level 10',                      test:m=>m.level>=10},
   {id:'lvl20',      tier:'gold',   icon:'💫', name:'Ascendant',    desc:'Reach level 20',                      test:m=>m.level>=20},
   {id:'grappler',   tier:'bronze', icon:'🪝', name:'Swinger',      desc:'Use the grapple hook in a match',     test:(m,c)=>c.grappled},
-  {id:'untouchable',tier:'gold',   icon:'🛡', name:'Untouchable',  desc:'Win a match without taking damage',   test:(m,c)=>c.win && c.dmgTaken<=0},
+  {id:'untouchable',tier:'gold',   icon:'🛡', name:'Untouchable',  desc:'Clear wave 3+ without taking damage', test:(m,c)=>c.wave>=3 && c.dmgTaken<=0},
   {id:'daily3',     tier:'silver', icon:'📅', name:'Regular',      desc:'Complete 3 daily challenges',         test:m=>m.dailies>=3},
   {id:'roster',     tier:'gold',   icon:'🦸', name:'Full Roster',  desc:'Unlock every hero (reach level 26)',  test:m=>m.level>=26},
-  {id:'ironwall',   tier:'silver', icon:'💪', name:'Iron Wall',    desc:'Win a match as Sarge',                test:(m,c)=>c.win && AVATARS[m.avatar]?.name==='Sarge'},
-  {id:'blur',       tier:'silver', icon:'💨', name:'Blur',         desc:'Win a match as Lila',                 test:(m,c)=>c.win && AVATARS[m.avatar]?.name==='Lila'},
+  {id:'ironwall',   tier:'silver', icon:'💪', name:'Iron Wall',    desc:'Reach wave 5 as Sarge',               test:(m,c)=>c.wave>=5 && AVATARS[m.avatar]?.name==='Sarge'},
+  {id:'blur',       tier:'silver', icon:'💨', name:'Blur',         desc:'Reach wave 5 as Lila',                test:(m,c)=>c.wave>=5 && AVATARS[m.avatar]?.name==='Lila'},
 ];
 // Evaluate all achievements against current meta + this match's context; toast any newly
 // unlocked and pay out the tier's coin reward.
@@ -1419,9 +1414,9 @@ function checkAchievements(ctx){
 const DAILY_COINS = 60;
 const DAILIES = [
   {icon:'⚔',  desc:'Get 6+ kills in one match',             test:c=>c.matchKills>=6},
-  {icon:'🏆', desc:'Win a match (any mode)',                 test:c=>c.win},
+  {icon:'🌊', desc:'Reach wave 4 in a single run',           test:c=>c.wave>=4},
   {icon:'🌊', desc:'Reach wave 6 in Endless Horde',          test:c=>c.horde && c.wave>=6},
-  {icon:'🥉', desc:'Finish top 3 in Battle Royale / Squads', test:c=>!c.horde && (c.win || c.place<=3)},
+  {icon:'💀', desc:'Get 15+ kills in one run',               test:c=>c.matchKills>=15},
   {icon:'🪝', desc:'Grapple and get 3+ kills in one match',  test:c=>c.grappled && c.matchKills>=3},
   {icon:'⏱',  desc:'Survive 90+ seconds in one match',       test:c=>c.time>=90},
   {icon:'💨', desc:'Take under 30 damage (survive 45s+)',    test:c=>c.dmgTaken<30 && c.time>=45},
@@ -1484,7 +1479,7 @@ let grace = 0;
 const GRACE = 2.6;
 // --- movement feel (tune here) ---
 const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast/skid, camera look-ahead (s of velocity)
-let gameMode = safeGet('dd2_mode','br');   // 'br' | 'horde' | 'squad'
+let gameMode = 'horde';   // Endless Horde is the only mode (BR & Squads retired v2.33.0; engine paths kept dormant)
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
 let hordeWave = 0;
 let hordeStallT = 0, hordeLastAlive = 0;    // wave-clear stall watchdog (unsticks stranded stragglers)
@@ -1965,12 +1960,14 @@ function die(e, src, isHumanTarget){
       hitstop = Math.min(0.045+combo*0.012, 0.12);
       if(combo>=2){ sfx('combo', combo);
         floaters.push({x:e.x, y:e.y-R-24, vy:-40, t:0.9, txt:'COMBO x'+combo, col:'#ffd24a'}); }
-      if(isHumanTarget){ killsTotal++; if(grantXp(Math.round(28*mult))) levelToast();
-        const now=performance.now()/1000;
-        player.streak = (now - player.lastKillT < 4.5) ? player.streak+1 : 1;
-        player.lastKillT = now;
-        if(player.streak>=2) showStreak(player.streak); else toast('+1 KILL');
-      } else { if(grantXp(Math.round(8*mult))) levelToast(); }
+      // EVERY player kill counts (v2.33.0: horde is the only mode, so zombie kills must feed
+      // the counter, streaks, and the end-of-match economy — they used to be human-only)
+      killsTotal++;
+      const now=performance.now()/1000;
+      player.streak = (now - player.lastKillT < 4.5) ? player.streak+1 : 1;
+      player.lastKillT = now;
+      if(player.streak>=2) showStreak(player.streak);      // no '+1 KILL' toast — too spammy at horde kill rates
+      if(grantXp(Math.round((isHumanTarget?28:8)*mult))) levelToast();
     }
   }
   if(!isHumanTarget){ // zombie death pop
@@ -2735,7 +2732,7 @@ function ord(n){ const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]|
 function showResults(win, place){
   screenState='results'; endSpectate();
   const horde = gameMode==='horde';
-  let xpEarned = win?120:40; xpEarned += killsTotal*10; if(horde) xpEarned += hordeWave*15;
+  let xpEarned = win?120:40; xpEarned += killsTotal*(horde?2:10); if(horde) xpEarned += hordeWave*15;
   const lv=grantXp(xpEarned);
   // career stats
   meta.matches++; meta.ckills += killsTotal;
@@ -2744,7 +2741,7 @@ function showResults(win, place){
   if(horde){ if(hordeWave>meta.bestWave) meta.bestWave=hordeWave; }
   else if(meta.best===0 || place<meta.best) meta.best=place;
   // coins: per-kill + win / horde-wave bonuses (achievements & the daily pay on top)
-  let coinsEarned = killsTotal*5 + (win?25:0) + (horde?hordeWave*4:0);
+  let coinsEarned = killsTotal*(horde?1:5) + (win?25:0) + (horde?hordeWave*6:0);
   meta.coins += coinsEarned;
   saveMeta();
   const mctxA = { win, place, horde, matchKills:killsTotal, wave:hordeWave, time:elapsed,
@@ -4010,9 +4007,9 @@ function loop(now){
 // ============================================================
 //  Screens & flow
 // ============================================================
-function show(id){ ['startScreen','modeScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
+function show(id){ ['startScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
   if(id==='startScreen'){ renderStats(); renderMenu(); maybeDonateToast(); }
-  if(id==='modeScreen'){ renderModeSel(); } }
+}
 // one gentle, once-per-session menu nudge after a couple of matches (only if donations are set up)
 let donateToastShown=false;
 function maybeDonateToast(){
@@ -4020,7 +4017,6 @@ function maybeDonateToast(){
   donateToastShown=true;
   setTimeout(()=>{ if(screenState==='start') toast('💜 Enjoying Last Pulse? Tap “Support the game” to tip the dev'); }, 1100);
 }
-const MODE_NAME={br:'BATTLE ROYALE',horde:'ENDLESS HORDE',squad:'SQUADS'};
 function renderMenu(){
   const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
@@ -4040,9 +4036,8 @@ function goAvatar(){ audioInit();
 function kd(){ return (meta.ckills/Math.max(1,meta.deaths)).toFixed(1); }
 function renderStats(){
   const c=el('statsCard'); if(!c) return;
-  const tiles=[['Wins',meta.wins],['Matches',meta.matches],['Kills',meta.ckills],
-    ['Best',meta.best?('#'+meta.best):'—'],['K/D',kd()],
-    ['Streak',meta.streak+(meta.bestStreak>meta.streak?(' /'+meta.bestStreak):'')]];
+  const tiles=[['Wave',meta.bestWave||0],['Matches',meta.matches],['Kills',meta.ckills],
+    ['Dailies',meta.dailies||0],['K/D',kd()],['Streak',meta.bestStreak||0]];
   c.innerHTML=tiles.map(t=>'<div class="st"><b>'+t[1]+'</b><span>'+t[0]+'</span></div>').join('');
   const ac=el('achCount'); if(ac) ac.textContent=meta.achieved.length+'/'+ACHIEVEMENTS.length;
 }
@@ -4298,10 +4293,7 @@ function startMatch(){
 // ---------- button wiring ----------
 el('nameInput').value = meta.name==='deegan'?'':meta.name;
 el('nameInput').placeholder = 'deegan';
-el('toModeBtn').addEventListener('click',()=>{ audioInit(); const v=el('nameInput').value.trim(); meta.name=v||'deegan'; saveMeta();
-  screenState='mode'; show('modeScreen'); });
-el('modeBack').addEventListener('click',()=>{ screenState='start'; show('startScreen'); });
-el('toAvatarBtn').addEventListener('click',goAvatar);
+el('toModeBtn').addEventListener('click',goAvatar);   // straight to fighter select — horde is the game
 el('fighterPortrait').addEventListener('click',goAvatar);
 el('changeAvatar').addEventListener('click',goAvatar);
 el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState='weapon'; show('weaponScreen'); });
@@ -4413,13 +4405,10 @@ el('sName').addEventListener('click',()=>{ closeSettings(); screenState='start';
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); el('nameInput').focus(); });
 
 // mode selector
-function renderModeSel(){ document.querySelectorAll('.modecard').forEach(b=>b.classList.toggle('on', b.dataset.mode===gameMode));
-  const ml=el('modeLabel'); if(ml) ml.textContent='CONTINUE · '+(MODE_NAME[gameMode]||'BATTLE ROYALE'); }
-document.querySelectorAll('.modecard').forEach(b=>b.addEventListener('click',()=>{ audioInit(); gameMode=b.dataset.mode; safeSet('dd2_mode',gameMode); renderModeSel(); }));
-renderModeSel();
+
 // glowing embers rising behind every menu screen (colour-varied to match the aurora)
 (function(){ const EMBER=['rgba(190,255,120,.9)','rgba(90,224,204,.85)','rgba(160,130,255,.85)','rgba(255,170,90,.8)'];
-  for(const id of ['startScreen','modeScreen','avatarScreen','weaponScreen']){ const host=el(id); if(!host) continue;
+  for(const id of ['startScreen','avatarScreen','weaponScreen']){ const host=el(id); if(!host) continue;
     const n = id==='startScreen'?14:9;
     for(let i=0;i<n;i++){ const s=document.createElement('div'); s.className='spore';
       const sz=2+Math.random()*4.5; s.style.width=s.style.height=sz+'px';
