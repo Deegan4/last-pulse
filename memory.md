@@ -35,6 +35,21 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.32.3** — **Save health + save codes + Screen Fit diagnostic** (user: bars STILL not fixed even in
+  Safari + "app tester's progress is not saving"). VERIFIED the delivery chain from the sandbox: Vercel prod
+  (`last-pulse.vercel.app`, also `brawl-arena-plum.vercel.app`) serves 2.32.2 byte-confirmed with
+  `cache-control: max-age=0, must-revalidate` (Safari refresh can't be stale); `.github/workflows/` doesn't
+  exist — the June-9 Pages workflow failed once and was removed, so `deegan4.github.io/last-pulse` NEVER
+  worked (it's still the og:url on the social card — fix or remove later). Unifying theory for both
+  complaints: testers open the TikTok/Instagram **in-app browser** → native chrome bars (unfixable from JS)
+  + ephemeral localStorage (progress vanishes); plus every origin (prod/preview/app) is a separate save.
+  Shipped: (1) `storageOk()` probe + boot warning toasts when storage can't persist; (2) `exportSave()`/
+  `importSave()` — `LP1.`+base64(JSON meta) save codes, Settings → Copy/Enter Save Code (clipboard with
+  prompt() fallback, tested round-trip headless, ~350 chars); (3) saveMeta flush on pagehide/visibilitychange;
+  (4) **Settings → Screen Fit Check**: overlay reporting version, URL HOST (tells us which origin they're
+  on!), standalone/apple, screen/inner/clientH/visualViewport, env probes, applied --sat/--sab, stage rect,
+  storage state, with COPY REPORT — the no-typing replacement for ?safeprobe. NEXT DEBUGGING STEP when user
+  responds: get the Screen Fit report (Play → ⚙ gear → Screen Fit) — do NOT ship another blind viewport fix.
 - **v2.32.2** — **iPhone bars: the REAL fix (env() lies).** v2.32.1 didn't fix the user's phone; their
   v2.32.0 screenshot held the smoking gun ignored earlier: the TITLE clipped under the clock → `env(safe-area-
   inset-top)` returns **0** in their installed home-screen app (known WebKit standalone bug). So the probe-

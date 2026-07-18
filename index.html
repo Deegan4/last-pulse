@@ -748,6 +748,9 @@
         <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
         <input type="range" id="aimSens" min="30" max="200" step="10"></div>
+      <button class="opt" id="sExport"><span class="oic">💾</span>Copy Save Code</button>
+      <button class="opt" id="sImport"><span class="oic">📥</span>Enter Save Code</button>
+      <button class="opt" id="sFit"><span class="oic">📏</span>Screen Fit Check</button>
       <button class="opt danger hidden" id="sQuit"><span class="oic">🏳️</span>Quit to Main Menu</button>
     </div>
     <button class="close" id="sClose">Close</button>
@@ -1067,8 +1070,13 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.32.2';
+const GAME_VERSION = '2.32.3';
 const CHANGELOG = [
+  { v:'2.32.3', items:[
+    ['💾','Save codes','copy your save as a code and load it on any device or browser — your progress can finally travel (Settings → Copy Save Code)'],
+    ['⚠️','Save-loss warning','the game now tells you when a browser (private tabs, TikTok/Instagram in-app browsers) can’t save progress'],
+    ['📏','Screen Fit check','a diagnostic in Settings that reports exactly how the game fits your screen — helps us squash device-specific bars fast'],
+  ]},
   { v:'2.32.2', items:[
     ['📏','iPhone bars: the real fix','iOS was reporting a zero-size notch to the game; we now detect the lie and use true hardware insets — field edge-to-edge, title clear of the clock'],
   ]},
@@ -1336,6 +1344,27 @@ function saveMeta(){
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
 }
+// ===== Save health & transfer =====
+// Some browsers can't persist localStorage at all (private tabs, TikTok/Instagram in-app
+// webviews) — progress silently vanishes between sessions. Detect that up front and WARN,
+// and give players a save code so progress can move between browsers / the installed app /
+// different game URLs (every origin keeps its own separate save).
+function storageOk(){
+  try{ localStorage.setItem('__lp_t','1'); const ok=localStorage.getItem('__lp_t')==='1';
+    localStorage.removeItem('__lp_t'); return ok; }catch(e){ return false; }
+}
+function exportSave(){ return 'LP1.'+btoa(unescape(encodeURIComponent(JSON.stringify(meta)))); }
+function importSave(code){
+  try{
+    code=(code||'').trim(); if(!code.startsWith('LP1.')) return false;
+    const o=JSON.parse(decodeURIComponent(escape(atob(code.slice(4)))));
+    if(typeof o.level!=='number' || typeof o.coins!=='number' || !Array.isArray(o.achieved)) return false;
+    Object.assign(meta,o); saveMeta(); return true;
+  }catch(e){ return false; }
+}
+// flush on tab hide / app switch — belt & suspenders against abrupt closes losing a purchase
+window.addEventListener('pagehide',()=>{ try{ saveMeta(); }catch(e){} });
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'){ try{ saveMeta(); }catch(e){} } });
 
 // ===== Achievements =====
 // Career tests read `meta`; per-match feats read the `ctx` passed at match end.
@@ -4323,6 +4352,56 @@ function quitToMenu(){
 }
 el('gearHud').addEventListener('click',openSettings);
 el('sQuit').addEventListener('click',quitToMenu);
+// save transfer
+el('sExport').addEventListener('click',()=>{
+  const code=exportSave();
+  const done=()=>toast('💾 Save code copied — paste it on your other device');
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done,()=>prompt('Copy your save code:',code));
+  else prompt('Copy your save code:',code);
+});
+el('sImport').addEventListener('click',()=>{
+  const code=prompt('Paste your save code:');
+  if(code===null) return;
+  if(importSave(code)){ toast('📥 Save loaded! Lv '+meta.level+' · 🪙 '+meta.coins); renderMenu(); syncSliders(); }
+  else toast('That code didn’t work — copy the WHOLE code, starting with LP1.');
+});
+// screen-fit diagnostic: every viewport number that matters, tap to close, Copy for support
+el('sFit').addEventListener('click',()=>{
+  const vv=window.visualViewport;
+  const cs=getComputedStyle(document.documentElement);
+  const g=el('game').getBoundingClientRect();
+  const rep=[
+    'LAST PULSE screen fit  v'+GAME_VERSION,
+    'url: '+location.host+location.pathname,
+    'standalone: '+inStandalone()+'   apple: '+isApple(),
+    'screen: '+screen.width+'x'+screen.height,
+    'inner: '+window.innerWidth+'x'+window.innerHeight,
+    'clientH: '+document.documentElement.clientHeight,
+    'visualViewport: '+(vv?Math.round(vv.width)+'x'+Math.round(vv.height):'n/a'),
+    'env probe top/bottom: '+safeTopPx()+' / '+safeBottomPx(),
+    'applied --sat/--sab: '+cs.getPropertyValue('--sat').trim()+' / '+cs.getPropertyValue('--sab').trim(),
+    'stage rect: top '+Math.round(g.top)+' h '+Math.round(g.height),
+    'storage: '+(storageOk()?'OK':'NOT SAVING'),
+  ].join('\n');
+  const box=document.createElement('div');
+  box.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99999;max-width:92vw;'
+    +'padding:14px 16px;font:600 12px/1.55 monospace;color:#bfff5a;background:rgba(0,0,0,.92);'
+    +'border:1.5px solid #6f9a25;border-radius:12px;white-space:pre;';
+  box.textContent=rep+'\n\n[ tap to close ]';
+  const cp=document.createElement('button');
+  cp.textContent='COPY REPORT'; cp.style.cssText='display:block;margin-top:10px;padding:8px 14px;border:none;border-radius:8px;background:#7bbf2e;color:#12280a;font-weight:800;cursor:pointer';
+  cp.addEventListener('click',e=>{ e.stopPropagation();
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(rep).then(()=>toast('Report copied'),()=>prompt('Copy this report:',rep));
+    else prompt('Copy this report:',rep); });
+  box.appendChild(cp);
+  box.addEventListener('click',()=>box.remove());
+  document.body.appendChild(box);
+});
+// warn once at boot when this browser can't persist progress at all
+if(!storageOk()){
+  setTimeout(()=>toast('⚠️ This browser can’t save progress — open in Safari and Add to Home Screen'), 1600);
+  setTimeout(()=>toast('⚠️ Progress won’t be saved here! Use Safari → Add to Home Screen'), 12000);
+}
 el('avatarGear').addEventListener('click',openSettings);
 el('weaponGear').addEventListener('click',openSettings);
 el('sClose').addEventListener('click',closeSettings);
