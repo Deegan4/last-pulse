@@ -65,7 +65,7 @@ On a laptop you can also download [`index.html`](index.html) and open it in any 
 
 - 🎮 **Twin-stick controls** — dual virtual joysticks on touch, `WASD` + mouse on desktop, plus gamepad support.
 - 🏃 **Dynamic movement** — fighters accelerate with weight, lean into their run, and their stride quickens the faster they move; the camera leads the direction you're heading so the field opens up ahead of you.
-- 🏆 **Three modes** — **Battle Royale** (15 players, shrinking zone), **Endless Horde** (escalating zombie waves), and **Squads** (last team standing).
+- 🧟 **Endless Horde** — survive escalating zombie waves as long as you can (every 5th wave sends armored elites).
 - 🔨 **Build & defend** — scavenge **scrap** dropped by zombies (and scattered in caches), then spend it in-match to raise **walls** for cover, lay **spike traps**, and plant **auto-turrets** that gun down the swarm for you.
 - 🧟 **Six+ zombie types** — `normal`, fast `runner`, and tanky `brute` in the mix, plus Horde horrors: acid-lobbing **Spitters**, bursting **Bloaters**, swarming **Stalkers**, and armored **Juggernaut** mini-bosses on milestone waves — all ramping in HP, speed, and damage each wave.
 - 🔫 **12 weapons** — Pistol (crit), Rifle, Shotgun, SMG, Magnum, Sniper (pierce), Crossbow, Flamethrower (burn DoT), Minigun, the drum-mag Tommy, and more — each with its own ammo, reload, range, and feel.
