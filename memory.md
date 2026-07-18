@@ -35,6 +35,21 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **Marketing: TikTok video** (no game change; asset delivered to owner, not committed — 22MB media stays out
+  of the repo). 34s 1080×1920 H.264: intro card → live horde gameplay with in-page caption overlays (injected
+  DOM, `pointer-events:none`, baked into the recording) → opaque end-card composited in post (player died on
+  camera; translucent card leaked the results screen). Recipe for reruns: serve over http (`file://` CORS
+  blocks three.js), Playwright `recordVideo` at NATIVE viewport size (it letterboxes instead of upscaling),
+  upscale/encode with `@ffmpeg-installer/ffmpeg` via npm (registry tarball works; `apt` + github-release
+  binaries are proxy-blocked; the Playwright bundled ffmpeg is VP8-only but extracts PNG frames). **Headless
+  input gotchas:** `isTouch` evaluates TRUE headless (hover:none/pointer:coarse) → mouse/space fire dead-code;
+  patch `matchMedia` via `addInitScript` to force the desktop path, then hold Space (`keys[' ']`) to fire.
+- **BUG (parked): horde kills never count.** `killsTotal++` only fires for human targets (`isHumanTarget`,
+  ~line 1869), so in Endless Horde the HUD/results kill counter stays 0, "+1 KILL" toasts and streaks never
+  fire, and `killsTotal*5` kill-coins + `killsTotal*10` end XP pay nothing. Zombie kills only grant the inline
+  8×combo XP. Fix sketch: in horde, count zombie kills into `killsTotal` — but rebalance first: wave-6 run
+  ≈ 111 zombie kills → 555 kill-coins vs a BR win's ~75, so horde needs a lower per-kill coin rate (e.g.
+  `killsTotal*1` in horde) or a coin cap. Do as its own versioned change with a balance pass.
 - **v2.31.5** — **Bottom black bar fixed** (user screenshot from the installed Home Screen app, v2.31.4: dead
   black strip ~51pt at the bottom; the RECURRING "black bar" family — `?safeprobe` exists from earlier rounds).
   Root cause: `resize()` pinned the stage to `window.innerHeight` px, and iOS **standalone** cold-launch
