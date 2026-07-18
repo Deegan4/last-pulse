@@ -35,6 +35,19 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.32.2** — **iPhone bars: the REAL fix (env() lies).** v2.32.1 didn't fix the user's phone; their
+  v2.32.0 screenshot held the smoking gun ignored earlier: the TITLE clipped under the clock → `env(safe-area-
+  inset-top)` returns **0** in their installed home-screen app (known WebKit standalone bug). So the probe-
+  based v2.32.1 measured 0 and no-oped, and every env()-based CSS offset (.screen padding, #gearHud/#xpwrap/
+  #mmwrap/#powers/#ctrl) collapsed too. Fix: safe-area now flows through **CSS vars `--sat`/`--sab`/`--sar`**
+  (defaulting to env()); `effInsets()` substitutes hardware values (**54px top / 34px bottom**) when
+  `isApple() && inStandalone()` and env reads <8px; `resize()` publishes the effective values via
+  `setProperty` so stage AND all content offsets move together (stage.top=-st, height=vh+st+sb). All six env()
+  CSS consumers swapped to the vars (safeprobe's own vars untouched). Verified: desktop byte-identical
+  (top 0/932/sat 0); spoofed iPhone-standalone-env-lie → top -54, h 940, sat 54px, sab 34px, menu padding
+  64px, screenshot shows field truly edge-to-edge with title clear; match starts; 0 errors. If a bar EVER
+  returns: `?safeprobe` first, and remember this class of bug is never "measure harder" — it's "stop trusting
+  the API that lied."
 - **v2.32.1** — **True edge-to-edge (bar complaint #3, angry user screenshot on v2.32.0)**. The 2.32.0
   translucent menus EXPOSED the safe-area strips: the areas outside the layout viewport (behind the status
   bar / past the home indicator) paint the flat body background, which blended invisibly when menus were

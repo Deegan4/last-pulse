@@ -36,6 +36,11 @@
 <meta name="twitter:image:alt" content="Last Pulse — Survive the Swarm" />
 <style>
   :root{
+    /* safe-area insets as vars: default to env(), but resize() OVERRIDES them with real
+       hardware values when iOS standalone reports env()=0 (a known WebKit lie — it made the
+       title clip under the clock and left "black bar" strips no measurement-based fix could
+       see). Every layout rule below reads these vars, never env() directly. */
+    --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px); --sar:env(safe-area-inset-right,0px);
     --grass:#6aa84f; --grass2:#5c9a43; --panel:#5f7d3f; --panelHi:#6f9149;
     --line:rgba(255,255,255,.18); --lime:#a6e22e; --lime2:#7bbf2e;
     --ink:#1d2a14; --txt:#f3f7ea; --muted:#cddcb6; --hp:#5fd35f; --hp2:#2c8a2c;
@@ -75,7 +80,7 @@
 
   /* ---------- Full-screen menu screens ---------- */
   .screen{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
-    padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 16px);
+    padding:calc(var(--sat) + 12px) 14px calc(var(--sab) + 16px);
     overflow-y:auto;overflow-x:hidden;isolation:isolate;background:#0b120a;
     /* modern mesh-gradient base: layered neon blooms over a deep near-black green + centre vignette */
     background-image:
@@ -215,7 +220,7 @@
   .modebtn.on{background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f;border-color:#d6ff6e}
 
   /* ---------- Upgraded main menu ---------- */
-  #startScreen.menu{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top,0px) + 10px);overflow-x:hidden}
+  #startScreen.menu{justify-content:flex-start;padding-top:calc(var(--sat) + 10px);overflow-x:hidden}
   #startScreen.menu > *{position:relative;z-index:1}
   .menuGlow{position:absolute;inset:0;z-index:0;pointer-events:none;
     background:radial-gradient(56% 38% at 50% 24%, rgba(190,255,90,.20), rgba(120,220,120,0) 70%);
@@ -586,10 +591,10 @@
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
   #gearHud{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-  #gearHud,#xpwrap{top:calc(10px + env(safe-area-inset-top,0px))}
-  #mmwrap{top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px))}
+  #gearHud,#xpwrap{top:calc(10px + var(--sat))}
+  #mmwrap{top:calc(10px + var(--sat));right:calc(10px + var(--sar))}
   #xpbar{box-shadow:inset 0 2px 5px rgba(0,0,0,.45)}
-  #powers{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+  #powers{bottom:calc(150px + var(--sab))}
   .power{border:2.5px solid rgba(255,255,255,.55);box-shadow:0 8px 20px rgba(0,0,0,.4)}
   #specBar{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);background:rgba(14,22,9,.7)}
   #toast{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);background:rgba(10,16,6,.72);
@@ -623,7 +628,7 @@
      mid-screen spot, floating over the player. Re-assert the bottom-centre row here. */
   @media (max-height:560px){
     #powers{grid-template-columns:repeat(4,auto);left:50%;right:auto;top:auto;
-      bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);gap:14px}
+      bottom:calc(14px + var(--sab));transform:translateX(-50%);gap:14px}
     #powers #scrapHud{justify-self:center}
     .power{width:54px;height:54px;font-size:23px}
   }
@@ -842,12 +847,29 @@ let W = 0, H = 0, DPR = 1;
 // measure env(safe-area-inset-top) in px — iPhones report the notch/status-bar height here.
 // The layout viewport starts BELOW it, so unless we paint into it the OS shows the bare page
 // background there (the "black bar at the top" on notched phones).
-let safeTopEl = null;
+let safeTopEl = null, safeBotEl = null;
 function safeTopPx(){
   if(!safeTopEl){ safeTopEl=document.createElement('div');
     safeTopEl.style.cssText='position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
     document.documentElement.appendChild(safeTopEl); }
   return safeTopEl.getBoundingClientRect().height || 0;
+}
+function safeBottomPx(){
+  if(!safeBotEl){ safeBotEl=document.createElement('div');
+    safeBotEl.style.cssText='position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none';
+    document.documentElement.appendChild(safeBotEl); }
+  return safeBotEl.getBoundingClientRect().height || 0;
+}
+// Effective insets: trust env() when it reports, but iOS standalone is KNOWN to lie (env()=0)
+// on some versions — there we substitute standard hardware values (54pt status/notch strip,
+// 34pt home indicator) rather than render bars. Non-Apple / desktop: env()=0 and stays 0.
+function effInsets(){
+  let st=safeTopPx(), sb=safeBottomPx();
+  if(isApple() && inStandalone()){
+    if(st<8) st=54;
+    if(sb<8) sb=34;
+  }
+  return {st, sb};
 }
 function measureViewport(){
   // Take the LARGEST honest answer from every viewport API — each one has an iOS mode where it
@@ -883,11 +905,15 @@ function resize(){
   // as a "black bar" — the field must go edge-to-edge. Safe because .screen pads its content
   // with env(safe-area-inset-top) (title stays below the clock) and the HUD pins itself with the
   // same env offsets. In Safari (no inset) st is 0 and this is a no-op.
-  const st = safeTopPx();
+  const ins = effInsets(), st = ins.st, sb = ins.sb;
+  // publish the effective insets — ALL safe-area CSS reads var(--sat)/--sab, so when env()
+  // lies (iOS standalone) the substituted hardware values reposition the title/HUD too.
+  document.documentElement.style.setProperty('--sat', st+'px');
+  document.documentElement.style.setProperty('--sab', sb+'px');
   stage.style.top = (-st) + 'px';
   stage.style.width = gw + 'px';
-  stage.style.height = (gh + st) + 'px';
-  gh += st;
+  stage.style.height = (gh + st + sb) + 'px';
+  gh += st + sb;
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = gw; H = gh;
   cv.width = Math.max(1, Math.floor(W * DPR));
@@ -1041,8 +1067,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.32.1';
+const GAME_VERSION = '2.32.2';
 const CHANGELOG = [
+  { v:'2.32.2', items:[
+    ['📏','iPhone bars: the real fix','iOS was reporting a zero-size notch to the game; we now detect the lie and use true hardware insets — field edge-to-edge, title clear of the clock'],
+  ]},
   { v:'2.32.1', items:[
     ['📏','True edge-to-edge','the field now paints under the status bar and home indicator — no more dark strips framing the menus on iPhone'],
   ]},
