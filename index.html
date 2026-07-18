@@ -543,6 +543,11 @@
   .screen{background:
     radial-gradient(135% 95% at 50% -8%, var(--bg2), var(--bg1) 52%, var(--bg0) 100%);
     scrollbar-width:none}
+  /* illustrated key-art backdrop — .hasart is added by JS only after the JPG loads (fail-safe:
+     missing/blocked image keeps the gradient above). Scrim keeps menu text readable. */
+  .screen.hasart{background:
+    linear-gradient(rgba(9,13,7,.28), rgba(9,13,7,.34) 55%, rgba(7,11,4,.5)),
+    url('assets/img/menu-bg.jpg') center/cover no-repeat var(--bg0)}
   .screen::-webkit-scrollbar{display:none}
   .screen:not(.hidden){animation:scrIn .3s cubic-bezier(.2,.9,.3,1)}
   @keyframes scrIn{from{opacity:0;transform:translateY(12px) scale(.996)}to{opacity:1;transform:none}}
@@ -1006,6 +1011,10 @@ function loadImg(k, src){
   IMG[k]={img:im, ok:false}; im.src=src;
 }
 loadImg('grass',     'assets/img/ground-grass.png');
+// illustrated menu backdrop — add .hasart to menu screens only once the JPG actually loads
+{ const mb=new Image();
+  mb.onload=()=>{ document.querySelectorAll('.screen').forEach(s=>s.classList.add('hasart')); };
+  mb.src='assets/img/menu-bg.jpg'; }
 loadImg('tree',      'assets/img/decor-tree.png');
 loadImg('bush',      'assets/img/decor-bush.png');
 loadImg('hero-kai',   'assets/img/hero-kai.png');
@@ -1036,8 +1045,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.31.5';
+const GAME_VERSION = '2.32.0';
 const CHANGELOG = [
+  { v:'2.32.0', items:[
+    ['🎨','Illustrated menu backdrop','the menus now open on a key-art scene — a chibi zombie horde shambling across the dusk field — instead of a plain gradient'],
+  ]},
   { v:'2.31.5', items:[
     ['📏','Black bar at the bottom — fixed','the game now fills the whole screen on iPhones (especially the installed Home Screen app), reclaiming the dead strip above the home indicator'],
   ]},
