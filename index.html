@@ -540,14 +540,11 @@
   *{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',
     "Trebuchet MS",sans-serif}
   /* screens: deep layered forest gradient + smooth entrance */
+  /* translucent scrim (not opaque): the live game canvas shows through, so the ambient
+     horde shambles behind every menu. Alpha tuned so text/buttons stay fully readable. */
   .screen{background:
-    radial-gradient(135% 95% at 50% -8%, var(--bg2), var(--bg1) 52%, var(--bg0) 100%);
+    radial-gradient(135% 95% at 50% -8%, rgba(49,73,31,.62), rgba(34,51,26,.68) 52%, rgba(19,27,12,.84) 100%);
     scrollbar-width:none}
-  /* illustrated key-art backdrop — .hasart is added by JS only after the JPG loads (fail-safe:
-     missing/blocked image keeps the gradient above). Scrim keeps menu text readable. */
-  .screen.hasart{background:
-    linear-gradient(rgba(9,13,7,.28), rgba(9,13,7,.34) 55%, rgba(7,11,4,.5)),
-    url('assets/img/menu-bg.jpg') center/cover no-repeat var(--bg0)}
   .screen::-webkit-scrollbar{display:none}
   .screen:not(.hidden){animation:scrIn .3s cubic-bezier(.2,.9,.3,1)}
   @keyframes scrIn{from{opacity:0;transform:translateY(12px) scale(.996)}to{opacity:1;transform:none}}
@@ -1011,10 +1008,6 @@ function loadImg(k, src){
   IMG[k]={img:im, ok:false}; im.src=src;
 }
 loadImg('grass',     'assets/img/ground-grass.png');
-// illustrated menu backdrop — add .hasart to menu screens only once the JPG actually loads
-{ const mb=new Image();
-  mb.onload=()=>{ document.querySelectorAll('.screen').forEach(s=>s.classList.add('hasart')); };
-  mb.src='assets/img/menu-bg.jpg'; }
 loadImg('tree',      'assets/img/decor-tree.png');
 loadImg('bush',      'assets/img/decor-bush.png');
 loadImg('hero-kai',   'assets/img/hero-kai.png');
@@ -1048,7 +1041,7 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 const GAME_VERSION = '2.32.0';
 const CHANGELOG = [
   { v:'2.32.0', items:[
-    ['🎨','Illustrated menu backdrop','the menus now open on a key-art scene — a chibi zombie horde shambling across the dusk field — instead of a plain gradient'],
+    ['🎨','Living menu backdrop','the menus now sit over the real field with a live horde shambling — and runners sprinting — past behind them'],
   ]},
   { v:'2.31.5', items:[
     ['📏','Black bar at the bottom — fixed','the game now fills the whole screen on iPhones (especially the installed Home Screen app), reclaiming the dead strip above the home indicator'],
@@ -1692,6 +1685,35 @@ function newBot(team, namePool, i){
   b.x=s.x; b.y=s.y; b.aim=rand(0,TAU);
   return b;
 }
+// ===== Ambient menu scene =====
+// The menu screens are translucent, so the live canvas shows through them. While no match is
+// running we keep a little horde shambling (and runners sprinting) across the field behind the
+// menus. They live in the normal `zombies` array (drawZombie animates them for free) but carry
+// z.amb so only the ambient mover touches them; spawnMatch wipes the array and clears the flag.
+let menuAmbient=false;
+function menuScene(){
+  zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
+  if(!decor.length) buildDecor();                        // first boot: give the menu real scenery
+  menuAmbient=true;
+  const cx=(player&&player.x)||ARENA/2, cy=(player&&player.y)||ARENA/2;
+  for(let i=0;i<14;i++){
+    const kind=pick(['normal','normal','normal','normal','runner','runner','brute']);
+    const dir=Math.random()<0.5?-1:1;
+    const z=makeZombie(clamp(cx+rand(-520,520),R,ARENA-R), clamp(cy+rand(-620,620),R,ARENA-R), kind);
+    z.amb={dir}; z.faceX=dir; z.vx=dir*z.speed*0.85; z.vy=rand(-8,8); z.walk=rand(0,TAU);
+    zombies.push(z);
+  }
+}
+function menuSceneUpdate(dt){
+  if(!menuAmbient) return;
+  const cx=(player&&player.x)||ARENA/2;
+  for(const z of zombies){ if(!z.amb) continue;
+    z.x+=z.vx*dt; z.y+=z.vy*dt; z.walk+=dt*6;
+    if((z.amb.dir>0 && z.x>cx+560) || (z.amb.dir<0 && z.x<cx-560)){   // crossed the view → wrap
+      z.amb.dir*=-1; z.faceX=z.amb.dir; z.vx=z.amb.dir*z.speed*0.85;
+      z.y=clamp(((player&&player.y)||ARENA/2)+rand(-620,620),R,ARENA-R); }
+  }
+}
 function spawnMatch(){
   humans.length=0; zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
@@ -1700,6 +1722,7 @@ function spawnMatch(){
   killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14);
   hordeStallT=0; hordeLastAlive=0;
   combo=0; comboT=0; hitstop=0;
+  menuAmbient=false;                                     // real match takes over the canvas
   matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
   buildDecor();
   // interior loot — every house hides a pickup (a reason to step inside)
@@ -2817,7 +2840,7 @@ function draw(){
     ctx.font='800 14px Trebuchet MS, sans-serif'; ctx.textAlign='center'; ctx.fillText(f.txt,f.x,f.y); } ctx.globalAlpha=1;
 
   drawReticle();
-  if(zoneActive()) drawZone();
+  if(zoneActive() && !menuAmbient) drawZone();   // no zone ring behind the ambient menu scene
   ctx.restore();
   drawVignette();
 
@@ -3911,7 +3934,7 @@ function loop(now){
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }
     refreshHud(); drawMini();
-  } else { updateParticles(dt); }
+  } else { updateParticles(dt); menuSceneUpdate(dt); }
   draw();
   if(perfT0){ perfAcc+=performance.now()-perfT0; perfN++; perfPeakZ=Math.max(perfPeakZ,zombies.length);
     if(now-perfLog>2000){ const ms=perfAcc/Math.max(1,perfN);
@@ -4220,7 +4243,7 @@ el('changeAvatar').addEventListener('click',goAvatar);
 el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState='weapon'; show('weaponScreen'); });
 el('dropInBtn').addEventListener('click', startMatch);
 el('againBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); startMatch(); });
-el('menuBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); screenState='start'; show('startScreen'); });
+el('menuBtn').addEventListener('click',()=>{ el('results').classList.add('hidden'); screenState='start'; menuScene(); show('startScreen'); });
 el('rDonate').addEventListener('click', openDonate);   // results-screen donation nudge → donate modal
 // achievements
 el('achBtn').addEventListener('click',()=>{ audioInit(); openAchievements(); });
@@ -4261,7 +4284,7 @@ function quitToMenu(){
   el('settings').classList.add('hidden'); el('results').classList.add('hidden'); el('specBar').classList.add('hidden');
   paused=false; ended=true; spectating=false; specTarget=null;
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden');
-  screenState='start'; show('startScreen');
+  screenState='start'; menuScene(); show('startScreen');
 }
 el('gearHud').addEventListener('click',openSettings);
 el('sQuit').addEventListener('click',quitToMenu);
@@ -4293,6 +4316,7 @@ renderModeSel();
 
 setupTouch();
 buildDecor();
+menuScene();
 show('startScreen');
 maybeShowWhatsNew();
 requestAnimationFrame(loop);
