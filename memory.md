@@ -35,19 +35,21 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
-- **v2.32.0** — **Illustrated menu backdrop** (user: "free upgraded assets via MCP"). Canva MCP route ran
-  end-to-end (4 AI key-art candidates generated; best saved to the user's Canva as design `DAHPvNMkBa4` +
-  1080×1920 PNG export) but **the sandbox network policy 403s the pixel domains** (`design.canva.ai`,
-  `export-download.canva.com` — gateway CONNECT denial; WebFetch also blocked); user can upload the PNG in chat
-  or allow those domains in the env network policy to unblock future MCP asset pipelines. Shipped a
-  **procedural** backdrop instead: `assets/img/menu-bg.jpg` (1080×1920, ~270KB, JPEG q0.82) composed headless
-  from the repo's own sprites (ground-grass tile + decor-tree/bush) + hand-drawn chibi zombie wedge (17, depth-
-  scaled), dusk tint, ponds in the bottom corners, fireflies, baked top/bottom scrims. Wiring: `.screen.hasart`
-  CSS (scrim gradient + cover image) added ONLY after a JS `Image()` probe onload (fail-safe: missing file =
-  old gradient); probe lives next to the `loadImg` block. Applied to all four menu screens. Verified: hasart
-  true over http, menu screenshot clean/readable, validate green (2.32.0), 0 errors. Recipe: `_menubg.html`
-  (throwaway, http-served for sprite loads) → toDataURL jpeg → file; regenerate by tweaking the `rows`/`spots`
-  arrays.
+- **v2.32.0** — **Living menu backdrop** (user: "free upgraded assets via MCP" → "can the zombies be
+  enhanced… animated and running?"). Evolved twice: (1) Canva MCP generated 4 key-art candidates (saved to
+  user's Canva, design `DAHPvNMkBa4`) but the sandbox network policy 403s the pixel domains
+  (`design.canva.ai`, `export-download.canva.com`) — user can upload the PNG in chat or allow those domains;
+  (2) a static procedural `menu-bg.jpg` shipped briefly, then was REPLACED by a live scene (file deleted).
+  Final design: menu `.screen` backgrounds became a TRANSLUCENT radial scrim (rgba .62/.68/.84 — the
+  readability tunables) so the always-running game canvas shows through, and an **ambient horde** shambles
+  behind every menu: `menuScene()` (before `spawnMatch`) fills `zombies[]` with 14 `makeZombie`s (normal/
+  runner/brute mix — runners actually sprint) tagged `z.amb={dir}`; `menuSceneUpdate(dt)` (loop's non-playing
+  branch) advances x/walk and flips direction at ±560 of view center. Engine renders/y-sorts/animates them for
+  free via `drawZombie`. `menuAmbient` flag: set by menuScene (boot + menuBtn + quitToMenu), cleared by
+  spawnMatch (which also wipes zombies[]); gates `drawZone()` so no zone ring leaks onto menus. Verified:
+  two menu screenshots 1.4s apart differ (animation proof), match starts cleanly over the scene, validate
+  green (2.32.0), 0 errors. NOTE: results screen shows the frozen end-of-match battlefield behind its modal —
+  intentional aftermath vibe.
 - **Marketing: TikTok video** (no game change; asset delivered to owner, not committed — 22MB media stays out
   of the repo). 34s 1080×1920 H.264: intro card → live horde gameplay with in-page caption overlays (injected
   DOM, `pointer-events:none`, baked into the recording) → opaque end-card composited in post (player died on
