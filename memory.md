@@ -35,6 +35,19 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.32.0** — **Illustrated menu backdrop** (user: "free upgraded assets via MCP"). Canva MCP route ran
+  end-to-end (4 AI key-art candidates generated; best saved to the user's Canva as design `DAHPvNMkBa4` +
+  1080×1920 PNG export) but **the sandbox network policy 403s the pixel domains** (`design.canva.ai`,
+  `export-download.canva.com` — gateway CONNECT denial; WebFetch also blocked); user can upload the PNG in chat
+  or allow those domains in the env network policy to unblock future MCP asset pipelines. Shipped a
+  **procedural** backdrop instead: `assets/img/menu-bg.jpg` (1080×1920, ~270KB, JPEG q0.82) composed headless
+  from the repo's own sprites (ground-grass tile + decor-tree/bush) + hand-drawn chibi zombie wedge (17, depth-
+  scaled), dusk tint, ponds in the bottom corners, fireflies, baked top/bottom scrims. Wiring: `.screen.hasart`
+  CSS (scrim gradient + cover image) added ONLY after a JS `Image()` probe onload (fail-safe: missing file =
+  old gradient); probe lives next to the `loadImg` block. Applied to all four menu screens. Verified: hasart
+  true over http, menu screenshot clean/readable, validate green (2.32.0), 0 errors. Recipe: `_menubg.html`
+  (throwaway, http-served for sprite loads) → toDataURL jpeg → file; regenerate by tweaking the `rows`/`spots`
+  arrays.
 - **Marketing: TikTok video** (no game change; asset delivered to owner, not committed — 22MB media stays out
   of the repo). 34s 1080×1920 H.264: intro card → live horde gameplay with in-page caption overlays (injected
   DOM, `pointer-events:none`, baked into the recording) → opaque end-card composited in post (player died on
