@@ -119,7 +119,10 @@ After any non-trivial edit, syntax-check both script blocks, then drive the real
 node scripts/validate.mjs
 
 # boot → menu-drive into a live match → screenshots → fails on any page error
-node .claude/skills/run-brawl-arena/driver.mjs --play --mode br --shoot
+node .claude/skills/run-brawl-arena/driver.mjs --play --shoot
+
+# balance/perf harness: kiting bot plays Horde to wave 15, 5 runs, JSON report
+node .claude/skills/run-brawl-arena/driver.mjs --waves 15 --runs 5 --json .shots/waves.json
 ```
 
 The driver (see `.claude/skills/run-brawl-arena/`) launches the bundled Chromium
