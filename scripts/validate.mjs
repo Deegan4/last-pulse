@@ -111,8 +111,35 @@ try {
   const clv = (html.match(/CHANGELOG\s*=\s*\[\s*\{\s*v:\s*'([^']+)'/) || [])[1];
   if (!gv || !clv) { console.error('✗ version gate: could not read GAME_VERSION / CHANGELOG[0].v'); process.exit(1); }
   if (gv !== clv) { console.error(`✗ version gate: GAME_VERSION='${gv}' ≠ CHANGELOG top v='${clv}' — bump both together`); process.exit(1); }
-  console.log(`✓ version consistent: GAME_VERSION == CHANGELOG top (${gv})`);
+  // ROADMAP.md is the project's state machine (no CI, no build) — when its header version drifts
+  // from the shipped one, "what's next" has to be re-derived from git log every session. It drifted
+  // 23 versions once (v1.10.0 header while v2.33.0 shipped), which is how retired features stayed
+  // on the plan as "todo". Gate it.
+  const rm = readFileSync(join(root, 'ROADMAP.md'), 'utf8');
+  const rmv = (rm.match(/\*\*Last Pulse\*\*\s*\(v([0-9]+\.[0-9]+\.[0-9]+)\)/) || [])[1];
+  if (!rmv) { console.error("✗ version gate: ROADMAP.md header is missing its `(vX.Y.Z)` marker"); process.exit(1); }
+  if (rmv !== gv) { console.error(`✗ version gate: ROADMAP.md header v='${rmv}' ≠ GAME_VERSION='${gv}' — re-sync the roadmap when you ship`); process.exit(1); }
+  console.log(`✓ version consistent: GAME_VERSION == CHANGELOG top == ROADMAP header (${gv})`);
 } catch (err) { console.error('✗ version gate failed:', err.message); process.exit(1); }
+
+// Documented-mode gate — every `--mode X` appearing in CLAUDE.md or the driver must be a mode the
+// game actually ships (index.html's MODES). v2.33.0 retired BR & Squads but the docs kept telling
+// people to run `--mode br`, and the driver's mode click is .catch()-wrapped, so the documented
+// smoke test silently tested the wrong thing instead of failing.
+try {
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const modes = [...((html.match(/const MODES\s*=\s*\[([^\]]*)\]/) || [])[1] || '').matchAll(/['"]([^'"]+)['"]/g)].map(m => m[1]);
+  if (!modes.length) { console.error('✗ mode gate: could not read `const MODES = [...]` from index.html'); process.exit(1); }
+  const bad = [];
+  for (const rel of ['CLAUDE.md', '.claude/skills/run-brawl-arena/driver.mjs']) {
+    const p = join(root, rel);
+    if (!existsSync(p)) continue;
+    for (const m of readFileSync(p, 'utf8').matchAll(/--mode\s+([a-z]+)/g))
+      if (m[1] !== 'm' && !modes.includes(m[1])) bad.push(`${rel} documents --mode ${m[1]}`);
+  }
+  if (bad.length) { bad.forEach(b => console.error(`✗ mode gate: ${b} — shipped modes: ${modes.join(', ')}`)); process.exit(1); }
+  console.log(`✓ documented modes valid: ${modes.join(', ')}`);
+} catch (err) { console.error('✗ mode gate failed:', err.message); process.exit(1); }
 
 // Horde-spawn reachability gate — every enemy kind defined in ZTYPES with a Horde-only flag must be
 // reachable by a spawn path, or it's dead content (as spitter/bloater were: defined in v2.20.0 but

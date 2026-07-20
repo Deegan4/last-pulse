@@ -1,8 +1,51 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v1.10.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.34.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
+
+> The header version above is **gated by `scripts/validate.mjs`** — it must equal `GAME_VERSION`.
+> With no CI and no build step this file is the project's state machine; it once sat at v1.10.0
+> while v2.33.0 shipped, so retired features (Battle Royale, Squads) stayed on the plan as "todo"
+> and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
+> bumps the version. **When it disagrees with the code, the code wins** — verify against
+> `index.html` before trusting any bullet below.
+
+## Shipped since this plan was last synced (v2.7.0 → v2.34.0)
+
+Reconstructed from `git log`; see [memory.md](memory.md) for the per-version detail.
+
+- **Roster rebuild** (v2.7.0–v2.11.0) — the intermediate guns-baked-in heroes were *replaced*:
+  `AVATARS` is now 15 `armless:true` sprite heroes (Kai…Titan) with a live 360° gun-arm, signature
+  auras, and a procedural walk cycle. This closes the old "Gunless heroes + rotating gun" item.
+- **Horde depth** (v2.20.0–v2.21.1) — climbable watchtowers, Spitter/Bloater/Stalker enemy kinds,
+  a steeper wave curve, and **Juggernaut boss waves every 5th wave** (closes the v1.13 boss item).
+- **Builders mode** — in-match scrap economy with walls, spikes and turrets.
+- **Audio** — a metalcore soundtrack was added (v2.19) then **removed entirely** (v2.24); the
+  engine is SFX-only. v2.34.0 rebuilt the SFX engine (below).
+- **Monetisation & support** — Stripe donate link, save codes, save-loss warnings.
+- **PWA / iOS** — web manifest + app icon, Add-to-Home-Screen guide, and a long series of
+  safe-area fixes ending in `effInsets()` substituting hardware insets when iOS `env()` lies.
+- **UI** — ability buttons collapsed into a FAB, Quit to Main Menu, Extended Magazines shop
+  upgrade, illustrated + animated menu backdrop, rich social-share preview.
+- **v2.33.0 (breaking)** — **Battle Royale & Squads retired**; Endless Horde is the only mode
+  (`const MODES = ['horde']`, engine paths kept dormant).
+
+## v2.34 — "Real Audio & honest diagnostics" (shipped)
+
+- [x] **Physically-modelled SFX engine** — shared pre-rendered noise buffer (no per-shot
+      `createBuffer` churn), exponential envelopes with a ~1.5ms attack, procedural **convolution
+      reverb** (outdoor slap-back IR), a master **limiter**, and **stereo pan + distance
+      attenuation/low-pass** via an optional `sfx(kind, mode, src)` third argument.
+- [x] **Layered gun model** — pin → crack → body → sub → tail → action → brass, per weapon.
+- [x] **Organic creature vocals** — `growl()` formant-filters a sawtooth through two vowel
+      bandpasses; `flesh()` gives hits a wet, non-metallic impact.
+- [x] **Voice budget** — `budget()`/`voice()` shed tails, brass and debris above ~24 in-flight
+      layers so the richer model can't cliff on mobile; transients are never shed.
+- [x] **Screen Fit verdict** — `fitChecks()` turns the diagnostic into pass/fail assertions and
+      distinguishes "correct in a Safari tab" from "insets broken in the installed app".
+- [x] **Tooling gates** — `validate.mjs` now gates the ROADMAP header version and every `--mode`
+      named in the docs against `MODES`; `driver.mjs` gained a `--waves` balance/perf harness.
 
 ## Design pillars (don't break these)
 
