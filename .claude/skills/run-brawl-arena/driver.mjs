@@ -193,7 +193,11 @@ async function runWaveTrial(runIdx) {
   await page.keyboard.down('Space');
   const samples = [];
   const t0 = Date.now();
-  const LIMIT_MS = 1000 * 60 * 6;                        // hard stop so a stuck run can't hang CI
+  // Hard stop. NOTE: since v2.33.0 waves advance on TRUE CLEAR, and a pure kiting bot flees more
+  // than it kills — so it can survive a long time without ever clearing a wave. That makes
+  // "wave reached" a poor stopping condition and survivedSec the more honest primary metric.
+  // Keep this low enough that a run that will never reach the target still ends promptly.
+  const LIMIT_MS = 1000 * parseInt(val('--limit', '150'), 10);
   let m = null, peak = { zombies: 0, particles: 0, floaters: 0, splats: 0 }, minFps = 999;
   while (Date.now() - t0 < LIMIT_MS) {
     m = await page.evaluate(() => (window.__m ? window.__m() : null));
