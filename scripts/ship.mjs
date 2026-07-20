@@ -16,6 +16,7 @@
 // what lands on main is always something a human chose to commit.
 
 import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -63,6 +64,45 @@ if (ahead === '0') { console.error('✗ nothing to ship — HEAD is not ahead of
 // ---- 2. validate (the gate that must never be skipped) ----
 step('validate');
 sh('node', [join(root, 'scripts', 'validate.mjs')], { capture: false });
+
+// ---- 2b. balance regression gate ----
+// Difficulty is the easiest thing to break silently: nothing throws when wave 4 becomes
+// unsurvivable. If a baseline exists, re-run the kiting-bot harness and refuse to ship when the
+// median wave reached has drifted more than DRIFT waves from it. Skipped (with a loud note) when
+// no baseline or no Playwright — a missing measurement must never look like a passing one.
+const DRIFT = 2;
+{
+  const base = join(root, '.shots', 'waves-baseline.json');
+  if (!existsSync(base)) {
+    console.log('\n▸ balance gate: SKIPPED — no .shots/waves-baseline.json');
+    console.log('  create one: node .claude/skills/run-brawl-arena/driver.mjs --waves 15 --runs 5 --json .shots/waves-baseline.json');
+  } else if (dry) {
+    console.log('\n▸ balance gate: [dry-run] would re-run the harness and compare to the baseline');
+  } else {
+    step('balance gate');
+    const b = JSON.parse(readFileSync(base, 'utf8'));
+    const runs = b.config?.runs || 3, target = b.config?.targetWave || 15;
+    const tmp = join(root, '.shots', 'waves-current.json');
+    const res = sh('node', [join(root, '.claude', 'skills', 'run-brawl-arena', 'driver.mjs'),
+      '--waves', String(target), '--runs', String(runs), '--json', tmp], { allowFail: true });
+    if (res === null || !existsSync(tmp)) {
+      console.error('✗ balance gate: harness did not produce a report (Playwright missing?).');
+      console.error('  Install it (npx playwright install chromium) or pass --skip-balance.');
+      if (!has('--skip-balance')) process.exit(1);
+    } else {
+      const cur = JSON.parse(readFileSync(tmp, 'utf8'));
+      const bw = b.summary.waveReached.median, cw = cur.summary.waveReached.median;
+      const d = Math.abs(cw - bw);
+      console.log(`  median wave reached: baseline ${bw} → now ${cw} (drift ${d})`);
+      if (d > DRIFT) {
+        console.error(`✗ balance gate: median wave moved ${d} waves (> ${DRIFT}).`);
+        console.error('  Either the change altered difficulty, or the baseline is stale. Re-baseline deliberately.');
+        process.exit(1);
+      }
+      console.log('✓ balance within tolerance');
+    }
+  }
+}
 
 // ---- 3. push the branch ----
 step('push branch');

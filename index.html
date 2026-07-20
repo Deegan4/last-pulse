@@ -2286,6 +2286,12 @@ function togglePowers(){ const p=el('powers'); if(p){ p.classList.toggle('collap
 let actx=null, master=null, dryIn=null, revBus=null, NOISE=null;
 // static waveshaper curve — soft-clips oscillators into a gritty, overdriven tone (for guns)
 const DIST_CURVE=(()=>{ const n=1024,c=new Float32Array(n),k=16; for(let i=0;i<n;i++){ const x=i/n*2-1; c[i]=(1+k)*x/(1+k*Math.abs(x)); } return c; })();
+// Output brickwall. The DynamicsCompressor alone is NOT a limiter: its 2ms attack lets fast
+// transients through, and `scripts/make-audit-copy.mjs` measured 40 stacked 'boom's peaking at
+// +0.84 dBFS with 33 hard-clipped samples. tanh(k·x)/k has unity slope at 0 (quiet sounds pass
+// untouched) and saturates at tanh(0.8)/0.8 ≈ 0.834, so the mix can never reach full scale.
+const SOFT_CLIP=(()=>{ const n=4096,c=new Float32Array(n),k=0.8;
+  for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/k; } return c; })();
 // ---- realism helpers (v2.34.0) ---------------------------------------------------------------
 // A real report is transient → body → tail, decays EXPONENTIALLY, arrives from a direction, and
 // drags a room tail behind it. The pieces that buy the most realism: (1) one shared noise buffer
@@ -2330,7 +2336,8 @@ function audioInit(){ if(actx) return;
     // limiter — 40 zombies + a minigun + a bomb used to sum past 0dBFS and hard-clip into a buzz
     const lim=actx.createDynamicsCompressor();
     lim.threshold.value=-8; lim.knee.value=6; lim.ratio.value=12; lim.attack.value=0.002; lim.release.value=0.14;
-    master.connect(lim); lim.connect(actx.destination);
+    const clip=actx.createWaveShaper(); clip.curve=SOFT_CLIP; clip.oversample='4x';
+    master.connect(lim); lim.connect(clip); clip.connect(actx.destination);
     dryIn=actx.createGain(); dryIn.gain.value=1; dryIn.connect(master);
     try{ const cv=actx.createConvolver(); cv.buffer=makeIR(1.1,2.6,0.42);        // outdoor field tail
       revBus=actx.createGain(); revBus.gain.value=0.20; dryIn.connect(revBus); revBus.connect(cv); cv.connect(master);
@@ -4445,6 +4452,17 @@ el('a2hsClose').addEventListener('click',closeA2HS);
 syncA2HS();
 // what's-new
 el('wnClose').addEventListener('click',closeWhatsNew);
+// BUILD IDENTITY — stamp which build/surface this actually is, so "is the page stale?" is answered
+// at a glance instead of by probing the DOM. There is no build step to inject a git SHA (that would
+// break the one-file pillar), so the discriminators are the three things that DO differ between
+// surfaces: the version, the origin it was served from, and the file's own Last-Modified.
+(()=>{ const where = location.host || (location.protocol==='file:' ? 'file://' : 'unknown');
+  document.body.dataset.build = GAME_VERSION;
+  document.body.dataset.src = where;
+  document.body.dataset.mod = document.lastModified;
+  try{ console.info('%cLast Pulse v'+GAME_VERSION+'%c  ·  '+where+'  ·  modified '+document.lastModified,
+    'font-weight:700;color:#7bbf2e','color:#888'); }catch(e){}
+})();
 el('verLink').textContent='v'+GAME_VERSION+' · what’s new';
 el('verLink').addEventListener('click',openWhatsNew);
 // spectate → results
