@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#101c0b" />
+<!-- Tints iOS Safari's URL bar AND bottom toolbar. It MUST match the colour the canvas paints
+       at the screen edges (~#446a30 top / #416730 bottom, measured) — a near-black value here is
+       what reads as "black bars at the top and bottom" in a Safari tab, framing a bright green game. -->
+  <meta name="theme-color" content="#436830" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Last Pulse" />
@@ -68,9 +71,9 @@
   /* The 100vmax box-shadow is the desktop letterbox AND whatever fills the iOS status-bar /
      notch strip when the stage doesn't reach it — so it's tinted the game's dark green, not
      near-black, which is what used to read as a black bar at the top of the screen. */
-  #game{position:fixed;inset:0;margin:auto;overflow:hidden;background:#111d0c;
+  #game{position:fixed;inset:0;margin:auto;overflow:hidden;background:#2a4420;
     width:100%;height:100%;
-    box-shadow:0 0 0 100vmax #111d0c;}
+    box-shadow:0 0 0 100vmax #2a4420;}
   #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 
   .hidden{display:none!important}
@@ -1060,8 +1063,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.34.0';
+const GAME_VERSION = '2.34.1';
 const CHANGELOG = [
+  { v:'2.34.1', items:[
+    ['📱','No more black bars','Safari’s top & bottom bars now blend into the game instead of framing it in near-black'],
+  ]},
   { v:'2.34.0', items:[
     ['🔊','Real gunfire','every shot is now a firing pin, a muzzle blast, a rolling report and brass hitting the ground'],
     ['🎧','Sounds have a direction','enemies, shots and explosions pan left/right and go muffled with distance'],
