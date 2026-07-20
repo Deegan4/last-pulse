@@ -123,7 +123,24 @@ node .claude/skills/run-brawl-arena/driver.mjs --play --shoot
 
 # balance/perf harness: kiting bot plays Horde to wave 15, 5 runs, JSON report
 node .claude/skills/run-brawl-arena/driver.mjs --waves 15 --runs 5 --json .shots/waves.json
+
+# audio loudness audit — renders the SFX graph through an OfflineAudioContext.
+# Needs a browser: build the copy, serve the repo, open /.audit-tmp.html, then in the console:
+#   await window.__audioAudit({shots:40, kind:'boom'})   → {peak, peakDb, rms, clippedSamples}
+node scripts/make-audit-copy.mjs && rm .audit-tmp.html   # ← always delete it afterwards
+
+# ship: validate + balance gate → push → PR → API rebase-merge → re-sync (see "Git / deploy")
+node scripts/ship.mjs --dry-run
 ```
+
+**Gates in `validate.mjs`** (all must pass): parse-check · Meshy manifest · GLB budget · name
+drift · **version coherence (`GAME_VERSION` == `CHANGELOG[0].v` == the `ROADMAP.md` header)** ·
+**documented modes (every `--mode X` in the docs must be in `MODES`)** · horde-spawn reachability.
+
+**Peak loudness is a measured number, not a judgement call.** The output chain is
+`master → DynamicsCompressor → SOFT_CLIP waveshaper → destination`; the compressor's 2ms attack
+alone let 40 stacked `boom`s hit **+0.84 dBFS with 33 clipped samples**, which is why the
+`tanh(0.8x)/0.8` brickwall exists. Re-run the audit after touching any `sfx` layer or gain.
 
 The driver (see `.claude/skills/run-brawl-arena/`) launches the bundled Chromium
 (`/opt/pw-browsers/chromium-*/chrome-linux/chrome`) via the global `playwright` module at

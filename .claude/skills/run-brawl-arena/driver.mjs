@@ -172,7 +172,8 @@ async function enterMatch() {
   await page.waitForSelector('#weaponScreen:not(.hidden)', { timeout: 5000 });
   await shot('02-weapon');
   await page.click('#dropInBtn');                                  // Drop In → match starts (GRACE ≈ 2.6s)
-  await page.waitForSelector('#weaponScreen.hidden', { timeout: 5000 });
+  // NB: state:'hidden' — waiting for '#weaponScreen.hidden' to be *visible* can never resolve.
+  await page.waitForSelector('#weaponScreen', { state: 'hidden', timeout: 5000 });
 }
 
 // ---- balance/perf harness ----
