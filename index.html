@@ -635,6 +635,74 @@
     #powers #scrapHud{justify-self:center}
     .power{width:54px;height:54px;font-size:23px}
   }
+
+  /* ---------- Short viewports: the MAIN MENU ----------------------------------------------
+     The portrait column is ~700px of content. Anywhere shorter than that — every iPhone in
+     landscape (375–440px tall) and an iPhone SE in a Safari tab (522px) — Shop, Achievements
+     and Support fell below the fold. `.screen` scrolls, so they were reachable, but a start
+     menu whose buttons you have to discover by scrolling reads as broken. Two rules fix it. */
+
+  /* 1. Landscape (short AND wide): spend the wide axis instead of the tall one. Identity and
+        PLAY on the left, everything secondary on the right, both columns scroll-free. */
+  @media (max-height:560px) and (min-width:600px){
+    #startScreen.menu{display:grid;align-content:center;justify-items:center;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      column-gap:22px;row-gap:7px;padding:calc(var(--sat) + 8px) 18px calc(var(--sab) + 8px);
+      overflow-y:auto}
+    /* EVERY child is pinned to an explicit cell. With auto-placement the two columns share row
+       heights, so the page ends up as tall as (tallest-left + tallest-right) per row and the
+       last control still falls off a 375px-tall screen. Pinned rows let the right column run
+       past the left one instead of stacking with it. */
+    #startScreen.menu > .heading{grid-area:1/1;font-size:clamp(19px,4.2vh,28px);margin:0;align-self:center}
+    #startScreen.menu > .fighter{grid-area:2/1;margin:0 auto;width:min(100%,330px)}
+    #startScreen.menu > .btn.play{grid-area:3/1;margin:0;padding:12px 30px;font-size:17px;min-height:46px}
+    #startScreen.menu > #dailyCard{grid-area:1/2;width:min(100%,340px);margin:0}
+    #startScreen.menu > #statsCard{grid-area:2/2;width:min(100%,340px);margin:0}
+    #startScreen.menu > .menurow:has(#achBtn){grid-area:3/2;width:min(100%,340px);margin:0}
+    #startScreen.menu > .menurow:has(#donateBtn){grid-area:4/2;width:min(100%,340px);margin:0}
+    #startScreen.menu > .a2hsbtn{grid-area:5/2;margin:0}
+    #startScreen.menu > .footer{grid-area:6/1/6/3;margin:0}
+    /* the portrait shrinks hardest — it is the single tallest element in the left column */
+    #startScreen.menu .fighterPortrait{width:44px;height:52px}
+    #startScreen.menu .fighterEdit{display:none}   /* a hint, not a control */
+    /* 44pt is Apple's minimum touch target — compress the padding, never the hit box */
+    #startScreen.menu .achbtn{padding:8px 12px;font-size:13px;min-height:44px}
+    #startScreen.menu .dailycard,#startScreen.menu .statscard{padding:7px 10px;font-size:12px}
+  }
+
+  /* 2. Short but NARROW (SE in a Safari tab): no room for two columns, so compress the single
+        column instead — trim the vertical rhythm rather than dropping any control. */
+  /* Narrow AND short — a 375px-wide iPhone (SE, 13 mini) in a Safari tab, where browser chrome
+     eats ~145px. The menu column wants ~680px; these viewports give 510–650. Two columns won't
+     fit at 375px wide, so the height comes out of the three tallest elements instead: the logo
+     (139px), the stats grid (136px) and the fighter card — none of which are controls. */
+  @media (max-height:700px) and (max-width:389px){
+    /* A grid, so the two secondary rows can share ONE line — that single change buys back the
+       ~50px that pushed Support off the bottom of a 522px Safari tab on an iPhone SE. */
+    #startScreen.menu{display:grid;grid-template-columns:1fr 1fr;align-content:start;
+      justify-items:center;column-gap:8px;row-gap:7px;
+      padding:calc(var(--sat) + 6px) 14px calc(var(--sab) + 6px)}
+    #startScreen.menu > .logo{grid-area:1/1/1/3;font-size:clamp(26px,9vw,40px);margin:0;line-height:1}
+    #startScreen.menu > .logo small{font-size:clamp(11px,3.2vw,15px);letter-spacing:4px;margin-top:2px}
+    #startScreen.menu .statscard{gap:6px}
+    #startScreen.menu .statscard .st{padding:5px 3px}
+    #startScreen.menu .statscard .st b{font-size:16px}
+    #startScreen.menu .statscard .st span{font-size:9.5px;letter-spacing:.3px}
+    #startScreen.menu .lvlrow,#startScreen.menu .rankrow{margin:2px 0}
+    #startScreen.menu > .footer{font-size:11px}
+    #startScreen.menu > .fighter{grid-area:2/1/2/3;margin:0 auto}
+    #startScreen.menu > .btn.play{grid-area:3/1/3/3;margin:0;padding:12px 30px;font-size:18px;min-height:46px}
+    #startScreen.menu > #dailyCard{grid-area:4/1/4/3;margin:0}
+    #startScreen.menu > #statsCard{grid-area:5/1/5/3;margin:0}
+    #startScreen.menu > .menurow:has(#achBtn){grid-area:6/1;width:100%;margin:0}
+    #startScreen.menu > .menurow:has(#donateBtn){grid-area:6/2;width:100%;margin:0}
+    #startScreen.menu > .a2hsbtn{grid-area:7/1/7/3;margin:0}
+    #startScreen.menu > .footer{grid-area:8/1/8/3;margin:0}
+    #startScreen.menu .fighterPortrait{width:46px;height:56px}
+    #startScreen.menu .fighterEdit{display:none}
+    #startScreen.menu .achbtn{padding:8px 8px;font-size:12px;min-height:44px}
+    #startScreen.menu .dailycard,#startScreen.menu .statscard{padding:8px 10px;font-size:12px}
+  }
 </style>
 </head>
 <body>
@@ -859,7 +927,13 @@ function safeBottomPx(){
 // Effective insets: trust env() when it reports, but iOS standalone is KNOWN to lie (env()=0)
 // on some versions — there we substitute standard hardware values (54pt status/notch strip,
 // 34pt home indicator) rather than render bars. Non-Apple / desktop: env()=0 and stays 0.
+// Test-only override: ?insets=47,34 forces the safe-area insets. Headless browsers cannot
+// emulate env(safe-area-inset-*) — without this, scripts/screens.mjs can only ever exercise
+// the no-notch path, which is the one that was never broken. Ignored unless the param is set.
+const FORCED_INSETS = (()=>{ const m=/[?&]insets=(\d+)[,x](\d+)/.exec(location.search);
+  return m ? {st:+m[1], sb:+m[2]} : null; })();
 function effInsets(){
+  if(FORCED_INSETS) return FORCED_INSETS;
   let st=safeTopPx(), sb=safeBottomPx();
   if(isApple() && inStandalone()){
     if(st<8) st=54;
@@ -907,6 +981,15 @@ function resize(){
   document.documentElement.style.setProperty('--sat', st+'px');
   document.documentElement.style.setProperty('--sab', sb+'px');
   stage.style.top = (-st) + 'px';
+  // The CSS fallback is `inset:0; margin:auto` (a letterbox that works before JS runs). Once we
+  // set top+height explicitly the box is OVER-CONSTRAINED — bottom:0 is still in force — and CSS
+  // resolves that by re-centring through the auto margins, which silently ate half the bottom
+  // inset (a 34pt home indicator became a 17px upward shift on every notched iPhone). Release
+  // the edges JS now owns so the declared top/height are the ones that apply.
+  stage.style.bottom = 'auto';
+  stage.style.left = '0px';
+  stage.style.right = 'auto';
+  stage.style.margin = '0';
   stage.style.width = gw + 'px';
   stage.style.height = (gh + st + sb) + 'px';
   gh += st + sb;
@@ -1063,8 +1146,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.34.1';
+const GAME_VERSION = '2.35.0';
 const CHANGELOG = [
+  { v:'2.35.0', items:[
+    ['🩸','Kills sound visceral','bone cracks, wet gurgles and a body hitting the dirt — every kill has weight now'],
+    ['📱','Menu fits short screens','landscape phones get a two-column start menu; small iPhones get a compact one — no more scrolling to find Shop & Support'],
+  ]},
   { v:'2.34.1', items:[
     ['📱','No more black bars','Safari’s top & bottom bars now blend into the game instead of framing it in near-black'],
   ]},
@@ -2407,6 +2494,27 @@ function growl(f0,d,v,fa,fb){ if(!actx) return;
 }
 // wet flesh impact — a dull low thud plus a short mid splat, no metallic ring
 function flesh(v){ fnoise(0.045,(v||0.16),'bandpass',420,1.3,180); fnoise(0.02,(v||0.16)*0.7,'lowpass',900); tone(120,0.05,'sine',(v||0.16)*0.5,70); }
+// a throat full of fluid: bandpass noise whose centre frequency is WOBBLED by an LFO. The
+// irregularity is the whole effect — a steady filter reads as wind, a moving one reads as wet.
+function gurgle(d,v){ if(!actx||!NOISE||!budget()) return;
+  const s=actx.createBufferSource(); s.buffer=NOISE;
+  const f=actx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=rand(320,430); f.Q.value=rand(4,6);
+  const lfo=actx.createOscillator(), lg=actx.createGain(), t=actx.currentTime;
+  lfo.type='sine'; lfo.frequency.value=rand(11,19); lg.gain.value=rand(200,320);
+  lfo.connect(lg); lg.connect(f.frequency);
+  const g=actx.createGain();
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v||0.1,t+0.03); g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  s.connect(f); f.connect(g); g.connect(sink());
+  s.start(t, Math.random()*(2-d-0.05), d+0.02); lfo.start(t); lfo.stop(t+d+0.02); voice(d); }
+// bone letting go — ~10ms, bright and resonant. Short enough to read as a snap, not a click.
+function crack(v){ const b=v||0.11;
+  fnoise(0.010,b,'bandpass',rand(1900,2600),7); fnoise(0.006,b*0.7,'highpass',5200,0.9); }
+// dead weight hitting dirt: mass thud + the sub you feel + a clothing scuff + grit settling
+function bodyfall(v){ const b=v||0.13;
+  fnoise(0.11,b,'lowpass',240,0.8,95);
+  tone(rand(58,74),0.13,'sine',b*0.8,rand(34,44));
+  fnoise(0.05,b*0.45,'bandpass',520,1.6,300);
+  if(budget()) for(let i=0;i<3;i++) later(rand(30,150),()=>fnoise(0.03,rand(0.012,0.03),'bandpass',rand(1400,3400),6)); }
 let lastShot=0, lastTick=0, lastHit=0, lastDie=0;
 // sfx(kind, mode, src) — `src` is an optional world-space {x,y} (an entity): when given, the sound
 // is panned and distance-attenuated relative to the player instead of playing flat and centred.
@@ -2455,15 +2563,31 @@ function _sfx(kind,mode){
   else if(kind==='tick'){ const t=performance.now(); if(t-lastTick<45) return; lastTick=t;
     flesh(0.10); fnoise(0.012,0.05,'highpass',3600,1); }                 // wet hit + thin hitmarker tick
   else if(kind==='kill'){ const t=performance.now(); if(t-lastHit<40) return; lastHit=t;
-    flesh(0.2); fnoise(0.09,0.1,'bandpass',260,1.2,120); tone(880,0.06,'square',0.07,1320); }  // meat, then the UI ping
+    // the body coming apart: wet rupture → rib crack → gut thump. The old 880Hz square sweep
+    // was the last arcade sound in the kill; the hitmarker is now a dry noise tick instead,
+    // so the player still gets confirmation without a musical note over the gore.
+    flesh(0.22);
+    fnoise(0.10,0.12,'bandpass',rand(230,300),1.2,110);                       // deep wet burst
+    if(Math.random()<0.7) later(rand(8,26),()=>crack(0.10));                  // not every kill snaps bone
+    later(rand(20,45),()=>tone(rand(52,64),0.14,'sine',0.11,rand(30,38)));    // gut thump
+    fnoise(0.008,0.05,'highpass',4200,0.9); }                                 // hitmarker tick
   else if(kind==='combo'){ const n=Math.min(mode||2,9); tone(420+n*95,0.1,'square',0.15,560+n*95); tone(210+n*45,0.12,'triangle',0.1); }
   else if(kind==='streak'){ const n=Math.min(mode||2,4); [660,880,1100,1320].slice(0,n).forEach((f,i)=>setTimeout(()=>tone(f,0.12,'square',0.14),i*70)); }
   else if(kind==='pickup'){ tone(720,0.1,'sine',0.13,1120); }
   else if(kind==='loot'){ [700,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,0.14,'triangle',0.15),i*80)); }
   else if(kind==='die'){ const t=performance.now(); if(t-lastDie<70) return; lastDie=t;
-    // a dying throat, then the body hitting the dirt — not a descending sawtooth beep
-    growl(rand(150,205),0.42,0.17,rand(360,480),rand(1000,1320));
-    later(190,()=>{ fnoise(0.13,0.13,'lowpass',260,0.8,110); tone(70,0.12,'sine',0.1,44); }); }
+    // Three deaths, picked at random, so a 40-zombie wave doesn't machine-gun one sample.
+    // Every variant ends with the body hitting dirt — that impact is what sells the kill.
+    const v=Math.random();
+    if(v<0.4){                                                   // a cry choked off mid-breath
+      growl(rand(140,195),rand(0.26,0.34),0.16,rand(340,470),rand(950,1300));
+      later(rand(120,180),()=>gurgle(rand(0.14,0.20),0.075)); }
+    else if(v<0.75){                                             // drowning — barely any voice left
+      gurgle(rand(0.26,0.36),0.11);
+      growl(rand(120,160),0.18,0.075,rand(300,400),rand(800,1050)); }
+    else                                                         // just air leaving the lungs
+      fnoise(rand(0.20,0.30),0.075,'bandpass',rand(700,1000),1.1,rand(300,460));
+    later(rand(170,240),()=>bodyfall(rand(0.11,0.16))); }
   else if(kind==='boom'){
     pin(0.1); fnoise(0.05,0.28,'highpass',2600,0.5); tone(120,0.12,'square',0.24,42);   // crack + concussion
     tone(84,0.55,'sawtooth',0.26,32); fnoise(0.5,0.24,'lowpass',900,0.6,200); tone(46,0.5,'sine',0.2,26); // body + sub
