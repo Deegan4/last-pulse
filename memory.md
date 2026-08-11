@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
-_Last updated: 2026-07-17. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v2.24.1). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+_Last updated: 2026-08-11. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
+v2.35.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -10,31 +10,53 @@ royale** — a from-scratch remake inspired by the StickyGames title _Don't Die_
 canvas-drawn; no original sprites). Everything lives in [`index.html`](index.html): the game
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
-## Session handoff — 2026-07-17
-_Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below._
+## Session handoff — 2026-08-11
+_Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below.
+This section is a rolling "as of right now" summary — overwrite it (don't append) each session so it
+never goes stale like the 2026-07-17 version it replaced did (it sat frozen at v2.24.1 for ~10 shipped
+versions before anyone corrected it — see the git history if you want the old text)._
 
-- **Where things stand:** production is **v2.24.1**, everything below is merged to `main` (HEAD `fdc61f8`)
-  and live via Vercel. Working branch `claude/builders-feature-buildings-p0jpez` is synced to `main`.
-- **Shipped this session (all merged):** v2.22.0 **Builders** (in-match build mode + scrap) → v2.22.1 music
-  timing fix → v2.23.0 **Donate** button (Stripe Payment Link) → v2.24.0 **music removed** (SFX kept) + donate
-  restyle → SFX param cleanup → v2.24.1 **black status-bar bar fix** (the `#game` box-shadow letterbox recolor).
+- **Where things stand:** production is **v2.35.0**, merged to `main`. Working branch
+  `claude/next-steps-v8p4vf`.
+- **Shipped this session (all merged to `main`):** doc-only reconciliation (ROADMAP boss-wave
+  checkbox was stale — Juggernauts actually shipped v2.20–2.21) → v2.34.2 **wall blood streaks**
+  (closes the deferred v1.11 item) → v2.35.0 **match mutators** (Swarm Night / Deep Fog / Low
+  Gravity, closes the v1.13 item).
 - **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
   `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
 - **Open / parked:**
-  1. **On-device confirm the black-bar fix** — device-only symptom; if the home-screen icon still shows black,
-     delete & re-add it (iOS caches the standalone config from first save).
-  2. **Stripe "After payment → Redirect"** to the production URL so donors return to the game (Stripe Dashboard
-     setting). **A Stripe MCP connector (`mcp__Stripe__*`) became available late in the session** — earlier it
-     wasn't; a future session can inspect/configure via `get_stripe_account_info` + `stripe_api_read/write`
-     (ToolSearch to load schemas) before touching the live Payment Link.
-  3. Optional seam tweak: if the green status-bar strip reads darker than the menu top, nudge `#111d0c`→`#16260f`.
-  4. Parked ideas: achievement hook for the builder (`matchStat.built` already tracked), donation amount tiers
-     (needs one fixed-price Payment Link each), file-based `<audio loop>` soundtrack if music is ever wanted back.
-- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v`; drive with the run-brawl-arena
-  driver (three.js CORS + suspended WebAudio headless are non-failures); never commit `window.__hook` test hooks
-  (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
+  1. **Playtest v2.35.0 on-device** — mutators were only verified headless (forced-state hooks +
+     screenshots); real feel on Swarm Night's zombie density and Low Gravity's blast radius needs
+     a human.
+  2. **Dried-blood aging** (`ROADMAP.md` v1.11, the other deferred gore item) — needs numeric rgb
+     storage instead of the current `'rgba(r,g,b,'` prefix-string trick. Low value, only worth it
+     while already doing a gore pass.
+  3. Interior wall-frame (`drawBuildingBase`) doesn't get blood streaks, only the exterior facade
+     (`drawBuilding`) does — noted as a known limitation, not a bug, in the v2.34.2 entry below.
+  4. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
+     generated. See "Gotchas" below.
+- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header;
+  drive with the run-brawl-arena driver (three.js CORS + suspended WebAudio headless are
+  non-failures); never commit `window.__hook` test hooks (`window.__game` is the permanent shipped
+  one — `grep -c "window.__" index.html` must stay 1).
 
 ## Current state (done)
+- **v2.35.0** — **Match mutators** (closes `ROADMAP.md` v1.13's Mutators item). A `MUTATORS` table
+  (new "Match mutators" section, right after the daily-challenge code) + `pickMutator()` (35%
+  chance per Horde match, else vanilla) picked once in `spawnMatch`'s horde branch, announced via
+  `toast()` + a persistent HUD row (`#mutRow`/`#statMut`). Three modifiers, each read directly off
+  `activeMutator` at the point of use (no apply/revert step — `spawnMatch` already rebuilds the
+  world from scratch every match): **Swarm Night** (`zMul:2`, doubles the initial *and* per-wave
+  zombie spawn counts), **Deep Fog** (`fog:true`, forces `timeOfDay='night'` and shrinks/darkens
+  the vision vignette in `drawDayNight`, radius 280→170 / darkness .30→.48), **Low Gravity**
+  (`bombFuseMul:1.8`/`bombRadMul:1.4`, bombs hang longer before detonating and blast a wider
+  radius). Picked 🎲 (dice) and 🌙 (moon, not 🌫️ fog — the fog emoji's glyph is missing from this
+  sandbox's headless Chromium font, rendered as a blank box; swapped to something universally
+  supported rather than risk it on real devices too). Verified: `node scripts/validate.mjs`;
+  headless `--play --shoot`; a throwaway `window.__t`/`__forceMut`/`__wave`/`__bomb` hook (never
+  committed) forced each mutator directly and confirmed wave-2 zombie count 14→28 under Swarm
+  Night, bomb fuse 0.85→1.53 and blast radius ×1.4 under Low Gravity, and a real HUD screenshot
+  under Deep Fog showing the correct icon/text + night vignette; 0 page errors throughout.
 - **v2.34.2** — **Wall blood streaks** (closes the long-deferred `ROADMAP.md` v1.11 item). `hurt()`
   and `die()` call the new `spraySplatOnWall(x,y,dmg)`: finds the nearest building-wall segment
   within ~22px of the hit (via the existing `wallRects(o)`), and if close enough drops a fading
@@ -123,12 +145,9 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   binaries are proxy-blocked; the Playwright bundled ffmpeg is VP8-only but extracts PNG frames). **Headless
   input gotchas:** `isTouch` evaluates TRUE headless (hover:none/pointer:coarse) → mouse/space fire dead-code;
   patch `matchMedia` via `addInitScript` to force the desktop path, then hold Space (`keys[' ']`) to fire.
-- **BUG (parked): horde kills never count.** `killsTotal++` only fires for human targets (`isHumanTarget`,
-  ~line 1869), so in Endless Horde the HUD/results kill counter stays 0, "+1 KILL" toasts and streaks never
-  fire, and `killsTotal*5` kill-coins + `killsTotal*10` end XP pay nothing. Zombie kills only grant the inline
-  8×combo XP. Fix sketch: in horde, count zombie kills into `killsTotal` — but rebalance first: wave-6 run
-  ≈ 111 zombie kills → 555 kill-coins vs a BR win's ~75, so horde needs a lower per-kill coin rate (e.g.
-  `killsTotal*1` in horde) or a coin cap. Do as its own versioned change with a balance pass.
+- **BUG (FIXED in v2.33.0, see above): horde kills never count.** Was: `killsTotal++` only fired for
+  human targets, so Endless Horde's kill counter/coins/XP stayed dead. Left here for the historical
+  fix-sketch trail; the v2.33.0 entry above has what actually shipped.
 - **v2.31.5** — **Bottom black bar fixed** (user screenshot from the installed Home Screen app, v2.31.4: dead
   black strip ~51pt at the bottom; the RECURRING "black bar" family — `?safeprobe` exists from earlier rounds).
   Root cause: `resize()` pinned the stage to `window.innerHeight` px, and iOS **standalone** cold-launch
@@ -880,7 +899,11 @@ ROADMAP.md checked off / re-prioritized as things ship; this file stays the reco
 already landed.
 
 ## Open questions for the user
-- Real on-phone feel: movement speed, fire cadence, zombie pressure, weapon balance, and the new
-  v1.8.0 shop/daily/coin flow — needs playtest feedback to tune (are trail prices fair?).
-- Batch several changes per `GAME_VERSION` bump, or bump every ship? (Currently: bump per ship.)
-- Provide `MESHY_API_KEY` via environment config to unblock 3D character generation?
+_(Superseded the old v1.8.0-era list here — those were answered or overtaken long ago; current
+open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
+- Real on-phone feel of v2.35.0's mutators: does Swarm Night's 2× density feel fun or just
+  overwhelming? Is Low Gravity's bigger/floatier bomb a real tactical choice or just numbers?
+- Balance backlog is still all open (`ROADMAP.md`): combo window, door width, weapon DPS spread —
+  none have real playtest answers yet.
+- Provide `MESHY_API_KEY` via environment config to unblock 3D character generation (25/28 assets
+  still ungenerated), or explicitly drop the moonshot?
