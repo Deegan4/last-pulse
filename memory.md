@@ -16,24 +16,29 @@ This section is a rolling "as of right now" summary — overwrite it (don't appe
 never goes stale like the 2026-07-17 version it replaced did (it sat frozen at v2.24.1 for ~10 shipped
 versions before anyone corrected it — see the git history if you want the old text)._
 
-- **Where things stand:** production is **v2.35.0**, merged to `main`. Working branch
+- **Where things stand:** production is **v2.35.1**, merged to `main`. Working branch
   `claude/next-steps-v8p4vf`.
 - **Shipped this session (all merged to `main`):** doc-only reconciliation (ROADMAP boss-wave
   checkbox was stale — Juggernauts actually shipped v2.20–2.21) → v2.34.2 **wall blood streaks**
   (closes the deferred v1.11 item) → v2.35.0 **match mutators** (Swarm Night / Deep Fog / Low
-  Gravity, closes the v1.13 item).
+  Gravity, closes the v1.13 item) → v2.35.1 **fixed a real portrait/landscape viewport swap** on
+  standalone iOS, caught from a user screenshot + Screen Fit report (see the entry below —
+  `measureViewport()` was guessing orientation from values already known to be swapped).
 - **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
   `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
 - **Open / parked:**
-  1. **Playtest v2.35.0 on-device** — mutators were only verified headless (forced-state hooks +
+  1. **Confirm v2.35.1 actually fixed it on the user's device** — the swap bug was only verified
+     via spoofed headless cases reproducing the exact reported numbers; ask for another Screen Fit
+     report (or just "does it look right now?") before considering this closed.
+  2. **Playtest v2.35.0 on-device** — mutators were only verified headless (forced-state hooks +
      screenshots); real feel on Swarm Night's zombie density and Low Gravity's blast radius needs
      a human.
-  2. **Dried-blood aging** (`ROADMAP.md` v1.11, the other deferred gore item) — needs numeric rgb
+  3. **Dried-blood aging** (`ROADMAP.md` v1.11, the other deferred gore item) — needs numeric rgb
      storage instead of the current `'rgba(r,g,b,'` prefix-string trick. Low value, only worth it
      while already doing a gore pass.
-  3. Interior wall-frame (`drawBuildingBase`) doesn't get blood streaks, only the exterior facade
+  4. Interior wall-frame (`drawBuildingBase`) doesn't get blood streaks, only the exterior facade
      (`drawBuilding`) does — noted as a known limitation, not a bug, in the v2.34.2 entry below.
-  4. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
+  5. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
      generated. See "Gotchas" below.
 - **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header;
   drive with the run-brawl-arena driver (three.js CORS + suspended WebAudio headless are
@@ -41,6 +46,25 @@ versions before anyone corrected it — see the git history if you want the old 
   one — `grep -c "window.__" index.html` must stay 1).
 
 ## Current state (done)
+- **v2.35.1** — **Fixed a real portrait/landscape viewport swap** (user screenshot + a Screen Fit
+  report resolved it — no more blind fixes). Report showed, on a standalone iPhone with a
+  physically-portrait 393×852 screen: `innerWidth/innerHeight/visualViewport/clientHeight` ALL
+  agreed on **852×393 — landscape-shaped** — while `screen.width/height` correctly read 393×852.
+  `measureViewport()`'s standalone screen-clamp used `vw>=vh` to *guess* orientation before
+  deciding how to remap `screen.width/height` — a chicken-and-egg bug, since `vw`/`vh` were
+  exactly the swapped values already known to lie. Root cause was distinct from the earlier
+  short-innerHeight bug (v2.31.5) this clamp was originally written for; the old "clamp up, never
+  down" logic couldn't correct an *over*-reported width anyway. Fix: derive orientation from an
+  INDEPENDENT signal (`screen.orientation.type`, falling back to `matchMedia('(orientation:
+  portrait)')`) instead of comparing the suspect `vw`/`vh`, then set `vw`/`vh` directly from
+  `screen.width/height` (not clamp-up) so an over-reported/swapped dimension gets corrected, not
+  preserved. Verified headless with three spoofed cases (Playwright `addInitScript` overriding
+  `navigator.standalone`/`window.screen`): (1) the user's exact swapped-report scenario → stage
+  now 393×852 (was computing 852×467, the clipped/half-filled layout in the screenshot); (2) the
+  original v2.31.5 short-innerHeight case (390×801 reported, 390×844 real) → still corrects to
+  390×844, no regression; (3) desktop non-standalone → untouched (1280×800). 0 page errors in all
+  three; `node scripts/validate.mjs` and the headless `--play --shoot` smoke test both pass (the
+  CDN CORS console error remains the pre-existing, confirmed-unrelated one).
 - **v2.35.0** — **Match mutators** (closes `ROADMAP.md` v1.13's Mutators item). A `MUTATORS` table
   (new "Match mutators" section, right after the daily-challenge code) + `pickMutator()` (35%
   chance per Horde match, else vanilla) picked once in `spawnMatch`'s horde branch, announced via
