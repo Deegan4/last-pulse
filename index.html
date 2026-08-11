@@ -1063,8 +1063,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.34.1';
+const GAME_VERSION = '2.34.2';
 const CHANGELOG = [
+  { v:'2.34.2', items:[
+    ['🩸','Walls remember','a hit near a house wall now leaves a drip streak behind — the building carries the fight'],
+  ]},
   { v:'2.34.1', items:[
     ['📱','No more black bars','Safari’s top & bottom bars now blend into the game instead of framing it in near-black'],
   ]},
@@ -1523,6 +1526,7 @@ const scraps = [];         // collectible scrap bits (the currency for building)
 const drops = [];          // descending supply crates
 const hitmarks = [];       // hit/kill markers (player feedback)
 const splats = [];         // ground blood decals
+const wallStreaks = [];    // blood drips left on building walls (local coords: o.x+s.x, o.y+s.y0)
 const dmgDirs = [];        // damage-direction indicators (player)
 let confetti = [];         // victory celebration
 let lastWin = false, victoryT = 0, nextDrop = 18;
@@ -1794,7 +1798,7 @@ function menuSceneUpdate(dt){
 function spawnMatch(){
   humans.length=0; zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
-  pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
+  pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   builds.length=0; scraps.length=0;
   killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14);
   hordeStallT=0; hordeLastAlive=0;
@@ -1932,6 +1936,28 @@ function fire(h){
   sfx('shoot', w);
   if(h.mag<=0) startReload(h);
 }
+// if a hit lands within DOOR_HALF-ish range of a building wall, leave a drip streak on that
+// wall's facade (local coords, so it moves with the building — buildings never move, so this
+// is really just x-y, but local coords keep the draw side simple and match drawBuilding's frame)
+function spraySplatOnWall(x, y, dmg){
+  let bestWr=null, bestObs=null, bestD=22;
+  for(const o of obstacles){
+    if(o.type!=='building') continue;
+    if(x<o.x-40||x>o.x+o.w+40||y<o.y-40||y>o.y+o.h+40) continue;
+    for(const wr of wallRects(o)){
+      const nx=clamp(x,wr[0],wr[0]+wr[2]), ny=clamp(y,wr[1],wr[1]+wr[3]);
+      const d=Math.hypot(x-nx,y-ny);
+      if(d<bestD){ bestD=d; bestWr=wr; bestObs=o; }
+    }
+  }
+  if(!bestObs) return;
+  const sx=clamp(x,bestWr[0]+3,bestWr[0]+bestWr[2]-3);
+  const topY=clamp(y,bestWr[1],bestWr[1]+bestWr[3]);
+  const len=Math.min(rand(14,28)+dmg*0.15, bestWr[1]+bestWr[3]-topY);
+  if(len<4) return;
+  wallStreaks.push({o:bestObs, x:sx-bestObs.x, y0:topY-bestObs.y, len, w:rand(2.5,4.5), t:9,
+    col:'rgba(120,22,30,'});
+}
 function hurt(e, dmg, src, isHumanTarget){
   if(!e.alive) return;
   // armor soaks damage first
@@ -1949,6 +1975,7 @@ function hurt(e, dmg, src, isHumanTarget){
   if(dmg>=12 && splats.length<220)
     splats.push({x:e.x+Math.cos(a0)*rand(6,20), y:e.y+rand(2,12), r:rand(5,10)+dmg*0.06, t:4,
       col:'rgba(120,22,30,'});
+  if(dmg>=12 && wallStreaks.length<160) spraySplatOnWall(e.x, e.y, dmg);
   if(dmg>0) floaters.push({x:e.x, y:e.y-R-10, vy:-34, t:0.7, txt:Math.round(dmg), col: dmg>=60?'#ffd24a':'#fff'});
   // player feedback
   if(src && src.isPlayer && dmg>0){ hitmarks.push({x:e.x,y:e.y-6,t:0.22,kill:false}); sfx('tick',null,e); }
@@ -1965,6 +1992,7 @@ function die(e, src, isHumanTarget){
   splats.push({x:e.x, y:e.y+6, r:rand(16,26), t:7, col:goreCol});
   for(let k=0;k<2;k++) splats.push({x:e.x+Math.cos(ka)*rand(14,34)+rand(-8,8),           // satellite pools
     y:e.y+6+rand(-6,14), r:rand(6,12), t:6, col:goreCol});
+  if(wallStreaks.length<160) spraySplatOnWall(e.x, e.y, 24);
   sfx('die',null,e);
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
@@ -2763,6 +2791,7 @@ function updateParticles(dt){
   for(let i=hitmarks.length-1;i>=0;i--){ hitmarks[i].t-=dt; if(hitmarks[i].t<=0) hitmarks.splice(i,1); }
   for(let i=dmgDirs.length-1;i>=0;i--){ dmgDirs[i].t-=dt; if(dmgDirs[i].t<=0) dmgDirs.splice(i,1); }
   for(let i=splats.length-1;i>=0;i--){ splats[i].t-=dt; if(splats[i].t<=0) splats.splice(i,1); }
+  for(let i=wallStreaks.length-1;i>=0;i--){ wallStreaks[i].t-=dt; if(wallStreaks[i].t<=0) wallStreaks.splice(i,1); }
   if(streakT>0) streakT-=dt;
   if(comboT>0){ comboT-=dt; if(comboT<=0) combo=0; }
   if(toastT>0){ toastT-=dt; if(toastT<=0) el('toast').style.opacity='0'; }
@@ -3237,6 +3266,13 @@ function drawBuilding(d){
     for(let px=x+16; px<x+w-6; px+=18){ ctx.beginPath(); ctx.moveTo(px,y); ctx.lineTo(px,y+h); ctx.stroke(); }
     ctx.fillStyle='rgba(240,235,225,.85)'; ctx.fillRect(x,y+h*0.5,w,3);
   } else ctx.fillStyle='rgba(120,90,50,.16)', ctx.fillRect(x,y+h*0.5,w,2.5); // house/shop wall trim line
+  // blood streaks left on this wall — drawn on the plain wall face, under windows/door dressing
+  if(wallStreaks.length){ for(const s of wallStreaks){ if(s.o!==d) continue;
+    const sx=x+s.x, sy=y+s.y0, a=clamp(s.t/9,0,1)*0.7;
+    const g=ctx.createLinearGradient(sx,sy,sx,sy+s.len);
+    g.addColorStop(0,s.col+(a*0.9)+')'); g.addColorStop(1,s.col+'0)');
+    ctx.strokeStyle=g; ctx.lineWidth=s.w; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx,sy+s.len); ctx.stroke(); } }
   ctx.restore();
   if(kind==='shop'){
     // --- SHOP: low shopfront window + striped awning + hanging sign ---
