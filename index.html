@@ -651,6 +651,7 @@
         <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
         <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
         <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
+        <div class="srow" id="mutRow" style="display:none"><span class="si">🎲</span><b id="statMut">--</b></div>
         <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
       </div>
     </div>
@@ -1063,8 +1064,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.34.2';
+const GAME_VERSION = '2.35.0';
 const CHANGELOG = [
+  { v:'2.35.0', items:[
+    ['🎲','Match mutators','occasional Horde runs drop in with a twist — Swarm Night, Deep Fog, or Low Gravity bombs'],
+  ]},
   { v:'2.34.2', items:[
     ['🩸','Walls remember','a hit near a house wall now leaves a drip streak behind — the building carries the fight'],
   ]},
@@ -1439,6 +1443,19 @@ const DAILIES = [
 ];
 function dayKey(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 function todaysDaily(){ const k=dayKey(); let h=0; for(let i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0; return DAILIES[h%DAILIES.length]; }
+
+// ===== Match mutators =====
+// Occasional whole-match modifiers announced at drop-in (ROADMAP v1.13). Each entry carries the
+// numeric knobs that the relevant systems (wave spawn, bomb throw/blast, night vignette) read
+// directly off `activeMutator` — no apply/revert step needed since spawnMatch rebuilds the world
+// from scratch every match anyway.
+const MUTATORS = [
+  {id:'horde2x',  icon:'🧟', name:'SWARM NIGHT',  desc:'Every wave spawns twice the zombies',        zMul:2},
+  {id:'fogNight', icon:'🌙', name:'DEEP FOG',       desc:'Endless night — your light barely reaches',  fog:true},
+  {id:'lowGrav',  icon:'🎈', name:'LOW GRAVITY',   desc:'Bombs hang longer and blast wider',          bombFuseMul:1.8, bombRadMul:1.4},
+];
+const MUTATOR_CHANCE = 0.35;    // "occasional" — most matches stay vanilla
+function pickMutator(){ return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
 function dailyDoneToday(){ return meta.dailyDone===dayKey(); }
 // Called at match end (before results render). Returns true if the daily was just completed.
 function checkDaily(ctx){
@@ -1502,6 +1519,7 @@ const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast
 const MODES = ['horde'];
 let gameMode = MODES[0];  // Endless Horde is the only mode (BR & Squads retired v2.33.0)
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
+let activeMutator = null;                   // this match's MUTATORS entry, or null — see spawnMatch
 let hordeWave = 0;
 let hordeStallT = 0, hordeLastAlive = 0;    // wave-clear stall watchdog (unsticks stranded stragglers)
 let aimWX = 0, aimWY = 0, aimShow = false;  // reticle world target
@@ -1800,7 +1818,7 @@ function spawnMatch(){
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   builds.length=0; scraps.length=0;
-  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14);
+  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14); activeMutator=null;
   hordeStallT=0; hordeLastAlive=0;
   combo=0; comboT=0; hitstop=0;
   menuAmbient=false;                                     // real match takes over the canvas
@@ -1820,13 +1838,20 @@ function spawnMatch(){
 
   if(gameMode==='horde'){
     fieldSize=1; hordeWave=1;
+    activeMutator = pickMutator();
+    if(activeMutator){
+      if(activeMutator.fog) timeOfDay='night';
+      toast(activeMutator.icon+' '+activeMutator.name+' — '+activeMutator.desc);
+      el('statMut').textContent = activeMutator.icon+' '+activeMutator.name;
+      el('mutRow').style.display = '';
+    } else el('mutRow').style.display = 'none';
     // two 2-story watchtowers to climb and shoot down from (Horde only)
     for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
       while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
       const tw={type:'tower', tower:true, x:clamp(sp.x-TOWER_W/2,120,ARENA-120-TOWER_W), y:clamp(sp.y-TOWER_H/2,120,ARENA-120-TOWER_H),
         w:TOWER_W, h:TOWER_H, roof:'#6b7178'};
       obstacles.push(tw); decor.push(tw); }
-    const n=10; for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
+    const n=Math.round(10*(activeMutator?.zMul||1)); for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
   } else if(gameMode==='squad'){
     fieldSize=16;
     const allyNames=['Buddy','Scout','Doc','Tank'];
@@ -2053,7 +2078,8 @@ function castLightning(h){
 function throwBomb(h){
   if(h.bombCd>0 || grace>0) return; h.bombCd=10;
   const a=h.aim, d=180;
-  bombs.push({x:h.x, y:h.y, tx:h.x+Math.cos(a)*d, ty:h.y+Math.sin(a)*d, t:0, fuse:0.85, owner:h, sx:h.x, sy:h.y});
+  const fuse=0.85*(activeMutator?.bombFuseMul||1);
+  bombs.push({x:h.x, y:h.y, tx:h.x+Math.cos(a)*d, ty:h.y+Math.sin(a)*d, t:0, fuse, owner:h, sx:h.x, sy:h.y});
   if(h.isPlayer) sfx('throw');
 }
 
@@ -2206,7 +2232,7 @@ function zombieBurst(e){
   sfx('boom',null,e);
 }
 function explode(b){
-  const RAD=130, RAD2=RAD*RAD;
+  const RAD=130*(activeMutator?.bombRadMul||1), RAD2=RAD*RAD;
   for(let i=0;i<30;i++) spark(b.x,b.y, i%2?'#ffb13d':'#ff5a2a', rand(80,360), rand(0,TAU), .8);
   rings.push({x:b.x, y:b.y, t:0, dur:0.45, r0:14, r1:RAD+30, col:'255,200,110', lw:5});
   rings.push({x:b.x, y:b.y, t:0, dur:0.7,  r0:8,  r1:RAD,    col:'255,255,255', lw:2.5});
@@ -2865,7 +2891,8 @@ function hordeUpdate(dt){
   hordeWave++; hordeStallT=0;
   const boss = hordeWave>=5 && hordeWave%5===0;                     // every 5th wave: armored elites
   toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave+' — CLEARED, next wave!'); sfx('warn');
-  const n=Math.min(8+hordeWave*3, 42);                             // steeper ramp so it doesn't stay trivial
+  const zMul=activeMutator?.zMul||1;
+  const n=Math.min((8+hordeWave*3)*zMul, 42*zMul);                 // steeper ramp so it doesn't stay trivial
   for(let i=0;i<n;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
     while(dist2(s.x,s.y,player.x,player.y)<500*500 && tries<10);
     const z=makeZombie(s.x,s.y,hordeKind(hordeWave)); hordeScale(z,hordeWave); zombies.push(z); }
@@ -3170,9 +3197,10 @@ function drawDayNight(){
     const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(255,120,40,.16)'); g.addColorStop(1,'rgba(80,30,70,.20)');
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   } else { // night
-    ctx.fillStyle='rgba(20,30,72,.30)'; ctx.fillRect(0,0,W,H);
+    const fog=activeMutator?.fog;
+    ctx.fillStyle=fog?'rgba(20,30,72,.48)':'rgba(20,30,72,.30)'; ctx.fillRect(0,0,W,H);
     if(player&&player.alive){ const px=player.x-cam.x, py=player.y-cam.y;
-      const g=ctx.createRadialGradient(px,py,18,px,py,280); g.addColorStop(0,'rgba(255,240,200,.20)'); g.addColorStop(1,'rgba(255,240,200,0)');
+      const g=ctx.createRadialGradient(px,py,18,px,py,fog?170:280); g.addColorStop(0,'rgba(255,240,200,.20)'); g.addColorStop(1,'rgba(255,240,200,0)');
       ctx.globalCompositeOperation='lighter'; ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.globalCompositeOperation='source-over'; }
   }
   ctx.restore();

@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.34.2). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.35.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -121,8 +121,14 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       wanted, that's new work, not a bug fix — split into its own bullet if approved.
 - [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
       v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
-- [ ] **Mutators** — occasional match modifiers announced at drop-in (low gravity bombs, 2×
-      zombies, fog night). One `MUTATORS` table + a spawn-time pick.
+- [x] **Mutators** (shipped v2.35.0) — a `MUTATORS` table (`index.html`, "Match mutators"
+      section) + `pickMutator()` (35% chance, else vanilla) picked once in `spawnMatch`'s horde
+      branch and announced via `toast()` + a persistent HUD row (`#mutRow`). Three modifiers:
+      **Swarm Night** (`zMul:2`, doubles both the initial and per-wave zombie spawn counts),
+      **Deep Fog** (`fog:true`, forces night + shrinks/darkens the vision vignette in
+      `drawDayNight`), **Low Gravity** (`bombFuseMul`/`bombRadMul`, bombs hang longer and blast
+      wider). No apply/revert step needed — `spawnMatch` already rebuilds the world from scratch
+      each match, so every consumer just reads `activeMutator` directly at the point of use.
 
 ## Balance & tuning backlog (needs real-device playtests)
 
