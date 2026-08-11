@@ -109,10 +109,15 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 
 ## v1.13 — "Modes & Bosses"
 
-- [ ] **Boss waves in Horde** — every 5th wave spawns a boss zombie (huge brute variant: hp bar
-      banner, ground-slam AoE, guaranteed loot drop).
-- [ ] **Payload-style event in BR** — a supply convoy crosses the map mid-match; whoever
-      escorts/loots it gets a gold weapon. Gives mid-game a reason to move.
+- [x] **Boss waves in Horde** (shipped v2.20.0–v2.21.1) — every 5th wave spawns armored
+      `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`, `index.html:1625`),
+      count scaling with wave (`1+floor(hordeWave/10)`, `index.html:2843`). _Not_ built: no
+      dedicated boss hp-bar banner, no ground-slam AoE attack, no guaranteed-loot-drop table —
+      juggernauts use the same contact-damage and drop logic as regular zombies, just scaled up.
+      If the original "huge brute with hp banner + AoE slam + guaranteed loot" vision is still
+      wanted, that's new work, not a bug fix — split into its own bullet if approved.
+- [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
+      v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
 - [ ] **Mutators** — occasional match modifiers announced at drop-in (low gravity bombs, 2×
       zombies, fog night). One `MUTATORS` table + a spawn-time pick.
 
