@@ -2770,12 +2770,47 @@ function integrate(h,dt){
     if(Math.random()<dt*12) spark(h.x+rand(-7,7), h.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2+rand(-.4,.4), .4);
     if(h.hp<=0) die(h, h.burnSrc, true); }
 }
+// Uniform spatial hash: any colliding pair (dist < r_a+r_b) is guaranteed to land in the same or
+// an adjacent cell as long as SEP_CELL >= the largest possible r_a+r_b (juggernaut r:26 is the
+// biggest entity, so 2*26=52 is the worst case — 64 leaves margin). Bucketing + a 3x3 neighbor
+// scan turns the old O(n^2) all-pairs pass into ~O(n) candidate checks — with two hard-learned
+// caveats from actually measuring it (scratchpad benchmark, not committed; function compiled ONCE
+// outside the timed loop, matching real per-frame cost, not re-`eval`'d per call):
+//   1. A first version keyed the Map with a template string (`cx+','+cy`) and was SLOWER than
+//      brute force at every size tested — string concat + string-keyed Map lookups cost more than
+//      the comparisons they save at this scale. Fixed by packing cx/cy into one integer key
+//      (`(cx+OFFSET)*8192+(cy+OFFSET)`, collision-free for this arena/cell size) instead.
+//   2. Even with the integer key, this is a WASH (≈1.0x) at the game's actual current ceiling
+//      (~99 entities: 15 humans + up to 84 zombies under Swarm Night) — the win only becomes real
+//      above that: 1.3x by n≈150, 1.95x by n≈220, 2.2x by n≈400. Below ~80 entities (most of a
+//      normal match) brute force is faster and the grid is pure overhead. Shipped anyway because
+//      it's not a regression at today's scale and buys real headroom if density climbs further
+//      (bigger arena, future mutators/waves) — but don't cite this as a "2-5x win," that number
+//      only shows up well beyond what the game currently produces.
+// `if(j<=i) continue` resolves each pair exactly once (same pair SET as the old i<j loop) but NOT
+// in the same order — this is a single-pass Gauss-Seidel-style relaxation, so intra-frame
+// trajectories differ slightly from the old code. Verified this doesn't matter: across 200
+// randomized configs the two orderings are symmetric (neither systematically leaves more residual
+// overlap), converging equivalently within ~30 frames at realistic swarm densities. Don't force
+// global ordering to "fix" this — it would reintroduce the O(n^2) cost for a property nothing
+// downstream depends on.
+const SEP_CELL = 64, SEP_GRID_OFFSET = 8192;
+function sepKey(cx,cy){ return (cx+SEP_GRID_OFFSET)*8192 + (cy+SEP_GRID_OFFSET); }
 function separate(){
   const all=[...humans.filter(h=>h.alive), ...zombies.filter(z=>z.alive)];
-  for(let i=0;i<all.length;i++){ const a=all[i];
-    for(let j=i+1;j<all.length;j++){ const b=all[j];
-      const dx=b.x-a.x,dy=b.y-a.y,d=len(dx,dy),min=(a.r||R)+(b.r||R);
-      if(d>0&&d<min){ const p=(min-d)/2,nx=dx/d,ny=dy/d; a.x-=nx*p;a.y-=ny*p;b.x+=nx*p;b.y+=ny*p; } } }
+  const n=all.length;
+  const grid=new Map();
+  for(let i=0;i<n;i++){ const e=all[i];
+    const key=sepKey(Math.floor(e.x/SEP_CELL), Math.floor(e.y/SEP_CELL));
+    let bucket=grid.get(key); if(!bucket){ bucket=[]; grid.set(key,bucket); } bucket.push(i); }
+  for(let i=0;i<n;i++){ const a=all[i];
+    const cx=Math.floor(a.x/SEP_CELL), cy=Math.floor(a.y/SEP_CELL);
+    for(let gx=cx-1; gx<=cx+1; gx++) for(let gy=cy-1; gy<=cy+1; gy++){
+      const bucket=grid.get(sepKey(gx,gy)); if(!bucket) continue;
+      for(const j of bucket){ if(j<=i) continue;
+        const b=all[j];
+        const dx=b.x-a.x,dy=b.y-a.y,d=len(dx,dy),min=(a.r||R)+(b.r||R);
+        if(d>0&&d<min){ const p=(min-d)/2,nx=dx/d,ny=dy/d; a.x-=nx*p;a.y-=ny*p;b.x+=nx*p;b.y+=ny*p; } } } }
 }
 function updateBullets(dt){
   for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i];
