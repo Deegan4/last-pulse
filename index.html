@@ -295,7 +295,7 @@
     display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
   #mmwrap{position:absolute;right:10px;top:10px;background:rgba(20,30,12,.5);border:1px solid var(--line);
     border-radius:14px;padding:8px}
-  #minimap{width:108px;height:108px;border-radius:8px;border:2px solid rgba(0,0,0,.45);background:#243818;display:block}
+  #minimap{width:132px;height:132px;border-radius:8px;border:2px solid rgba(0,0,0,.45);background:#243818;display:block}
   #stats{margin-top:7px;font-weight:800;font-size:12.5px;color:#fff;text-shadow:1px 1px 0 rgba(0,0,0,.45)}
   .srow{display:flex;align-items:center;gap:5px;line-height:1.75}
   .srow .si{font-size:12px;width:16px;text-align:center;opacity:.92}
@@ -646,7 +646,7 @@
     <button id="gearHud" aria-label="settings">⚙</button>
     <div id="xpwrap"><span id="lvlText">LV 1</span><div id="xpbar"><div id="xpfill"></div></div></div>
     <div id="mmwrap">
-      <canvas id="minimap" width="108" height="108"></canvas>
+      <canvas id="minimap" width="132" height="132"></canvas>
       <div id="stats">
         <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
         <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
@@ -1097,8 +1097,13 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.35.2';
+const GAME_VERSION = '2.36.0';
 const CHANGELOG = [
+  { v:'2.36.0', items:[
+    ['🗺️','A bigger world','the arena is ~80% larger, with more buildings, ponds and greenery to explore'],
+    ['🪦','New landmark: graveyard','a weathered plot of tombstones joins campfires, wells and statues at level 20'],
+    ['📍','Sharper minimap','bigger, now shows ponds and landmarks, plus a facing tick so you know which way you’re looking'],
+  ]},
   { v:'2.35.2', items:[
     ['📱','Screen fit, take two','the installed app was leaving a gap at the bottom of the screen on some phones — fixed'],
   ]},
@@ -1543,7 +1548,7 @@ function avatarUnlocked(a){ return meta.level >= a.unlock; }
 // ============================================================
 //  World
 // ============================================================
-const ARENA = 3000;
+const ARENA = 4000;
 const cam = {x:0,y:0};
 let screenState = 'start';   // 'start'|'avatar'|'weapon'|'playing'|'results'
 let paused = false;
@@ -1724,17 +1729,19 @@ const BKINDS={
   barn:  {roof:['#4a3730','#5a4038']},             // red planks, X-braced big doors, hayloft
   cabin: {roof:['#4a6a44','#6a5a3a']},             // log-course walls + stovepipe
 };
-const TALL_DECOR={campfire:1,fence:1,well:1,statue:1};   // level-milestone landmarks (y-sorted)
+const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1};   // level-milestone landmarks (y-sorted)
 function buildDecor(){
   decor.length=0; obstacles.length=0;
   timeOfDay = pick(['day','day','dusk','night']);   // mostly day, sometimes dusk/night
   // the world grows with your level: more houses (each hiding loot), more ponds and
-  // greenery, and new landmarks unlock at level milestones (see below)
+  // greenery, and new landmarks unlock at level milestones (see below). Counts here are tuned
+  // for the v2.36 arena bump (3000→4000, ~1.8x the area) — scaled up but not 1:1 with area, so
+  // the bigger map reads as MORE to explore rather than just diluting the old density.
   const lvl = meta.level;
-  const nBuild = Math.min(9 + Math.floor(lvl/4), 16);
-  const nWater = Math.min(7 + Math.floor(lvl/8), 10);
+  const nBuild = Math.min(13 + Math.floor(lvl/4), 22);
+  const nWater = Math.min(9 + Math.floor(lvl/8), 13);
   const xtra   = Math.min(lvl, 20);                 // generic density bonus
-  for(let i=0;i<80;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
+  for(let i=0;i<112;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
   for(let i=0;i<nWater;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
   // buildings (cover) — kept apart and away from the very centre
   for(let i=0;i<nBuild;i++){ let b, ok=false, tries=0;
@@ -1750,17 +1757,18 @@ function buildDecor(){
         if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
       tries++; } while(!ok && tries<40);
     if(ok){ obstacles.push(b); decor.push(b); } }
-  for(let i=0;i<26+Math.floor(xtra*0.7);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
-  for(let i=0;i<34+xtra;i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
-  for(let i=0;i<66+xtra*2;i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
-  for(let i=0;i<26+xtra;i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
-  for(let i=0;i<14+Math.floor(xtra/2);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
-  for(let i=0;i<6+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
+  for(let i=0;i<36+Math.floor(xtra*0.9);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
+  for(let i=0;i<46+Math.floor(xtra*1.3);i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
+  for(let i=0;i<92+Math.floor(xtra*2.6);i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
+  for(let i=0;i<36+Math.floor(xtra*1.3);i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
+  for(let i=0;i<20+Math.floor(xtra*0.7);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
+  for(let i=0;i<8+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
   // level-milestone landmarks — the map gains character as you rank up
-  if(lvl>=3)  for(let i=0;i<3;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
-  if(lvl>=6)  for(let i=0;i<5;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
-  if(lvl>=10) for(let i=0;i<2;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
-  if(lvl>=15) for(let i=0;i<2;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
+  if(lvl>=3)  for(let i=0;i<4;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
+  if(lvl>=6)  for(let i=0;i<7;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
+  if(lvl>=10) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
+  if(lvl>=15) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
+  if(lvl>=20) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
   campfires = decor.filter(d=>d.type==='campfire');   // cache for the heal-aura check
 }
@@ -3498,6 +3506,32 @@ function drawDecor(d){
     ctx.beginPath(); ctx.moveTo(x-4,y-14); ctx.lineTo(x-1,y-10); ctx.lineTo(x-3,y-8); ctx.stroke();
     ctx.fillStyle='rgba(90,140,70,.5)'; ctx.beginPath(); ctx.arc(x-9,y-5,2.6,0,TAU); ctx.arc(x+11,y-3,2,0,TAU); ctx.fill();
     return; }
+  if(d.type==='graveyard'){ const x=d.x, y=d.y, sd=d.seed||0;
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(x,y+6,34,11,0,0,TAU); ctx.fill();
+    ctx.fillStyle='rgba(70,90,50,.35)'; ctx.beginPath(); ctx.ellipse(x,y+2,32,12,0,0,TAU); ctx.fill();   // patchy dead grass
+    // low iron fence border (2 corner posts each side + a sagging chain rail)
+    ctx.strokeStyle='#3a4038'; ctx.lineWidth=2.2;
+    for(const px of [x-30,x-10,x+12,x+30]){ ctx.beginPath(); ctx.moveTo(px,y+9); ctx.lineTo(px,y-2); ctx.stroke();
+      ctx.fillStyle='#4a5148'; ctx.beginPath(); ctx.arc(px,y-2,1.6,0,TAU); ctx.fill(); }
+    ctx.strokeStyle='#4a5148'; ctx.lineWidth=1.4; ctx.beginPath();
+    ctx.moveTo(x-30,y-1); ctx.quadraticCurveTo(x-20,y+3,x-10,y-1);
+    ctx.moveTo(x-10,y-1); ctx.quadraticCurveTo(x+1,y+3,x+12,y-1);
+    ctx.moveTo(x+12,y-1); ctx.quadraticCurveTo(x+21,y+3,x+30,y-1); ctx.stroke();
+    // 3 weathered tombstones, staggered heights/lean via the seed
+    const stones=[{ox:-16,h:16,lean:-0.06},{ox:0,h:21,lean:0.03+sd*0.05},{ox:16,h:14,lean:0.07}];
+    for(const s of stones){ const sx=x+s.ox, sy=y-2;
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(s.lean);
+      ctx.fillStyle='rgba(0,0,0,.15)'; ctx.beginPath(); ctx.ellipse(0,1.5,7,2.4,0,0,TAU); ctx.fill();
+      ctx.fillStyle='#8f8d86'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(-5,-s.h*0.62); ctx.arc(0,-s.h*0.62,5,Math.PI,0);
+      ctx.lineTo(5,0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1;                        // engraved cross + moss
+      ctx.beginPath(); ctx.moveTo(0,-s.h*0.5); ctx.lineTo(0,-s.h*0.18);
+      ctx.moveTo(-2.6,-s.h*0.38); ctx.lineTo(2.6,-s.h*0.38); ctx.stroke();
+      ctx.fillStyle='rgba(90,130,70,.45)'; ctx.beginPath(); ctx.arc(-3,-1,1.8,0,TAU); ctx.fill();
+      ctx.restore(); }
+    return; }
   if(d.type==='dirt'){ ctx.fillStyle = timeOfDay==='night'?'rgba(80,64,40,.45)':'rgba(150,120,72,.4)';
     ctx.beginPath(); ctx.ellipse(d.x,d.y,d.s,d.s*0.62,0,0,TAU); ctx.fill();
     ctx.fillStyle='rgba(110,86,50,.3)'; ctx.beginPath(); ctx.ellipse(d.x+d.s*0.2,d.y+d.s*0.12,d.s*0.5,d.s*0.3,0,0,TAU); ctx.fill(); return; }
@@ -4169,11 +4203,19 @@ function drawZone(){
 }
 
 // minimap
+const MINI_LANDMARK_COL = {campfire:'#ff8a2a', well:'#7fc8e8', statue:'#c9c2b0', graveyard:'#8f8d86'};
 function drawMini(){
-  const S=108, sc=S/ARENA; mctx.clearRect(0,0,S,S);
+  const S=132, sc=S/ARENA; mctx.clearRect(0,0,S,S);
   mctx.fillStyle='#2c4a1e'; mctx.fillRect(0,0,S,S);
+  // water ponds — drawn first so buildings/landmarks read on top
+  mctx.fillStyle='rgba(80,150,190,.55)';
+  for(const d of decor){ if(d.type!=='water') continue;
+    mctx.beginPath(); mctx.ellipse(d.x*sc,d.y*sc,Math.max(1,d.s*sc),Math.max(1,d.s*0.64*sc),0,0,TAU); mctx.fill(); }
   // buildings
   mctx.fillStyle='rgba(220,200,170,.55)'; for(const o of obstacles) mctx.fillRect(o.x*sc,o.y*sc,Math.max(1,o.w*sc),Math.max(1,o.h*sc));
+  // level-milestone landmarks — small colour-coded dots so the map reads as a real place, not just cover
+  for(const d of decor){ const col=MINI_LANDMARK_COL[d.type]; if(!col) continue;
+    mctx.fillStyle=col; mctx.beginPath(); mctx.arc(d.x*sc,d.y*sc,1.6,0,TAU); mctx.fill(); }
   if(zoneActive()){ mctx.beginPath(); mctx.arc(zone.cx*sc,zone.cy*sc,Math.max(0,zone.r)*sc,0,TAU);
     mctx.strokeStyle='rgba(255,255,255,.85)'; mctx.lineWidth=1.3; mctx.stroke();
     mctx.fillStyle='rgba(255,255,255,.06)'; mctx.fill(); }
@@ -4181,7 +4223,11 @@ function drawMini(){
   for(const h of humans){ if(!h.alive||h.isPlayer) continue;
     mctx.fillStyle = h.team===player.team ? '#7bd0ff' : '#ff5a4a';   // allies blue-ish, enemies red
     mctx.beginPath(); mctx.arc(h.x*sc,h.y*sc,2,0,TAU); mctx.fill(); }
-  if(player&&player.alive){ mctx.fillStyle='#7bff4a'; mctx.beginPath(); mctx.arc(player.x*sc,player.y*sc,3,0,TAU); mctx.fill();
+  if(player&&player.alive){
+    const px=player.x*sc, py=player.y*sc;
+    mctx.strokeStyle='rgba(255,255,255,.8)'; mctx.lineWidth=1.6; mctx.beginPath();   // facing tick
+    mctx.moveTo(px,py); mctx.lineTo(px+Math.cos(player.aim)*7,py+Math.sin(player.aim)*7); mctx.stroke();
+    mctx.fillStyle='#7bff4a'; mctx.beginPath(); mctx.arc(px,py,3,0,TAU); mctx.fill();
     mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke(); }
 }
 

@@ -50,6 +50,24 @@ versions before anyone corrected it — see the git history if you want the old 
   one — `grep -c "window.__" index.html` must stay 1).
 
 ## Current state (done)
+- **v2.36.0** — **Bigger, richer map + upgraded minimap** (user: "upgrade the maps" → scoped via
+  AskUserQuestion to three things: more content on the existing map, a better minimap, and a
+  bigger arena). `ARENA` 3000→4000 (~1.8× the area); `PHASES`/`farSpawn`/`decorSpot` are all
+  already ARENA-relative fractions so they scaled for free, and `zoneActive()` returns
+  `gameMode!=='horde'` so the dormant BR zone-shrink logic (the only thing with radii baked off
+  the old ARENA) is inert in the only active mode anyway — nothing to migrate. `buildDecor()`
+  counts bumped ~30–60% (not a flat area-scale 1.8×, to keep the bigger map feeling like "more to
+  explore" rather than just diluting the old density at the same perf cost) — buildings 9–16→
+  13–22, ponds 7–10→9–13, trees/bush/grass/flowers/rocks all up proportionally. New landmark:
+  **graveyard** (`TALL_DECOR`, unlocks Lv20 alongside the existing campfire/fence/well/statue
+  milestones) — 3 weathered leaning tombstones + a low iron fence with a sagging chain rail, drawn
+  in the same canvas-shape style as the other landmarks (no new art assets). **Minimap** upgraded
+  from 108→132px, now renders water ponds (was invisible before) and landmarks as colour-coded
+  dots (`MINI_LANDMARK_COL`), plus a player facing-direction tick so orientation reads at a glance.
+  Verified headless: `validate.mjs` green; `--play --shoot` 0 new errors (FPS 35–55, fine); a
+  throwaway hook forced `meta.level=25` + `buildDecor()` and confirmed 2 graveyards spawn with
+  `ARENA===4000`, screenshot showed the tombstones rendering correctly in-world; the live-match
+  minimap screenshot shows ponds/buildings/landmark dots all rendering distinctly.
 - **v2.35.2** — **Fixed the overshoot v2.35.1 introduced.** A SECOND Screen Fit report on the same
   device (after v2.35.1 shipped) showed the swap was gone (`inner: 393x793`, correctly portrait-
   shaped and matching `screen: 393x852`'s width) but a NEW mismatch appeared: `stage rect: h 945`
