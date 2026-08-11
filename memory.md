@@ -35,6 +35,18 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+- **v2.34.2** — **Wall blood streaks** (closes the long-deferred `ROADMAP.md` v1.11 item). `hurt()`
+  and `die()` call the new `spraySplatOnWall(x,y,dmg)`: finds the nearest building-wall segment
+  within ~22px of the hit (via the existing `wallRects(o)`), and if close enough drops a fading
+  drip decal into `wallStreaks[]` (local coords, capped 160, decays like `splats`). Drawn as a
+  linear-gradient vertical stroke on the wall face in `drawBuilding`, clipped to the wall's rounded
+  rect so it never bleeds past corners. Only the exterior facade gets streaks — the interior
+  wall-frame in `drawBuildingBase` doesn't — so marks vanish if the fight moves inside; noted as a
+  known limitation in ROADMAP rather than solved. Verified visually via a throwaway `window.__t`
+  hook (never committed) that teleported the player to a barn wall and forced 8 hits — screenshot
+  showed a clean streak clipped to the wall, `node scripts/validate.mjs` and the headless
+  `--play --shoot` smoke test both pass (the CDN CORS console error is pre-existing on `main`,
+  confirmed via `git stash`, not a regression from this change).
 - **v2.33.0** — **BR & Squads retired; horde kill counting FIXED** (user: "take out battle royale and
   squads"). Flow: `#modeScreen` deleted; `toModeBtn` (PLAY) → `goAvatar()` directly; `gameMode` hard-set
   `'horde'` (ignores stored `dd2_mode` — old saves held 'br'); `show()` array, `renderModeSel`, `MODE_NAME`,

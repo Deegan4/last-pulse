@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.34.1). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.34.2). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -64,8 +64,11 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
 
 - [x] **Campfire heal aura** — `campfireHeal(h,dt)`: `CAMPFIRE.heal` hp/s within `CAMPFIRE.r`,
       green heal sparks. Player-only for now (bots could be added — small compute cost).
-- [ ] **Wall blood streaks** — _deferred_: blood is particle-based (`spark`) with no wall
-      collision; needs a vertical streak-decal variant + spray-vs-wall test. Fiddliest item.
+- [x] **Wall blood streaks** (shipped v2.34.2) — `hurt()`/`die()` call `spraySplatOnWall`, which
+      finds the nearest building wall segment within ~22px of the hit and, if close enough, drops
+      a fading drip decal (`wallStreaks[]`) drawn on the wall face in `drawBuilding`. Interior
+      wall-frame (`drawBuildingBase`) doesn't get streaks — only the exterior facade — so a fight
+      that moves inside won't show marks on the interior frame; revisit if that's noticeable.
 - [x] **Indoor-aware zombies** — `updateZombie` routes to the nearest door (skirts the nearer
       corner when on the wrong side) via `insideBuilding`. Verified: zombie navigates 247→20px.
 - [x] **Second door on large houses** — `wallRects` adds a top-wall door gap for `w>BIG_HOUSE`
