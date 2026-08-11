@@ -16,20 +16,24 @@ This section is a rolling "as of right now" summary — overwrite it (don't appe
 never goes stale like the 2026-07-17 version it replaced did (it sat frozen at v2.24.1 for ~10 shipped
 versions before anyone corrected it — see the git history if you want the old text)._
 
-- **Where things stand:** production is **v2.35.1**, merged to `main`. Working branch
+- **Where things stand:** production is **v2.35.2**, merged to `main`. Working branch
   `claude/next-steps-v8p4vf`.
 - **Shipped this session (all merged to `main`):** doc-only reconciliation (ROADMAP boss-wave
   checkbox was stale — Juggernauts actually shipped v2.20–2.21) → v2.34.2 **wall blood streaks**
   (closes the deferred v1.11 item) → v2.35.0 **match mutators** (Swarm Night / Deep Fog / Low
   Gravity, closes the v1.13 item) → v2.35.1 **fixed a real portrait/landscape viewport swap** on
-  standalone iOS, caught from a user screenshot + Screen Fit report (see the entry below —
-  `measureViewport()` was guessing orientation from values already known to be swapped).
+  standalone iOS (`measureViewport()` was guessing orientation from values already known to be
+  swapped) → v2.35.2 **fixed the overshoot v2.35.1 itself introduced** (a second Screen Fit report
+  on the SAME device caught it — `resize()` was double-counting the safe-area insets on top of an
+  already-correct standalone viewport). See the entries below for the full reasoning trail on
+  both — this was a genuine two-round iteration, not solved on the first try.
 - **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
   `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
 - **Open / parked:**
-  1. **Confirm v2.35.1 actually fixed it on the user's device** — the swap bug was only verified
-     via spoofed headless cases reproducing the exact reported numbers; ask for another Screen Fit
-     report (or just "does it look right now?") before considering this closed.
+  1. **Get a THIRD Screen Fit report before trusting v2.35.2 is really done** — two rounds on this
+     exact device already turned up two different bugs; the headless spoofs reproduce the reported
+     numbers precisely, but this device has proven good at finding new edge cases. Don't be
+     surprised by a round three.
   2. **Playtest v2.35.0 on-device** — mutators were only verified headless (forced-state hooks +
      screenshots); real feel on Swarm Night's zombie density and Low Gravity's blast radius needs
      a human.
@@ -46,6 +50,38 @@ versions before anyone corrected it — see the git history if you want the old 
   one — `grep -c "window.__" index.html` must stay 1).
 
 ## Current state (done)
+- **v2.35.2** — **Fixed the overshoot v2.35.1 introduced.** A SECOND Screen Fit report on the same
+  device (after v2.35.1 shipped) showed the swap was gone (`inner: 393x793`, correctly portrait-
+  shaped and matching `screen: 393x852`'s width) but a NEW mismatch appeared: `stage rect: h 945`
+  vs the real viewport `793` — off by 152. Root cause: v2.35.1's `measureViewport()` fix
+  unconditionally replaced `vh` with `screen.height` (852) whenever standalone, even when the
+  browser's own measurement was already correct — then `resize()`'s pre-existing pull-up-and-
+  extend trick (`stage.height = gh+st+sb`, meant to make the canvas paint under the status bar in
+  a Safari TAB) added the insets **again** on top of an already-full-screen `gh`, double-counting
+  by exactly `st+sb` (59+34=93 ≈ the reported 152 discrepancy incl. rounding/settle-timer drift).
+  That pull-up trick is a no-op in a real Safari tab (`effInsets()` returns 0/0 there, confirmed
+  v2.34.1) — it was ONLY ever "live" in standalone, where the webview already covers the full
+  physical screen and needs no pulling-under. Two-part fix: (1) `measureViewport()` now only
+  overrides `vw`/`vh` with screen-derived values in two narrow, evidenced cases — a genuine shape/
+  orientation MISMATCH (the v2.35.1 swap bug), detected via an independent `screen.orientation`
+  signal rather than comparing the suspect `vw`/`vh`; or when `safeTopPx()`/`safeBottomPx()` are
+  BOTH <8 (env() is independently known to be lying — the same threshold `effInsets()` already
+  uses to decide whether to substitute, matching the original v2.31.5 "short + lying env()" bug
+  pattern). Otherwise it trusts the browser's own self-consistent numbers, which is exactly what
+  this device was reporting the second time. (2) `resize()` no longer adds `st+sb` to the stage
+  size in standalone — it fills `gw`/`gh` directly at `top:0`, since the webview already covers
+  the whole screen; the pull-up-and-extend path is now Safari-tab-only (where it was always a
+  no-op anyway). Verified headless across 5 spoofed cases (Playwright `addInitScript` overriding
+  `navigator.standalone`/`window.screen`, plus a HOOK-injected `safeTopPx`/`safeBottomPx`
+  override since those are closure-scoped and unreachable from outside): this exact 793-consistent
+  report (stage now exactly 393×793, was 393×945), the v2.35.1 swap case (still fixes to
+  393×852, matching the real screen), the original v2.31.5 short-report+lying-env case (still
+  fixes to 390×844, no regression), a plain Safari tab, and desktop (both untouched). 0 page
+  errors in all five; `validate.mjs` and the headless `--play --shoot` smoke test both pass.
+  **Caveat**: this is now TWO rounds on the same device — ask for a third Screen Fit report before
+  fully trusting this is done; the diagnostic's own check #1 (`stage==visualViewport.height`)
+  can't validate a fix that correctly DISAGREES with a lying viewport (the Report-A/historical
+  cases), so a real device confirmation still matters more than the headless simulation here.
 - **v2.35.1** — **Fixed a real portrait/landscape viewport swap** (user screenshot + a Screen Fit
   report resolved it — no more blind fixes). Report showed, on a standalone iPhone with a
   physically-portrait 393×852 screen: `innerWidth/innerHeight/visualViewport/clientHeight` ALL
