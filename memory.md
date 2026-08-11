@@ -50,6 +50,34 @@ versions before anyone corrected it — see the git history if you want the old 
   one — `grep -c "window.__" index.html` must stay 1).
 
 ## Current state (done)
+- **Perf: spatial-hash `separate()`** (no version bump — internal refactor, no player-visible
+  change; on the v2.36.0 branch, user: "Start on the spatial hash rewrite for separate()" after
+  it was flagged as the biggest headroom risk following the bigger arena + Swarm Night mutator).
+  `separate()` (`index.html`) was a full O(n²) all-pairs pass over every alive human+zombie, run
+  once per frame — with the bigger arena and 2x mutator able to push 150-180+ entities in late
+  waves, that's 15-16k distance checks/frame. Replaced with a uniform spatial hash (bucket by
+  `Math.floor(x/64)`/`Math.floor(y/64)`, 64 chosen since it's ≥ the largest possible `r_a+r_b`
+  — juggernaut r:26 is the biggest entity — so any colliding pair is guaranteed same-or-adjacent
+  cell; 3x3 neighbor scan per entity). **Two real mistakes caught by actually measuring instead of
+  trusting Big-O, both left in the code comment as a warning for next time**: (1) a first version
+  keyed the Map with a template string (`cx+','+cy`) and was measurably SLOWER than brute force at
+  every size tested (30→220 entities) — string concat + string-keyed Map lookups cost more in V8
+  than the comparisons they saved; fixed with a packed-integer key. (2) even fixed, a **buggy
+  benchmark harness** (synthetic entities missing the `.alive` flag the shipped code filters on,
+  and later `new Function()` re-compiling the shipped code *inside* the timed loop) produced
+  wildly wrong numbers twice before a harness that compiles the function once and supplies valid
+  `.alive` entities gave the trustworthy read: **a wash (≈1.0x) at the game's actual current
+  ceiling (~99 entities: 15 humans + up to 84 zombies under Swarm Night)**, only becoming a real
+  win above that (1.3x@150, 1.95x@220, 2.2x@400). Shipped anyway — not a regression at today's
+  scale, real headroom if density climbs further — but the code comment explicitly says NOT to
+  cite "2-5x win" since that only shows up well beyond current gameplay. Also caught and fixed:
+  the grid changes *intra-frame pair-processing order* vs the old strict-ascending-index loop
+  (this is a single-pass Gauss-Seidel relaxation, not a closed-form solve, so order affects the
+  exact per-frame trajectory) — verified across 200 randomized configs that both orderings are
+  symmetric (neither systematically leaves more residual overlap) and converge equivalently within
+  ~30 frames, so this doesn't matter for gameplay. Verified: `validate.mjs` green; `--play --shoot`
+  0 new errors, and one run happened to roll Swarm Night live — screenshot shows a real 20-zombie
+  cluster around the player with correct, non-overlapping separation.
 - **v2.36.0** — **Bigger, richer map + upgraded minimap** (user: "upgrade the maps" → scoped via
   AskUserQuestion to three things: more content on the existing map, a better minimap, and a
   bigger arena). `ARENA` 3000→4000 (~1.8× the area); `PHASES`/`farSpawn`/`decorSpot` are all
