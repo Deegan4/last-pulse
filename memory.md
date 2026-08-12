@@ -76,6 +76,21 @@ versions before anyone corrected it — see the git history if you want the old 
   numbers — compile once outside the loop and use fixture data that matches the real shape.
 
 ## Current state (done)
+- **v2.39.2 — SMG suppressor.** Second reference image (a single floating photorealistic bullpup
+  carbine over a neon cyberpunk city, no accompanying text) — same rendering-technique mismatch
+  as v2.39.1's reference, PLUS a mood/setting element (neon night city) not in the game's
+  established sunny-suburb tone. Given the ambiguity (no text, and a new element that could imply
+  a much bigger ask than weapon art), asked two follow-up `AskUserQuestion`s rather than guess:
+  (1) is this another weapon cue, a request to recheck Meshy, or a broader art-direction shift —
+  user confirmed "another weapon design cue"; (2) which weapon — offered SMG (plainest remaining,
+  matches the "generic barrel" pattern from v2.39.0) vs Tommy (already has a `drum` flag the
+  reference's cylinder could extend) — user picked **SMG**. Added a new `finned:1` GUNK flag: a
+  chunky ribbed cylinder/suppressor sleeve over the barrel (rounded-rect body + a sheen highlight
+  + 4 vertical rib lines), drawn in the OVER-BODY mid-layer attachments section alongside
+  scope/bipod/pump. SMG now reads with real silhouette instead of a plain thin barrel. Verified
+  via a throwaway hook (never committed, `grep -c "window.__" index.html` back to 1): high-zoom
+  render shows the cylinder clearly, distinct sheen and rib lines legible, not just present;
+  `validate.mjs` and `--play --shoot` both green, 0 new errors.
 - **v2.39.1 — Rifle wood stock.** Follow-up to v2.39.0: user shared a photorealistic 3D-rendered
   weapon reference image and asked to match it. That style (wood-grain textures, dynamic
   lighting, particle muzzle flash, DOF background) is a fundamentally different rendering
