@@ -76,6 +76,26 @@ versions before anyone corrected it — see the git history if you want the old 
   numbers — compile once outside the loop and use fixture data that matches the real shape.
 
 ## Current state (done)
+- **v2.39.1 — Rifle wood stock.** Follow-up to v2.39.0: user shared a photorealistic 3D-rendered
+  weapon reference image and asked to match it. That style (wood-grain textures, dynamic
+  lighting, particle muzzle flash, DOF background) is a fundamentally different rendering
+  technique than the game's flat canvas-shape art — matching it literally would mean generating
+  real raster sprite assets (like the hero portraits), not tuning `drawGun()`. Asked via
+  `AskUserQuestion`; user wanted raster art via the **Meshy MCP** specifically — checked, and no
+  Meshy server is available in this session at all (not connected, not pending-auth — matches the
+  long-standing `MESHY_API_KEY`-blocked status already in this file). Told the user it needs
+  authorizing via claude.ai connector settings (or the API key added to env config) before any
+  session can use it. Re-asked scope; user chose "push the flat canvas style further" — reference
+  for proportions/silhouette cues only, no textures/lighting, staying in `drawGun()`'s existing
+  style. Picked the one clear, high-confidence signal from a low-fidelity (garbled-OCR-labeled)
+  reference rather than guess broadly across all 12 weapons: **Rifle** was the only long gun
+  rendered in flat grey/black with zero wood, while the reference clearly reads as a wood-stocked
+  hunting rifle, and Shotgun/Crossbow already have the exact `wood` grain-wave flag needed. Changed
+  `Rifle`'s `GUNK` body color `#3a3f48`→`#7a5836` (a warmer/lighter walnut, kept distinct from
+  Shotgun `#6a4a2e`/Crossbow `#6a4e2a`) and added `wood:1` — zero new code, reused the existing
+  grain-wave renderer. Verified via a throwaway hook (never committed): Rifle/Shotgun/Crossbow
+  rendered side-by-side at high zoom, Rifle reads as a distinct warm wood tone, no errors;
+  `validate.mjs` and `--play --shoot` both green.
 - **v2.39.0 — Weapon detail pass.** User asked to "upgrade the weapons visuals," explicitly
   framed as matching v2.38.0's stalker/juggernaut convention ("give the plainest silhouettes a
   real signature detail, in a clearly-layered behind/over-body pass") and asked for an ordering-
