@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
 _Last updated: 2026-08-11. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v2.35.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+v2.36.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -16,38 +16,60 @@ This section is a rolling "as of right now" summary — overwrite it (don't appe
 never goes stale like the 2026-07-17 version it replaced did (it sat frozen at v2.24.1 for ~10 shipped
 versions before anyone corrected it — see the git history if you want the old text)._
 
-- **Where things stand:** production is **v2.35.2**, merged to `main`. Working branch
-  `claude/next-steps-v8p4vf`.
-- **Shipped this session (all merged to `main`):** doc-only reconciliation (ROADMAP boss-wave
-  checkbox was stale — Juggernauts actually shipped v2.20–2.21) → v2.34.2 **wall blood streaks**
-  (closes the deferred v1.11 item) → v2.35.0 **match mutators** (Swarm Night / Deep Fog / Low
-  Gravity, closes the v1.13 item) → v2.35.1 **fixed a real portrait/landscape viewport swap** on
-  standalone iOS (`measureViewport()` was guessing orientation from values already known to be
-  swapped) → v2.35.2 **fixed the overshoot v2.35.1 itself introduced** (a second Screen Fit report
-  on the SAME device caught it — `resize()` was double-counting the safe-area insets on top of an
-  already-correct standalone viewport). See the entries below for the full reasoning trail on
-  both — this was a genuine two-round iteration, not solved on the first try.
+- **Where things stand:** production is **v2.36.0**, merged to `main` (HEAD `df930ad`), working
+  tree clean, no open PRs (#79–#84 all merged this session). Working branch
+  `claude/next-steps-v8p4vf`, currently synced to `main` — safe to build on directly.
+- **Standing user preferences set THIS session — carry these forward:**
+  1. **End every reply with an advanced Next Steps section** — not generic bullets. Cite real
+     `function`/`file:line`, quantify trade-offs, name concrete tuning ranges. (This was already a
+     CLAUDE.md convention; the user explicitly reinforced and raised the bar on it mid-session.)
+  2. **Act as a "master web game coder"** — the user asked for this explicitly. In practice this
+     means: don't trust Big-O reasoning alone, MEASURE with a correct harness before claiming a
+     perf win (see the `separate()` entry below for exactly how that goes wrong if you skip it);
+     default to expert-level judgment (spatial partitioning, profiling, algorithmic trade-offs) when
+     reviewing or extending the engine, not just surface-level fixes.
+- **Shipped this session (all merged to `main`, chronological):** doc-only ROADMAP reconciliation
+  (boss-wave checkbox was stale) → v2.34.2 **wall blood streaks** → v2.35.0 **match mutators**
+  (Swarm Night / Deep Fog / Low Gravity) → v2.35.1 **iOS viewport-swap fix** → v2.35.2 **fixed the
+  overshoot v2.35.1 itself introduced** (two-round iteration, both caught via real Screen Fit
+  reports from the user's device — **a third report confirmed v2.35.2 fits correctly, this thread
+  is now closed**) → v2.36.0 **bigger map + upgraded minimap** (ARENA 3000→4000, new graveyard
+  landmark at Lv20, minimap shows ponds/landmarks/facing-tick) → **`separate()` spatial-hash perf
+  rewrite** (no version bump, internal-only — see below for the two real mistakes caught by
+  actually benchmarking instead of assuming).
+- **Reddit post drafted twice, NOT posted** — most recent version (reflects v2.36.0: bigger map,
+  mutators, landmarks) is in this conversation's transcript, not saved to a file. If asked to
+  "post it" or "write it again," regenerate from current CHANGELOG rather than assuming the old
+  draft is still accurate — the game moves fast enough that a stale feature list would undersell it.
 - **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
   `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
 - **Open / parked:**
-  1. **Get a THIRD Screen Fit report before trusting v2.35.2 is really done** — two rounds on this
-     exact device already turned up two different bugs; the headless spoofs reproduce the reported
-     numbers precisely, but this device has proven good at finding new edge cases. Don't be
-     surprised by a round three.
-  2. **Playtest v2.35.0 on-device** — mutators were only verified headless (forced-state hooks +
-     screenshots); real feel on Swarm Night's zombie density and Low Gravity's blast radius needs
-     a human.
-  3. **Dried-blood aging** (`ROADMAP.md` v1.11, the other deferred gore item) — needs numeric rgb
-     storage instead of the current `'rgba(r,g,b,'` prefix-string trick. Low value, only worth it
-     while already doing a gore pass.
-  4. Interior wall-frame (`drawBuildingBase`) doesn't get blood streaks, only the exterior facade
-     (`drawBuilding`) does — noted as a known limitation, not a bug, in the v2.34.2 entry below.
+  1. **Playtest v2.36.0 on-device** — the biggest untested surface right now. Bigger arena,
+     graveyard landmark, upgraded minimap, and all three mutators (Swarm Night/Deep Fog/Low
+     Gravity) are verified headless only, never felt in a real match on real hardware.
+  2. **Profile before extending the spatial-hash pattern further.** `nearestHuman`/`botTarget`
+     (`index.html:1926-1940`, zombie targeting) and bullet-vs-zombie collision (`updateBullets`,
+     `index.html:~2780`) are the next O(n)-ish candidates by Big-O reasoning alone — but this
+     session proved TWICE that "obviously faster" is unreliable in JS without a correctly-built
+     benchmark (see below). Extend `loop()`'s existing `[perf] sim+draw` budget sampling to break
+     out timed buckets per system at wave 15+ under a forced Swarm Night BEFORE rewriting either.
+  3. **Balance backlog needs a fresh look, not a resumed one** — `COMBO_WIN`, spawn distances, wave
+     pacing were all tuned against the OLD 3000-unit arena and pre-mutator zombie counts; both
+     have since changed materially (arena +80%, zombie count up to 2x under Swarm Night).
+  4. **Dried-blood aging** (`ROADMAP.md` v1.11) — low priority, needs numeric rgb storage instead
+     of the current `'rgba(r,g,b,'` prefix-string trick.
   5. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
-     generated. See "Gotchas" below.
+     generated. Needs an explicit yes/no from the user (add the key, or drop the moonshot) rather
+     than staying silently parked.
 - **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header;
   drive with the run-brawl-arena driver (three.js CORS + suspended WebAudio headless are
   non-failures); never commit `window.__hook` test hooks (`window.__game` is the permanent shipped
-  one — `grep -c "window.__" index.html` must stay 1).
+  one — `grep -c "window.__" index.html` must stay 1). **New this session**: when benchmarking JS
+  perf changes, (a) string-concatenated Map keys (`cx+','+cy`) are measurably slower than packed-
+  integer keys at this codebase's scale — always prefer numeric keys for hot-path lookups; (b) a
+  benchmark harness that re-`eval`/`new Function()`s the code-under-test *inside* the timed loop,
+  or that omits a field the real code filters on (like `.alive`), will silently produce meaningless
+  numbers — compile once outside the loop and use fixture data that matches the real shape.
 
 ## Current state (done)
 - **Perf: spatial-hash `separate()`** (no version bump — internal refactor, no player-visible
