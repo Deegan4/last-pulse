@@ -1,5 +1,7 @@
 # local playtest artifacts (headless screenshots / console logs)
 .shots/
+# isolated worktrees for background test/subagents
+.claude/worktrees/
 # misc
 node_modules/
 *.log
