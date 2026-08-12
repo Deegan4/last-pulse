@@ -1097,8 +1097,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.37.0';
+const GAME_VERSION = '2.38.0';
 const CHANGELOG = [
+  { v:'2.38.0', items:[
+    ['👹','Distinct monster silhouettes','stalkers now have a leaner build with a quilled spine ridge, and juggernauts wear visible armor plating — no more mistaking them for a recolored zombie'],
+  ]},
   { v:'2.37.0', items:[
     ['🎮','Deeper controller support','grapple (L3) and pause (Start) now work on gamepad, plus a quiet 🎮 HUD indicator once a controller is detected'],
   ]},
@@ -4141,11 +4144,13 @@ function drawZombie(z){
   const moving=(z.vx*z.vx+z.vy*z.vy)>200;
   const lunge=Math.max(0,z.lunge||0);
   const runner=z.kind==='runner', brute=z.kind==='brute';
+  const stalker=z.kind==='stalker', juggernaut=z.kind==='juggernaut';
   const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
   const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
   const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute?2.4:3.4):0;
-  const tw=brute?11.5:runner?6.4:8, th=brute?16:runner?13.5:15;   // torso half-width / height per kind
+  const tw=brute?11.5:runner?6.4:stalker?5.5:8, th=brute?16:runner?13.5:stalker?12.5:15;   // torso half-width / height per kind
+  const zty=-6+bob*0.2;   // torso top y — computed early so behind-torso layers (spikes/ridge) can use it
   const night = timeOfDay!=='day';
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
   // ground shadow + a faint, pulsing eye-coloured menace pool
@@ -4170,6 +4175,11 @@ function drawZombie(z){
   if(brute && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
     for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*8,-9); ctx.lineTo(sx*13.5,-16); ctx.lineTo(sx*10.5,-8.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
 
+  // ---- STALKER spine ridge (behind the torso; a lean, quilled silhouette) ----
+  if(stalker && !flash){ ctx.fillStyle=SH; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
+    for(let i=0;i<3;i++){ const ry=zty+2+i*(th*0.42), fx=flip*(-tw-0.5);
+      ctx.beginPath(); ctx.moveTo(fx,ry-1.5); ctx.lineTo(fx-flip*3.6,ry); ctx.lineTo(fx,ry+1.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+
   // ---- LEGS (wide, planted stance; brute stomps) ----
   const lw=brute?7:runner?4.6:5.4;
   ctx.strokeStyle=INK; ctx.lineWidth=brute?8:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
@@ -4177,7 +4187,6 @@ function drawZombie(z){
   ctx.fillStyle='#20301a'; ctx.beginPath(); ctx.ellipse(-lw-1,17.4+step,3,1.8,0,0,TAU); ctx.ellipse(lw+1,17.4-step,3,1.8,0,0,TAU); ctx.fill();  // rotted feet
 
   // ---- TORSO (tattered, exposed ribcage) ----
-  const zty=-6+bob*0.2;
   ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=TO; roundRect(-tw,zty,tw*2,th,4); ctx.fill(); ctx.stroke();
   if(!flash){ ctx.save(); roundRect(-tw,zty,tw*2,th,4); ctx.clip();
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(-tw,zty,tw*0.6,th+2);                 // dim sheen
@@ -4193,6 +4202,16 @@ function drawZombie(z){
     // torn hem
     ctx.fillStyle=torso; for(let k=-1;k<=1;k++){ const kx=k*tw*0.62; ctx.beginPath(); ctx.moveTo(kx-2.4,zty+th); ctx.lineTo(kx,zty+th+3.4); ctx.lineTo(kx+2.4,zty+th); ctx.closePath(); ctx.fill(); }
     ctx.strokeStyle='rgba(120,20,16,.6)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-tw*0.4,zty+2); ctx.lineTo(-tw*0.15,zty+6); ctx.stroke(); }  // blood streak
+
+  // ---- JUGGERNAUT armor plating (over the torso — chest plate + shoulder guards) ----
+  if(juggernaut && !flash){
+    ctx.fillStyle='#3a3f3e'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;
+    roundRect(-tw*0.82,zty+1.5,tw*1.64,th*0.6,2); ctx.fill(); ctx.stroke();
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*(tw+1),zty-1); ctx.lineTo(sx*(tw+7),zty+2); ctx.lineTo(sx*(tw+1),zty+7); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle=eye; ctx.globalAlpha=0.85;
+    for(const rx2 of [-tw*0.4,0,tw*0.4]){ ctx.beginPath(); ctx.arc(rx2,zty+th*0.32,1,0,TAU); ctx.fill(); }
+    ctx.globalAlpha=1;
+  }
 
   // ---- FRONT reaching arm (claws forward, thrown out on a lunge) ----
   const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(brute?12:runner?15:13)+lunge*5;

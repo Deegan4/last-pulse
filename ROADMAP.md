@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.37.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.38.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -59,6 +59,17 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
 - [ ] **Gamepad menu navigation** — still not done; see Moonshots below. In-match input is now
       the full set (move/aim/fire/reload/lightning/bomb/grapple/pause), but avatar/weapon grids,
       settings, and results screens remain mouse/touch-only DOM overlays.
+
+## v2.38 — "Distinct monster silhouettes" (shipped)
+
+- [x] **Stalker gets a distinct silhouette** — leaner torso proportions (`tw`/`th` in `drawZombie`
+      now branch on `stalker`, thinner than `runner`) plus a 3-spike quilled ridge along the back,
+      drawn in the same behind-torso layer as the brute's shoulder spikes.
+- [x] **Juggernaut gets visible armor** — a flat chest plate, angular shoulder guards, and 3 rivet
+      accents (`eye`-colored) drawn over the torso. Closes the v1.13 gap where the roadmap text
+      called juggernauts "armored" long before the art did.
+- [x] Both additions gated `&& !flash` like existing brute-spike/spitter-sac/bloater-blister
+      details, so they cleanly vanish during hit-flash the same way everything else does.
 
 ## Design pillars (don't break these)
 
@@ -131,7 +142,10 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       dedicated boss hp-bar banner, no ground-slam AoE attack, no guaranteed-loot-drop table —
       juggernauts use the same contact-damage and drop logic as regular zombies, just scaled up.
       If the original "huge brute with hp banner + AoE slam + guaranteed loot" vision is still
-      wanted, that's new work, not a bug fix — split into its own bullet if approved.
+      wanted, that's new work, not a bug fix — split into its own bullet if approved. _(v2.38.0:
+      juggernauts finally look armored — visible chest plate + shoulder guards in `drawZombie` —
+      closing a gap where the roadmap text called them "armored" for 8+ versions before the art
+      did.)_
 - [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
       v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
 - [x] **Mutators** (shipped v2.35.0) — a `MUTATORS` table (`index.html`, "Match mutators"
