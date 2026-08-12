@@ -1097,8 +1097,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.39.1';
+const GAME_VERSION = '2.39.2';
 const CHANGELOG = [
+  { v:'2.39.2', items:[
+    ['🔧','SMG got a suppressor', 'a chunky ribbed cylinder now sits along the barrel — the SMG was the plainest gun left, now it has real silhouette'],
+  ]},
   { v:'2.39.1', items:[
     ['🪵','Rifle got a wood stock','the starter Rifle was the only long gun with no wood furniture — now it looks the part'],
   ]},
@@ -3754,7 +3757,7 @@ const GUNK={
   Pistol:  {l:11,c:'#454a53',serr:1,guard:1,hammer:1},
   Rifle:   {l:20,c:'#7a5836',stock:1,mag:1,sight:1,vents:1,muzzle:1,guard:1,wood:1},
   Shotgun: {l:17,c:'#6a4a2e',stock:1,pump:1,tip:1,wood:1,guard:1},
-  SMG:     {l:14,c:'#3a3f48',stock:1,mag:1,muzzle:1,guard:1},
+  SMG:     {l:14,c:'#3a3f48',stock:1,mag:1,muzzle:1,guard:1,finned:1},
   Magnum:  {l:13,c:'#4a5058',cyl:1,nickel:1,guard:1},
   Sniper:  {l:26,c:'#2a2f38',scope:1,stock:1,bipod:1,sight:1,brake:1,muzzle:1,guard:1},
   Crossbow:{l:16,c:'#6a4e2a',bow:1,wood:1,guard:1},
@@ -3811,6 +3814,12 @@ function drawGun(name,c){
   if(g.scope){ c.fillStyle='#16171b'; c.strokeStyle=ink; roundRect(5,-5.2,8,2.9,1.2,c); c.fill(); c.stroke();
     c.fillStyle='#86d4ff'; c.beginPath(); c.arc(12.2,-3.7,1,0,TAU); c.fill(); }
   if(g.bipod){ c.strokeStyle='#22252b'; c.lineWidth=1.5; c.beginPath(); c.moveTo(g.l-7,2); c.lineTo(g.l-9,7.5); c.moveTo(g.l-7,2); c.lineTo(g.l-4,7.5); c.stroke(); c.lineWidth=1; }
+  // ribbed suppressor-style cylinder along the barrel (SMG) — a chunky attached sleeve with
+  // heat-sink fins, distinct from the plain muzzle cap other guns use
+  if(g.finned){ c.fillStyle='#4a4f58'; c.strokeStyle=ink; roundRect(g.l*0.32,-2.6,g.l*0.34,5.2,1.8,c); c.fill(); c.stroke();
+    c.fillStyle='rgba(255,255,255,.14)'; c.fillRect(g.l*0.32+0.8,-2.2,1.2,4.4);
+    c.strokeStyle='rgba(0,0,0,.4)'; c.lineWidth=1;
+    for(let k=0;k<4;k++){ const fx=g.l*0.32+2.2+k*1.9; c.beginPath(); c.moveTo(fx,-2.6); c.lineTo(fx,2.6); c.stroke(); } c.lineWidth=1; }
   if(g.pump){ c.fillStyle='#4a3320'; c.strokeStyle=ink; roundRect(g.l*0.42,1.6,6.5,3,1.4,c); c.fill(); c.stroke();
     c.fillStyle='rgba(255,255,255,.12)'; c.fillRect(g.l*0.42+0.6,2,5,0.9); }
   if(g.tip){ c.fillStyle='#565b64'; c.strokeStyle=ink; roundRect(g.l-4,-2,4.5,4,1,c); c.fill(); c.stroke(); }
