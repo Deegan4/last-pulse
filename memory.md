@@ -76,6 +76,27 @@ versions before anyone corrected it — see the git history if you want the old 
   numbers — compile once outside the loop and use fixture data that matches the real shape.
 
 ## Current state (done)
+- **v2.39.0 — Weapon detail pass.** User asked to "upgrade the weapons visuals," explicitly
+  framed as matching v2.38.0's stalker/juggernaut convention ("give the plainest silhouettes a
+  real signature detail, in a clearly-layered behind/over-body pass") and asked for an ordering-
+  bug audit + a verification hook, mirroring that commit's own process. Audited `GUNK`
+  (`index.html`) for the weapon-art equivalent of "recolored zombie with zero silhouette" —
+  **Minigun** (`fat,cluster` only, no `guard` even) and **Pistol** (`serr,guard` only) were the
+  two sparsest entries, same gap pattern as pre-v2.38 stalker/juggernaut. Added: Minigun gets a
+  visible **ammo belt** (drawn in a new explicit BEHIND-BODY layer, before the main body fill —
+  the comment there explicitly calls out that drawing a "behind" layer after its subject is
+  exactly the `zty`-class ordering mistake the stalker fix caught) plus a **heat-vent grille**
+  with a faint orange glow (OVER-BODY detail pass). Pistol gets a small rear **hammer** (OVER-BODY
+  pass). Also added explicit `---- BEHIND BODY ----` / `---- MAIN BODY ----` / `---- OVER BODY
+  ----` banner comments through `drawGun()` — an ordering-bug **audit**, not a rewrite (all
+  existing locals were already declared before use, no live `zty`-style bug found — the banners
+  make the convention explicit so a *future* addition doesn't introduce one). Verified via a
+  throwaway hook (never committed, `grep -c "window.__" index.html` back to 1): all 12 weapons
+  render 0 errors in both draw paths (`weaponIcon` menu cards + in-hand `drawGun` via
+  `drawHeroArm`) across a full lineup at varied aim poses; a direct high-zoom `drawGun()` render
+  (bypassing character/HUD chrome) confirmed the belt, grille, and hammer are each clearly
+  legible, not just theoretically present — the first attempt at this crop cut off the hammer at
+  the canvas edge, a reminder that "no errors" and "actually visible" are different checks.
 - **v2.38.0 — Distinct monster silhouettes.** `drawZombie()` (`index.html`) previously gave real
   shape treatment only to `normal`/`runner`/`brute` (plus small add-on glows for `spitter`/
   `bloater`); `stalker` and `juggernaut` rendered as recolored/rescaled `normal` zombies with zero
