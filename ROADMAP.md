@@ -47,6 +47,19 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
 - [x] **Tooling gates** — `validate.mjs` now gates the ROADMAP header version and every `--mode`
       named in the docs against `MODES`; `driver.mjs` gained a `--waves` balance/perf harness.
 
+## v2.37 — "Deeper controller support" (shipped)
+
+- [x] **Gamepad grapple + pause** — `readGamepad()`/`updatePlayer()` (`index.html`) already
+      covered move/aim/fire/reload/lightning/bomb; added grapple (L3, button 10) and a Start
+      (button 9) pause toggle, freeing button 9 off the old bomb cluster (bomb is now button 6
+      only). Gamepad is now sampled once per frame into `curGp` (was a per-frame double-read bug
+      waiting to break edge-detection on every other button — see memory.md).
+- [x] **Controller-detected HUD indicator** — a quiet 🎮 icon appears top-right once `gpSeen`
+      flips true, so players know their input was picked up.
+- [ ] **Gamepad menu navigation** — still not done; see Moonshots below. In-match input is now
+      the full set (move/aim/fire/reload/lightning/bomb/grapple/pause), but avatar/weapon grids,
+      settings, and results screens remain mouse/touch-only DOM overlays.
+
 ## Design pillars (don't break these)
 
 1. **One file, no build** — everything stays in `index.html`; features that need a backend or
@@ -156,7 +169,11 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
   ride on a free tier. Needs user approval for a hosted service.
 - **PWA install** — manifest + service worker for home-screen install and offline play. Two
   extra files; breaks the "one file" pillar, so it's an explicit user call.
-- **Gamepad menu navigation** — in-match gamepad works; menus are touch/mouse-only today.
+- **Gamepad menu navigation** — in-match gamepad is now complete (move/aim/fire/reload/
+  lightning/bomb/grapple/pause, v2.37.0); avatar/weapon grids, settings, and results screens are
+  still touch/mouse-only DOM overlays. Would need D-pad/stick focus traversal across
+  `buildAvatarGrid`/`buildWeaponGrid` plus `openSettings`/`showResults` — the next controller
+  bullet if picked up.
 
 ## Release conventions (recap)
 
