@@ -76,6 +76,27 @@ versions before anyone corrected it — see the git history if you want the old 
   numbers — compile once outside the loop and use fixture data that matches the real shape.
 
 ## Current state (done)
+- **v2.38.0 — Distinct monster silhouettes.** `drawZombie()` (`index.html`) previously gave real
+  shape treatment only to `normal`/`runner`/`brute` (plus small add-on glows for `spitter`/
+  `bloater`); `stalker` and `juggernaut` rendered as recolored/rescaled `normal` zombies with zero
+  distinguishing silhouette. Added: `stalker` gets a leaner torso (`tw`/`th` now branch on
+  `stalker`, thinner than even `runner`) plus a 3-spike quilled ridge along its back edge (drawn
+  in the same "behind torso" layer as the brute's shoulder spikes). `juggernaut` gets visible armor
+  — a flat chest plate, two angular shoulder guards, and 3 rivet dots in the `eye` accent color —
+  drawn over the torso, before the front arm. Both additions are gated `&& !flash` like the
+  existing brute-spike/spitter-sac/bloater-blister details, so they vanish during hit-flash the
+  same way. **Real bug caught and fixed along the way**: `zty` (torso top y) was declared inside
+  the TORSO section, but the new stalker-ridge block (drawn earlier, in the "behind torso" layer)
+  needed it too — hoisted the `const zty=-6+bob*0.2;` declaration up next to `bob`, removed the
+  now-duplicate declaration below. Verified via a throwaway `window.__spawnKind`/`__flashLunge`
+  hook on a scratch copy (never committed — `grep -c "window.__" index.html` confirmed back to 1
+  before finishing): side-by-side screenshots show all four kinds (normal/brute/stalker/juggernaut)
+  clearly distinct at a glance, and the lunge-attack pose renders correctly with armor intact.
+  **One open question, NOT a regression**: hit-flash white-recolor didn't visibly show up in any
+  headless screenshot even with `hitFlash` confirmed >0 at capture time — reproduced identically on
+  unmodified `normal` zombies, so it's a pre-existing headless/screenshot-timing quirk (likely rAF
+  paint timing vs. CDP screenshot capture), not something this change broke. Worth a real-device
+  glance next playtest, but not blocking.
 - **v2.37.0 — Deeper controller support.** `readGamepad()` (`index.html`) already covered
   move/aim/fire/reload/lightning/bomb; added grapple (L3, button 10) wired to `castGrapple(h)`
   in `updatePlayer()`, and Start (button 9) to toggle pause via `openSettings()`/`closeSettings()`.
