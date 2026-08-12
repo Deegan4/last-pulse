@@ -1097,8 +1097,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.36.0';
+const GAME_VERSION = '2.37.0';
 const CHANGELOG = [
+  { v:'2.37.0', items:[
+    ['🎮','Deeper controller support','grapple (L3) and pause (Start) now work on gamepad, plus a quiet 🎮 HUD indicator once a controller is detected'],
+  ]},
   { v:'2.36.0', items:[
     ['🗺️','A bigger world','the arena is ~80% larger, with more buildings, ponds and greenery to explore'],
     ['🪦','New landmark: graveyard','a weathered plot of tombstones joins campfires, wells and statues at level 20'],
@@ -2686,7 +2689,7 @@ function updateZombie(z,dt){
 function updatePlayer(h,dt){
   if(!h.alive) return;
   if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=magCap(h); }
-  const gp=readGamepad();
+  const gp=curGp;   // one readGamepad() sample per frame — see loop()
   let mx=0,my=0;
   if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
   if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
@@ -2718,7 +2721,7 @@ function updatePlayer(h,dt){
   if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=Math.atan2(gp.ay,gp.ax); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
   else if(aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
   else if(!isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
-  if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); }
+  if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
   // reticle world target
   if(mouseAim){ aimWX=mouse.x+cam.x; aimWY=mouse.y+cam.y; }
   else { aimWX=h.x+Math.cos(h.aim)*130; aimWY=h.y+Math.sin(h.aim)*130; }
@@ -2743,7 +2746,7 @@ function updatePlayer(h,dt){
   if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
   else heartT=0;
 }
-let gpRP=false,gpLP=false,gpBP=false,gpSeen=false;
+let gpRP=false,gpLP=false,gpBP=false,gpGP=false,gpStP=false,gpSeen=false,curGp=null;
 function readGamepad(){
   if(!navigator.getGamepads) return null;
   let gp=null; const pads=navigator.getGamepads();
@@ -2752,10 +2755,11 @@ function readGamepad(){
   const dz=v=>Math.abs(v)<0.18?0:v, btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
   const mx=dz(gp.axes[0]||0), my=dz(gp.axes[1]||0), ax=dz(gp.axes[2]||0), ay=dz(gp.axes[3]||0);
   const fire=btn(7)||btn(5)||btn(0);
-  const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6)||btn(9);
-  const reload=rN&&!gpRP, light=lN&&!gpLP, bomb=bN&&!gpBP; gpRP=rN; gpLP=lN; gpBP=bN;
+  const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6), gN=btn(10), stN=btn(9);
+  const reload=rN&&!gpRP, light=lN&&!gpLP, bomb=bN&&!gpBP, grapple=gN&&!gpGP, start=stN&&!gpStP;
+  gpRP=rN; gpLP=lN; gpBP=bN; gpGP=gN; gpStP=stN;
   if(!gpSeen && (mx||my||ax||ay||fire)){ gpSeen=true; audioInit(); }
-  return {mx,my,ax,ay,fire,reload,light,bomb};
+  return {mx,my,ax,ay,fire,reload,light,bomb,grapple,start};
 }
 function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
@@ -3199,6 +3203,9 @@ function draw(){
       const w=ctx.measureText(f.txt).width; ctx.fillStyle='rgba(0,0,0,.4)'; roundRect(8,ky-12,w+12,18,4); ctx.fill();
       ctx.fillStyle=f.you?'#ffe27a':'#fff'; ctx.fillText(f.txt,14,ky+1); ky+=22; }
     ctx.globalAlpha=1;
+    // controller-detected indicator — quiet confirmation once a gamepad has sent input
+    if(gpSeen){ ctx.globalAlpha=0.85; ctx.font='14px Trebuchet MS, sans-serif'; ctx.textAlign='right';
+      ctx.fillText('🎮', W-10, 26); ctx.globalAlpha=1; ctx.textAlign='left'; }
     // out-of-zone red vignette + warning
     if(zoneActive()&&player&&player.alive&&grace<=0&&outsideZone(player)){
       const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.30,W/2,H/2,Math.max(W,H)*0.72);
@@ -4302,6 +4309,8 @@ function loop(now){
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
   const perfT0 = (screenState==='playing' && zombies.length>30) ? performance.now() : 0;   // heavy-frame sample
+  curGp = screenState==='playing' ? readGamepad() : null;   // one sample/frame; Start toggles pause even while paused
+  if(curGp && curGp.start){ if(paused) closeSettings(); else openSettings(); }
   if(screenState==='playing' && !paused){
     elapsed=(now-startTime)/1000;
     if(hitstop>0){ hitstop-=dt; dt*=0.15; }   // kill slow-mo: world crawls for a beat

@@ -72,6 +72,18 @@ versions before anyone corrected it — see the git history if you want the old 
   numbers — compile once outside the loop and use fixture data that matches the real shape.
 
 ## Current state (done)
+- **v2.37.0 — Deeper controller support.** `readGamepad()` (`index.html`) already covered
+  move/aim/fire/reload/lightning/bomb; added grapple (L3, button 10) wired to `castGrapple(h)`
+  in `updatePlayer()`, and Start (button 9) to toggle pause via `openSettings()`/`closeSettings()`.
+  Freed button 9 off the old bomb cluster (bomb is now button 6 only) since Start needed a clean
+  edge-triggered button. Pause has to work while paused, but `updatePlayer()` only runs when
+  `!paused` — so gamepad is now polled once per frame in `loop()` into a module-level `curGp`,
+  and `updatePlayer()` reads that instead of calling `readGamepad()` itself; calling it twice a
+  frame would have silently broken edge-detection for every other gamepad button (the prev-state
+  vars like `gpRP` get stomped by the second call, so the second call always sees `current===prev`
+  and never reports an edge). Added a quiet 🎮 top-right HUD indicator once `gpSeen` flips true.
+  Menu/UI navigation (avatar/weapon grids, settings, results) intentionally left mouse/touch-only.
+  Needs an on-device controller playtest — headless can't simulate real gamepad input.
 - **Perf: spatial-hash `separate()`** (no version bump — internal refactor, no player-visible
   change; on the v2.36.0 branch, user: "Start on the spatial hash rewrite for separate()" after
   it was flagged as the biggest headroom risk following the bigger arena + Swarm Night mutator).
