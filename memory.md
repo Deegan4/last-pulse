@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
-_Last updated: 2026-08-12. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v2.37.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+_Last updated: 2026-08-13. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
+v2.39.2). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -10,70 +10,86 @@ royale** — a from-scratch remake inspired by the StickyGames title _Don't Die_
 canvas-drawn; no original sprites). Everything lives in [`index.html`](index.html): the game
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
-## Session handoff — 2026-08-12
+## Session handoff — 2026-08-13
 _Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below.
 This section is a rolling "as of right now" summary — overwrite it (don't append) each session so it
 never goes stale like the 2026-07-17 version it replaced did (it sat frozen at v2.24.1 for ~10 shipped
 versions before anyone corrected it — see the git history if you want the old text)._
 
-- **Where things stand:** production is **v2.37.0**, merged to `main` (PR #85, HEAD `fb1cb61`
-  going into this doc sync). Working branch `claude/next-steps-v8p4vf` re-synced to `main` after
-  #85 merged; **PR #86 (docs-only ROADMAP/CLAUDE.md/memory.md sync) is open, not yet merged** —
-  check its status before assuming this doc state is live on `main`.
-- **Shipped this session:** v2.37.0 **deeper gamepad support** — grapple wired to L3 (button 10)
-  and pause wired to Start (button 9, freeing it off the old bomb cluster which is now button 6
-  only), plus a quiet 🎮 HUD indicator once `gpSeen` flips true. Caught and fixed a real bug along
-  the way: `updatePlayer()` was going to call `readGamepad()` a second time per frame (once there,
-  once for the new Start-button poll) — `readGamepad()` mutates its own prev-state edge-detection
-  vars (`gpRP`/`gpLP`/`gpBP`/`gpGP`/`gpStP`), so a second same-frame call would have silently
-  broken edge-triggering for reload/light/bomb/grapple (second call always sees `current===prev`).
-  Fixed by sampling the gamepad **once per frame** in `loop()` into module-level `curGp`, which
-  both `updatePlayer()` and the pause-toggle check now read. See `CLAUDE.md` "Input edge /
-  continuous split" for the documented version of this rule.
-- **Full flow this session:** implemented → `validate.mjs` clean → headless driver run (one
-  pre-existing `file://` CORS console error on the blocked three.js CDN, confirmed identical on
-  the unmodified baseline via `git stash`, not a regression) → committed → pushed → PR #85 → user
-  asked to mark ready → marked ready → user asked to check CI → only check is the Vercel deploy,
-  green → user asked to merge → merged via rebase → branch re-synced to `main` → user asked
-  "what's next on the roadmap" → answered from `ROADMAP.md`, recommended gamepad menu navigation
-  as the natural next pickup → user asked to update `ROADMAP.md` → added a "v2.37 — Deeper
-  controller support" shipped section + refined the Moonshots gamepad-menu-navigation bullet → PR
-  #86 (draft) → user asked to also update `CLAUDE.md` and `memory.md` (this edit).
-- **Gamepad is still NOT wired into menus.** In-match input is now the full set (move/aim/fire/
-  reload/lightning/bomb/grapple/pause); avatar/weapon grids, settings, and results screens are
-  still mouse/touch-only DOM overlays (`buildAvatarGrid`/`buildWeaponGrid`/`openSettings`/
-  `showResults`). This is the most natural next controller bullet if picked up — see
-  `ROADMAP.md` Moonshots.
-- **Needs an on-device controller playtest** — headless can't simulate real gamepad input, so
-  button feel/spacing (L3 for grapple, Start for pause) is unverified. If L3 feels awkward
-  mid-fight, buttons 8 (Select/Back) and 11 (R3) are still free alternatives.
+- **Where things stand:** production is **v2.39.2**, merged to `main`. Working branch
+  `claude/next-steps-v8p4vf` is one commit ahead of `main` with **PR #89 open (draft, not yet
+  merged)** — a deploy-config-only change (see below), no `GAME_VERSION` bump. Note: some of this
+  window's shipped versions (v2.38.0, v2.39.0–2.39.2) landed from a **second, concurrent Claude
+  session working the same branch** — PRs #87/#88 — not from this session; this doc reconciles
+  both sessions' work into one accurate snapshot.
+- **Shipped since last handoff:**
+  - **v2.38.0** — distinct visual silhouettes for `stalker` (spine ridge) and `juggernaut` (armor
+    plating) in `drawZombie()`, replacing plain recolors. Shipped by the concurrent session.
+  - **v2.39.0–2.39.2 — weapon art pass**, done across three rounds prompted by user-supplied
+    photorealistic weapon reference images. Each time, clarified via `AskUserQuestion` that the
+    ask was a *design cue* to reinterpret in the existing flat-canvas style, not a literal
+    photorealistic match (a fundamentally different rendering technique) — checked for a Meshy MCP
+    server first (not available: not connected, no `MESHY_API_KEY`) before falling back to flat
+    canvas. Result: Minigun got a belt + grille, Pistol a hammer, Rifle a wood-stock color/`wood`
+    flag, SMG a suppressor — all in `GUNK`/`drawGun()` with the file's established
+    BEHIND/MAIN/OVER-BODY layering.
+- **This session's actual work:**
+  1. **Investigated `separate()` perf per user request, shipped nothing.** Built a synthetic
+     Node benchmark suggesting a 2-3x regression in the existing spatial-hash grid under a tight
+     zombie dogpile, built a density-adaptive hybrid fix — then re-verified **in the real running
+     game** (Playwright, forced dogpile) before trusting it, and the fix measured *worse* in situ:
+     real zombies self-organize into a ring under continuous `separate()` pushback, unlike the
+     static random disc the synthetic benchmark assumed. Correctly declined to ship a fix that
+     only looked good against unrepresentative fixture data. At the real ~85-entity horde ceiling,
+     `separate()` costs <0.2ms/frame — not a meaningful chugging source either way. See
+     `expert-web-game-dev-workspace/iteration-1/eval-0-perf-collision/with_skill/report.md` in the
+     scratchpad for the full numbers if picked up again.
+  2. **Created a new Claude Skill: `expert-web-game-dev`** (`/root/.claude/skills/expert-web-game-dev/SKILL.md`),
+     generalizing this project's demonstrated engineering rigor (measure before claiming perf
+     wins, verify visual changes are actually visible not just error-free, audit state-ordering/
+     draw-layering bugs, close with a cited technical next-steps section) into a reusable skill
+     for any browser/JS game codebase. Vibe-tested with two isolated worktree-agent runs (collision
+     perf — see above — and a visual-detail task that added tattered streamers to the runner
+     zombie, verified via a real crop-comparison screenshot); both runs held up well. Test-run
+     artifacts (not committed) live under
+     `/tmp/.../scratchpad/expert-web-game-dev-workspace/iteration-1/`.
+  3. **PR #89 (open, draft): `vercel.json` Cache-Control headers.** `index.html` and non-`.glb`
+     assets (`loader.js`, `manifest.json`) stay `no-cache, must-revalidate`; `.glb` model files get
+     a year-long `immutable` cache since they're large and rarely change and aren't content-hashed.
+     Header-rule ordering matters — Vercel applies matching rules cumulatively with later rules
+     winning ties, so the general `/assets/(.*)` rule is listed *before* the more specific
+     `/assets/(.*).glb` rule, not after.
 - **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
   `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
-- **Open / parked (carried from last session, still true):**
-  1. **Playtest v2.36.0's bigger-map/mutator changes on-device** — still verified headless only.
-  2. **Profile before extending the spatial-hash pattern further** (see `separate()` entry below).
-     `nearestHuman`/`botTarget` (`index.html:1926-1940`) and bullet-vs-zombie collision
-     (`updateBullets`, `index.html:~2780`) are next by Big-O reasoning alone, but measure first —
-     "obviously faster" was wrong twice last session without a correctly-built benchmark.
-  3. **Balance backlog needs a fresh look** — `COMBO_WIN`, spawn distances, wave pacing were tuned
+- **Open / parked:**
+  1. **Merge PR #89** once reviewed — deploy-config only, no code/version change, low risk.
+  2. **Playtest v2.36.0's bigger-map/mutator changes on-device** — still verified headless only,
+     carried over from two sessions ago.
+  3. **Profile `draw()` and the particle/floater pipeline, not `separate()`** — this session's
+     real finding is that `separate()` is a non-issue at current scale; if "chugging" reports
+     continue, `draw()`'s per-frame `drawables.sort()` (index.html:3137) and `particles[]`/
+     `floaters[]`/`splats[]` growth are the more plausible next place to measure, not the collision
+     grid.
+  4. **Balance backlog needs a fresh look** — `COMBO_WIN`, spawn distances, wave pacing were tuned
      against the OLD 3000-unit arena and pre-mutator zombie counts; both changed materially since.
-  4. **Dried-blood aging** (`ROADMAP.md` v1.11) — low priority, needs numeric rgb storage instead
+  5. **Dried-blood aging** (`ROADMAP.md` v1.11) — low priority, needs numeric rgb storage instead
      of the current `'rgba(r,g,b,'` prefix-string trick.
-  5. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
+  6. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
      generated. Needs an explicit yes/no from the user (add the key, or drop the moonshot).
-- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header;
-  drive with the run-brawl-arena driver (three.js CORS + suspended WebAudio headless are
-  non-failures — verify a suspicious error isn't a regression by `git stash`-ing and re-running
-  before flagging it, per this session). Never commit `window.__hook` test hooks (`window.__game`
+  7. **Gamepad still NOT wired into menus** (avatar/weapon grids, settings, results are mouse/
+     touch-only DOM overlays) — carried over, unchanged this session.
+- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header
+  (unaffected by `vercel.json`, which validate.mjs doesn't check — verify deploy-config changes
+  with `node -e "JSON.parse(...)"` instead). Never commit `window.__hook` test hooks (`window.__game`
   is the permanent shipped one — `grep -c "window.__" index.html` must stay 1). **New this
-  session**: never call `readGamepad()` more than once per animation frame — cache the result
-  (`curGp` in `loop()`) and share it, since the function carries its own mutable prev-state edge-
-  detection vars and a second call in the same frame silently zeroes every button's edge trigger.
-  **From last session**: (a) string-concatenated Map keys (`cx+','+cy`) are measurably slower than
-  packed-integer keys at this codebase's scale — prefer numeric keys for hot-path lookups; (b) a
-  benchmark harness that re-`eval`/`new Function()`s the code-under-test *inside* the timed loop,
-  or that omits a field the real code filters on (like `.alive`), will silently produce meaningless
-  numbers — compile once outside the loop and use fixture data that matches the real shape.
+  session**: a benchmark that looks like a clear win against synthetic fixture data can still be a
+  net loss against the real system's actual state distribution (dogpile ring vs. random disc) —
+  always re-verify a promising isolated-benchmark result against the real running game before
+  shipping, not just against a bigger synthetic N. **From two sessions ago, still true**: (a)
+  string-concatenated Map keys (`cx+','+cy`) are measurably slower than packed-integer keys at this
+  codebase's scale; (b) a benchmark harness that re-`eval`/`new Function()`s the code-under-test
+  *inside* the timed loop, or that omits a field the real code filters on (like `.alive`), will
+  silently produce meaningless numbers.
 
 ## Current state (done)
 - **v2.39.2 — SMG suppressor.** Second reference image (a single floating photorealistic bullpup
