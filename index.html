@@ -293,13 +293,22 @@
   #gearHud{position:absolute;left:10px;top:10px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
     background:rgba(40,56,24,.85);color:#fff;font-size:19px;pointer-events:auto;cursor:pointer;
     display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
-  #mmwrap{position:absolute;right:10px;top:10px;background:rgba(20,30,12,.5);border:1px solid var(--line);
-    border-radius:14px;padding:8px}
+  #mmwrap{position:absolute;right:10px;top:10px;width:148px;pointer-events:none}
+  #mmBody{position:absolute;right:0;top:38px;background:rgba(20,30,12,.5);border:1px solid var(--line);
+    border-radius:14px;padding:8px;pointer-events:auto;transform-origin:top right;
+    transition:transform .22s cubic-bezier(.2,1.5,.4,1),opacity .16s}
+  #mmwrap.collapsed #mmBody{transform:scale(.08);opacity:0;pointer-events:none}
   #minimap{width:132px;height:132px;border-radius:8px;border:2px solid rgba(0,0,0,.45);background:#243818;display:block}
   #stats{margin-top:7px;font-weight:800;font-size:12.5px;color:#fff;text-shadow:1px 1px 0 rgba(0,0,0,.45)}
   .srow{display:flex;align-items:center;gap:5px;line-height:1.75}
   .srow .si{font-size:12px;width:16px;text-align:center;opacity:.92}
   .srow b{color:#fff} .srow.safe b{color:#ffe27a}
+  /* the small pill that opens / closes the minimap panel, top-right corner of #mmwrap */
+  #mmFab{position:absolute;right:0;top:0;width:34px;height:34px;border-radius:50%;pointer-events:auto;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;
+    border:2px solid rgba(255,255,255,.55);background:rgba(20,30,12,.72);box-shadow:0 3px 8px rgba(0,0,0,.4);z-index:1}
+  #mmFab .fabChevron{transition:transform .22s;line-height:1;transform:rotate(0deg)}
+  #mmwrap.collapsed #mmFab .fabChevron{transform:rotate(180deg)}
 
   /* ---------- Touch / controls ---------- */
   #ctrl{position:absolute;inset:0;z-index:14;pointer-events:none}
@@ -590,8 +599,10 @@
   @keyframes sheen{0%,68%{left:-70%}100%{left:135%}}
   .achbtn{border:1.5px solid var(--stroke);border-radius:999px;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
   /* HUD: frosted panels + notch safe-areas */
-  #mmwrap{background:rgba(14,22,9,.55);border:1.5px solid var(--stroke);border-radius:16px;
+  #mmBody{background:rgba(14,22,9,.55);border:1.5px solid var(--stroke);border-radius:16px;
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
+  #mmFab{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   #gearHud{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   #gearHud,#xpwrap{top:calc(10px + var(--sat))}
@@ -646,14 +657,17 @@
     <button id="gearHud" aria-label="settings">⚙</button>
     <div id="xpwrap"><span id="lvlText">LV 1</span><div id="xpbar"><div id="xpfill"></div></div></div>
     <div id="mmwrap">
-      <canvas id="minimap" width="132" height="132"></canvas>
-      <div id="stats">
-        <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
-        <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
-        <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
-        <div class="srow" id="mutRow" style="display:none"><span class="si">🎲</span><b id="statMut">--</b></div>
-        <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
+      <div id="mmBody">
+        <canvas id="minimap" width="132" height="132"></canvas>
+        <div id="stats">
+          <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
+          <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
+          <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
+          <div class="srow" id="mutRow" style="display:none"><span class="si">🎲</span><b id="statMut">--</b></div>
+          <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
+        </div>
       </div>
+      <div id="mmFab" role="button" aria-label="Toggle minimap" title="Toggle minimap"><span class="fabChevron">︿</span></div>
     </div>
   </div>
 
@@ -1097,8 +1111,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.39.2';
+const GAME_VERSION = '2.39.3';
 const CHANGELOG = [
+  { v:'2.39.3', items:[
+    ['🗺️','Minimap is now collapsible','tap the pill in its top-right corner to tuck it away — it was sitting right over the "GET READY" banner at match start on some screens'],
+  ]},
   { v:'2.39.2', items:[
     ['🔧','SMG got a suppressor', 'a chunky ribbed cylinder now sits along the barrel — the SMG was the plainest gun left, now it has real silhouette'],
   ]},
@@ -2399,8 +2416,10 @@ function setupTouch(){
   bind('grapBtn',()=>player&&castGrapple(player));
   bind('buildBtn',()=>player&&cycleBuild(player));
   bind('powerFab', togglePowers);   // open / close the ability cluster
+  bind('mmFab', toggleMinimap);     // open / close the minimap panel
 }
 function togglePowers(){ const p=el('powers'); if(p){ p.classList.toggle('collapsed'); sfx('tick'); } }
+function toggleMinimap(){ const p=el('mmwrap'); if(p){ p.classList.toggle('collapsed'); sfx('tick'); } }
 
 // ============================================================
 //  Audio
