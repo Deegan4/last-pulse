@@ -422,6 +422,13 @@
   .modal .opt:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
   .modal .opt .oic{font-size:20px;width:24px;text-align:center;flex:0 0 auto}
   .modal .opt.danger{background:#7a1f24;color:#ffd9dd;box-shadow:0 4px 0 rgba(0,0,0,.35)}   /* quit to menu */
+  /* controller status card — visually matches .opt (and stays a gamepad-nav stop so pad users can
+     see their own connection state), but it's informational, not a button: no cursor/press feel */
+  .modal .opt.ctrlrow{cursor:default;align-items:flex-start}
+  .modal .opt.ctrlrow:active{transform:none;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  .ctrltxt{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .ctrltxt b{font-size:14.5px}
+  .ctrltxt span{font-size:11.5px;font-weight:600;color:#5a6a4a;line-height:1.4}
   /* subtle, occasional donation nudge on the results screen */
   .rdonate{font-size:13px;color:#e2c8ff;opacity:.9;cursor:pointer;text-align:center;
     background:rgba(150,90,230,.14);border:1px solid rgba(190,140,255,.35);border-radius:999px;
@@ -756,6 +763,10 @@
       <button class="opt" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
       <button class="opt" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
       <button class="opt" id="sName"><span class="oic">✏️</span>Change Name</button>
+      <div class="opt ctrlrow" id="sCtrlRow"><span class="oic">🎮</span>
+        <div class="ctrltxt"><b id="sCtrlStatus">⚪ No controller connected</b>
+          <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
+      </div>
       <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
         <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
@@ -1115,8 +1126,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.40.1';
+const GAME_VERSION = '2.40.2';
 const CHANGELOG = [
+  { v:'2.40.2', items:[
+    ['🎮','Controller status in Settings','Settings now shows whether a controller is connected (and its name) live, plus how to pair one via your device\'s Bluetooth settings — there was previously nothing in the UI about controller support at all'],
+  ]},
   { v:'2.40.1', items:[
     ['🎮','Full gamepad menu coverage + DualSense rumble','Achievements, Shop, Support, Add-to-Home-Screen and What\'s New are all controller-navigable now, Settings sliders (SFX volume, aim sensitivity) adjust with left/right, and taking a hit or landing a kill now pulses your controller — DualSense rumble works the same over Bluetooth as wired, no special-casing needed'],
   ]},
@@ -2837,8 +2851,30 @@ window.addEventListener('gamepadconnected', e=>{
     toast('🎮 '+(gp.id||'Controller')+' connected (buttons may be misaligned)');
     console.warn('[gamepad] "'+gp.id+'" reported mapping="'+(gp.mapping||'(none)')+'" (expected "standard") — button/axis indices in readGamepad() may not line up; this is a browser limitation, not fixable in-page');
   } else toast('🎮 '+(gp.id||'Controller')+' connected');
+  syncControllerStatus();
 });
-window.addEventListener('gamepaddisconnected', ()=>{ toast('🎮 Controller disconnected'); });
+window.addEventListener('gamepaddisconnected', ()=>{ toast('🎮 Controller disconnected'); syncControllerStatus(); });
+// Live controller-status card in Settings — added because a player pairing a controller had
+// NOTHING in the UI telling them how, or confirming it worked; a silent 🎮 HUD icon that only
+// appears once gpSeen flips true (which itself requires actual stick/button movement) mid-match
+// is not discoverable before you're already in a fight. Bluetooth pairing itself always happens
+// at the OS level — a web page cannot trigger or complete that handshake — so this card's job is
+// purely to show LIVE status and point the player at the right OS setting, not to "connect" one.
+function syncControllerStatus(){
+  const row=el('sCtrlStatus'), hint=el('sCtrlHint');
+  if(!row || el('settings').classList.contains('hidden')) return;   // cheap no-op when the card isn't visible
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  let gp=null; for(const p of pads){ if(p){ gp=p; break; } }
+  if(gp){
+    row.textContent = '🟢 '+(gp.id||'Controller')+' connected';
+    hint.textContent = (gp.mapping==='standard')
+      ? 'D-pad or left stick to move the cursor, A to confirm, X/B to go back.'
+      : '⚠️ Reported as a non-standard layout — buttons may be misaligned. Try updating your browser or OS.';
+  } else {
+    row.textContent = '⚪ No controller connected';
+    hint.textContent = 'Pair one in your device\'s Bluetooth settings first, then press any button on it here.';
+  }
+}
 // Haptic feedback (DualSense's rumble works over both USB and Bluetooth via the standard Gamepad
 // API — no vendor-specific code needed) for the two moments players most want to FEEL: taking a
 // hit and landing a kill. Feature-detected and wrapped in try/catch since vibrationActuator is
@@ -4529,7 +4565,7 @@ function loop(now){
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }
     refreshHud(); drawMini();
-  } else { updateParticles(dt); menuSceneUpdate(dt); if(curGp) updateGamepadMenuNav(curGp); }
+  } else { updateParticles(dt); menuSceneUpdate(dt); if(curGp) updateGamepadMenuNav(curGp); syncControllerStatus(); }
   draw();
   if(perfT0){ perfAcc+=performance.now()-perfT0; perfN++; perfPeakZ=Math.max(perfPeakZ,zombies.length);
     if(now-perfLog>2000){ const ms=perfAcc/Math.max(1,perfN);
@@ -4879,7 +4915,7 @@ el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/1
 // settings
 function openSettings(){ paused=true; el('settings').classList.remove('hidden');
   el('sQuit').classList.toggle('hidden', screenState!=='playing');   // only offer "quit to menu" mid-match
-  syncSliders(); gpFocusIdx=0; }
+  syncSliders(); syncControllerStatus(); gpFocusIdx=0; }
 function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; gpFocusIdx=0; }
 // abandon the current match and return to the main menu (state is overwritten on the next Play)
 function quitToMenu(){
