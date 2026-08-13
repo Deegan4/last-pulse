@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.39.3). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.40.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -56,9 +56,7 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
       waiting to break edge-detection on every other button — see memory.md).
 - [x] **Controller-detected HUD indicator** — a quiet 🎮 icon appears top-right once `gpSeen`
       flips true, so players know their input was picked up.
-- [ ] **Gamepad menu navigation** — still not done; see Moonshots below. In-match input is now
-      the full set (move/aim/fire/reload/lightning/bomb/grapple/pause), but avatar/weapon grids,
-      settings, and results screens remain mouse/touch-only DOM overlays.
+- [x] **Gamepad menu navigation** (shipped v2.40.0) — see below.
 
 ## v2.38 — "Distinct monster silhouettes" (shipped)
 
@@ -70,6 +68,26 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
       called juggernauts "armored" long before the art did.
 - [x] Both additions gated `&& !flash` like existing brute-spike/spitter-sac/bloater-blister
       details, so they cleanly vanish during hit-flash the same way everything else does.
+
+## v2.40 — "Gamepad menu navigation" (shipped)
+
+- [x] **Full controller menu coverage** — `readGamepad()` (`index.html`) gained edge-triggered
+      `navUp`/`navDown`/`navLeft`/`navRight` (d-pad or left-stick, one step per press) and
+      `confirm` (A button); `updateGamepadMenuNav()` drives focus across the avatar grid, weapon
+      grid, settings list, and results screen using the same single per-frame `curGp` sample
+      `loop()` already took for in-match input — no second `readGamepad()` call anywhere.
+- [x] **`curGp` now sampled on every screen**, not just `'playing'` — was previously gated behind
+      `screenState==='playing'`, which is exactly why menus couldn't read the pad before.
+- [x] **X/B doubles as menu Back** (closes Settings), reusing the same edge-triggered `reload`
+      signal already used in-match — same "one button, two contexts" pattern Start already
+      established for pause-toggle.
+- [x] **`.gpfocus` focus ring** — a cyan outline distinct from `.card.sel`'s lime "equipped"
+      border, so "what's focused" and "what's selected" never look like the same thing.
+- Verified via a throwaway `window.__gpTest` hook driving `updateGamepadMenuNav()` directly with
+  synthetic input (headless Chromium reports an empty gamepad list, so real hardware can't be
+  simulated) — confirmed focus moves correctly through every grid/list and `confirm`/`back`
+  trigger the right underlying click handlers. **Still needs a real-controller playtest** for
+  button feel — synthetic input can't validate that.
 
 ## Design pillars (don't break these)
 
@@ -183,11 +201,6 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
   ride on a free tier. Needs user approval for a hosted service.
 - **PWA install** — manifest + service worker for home-screen install and offline play. Two
   extra files; breaks the "one file" pillar, so it's an explicit user call.
-- **Gamepad menu navigation** — in-match gamepad is now complete (move/aim/fire/reload/
-  lightning/bomb/grapple/pause, v2.37.0); avatar/weapon grids, settings, and results screens are
-  still touch/mouse-only DOM overlays. Would need D-pad/stick focus traversal across
-  `buildAvatarGrid`/`buildWeaponGrid` plus `openSettings`/`showResults` — the next controller
-  bullet if picked up.
 
 ## Release conventions (recap)
 

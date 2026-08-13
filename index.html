@@ -135,6 +135,10 @@
   .card:active{transform:scale(.98)}
   .card.sel{border-color:#d6ff6e;box-shadow:0 0 0 2px #d6ff6e44, 0 8px 22px rgba(0,0,0,.3)}
   .card.locked{opacity:.55;cursor:not-allowed}
+  /* gamepad menu-cursor ring — outline (not border/box-shadow) so it layers cleanly over .sel's
+     own border-color/box-shadow on cards, and over .opt/.btn elsewhere, without fighting layout */
+  .gpfocus{outline:3px solid #5ad1ff!important;outline-offset:2px;
+    box-shadow:0 0 0 5px rgba(90,209,255,.28)!important}
   .card .lock{position:absolute;top:8px;right:9px;font-size:18px;filter:grayscale(1)}
   .card .por{height:84px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px}
   .card .por canvas{display:block}
@@ -1111,8 +1115,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.39.3';
+const GAME_VERSION = '2.40.0';
 const CHANGELOG = [
+  { v:'2.40.0', items:[
+    ['🎮','Gamepad menu navigation','fighter/weapon select, settings, and results are now fully controller-navigable — d-pad or left stick to move, A to confirm, X/B to back out of settings — a controller player can finally get in a match without touching the screen'],
+  ]},
   { v:'2.39.3', items:[
     ['🗺️','Minimap is now collapsible','tap the pill in its top-right corner to tuck it away — it was sitting right over the "GET READY" banner at match start on some screens'],
   ]},
@@ -2778,6 +2785,12 @@ function updatePlayer(h,dt){
   else heartT=0;
 }
 let gpRP=false,gpLP=false,gpBP=false,gpGP=false,gpStP=false,gpSeen=false,curGp=null;
+// Menu-nav edge trackers — separate from the in-match ones above so a d-pad tap or stick flick
+// only moves the cursor ONE step per press, matching the file's "press-once vs continuous" rule
+// (CLAUDE.md "Input edge / continuous split"): the stick/d-pad's raw value is continuous (held),
+// but the CURSOR MOVE it drives is a discrete action, so it needs its own edge detector, same as
+// reload/light/bomb/grapple/start already have theirs.
+let gpUpP=false,gpDnP=false,gpLtP=false,gpRtP=false,gpAP=false;
 function readGamepad(){
   if(!navigator.getGamepads) return null;
   let gp=null; const pads=navigator.getGamepads();
@@ -2789,8 +2802,80 @@ function readGamepad(){
   const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6), gN=btn(10), stN=btn(9);
   const reload=rN&&!gpRP, light=lN&&!gpLP, bomb=bN&&!gpBP, grapple=gN&&!gpGP, start=stN&&!gpStP;
   gpRP=rN; gpLP=lN; gpBP=bN; gpGP=gN; gpStP=stN;
+  // menu cursor: d-pad buttons (12-15) OR the left stick past a generous threshold — either one
+  // moves the focus exactly one cell per press/flick, never continuously
+  const upN=btn(12)||my<-0.5, dnN=btn(13)||my>0.5, ltN=btn(14)||mx<-0.5, rtN=btn(15)||mx>0.5, aN=btn(0);
+  const navUp=upN&&!gpUpP, navDown=dnN&&!gpDnP, navLeft=ltN&&!gpLtP, navRight=rtN&&!gpRtP, confirm=aN&&!gpAP;
+  gpUpP=upN; gpDnP=dnN; gpLtP=ltN; gpRtP=rtN; gpAP=aN;
   if(!gpSeen && (mx||my||ax||ay||fire)){ gpSeen=true; audioInit(); }
-  return {mx,my,ax,ay,fire,reload,light,bomb,grapple,start};
+  // `reload` (X/B — already edge-triggered above) doubles as menu Back, same reuse pattern as
+  // Start doubling as pause-toggle even while paused
+  return {mx,my,ax,ay,fire,reload,light,bomb,grapple,start,navUp,navDown,navLeft,navRight,confirm,back:reload};
+}
+// Bluetooth/USB pads (PS5 DualSense included) fire connect/disconnect events independent of the
+// per-frame poll above — listen directly so pairing success is visible right away instead of
+// waiting for gpSeen to flip on the first stick/button read (which on a freshly-paired Bluetooth
+// pad can lag a beat), and so a non-'standard' mapping is at least diagnosable instead of quietly
+// producing dead or scrambled input. The Gamepad API's 'standard' mapping is WHY DualSense,
+// DualShock, and Xbox pads already work identically here — there's no PS5-specific code path to
+// add; support IS readGamepad() as written, as long as the browser reports 'standard'. That has
+// been true on Chrome/Edge (desktop + Android) for DualSense over both USB and Bluetooth for
+// years; the one environment with known historical gaps is Safari/WebKit (desktop and iOS), where
+// some versions have reported DualSense with mapping !== 'standard' or with axes 2/3 (right
+// stick) silently absent. Can't be fixed from here — it's a browser-side mapping table gap, not
+// something a web page's JS can patch — but it can be surfaced instead of silently eating input.
+window.addEventListener('gamepadconnected', e=>{
+  const gp=e.gamepad;
+  if(!gpSeen){ gpSeen=true; audioInit(); }
+  toast('🎮 '+(gp.id||'Controller')+' connected');
+  if(gp.mapping!=='standard') console.warn('[gamepad] "'+gp.id+'" reported mapping="'+(gp.mapping||'(none)')+'" (expected "standard") — button/axis indices in readGamepad() may not line up; this is a browser limitation, not fixable in-page');
+});
+window.addEventListener('gamepaddisconnected', ()=>{ toast('🎮 Controller disconnected'); });
+// ---- Gamepad menu navigation ----
+// Avatar/weapon grids, settings, and results were mouse/touch-only DOM overlays even after
+// in-match gamepad support (v2.37.0) shipped — a controller player could get in and fight but
+// couldn't reach the fight in the first place. This reuses the SAME curGp sample loop() already
+// takes once/frame (see readGamepad() above); it must never call readGamepad() again itself.
+let gpFocusIdx = 0;
+// `.grid` (avatarGrid/weaponGrid) is a fixed 2-column CSS grid (index.html ~line 132) — hard-code
+// it rather than reading computed style every frame; if that layout ever goes responsive this is
+// the one place to update.
+const GP_GRID_COLS = 2;
+function gpMenuTargets(){
+  // Recomputed each call instead of cached: the grids rebuild whenever level/unlocks change
+  // (buildAvatarGrid/buildWeaponGrid), so a cached NodeList would go stale silently.
+  // Returns {targets, cols} together — cols describes the LIST JUST BUILT, not screenState, since
+  // Settings can be opened on top of the avatar/weapon screens (gearHud/avatarGear/weaponGear)
+  // without screenState changing. Deriving cols from screenState separately (an earlier version
+  // of this code did exactly that) meant navigating the 1-column Settings list while screenState
+  // was still 'avatar'/'weapon' silently used a 2-column stride and skipped every other row —
+  // caught by the throwaway __gpTest harness, not by eye, which is exactly why it's worth keeping
+  // this as one return value instead of two functions that can drift out of sync.
+  if(!el('settings').classList.contains('hidden'))
+    return { targets:[...el('settings').querySelectorAll('.opt:not(.hidden)'), el('sClose')], cols:1 };
+  if(!el('results').classList.contains('hidden'))
+    return { targets:[el('againBtn'), el('menuBtn')], cols:1 };
+  if(screenState==='avatar')
+    return { targets:[...el('avatarGrid').querySelectorAll('.card:not(.locked)'), el('toWeaponBtn')], cols:GP_GRID_COLS };
+  if(screenState==='weapon')
+    return { targets:[...el('weaponGrid').querySelectorAll('.card:not(.locked)'), el('dropInBtn')], cols:GP_GRID_COLS };
+  if(screenState==='start')
+    return { targets:[el('toModeBtn'), el('achBtn'), el('shopBtn'), el('donateBtn')], cols:1 };
+  return { targets:[], cols:1 };
+}
+function updateGamepadMenuNav(gp){
+  const {targets, cols} = gpMenuTargets();
+  // clear stale focus rings from whatever was focused a screen ago before bailing/recomputing
+  document.querySelectorAll('.gpfocus').forEach(t=>t.classList.remove('gpfocus'));
+  if(!targets.length) return;
+  if(gpFocusIdx>=targets.length) gpFocusIdx=targets.length-1;
+  if(gp.navLeft)  gpFocusIdx = Math.max(0, gpFocusIdx-1);
+  if(gp.navRight) gpFocusIdx = Math.min(targets.length-1, gpFocusIdx+1);
+  if(gp.navUp)    gpFocusIdx = Math.max(0, gpFocusIdx-cols);
+  if(gp.navDown)  gpFocusIdx = Math.min(targets.length-1, gpFocusIdx+cols);
+  targets[gpFocusIdx].classList.add('gpfocus');
+  if(gp.confirm){ audioInit(); targets[gpFocusIdx].click(); }
+  else if(gp.back && !el('settings').classList.contains('hidden')){ audioInit(); el('sClose').click(); }
 }
 function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
@@ -3042,7 +3127,7 @@ function specPick(){ let best=null,bk=-2; for(const h of humans){ if(!h.alive) c
 function endSpectate(){ spectating=false; el('specBar').classList.add('hidden'); }
 function ord(n){ const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
 function showResults(win, place){
-  screenState='results'; endSpectate();
+  screenState='results'; endSpectate(); gpFocusIdx=0;
   const horde = gameMode==='horde';
   let xpEarned = win?120:40; xpEarned += killsTotal*(horde?2:10); if(horde) xpEarned += hordeWave*15;
   const lv=grantXp(xpEarned);
@@ -4378,7 +4463,7 @@ function loop(now){
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
   const perfT0 = (screenState==='playing' && zombies.length>30) ? performance.now() : 0;   // heavy-frame sample
-  curGp = screenState==='playing' ? readGamepad() : null;   // one sample/frame; Start toggles pause even while paused
+  curGp = readGamepad();   // one sample/frame, EVERY screen — menus read curGp too now, not just gameplay
   if(curGp && curGp.start){ if(paused) closeSettings(); else openSettings(); }
   if(screenState==='playing' && !paused){
     elapsed=(now-startTime)/1000;
@@ -4396,7 +4481,7 @@ function loop(now){
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }
     refreshHud(); drawMini();
-  } else { updateParticles(dt); menuSceneUpdate(dt); }
+  } else { updateParticles(dt); menuSceneUpdate(dt); if(curGp) updateGamepadMenuNav(curGp); }
   draw();
   if(perfT0){ perfAcc+=performance.now()-perfT0; perfN++; perfPeakZ=Math.max(perfPeakZ,zombies.length);
     if(now-perfLog>2000){ const ms=perfAcc/Math.max(1,perfN);
@@ -4410,6 +4495,7 @@ function loop(now){
 // ============================================================
 function show(id){ ['startScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
   if(id==='startScreen'){ renderStats(); renderMenu(); maybeDonateToast(); }
+  gpFocusIdx=0;   // new screen = new focus target list; don't carry a stale index over
 }
 // one gentle, once-per-session menu nudge after a couple of matches (only if donations are set up)
 let donateToastShown=false;
@@ -4745,8 +4831,8 @@ el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/1
 // settings
 function openSettings(){ paused=true; el('settings').classList.remove('hidden');
   el('sQuit').classList.toggle('hidden', screenState!=='playing');   // only offer "quit to menu" mid-match
-  syncSliders(); }
-function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; }
+  syncSliders(); gpFocusIdx=0; }
+function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; gpFocusIdx=0; }
 // abandon the current match and return to the main menu (state is overwritten on the next Play)
 function quitToMenu(){
   el('settings').classList.add('hidden'); el('results').classList.add('hidden'); el('specBar').classList.add('hidden');
