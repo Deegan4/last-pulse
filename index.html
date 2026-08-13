@@ -1126,8 +1126,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.40.2';
+const GAME_VERSION = '2.41.0';
 const CHANGELOG = [
+  { v:'2.41.0', items:[
+    ['🎮','Local 2-player co-op','plug in a 2nd controller mid-match and Player 2 drops in automatically, fighting side by side with their own health/ammo, weapon, and minimap dot — the camera keeps both of you in view as long as you stay reasonably close together'],
+  ]},
   { v:'2.40.2', items:[
     ['🎮','Controller status in Settings','Settings now shows whether a controller is connected (and its name) live, plus how to pair one via your device\'s Bluetooth settings — there was previously nothing in the UI about controller support at all'],
   ]},
@@ -1656,6 +1659,7 @@ let zoneWarn = 0;
 let heartT = 0;                             // low-health heartbeat cadence
 let zReinforce = 0;                         // BR/Squad zombie reinforcement cadence
 let player = null;
+let player2 = null;   // local co-op: 2nd human-controlled entity, joins when a 2nd gamepad is detected (see tryJoinPlayer2)
 let startTime = 0, elapsed = 0, shake = 0, lastT = performance.now();
 let killsTotal = 0, fieldSize = 15;
 let matchStat = {dmgTaken:0, grappled:false};
@@ -1926,16 +1930,18 @@ function spawnMatch(){
   combo=0; comboT=0; hitstop=0;
   menuAmbient=false;                                     // real match takes over the canvas
   matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
+  player2 = null;   // fresh match always starts solo; tryJoinPlayer2() re-adds them if a 2nd pad is present
   buildDecor();
   // interior loot — every house hides a pickup (a reason to step inside)
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
-  player.team=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
+  player.team=0; player.gpIndex=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
   player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null;
   player.scrap=0; player.buildSel=-1; player.placeCd=0;   // builder state (start with mode off)
   player.magMul=magMulMeta(); player.mag=magCap(player);  // Extended Magazines upgrade → wider mag, start full
   humans.push(player);
+  tryJoinPlayer2(connectedPads());   // catch a 2nd controller that was ALREADY connected before drop-in, not just one that connects mid-match
   // scattered scrap caches — a reason to explore; seeds your first walls before the first kills
   for(let i=0;i<10;i++){ const s=decorSpot(90); scraps.push(makeScrap(s.x,s.y,randi(4,8))); }
 
@@ -2108,7 +2114,7 @@ function hurt(e, dmg, src, isHumanTarget){
   // player feedback
   if(src && src.isPlayer && dmg>0){ hitmarks.push({x:e.x,y:e.y-6,t:0.22,kill:false}); sfx('tick',null,e); }
   if(e.isPlayer && src && src!==e){ dmgDirs.push({a:Math.atan2(src.y-e.y,src.x-e.x), t:1.0});
-    gpRumble(110, clamp(dmg/70,0.15,0.55), clamp(dmg/45,0.1,0.5)); }   // scale rumble with the hit, not a flat buzz every time
+    if(e.gpIndex!=null) gpRumble(e.gpIndex, 110, clamp(dmg/70,0.15,0.55), clamp(dmg/45,0.1,0.5)); }   // rumbles THIS player's own pad, not always pad 0
   if(e.hp<=0){ die(e, src, isHumanTarget); }
 }
 function die(e, src, isHumanTarget){
@@ -2126,7 +2132,7 @@ function die(e, src, isHumanTarget){
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
     if(src.isPlayer){
-      shake=Math.min(shake+5,14); gpRumble(90, 0.25, 0.6);
+      shake=Math.min(shake+5,14); if(src.gpIndex!=null) gpRumble(src.gpIndex, 90, 0.25, 0.6);
       hitmarks.push({x:e.x,y:e.y-6,t:0.42,kill:true}); sfx('kill',null,e);
       // kill combo: chain kills inside the window for up to 3x XP + escalating slow-mo
       combo = comboT>0 ? combo+1 : 1; comboT=COMBO_WIN;
@@ -2153,8 +2159,11 @@ function die(e, src, isHumanTarget){
       scraps.push(makeScrap(e.x, e.y, big?randi(5,8):(run?randi(1,2):randi(2,4)))); } }
   if(e.isPlayer){ shake=Math.min(shake+10,18); }
   if(isHumanTarget){
-    const victim = e.isPlayer?meta.name:e.name;
-    const killer = src ? (src.weapon ? (src.isPlayer?meta.name:src.name) : 'A zombie') : 'The safe zone';
+    // isPlayer2 checked FIRST: it's the more specific case, and must win over the plain isPlayer
+    // branch below (player 2 is also isPlayer:true — that's what exempts them from bot AI — so
+    // checking isPlayer alone here would misattribute every player-2 kill/death to player 1's name)
+    const victim = e.isPlayer2?e.name : e.isPlayer?meta.name:e.name;
+    const killer = src ? (src.weapon ? (src.isPlayer2?src.name : src.isPlayer?meta.name:src.name) : 'A zombie') : 'The safe zone';
     killFeed.unshift({ txt: killer+'  ☠  '+victim, t:5, you: e.isPlayer || (src&&src.isPlayer) });
     if(killFeed.length>4) killFeed.pop();
     checkEnd();
@@ -2742,14 +2751,21 @@ function updateZombie(z,dt){
 // ============================================================
 //  Update
 // ============================================================
-function updatePlayer(h,dt){
+// `gp` is this human's OWN gamepad sample (curGp for player 1, curGp2 for player 2 — see loop()).
+// `readShared` gates keyboard/mouse/touch input: those are single-device UI singletons (one
+// `keys{}`, one `mouse`, one on-screen joystick pair) that must stay exclusive to whichever human
+// is the "primary" local player, or player 2's presence would silently also steer/aim player 1
+// (and vice versa) every frame both are being updated. Player 2 is gamepad-only by design — no
+// touch/keyboard fallback — so it always passes readShared=false.
+function updatePlayer(h,dt,gp,readShared){
   if(!h.alive) return;
   if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=magCap(h); }
-  const gp=curGp;   // one readGamepad() sample per frame — see loop()
   let mx=0,my=0;
-  if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
-  if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
-  if(moveVec.active){ mx+=moveVec.x; my+=moveVec.y; }
+  if(readShared){
+    if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
+    if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
+    if(moveVec.active){ mx+=moveVec.x; my+=moveVec.y; }
+  }
   if(gp){ mx+=gp.mx; my+=gp.my; }
   const m=len(mx,my);
   if(h.grap){ // rope physics owns velocity — input only steers (pumps the swing)
@@ -2775,13 +2791,17 @@ function updatePlayer(h,dt){
   // aim + fire
   let firing=false, mouseAim=false;
   if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=Math.atan2(gp.ay,gp.ax); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
-  else if(aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
-  else if(!isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
+  else if(readShared && aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
+  else if(readShared && !isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
   if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
-  // reticle world target
-  if(mouseAim){ aimWX=mouse.x+cam.x; aimWY=mouse.y+cam.y; }
-  else { aimWX=h.x+Math.cos(h.aim)*130; aimWY=h.y+Math.sin(h.aim)*130; }
-  aimShow = mouseAim || firing || aimVec.active || !!(gp&&(Math.abs(gp.ax)+Math.abs(gp.ay))>0.25);
+  // reticle world target — player-1-only screen overlay globals (aimWX/aimWY/aimShow); player 2
+  // doesn't get an on-screen reticle in this pass, a deliberate scope cut, not an oversight — see
+  // memory.md 2-player entry
+  if(readShared){
+    if(mouseAim){ aimWX=mouse.x+cam.x; aimWY=mouse.y+cam.y; }
+    else { aimWX=h.x+Math.cos(h.aim)*130; aimWY=h.y+Math.sin(h.aim)*130; }
+    aimShow = mouseAim || firing || aimVec.active || !!(gp&&(Math.abs(gp.ax)+Math.abs(gp.ay))>0.25);
+  }
   if(Math.cos(h.aim)) h.faceX=Math.cos(h.aim)<0?-1:1;
   // build mode hijacks the fire input to drop structures instead of shooting
   if(h.placeCd>0) h.placeCd-=dt;
@@ -2797,38 +2817,81 @@ function updatePlayer(h,dt){
   const tr = meta.trail!=='none' && shopItem(meta.trail);
   if(tr && (h.vx*h.vx+h.vy*h.vy)>3600 && Math.random()<dt*14)
     spark(h.x+rand(-5,5), h.y+rand(8,15), pick(tr.colors), rand(6,22), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.3,.55));
-  // low-health heartbeat — quickens as HP drops toward zero
-  const lf = h.maxhp>0 ? h.hp/h.maxhp : 1;
-  if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
-  else heartT=0;
+  // low-health heartbeat — quickens as HP drops toward zero. readShared-gated: heartT is a
+  // single shared timer, so letting player 2 also drive it would make the cadence reflect
+  // whichever of the two humans updatePlayer() happened to process last each frame.
+  if(readShared){
+    const lf = h.maxhp>0 ? h.hp/h.maxhp : 1;
+    if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
+    else heartT=0;
+  }
 }
-let gpRP=false,gpLP=false,gpBP=false,gpGP=false,gpStP=false,gpSeen=false,curGp=null;
-// Menu-nav edge trackers — separate from the in-match ones above so a d-pad tap or stick flick
-// only moves the cursor ONE step per press, matching the file's "press-once vs continuous" rule
-// (CLAUDE.md "Input edge / continuous split"): the stick/d-pad's raw value is continuous (held),
-// but the CURSOR MOVE it drives is a discrete action, so it needs its own edge detector, same as
-// reload/light/bomb/grapple/start already have theirs.
-let gpUpP=false,gpDnP=false,gpLtP=false,gpRtP=false,gpAP=false;
-function readGamepad(){
-  if(!navigator.getGamepads) return null;
-  let gp=null; const pads=navigator.getGamepads();
-  for(const p of pads){ if(p){ gp=p; break; } }
+let gpSeen=false, curGp=null, curGp2=null;
+// Edge-trigger state is a per-CONTROLLER bag, not module-level singletons — a second local
+// gamepad (co-op player 2) needs its OWN prev-frame button state, or it would corrupt player 1's
+// edge detection (and vice versa) every time both controllers happened to press something the
+// same frame. This is the exact bug class CLAUDE.md's "Input edge / continuous split" warns
+// about: readGamepad() mutates mutable prev-state, so sharing that state across two independent
+// input sources silently breaks edge-triggering for whichever one reads second.
+function makeGpEdgeState(){ return {RP:false,LP:false,BP:false,GP:false,StP:false,UpP:false,DnP:false,LtP:false,RtP:false,AP:false}; }
+let gp1Edge = makeGpEdgeState(), gp2Edge = makeGpEdgeState();
+// Reads ONE already-resolved Gamepad object against ITS OWN edge-state bag. Callers own picking
+// which raw pad and which state bag to pass in (see loop()) — this function no longer does its
+// own "find a pad" scan, so the same logic serves player 1 and player 2 without duplication.
+function readGamepadFrom(gp, st){
   if(!gp) return null;
   const dz=v=>Math.abs(v)<0.18?0:v, btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
   const mx=dz(gp.axes[0]||0), my=dz(gp.axes[1]||0), ax=dz(gp.axes[2]||0), ay=dz(gp.axes[3]||0);
   const fire=btn(7)||btn(5)||btn(0);
   const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6), gN=btn(10), stN=btn(9);
-  const reload=rN&&!gpRP, light=lN&&!gpLP, bomb=bN&&!gpBP, grapple=gN&&!gpGP, start=stN&&!gpStP;
-  gpRP=rN; gpLP=lN; gpBP=bN; gpGP=gN; gpStP=stN;
+  const reload=rN&&!st.RP, light=lN&&!st.LP, bomb=bN&&!st.BP, grapple=gN&&!st.GP, start=stN&&!st.StP;
+  st.RP=rN; st.LP=lN; st.BP=bN; st.GP=gN; st.StP=stN;
   // menu cursor: d-pad buttons (12-15) OR the left stick past a generous threshold — either one
   // moves the focus exactly one cell per press/flick, never continuously
   const upN=btn(12)||my<-0.5, dnN=btn(13)||my>0.5, ltN=btn(14)||mx<-0.5, rtN=btn(15)||mx>0.5, aN=btn(0);
-  const navUp=upN&&!gpUpP, navDown=dnN&&!gpDnP, navLeft=ltN&&!gpLtP, navRight=rtN&&!gpRtP, confirm=aN&&!gpAP;
-  gpUpP=upN; gpDnP=dnN; gpLtP=ltN; gpRtP=rtN; gpAP=aN;
+  const navUp=upN&&!st.UpP, navDown=dnN&&!st.DnP, navLeft=ltN&&!st.LtP, navRight=rtN&&!st.RtP, confirm=aN&&!st.AP;
+  st.UpP=upN; st.DnP=dnN; st.LtP=ltN; st.RtP=rtN; st.AP=aN;
   if(!gpSeen && (mx||my||ax||ay||fire)){ gpSeen=true; audioInit(); }
   // `reload` (X/B — already edge-triggered above) doubles as menu Back, same reuse pattern as
   // Start doubling as pause-toggle even while paused
   return {mx,my,ax,ay,fire,reload,light,bomb,grapple,start,navUp,navDown,navLeft,navRight,confirm,back:reload};
+}
+// Connected pads in slot order, filtered to non-null — the 1st is player 1's, the 2nd (if
+// player2 has joined) is player 2's. Matches the old readGamepad()'s "first non-null" behavior
+// for player 1 exactly, so solo play is unaffected byte-for-byte.
+function connectedPads(){ return navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; }
+// Local co-op: player 2 auto-joins the moment a second physical controller shows up while a
+// match is live — no join screen, no separate save/profile (they use a fixed avatar + player 1's
+// current weapon; kills/XP/coins still accrue to player 1's meta, same as a guest controller on
+// a console). Called every frame from loop() with that frame's already-fetched pads array so
+// this never triggers a second navigator.getGamepads() call of its own.
+function tryJoinPlayer2(pads){
+  if(player2 || !player || !player.alive) return;
+  if(!pads || !pads[1]) return;
+  player2 = makeHuman(true, AVATARS[(meta.avatar+1)%AVATARS.length], WEAPONS[meta.weapon], 'Player 2');
+  player2.isPlayer2 = true; player2.gpIndex = 1; player2.team = 0;
+  player2.x = clamp(player.x + rand(-70,-40), R, ARENA-R);
+  player2.y = clamp(player.y + rand(-30,30), R, ARENA-R);
+  player2.lightCd=0; player2.bombCd=0; player2.grapCd=0; player2.grap=null;
+  player2.scrap=0; player2.buildSel=-1; player2.placeCd=0;
+  player2.magMul=1; player2.mag=magCap(player2);
+  humans.push(player2);
+  toast('🎮 Player 2 joined!'); sfx('pickup');
+}
+// Co-op uses ONE shared, non-zooming camera (see draw() — it frames the midpoint of both alive
+// players at a fixed 1:1 world-to-screen scale, same as solo play). A dynamic zoom-to-fit-both
+// camera was considered and deliberately cut for this pass: the codebase's culling (inView()),
+// vignette, and a couple of other draw-time rects all assume the visible world span equals
+// exactly W×H — correctly threading a variable zoom through all of them without being able to
+// verify the result on a real 2-controller device felt like a worse tradeoff than a simple
+// position leash that keeps both players on-screen without touching rendering at all. If a
+// zoomed camera is wanted later, search this file for every `cam.x`/`cam.y` read (not just this
+// comment) — each one currently assumes zoom===1.
+function leashPlayer2(){
+  if(!player2 || !player2.alive || !player || !player.alive) return;
+  const maxLeash = Math.min(W,H)*0.42;
+  const dx=player2.x-player.x, dy=player2.y-player.y, d=Math.hypot(dx,dy);
+  if(d>maxLeash){ const k=maxLeash/d; player2.x=player.x+dx*k; player2.y=player.y+dy*k; }
 }
 // Bluetooth/USB pads (PS5 DualSense included) fire connect/disconnect events independent of the
 // per-frame poll above — listen directly so pairing success is visible right away instead of
@@ -2852,6 +2915,7 @@ window.addEventListener('gamepadconnected', e=>{
     console.warn('[gamepad] "'+gp.id+'" reported mapping="'+(gp.mapping||'(none)')+'" (expected "standard") — button/axis indices in readGamepad() may not line up; this is a browser limitation, not fixable in-page');
   } else toast('🎮 '+(gp.id||'Controller')+' connected');
   syncControllerStatus();
+  if(screenState==='playing') tryJoinPlayer2(connectedPads());   // 2nd controller pairing mid-match auto-joins co-op
 });
 window.addEventListener('gamepaddisconnected', ()=>{ toast('🎮 Controller disconnected'); syncControllerStatus(); });
 // Live controller-status card in Settings — added because a player pairing a controller had
@@ -2863,27 +2927,31 @@ window.addEventListener('gamepaddisconnected', ()=>{ toast('🎮 Controller disc
 function syncControllerStatus(){
   const row=el('sCtrlStatus'), hint=el('sCtrlHint');
   if(!row || el('settings').classList.contains('hidden')) return;   // cheap no-op when the card isn't visible
-  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-  let gp=null; for(const p of pads){ if(p){ gp=p; break; } }
-  if(gp){
-    row.textContent = '🟢 '+(gp.id||'Controller')+' connected';
-    hint.textContent = (gp.mapping==='standard')
-      ? 'D-pad or left stick to move the cursor, A to confirm, X/B to go back.'
-      : '⚠️ Reported as a non-standard layout — buttons may be misaligned. Try updating your browser or OS.';
-  } else {
+  const pads = connectedPads();
+  if(!pads.length){
     row.textContent = '⚪ No controller connected';
     hint.textContent = 'Pair one in your device\'s Bluetooth settings first, then press any button on it here.';
+    return;
   }
+  const bad = pads.find(p=>p.mapping!=='standard');
+  row.textContent = pads.length>1
+    ? '🟢 '+pads.length+' controllers connected (2-player co-op ready)'
+    : '🟢 '+(pads[0].id||'Controller')+' connected';
+  hint.textContent = bad
+    ? '⚠️ "'+bad.id+'" reported as a non-standard layout — buttons may be misaligned. Try updating your browser or OS.'
+    : pads.length>1
+      ? 'Player 2 joins automatically on drop-in. D-pad/stick to move, A to confirm, X/B to go back in menus.'
+      : 'D-pad or left stick to move the cursor, A to confirm, X/B to go back. Connect a 2nd controller for co-op.';
 }
 // Haptic feedback (DualSense's rumble works over both USB and Bluetooth via the standard Gamepad
 // API — no vendor-specific code needed) for the two moments players most want to FEEL: taking a
 // hit and landing a kill. Feature-detected and wrapped in try/catch since vibrationActuator is
 // unsupported on plenty of browsers/pads — a missing rumble should never be able to throw and
 // interrupt hurt()/die(), which run in the middle of live combat.
-function gpRumble(duration, weakMagnitude, strongMagnitude){
+function gpRumble(padIndex, duration, weakMagnitude, strongMagnitude){
   try{
     const pads = navigator.getGamepads && navigator.getGamepads();
-    const act = pads && pads[0] && pads[0].vibrationActuator;
+    const act = pads && pads[padIndex] && pads[padIndex].vibrationActuator;
     if(act && act.playEffect) act.playEffect('dual-rumble', {duration, startDelay:0, weakMagnitude, strongMagnitude});
   }catch(err){}
 }
@@ -3277,7 +3345,13 @@ function showResults(win, place){
 function draw(){
   ctx.clearRect(0,0,W,H);
   gtime = performance.now()/1000;
-  const t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA/2,y:ARENA/2});
+  let t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA/2,y:ARENA/2});
+  // co-op: frame the MIDPOINT of both players instead of just player 1, so player 2 doesn't drift
+  // toward the camera's edge. leashPlayer2() (called after integrate() each frame) is what
+  // actually keeps them close enough for this midpoint to stay meaningful — see its comment for
+  // why this camera doesn't zoom to fit both.
+  if(!spectating && player2 && player2.alive && player && player.alive)
+    t = {x:(player.x+player2.x)/2, y:(player.y+player2.y)/2, vx:(player.vx+player2.vx)/2, vy:(player.vy+player2.vy)/2};
   // camera look-ahead: lead the view in the direction of travel so fast movement feels dynamic
   const lx=(t.vx||0)*MOVE.camLead, ly=(t.vy||0)*MOVE.camLead;
   let tcx=clamp(t.x+lx-W/2,0,Math.max(0,ARENA-W)), tcy=clamp(t.y+ly-H/2,0,Math.max(0,ARENA-H));
@@ -4509,6 +4583,12 @@ function drawMini(){
     mctx.moveTo(px,py); mctx.lineTo(px+Math.cos(player.aim)*7,py+Math.sin(player.aim)*7); mctx.stroke();
     mctx.fillStyle='#7bff4a'; mctx.beginPath(); mctx.arc(px,py,3,0,TAU); mctx.fill();
     mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke(); }
+  if(player2&&player2.alive){   // cyan, matching the .gpfocus controller-accent color used elsewhere
+    const px=player2.x*sc, py=player2.y*sc;
+    mctx.strokeStyle='rgba(255,255,255,.8)'; mctx.lineWidth=1.6; mctx.beginPath();
+    mctx.moveTo(px,py); mctx.lineTo(px+Math.cos(player2.aim)*7,py+Math.sin(player2.aim)*7); mctx.stroke();
+    mctx.fillStyle='#5ad1ff'; mctx.beginPath(); mctx.arc(px,py,3,0,TAU); mctx.fill();
+    mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke(); }
 }
 
 // ---------- HUD refresh ----------
@@ -4547,7 +4627,14 @@ function loop(now){
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
   const perfT0 = (screenState==='playing' && zombies.length>30) ? performance.now() : 0;   // heavy-frame sample
-  curGp = readGamepad();   // one sample/frame, EVERY screen — menus read curGp too now, not just gameplay
+  // Sample every connected pad once/frame, EVERY screen — menus read curGp too, not just
+  // gameplay. Slot 0 is always player 1's (matches the old "first non-null" readGamepad()
+  // exactly, so solo play sees byte-identical behavior); slot 1 becomes player 2's only once
+  // they've actually joined, so a second controller sitting connected-but-idle before joining
+  // never accidentally steals a frame of edge-state from a bystander read.
+  const pads = connectedPads();
+  curGp = readGamepadFrom(pads[0], gp1Edge);
+  curGp2 = player2 ? readGamepadFrom(pads[1], gp2Edge) : null;
   if(curGp && curGp.start){ if(paused) closeSettings(); else openSettings(); }
   if(screenState==='playing' && !paused){
     elapsed=(now-startTime)/1000;
@@ -4555,9 +4642,12 @@ function loop(now){
     if(grace>0) grace-=dt;
     if(zoneActive()){ if(grace<=0){ zoneUpdate(dt); reinforceZombies(dt); } if(zoneWarn>0) zoneWarn-=dt; }
     else hordeUpdate(dt);
-    updatePlayer(player,dt);
+    tryJoinPlayer2(pads);   // cheap: bails immediately unless player2 is still null and pads[1] exists
+    updatePlayer(player,dt,curGp,true);
+    if(player2 && player2.alive) updatePlayer(player2,dt,curGp2,false);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
+    leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();
     updateBuilds(dt); updateBullets(dt); updateBombs(dt); updatePickups(dt); updateScraps(dt); updateParticles(dt);
