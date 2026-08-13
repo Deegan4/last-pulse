@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.40.1). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.40.2). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -113,6 +113,22 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
   synthetic input can drive the code paths and confirm nothing throws, but not confirm how a
   real DualSense over Bluetooth actually feels or whether `mapping` reports `'standard'` on your
   target browsers.
+
+## v2.40.2 — "Controller status in Settings" (shipped)
+
+- [x] **Live controller-status card** — a new `.ctrlrow` info card in the Settings modal
+      (`index.html`, `#sCtrlRow`) shows "🟢 &lt;pad name&gt; connected" or "⚪ No controller
+      connected", refreshed every frame Settings is open (`syncControllerStatus()`, called from
+      `loop()`'s menu branch, `openSettings()`, and both `gamepadconnected`/`gamepaddisconnected`
+      listeners) plus a hint line: pairing instructions when nothing's connected, control-scheme
+      reminder when something is, or a non-standard-mapping warning when relevant.
+- Addresses direct user feedback: there was previously **nothing in the UI** telling a player a
+  controller could be paired at all, or confirming a pairing worked — the only prior signal was a
+  small 🎮 HUD icon that only appears mid-match once `gpSeen` flips true (which itself requires
+  actual stick/button movement), not discoverable before dropping into a fight.
+- Web pages cannot trigger or complete Bluetooth pairing themselves (that's an OS-level
+  handshake) — this card's job is purely live status + pointing the player at the right OS
+  setting, not literally "connecting" a controller from in-page.
 
 ## Design pillars (don't break these)
 
