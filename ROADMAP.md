@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.40.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.40.1). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -88,6 +88,31 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
   simulated) — confirmed focus moves correctly through every grid/list and `confirm`/`back`
   trigger the right underlying click handlers. **Still needs a real-controller playtest** for
   button feel — synthetic input can't validate that.
+
+## v2.40.1 — "Full menu coverage + DualSense rumble" (shipped)
+
+- [x] **Achievements, Shop, Support, Add-to-Home-Screen, What's New** all added to
+      `GP_SIMPLE_MODALS` (`index.html`) — each is just its action button(s) + Close, in visual
+      order; Shop cards reuse the existing `#shopGrid` delegated click listener since `.click()`
+      on the card itself still matches `e.target.closest('[data-upg],[data-shop]')`.
+- [x] **Settings sliders (SFX volume, aim sensitivity) are gamepad-adjustable** — left/right on a
+      focused `<input type=range>` steps its value and dispatches a real `input` event, reusing
+      the existing `sfxVol`/`aimSens` listeners verbatim rather than duplicating their logic.
+- [x] **`gpMenuTargets()` now returns `{targets, cols, closeId}` together** — closeId travels with
+      the target list so `back` closes whichever modal is actually open, not just Settings.
+- [x] **DualSense rumble** — `gpRumble()` calls the standard Gamepad API's `vibrationActuator`
+      (feature-detected, try/catch-wrapped so a missing rumble can never throw mid-combat) on two
+      moments: the player taking a hit (magnitude scaled with damage) and landing a kill. Works
+      identically over Bluetooth and USB — no PS5-specific code needed, since rumble is part of
+      the same `'standard'`-mapping abstraction as button/axis reads.
+- [x] **Non-standard controller mapping is now surfaced to the player**, not just devtools — the
+      connect toast reads "buttons may be misaligned" when `gamepad.mapping !== 'standard'`
+      (known gap on some Safari/WebKit + DualSense-over-Bluetooth combinations), in addition to
+      the existing `console.warn` for diagnosability.
+- **Still open**: real-hardware verification for both the menu coverage and the rumble feel —
+  synthetic input can drive the code paths and confirm nothing throws, but not confirm how a
+  real DualSense over Bluetooth actually feels or whether `mapping` reports `'standard'` on your
+  target browsers.
 
 ## Design pillars (don't break these)
 

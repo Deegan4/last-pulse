@@ -1115,8 +1115,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.40.0';
+const GAME_VERSION = '2.40.1';
 const CHANGELOG = [
+  { v:'2.40.1', items:[
+    ['🎮','Full gamepad menu coverage + DualSense rumble','Achievements, Shop, Support, Add-to-Home-Screen and What\'s New are all controller-navigable now, Settings sliders (SFX volume, aim sensitivity) adjust with left/right, and taking a hit or landing a kill now pulses your controller — DualSense rumble works the same over Bluetooth as wired, no special-casing needed'],
+  ]},
   { v:'2.40.0', items:[
     ['🎮','Gamepad menu navigation','fighter/weapon select, settings, and results are now fully controller-navigable — d-pad or left stick to move, A to confirm, X/B to back out of settings — a controller player can finally get in a match without touching the screen'],
   ]},
@@ -2090,7 +2093,8 @@ function hurt(e, dmg, src, isHumanTarget){
   if(dmg>0) floaters.push({x:e.x, y:e.y-R-10, vy:-34, t:0.7, txt:Math.round(dmg), col: dmg>=60?'#ffd24a':'#fff'});
   // player feedback
   if(src && src.isPlayer && dmg>0){ hitmarks.push({x:e.x,y:e.y-6,t:0.22,kill:false}); sfx('tick',null,e); }
-  if(e.isPlayer && src && src!==e){ dmgDirs.push({a:Math.atan2(src.y-e.y,src.x-e.x), t:1.0}); }
+  if(e.isPlayer && src && src!==e){ dmgDirs.push({a:Math.atan2(src.y-e.y,src.x-e.x), t:1.0});
+    gpRumble(110, clamp(dmg/70,0.15,0.55), clamp(dmg/45,0.1,0.5)); }   // scale rumble with the hit, not a flat buzz every time
   if(e.hp<=0){ die(e, src, isHumanTarget); }
 }
 function die(e, src, isHumanTarget){
@@ -2108,7 +2112,7 @@ function die(e, src, isHumanTarget){
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
     if(src.isPlayer){
-      shake=Math.min(shake+5,14);
+      shake=Math.min(shake+5,14); gpRumble(90, 0.25, 0.6);
       hitmarks.push({x:e.x,y:e.y-6,t:0.42,kill:true}); sfx('kill',null,e);
       // kill combo: chain kills inside the window for up to 3x XP + escalating slow-mo
       combo = comboT>0 ? combo+1 : 1; comboT=COMBO_WIN;
@@ -2827,10 +2831,26 @@ function readGamepad(){
 window.addEventListener('gamepadconnected', e=>{
   const gp=e.gamepad;
   if(!gpSeen){ gpSeen=true; audioInit(); }
-  toast('🎮 '+(gp.id||'Controller')+' connected');
-  if(gp.mapping!=='standard') console.warn('[gamepad] "'+gp.id+'" reported mapping="'+(gp.mapping||'(none)')+'" (expected "standard") — button/axis indices in readGamepad() may not line up; this is a browser limitation, not fixable in-page');
+  if(gp.mapping!=='standard'){
+    // surfaced to the PLAYER too, not just devtools — a silent console.warn is useless to someone
+    // whose buttons just don't work after pairing over Bluetooth
+    toast('🎮 '+(gp.id||'Controller')+' connected (buttons may be misaligned)');
+    console.warn('[gamepad] "'+gp.id+'" reported mapping="'+(gp.mapping||'(none)')+'" (expected "standard") — button/axis indices in readGamepad() may not line up; this is a browser limitation, not fixable in-page');
+  } else toast('🎮 '+(gp.id||'Controller')+' connected');
 });
 window.addEventListener('gamepaddisconnected', ()=>{ toast('🎮 Controller disconnected'); });
+// Haptic feedback (DualSense's rumble works over both USB and Bluetooth via the standard Gamepad
+// API — no vendor-specific code needed) for the two moments players most want to FEEL: taking a
+// hit and landing a kill. Feature-detected and wrapped in try/catch since vibrationActuator is
+// unsupported on plenty of browsers/pads — a missing rumble should never be able to throw and
+// interrupt hurt()/die(), which run in the middle of live combat.
+function gpRumble(duration, weakMagnitude, strongMagnitude){
+  try{
+    const pads = navigator.getGamepads && navigator.getGamepads();
+    const act = pads && pads[0] && pads[0].vibrationActuator;
+    if(act && act.playEffect) act.playEffect('dual-rumble', {duration, startDelay:0, weakMagnitude, strongMagnitude});
+  }catch(err){}
+}
 // ---- Gamepad menu navigation ----
 // Avatar/weapon grids, settings, and results were mouse/touch-only DOM overlays even after
 // in-match gamepad support (v2.37.0) shipped — a controller player could get in and fight but
@@ -2841,41 +2861,69 @@ let gpFocusIdx = 0;
 // it rather than reading computed style every frame; if that layout ever goes responsive this is
 // the one place to update.
 const GP_GRID_COLS = 2;
+// Single-purpose modals (informational or one-action): just their action button(s) + Close, in
+// visual order. Shop cards are individually clickable via #shopGrid's delegated listener
+// (e.target.closest('[data-upg],[data-shop]')) — clicking the card element itself still hits
+// that delegate correctly since closest() matches the element it's called on too.
+const GP_SIMPLE_MODALS = [
+  {id:'shop',        closeId:'shopClose',   targets:()=>[...el('shopGrid').querySelectorAll('.shopcard'), el('shopClose')]},
+  {id:'achievements',closeId:'achClose',    targets:()=>[el('achClose')]},   // achievement cards are display-only, not clickable
+  {id:'donate',      closeId:'donateClose', targets:()=>[el('donateGo'), el('donateClose')]},
+  {id:'a2hs',        closeId:'a2hsClose',   targets:()=>[el('a2hsClose')]},
+  {id:'whatsnew',    closeId:'wnClose',     targets:()=>[el('wnClose')]},
+];
 function gpMenuTargets(){
   // Recomputed each call instead of cached: the grids rebuild whenever level/unlocks change
   // (buildAvatarGrid/buildWeaponGrid), so a cached NodeList would go stale silently.
-  // Returns {targets, cols} together — cols describes the LIST JUST BUILT, not screenState, since
-  // Settings can be opened on top of the avatar/weapon screens (gearHud/avatarGear/weaponGear)
-  // without screenState changing. Deriving cols from screenState separately (an earlier version
-  // of this code did exactly that) meant navigating the 1-column Settings list while screenState
-  // was still 'avatar'/'weapon' silently used a 2-column stride and skipped every other row —
-  // caught by the throwaway __gpTest harness, not by eye, which is exactly why it's worth keeping
-  // this as one return value instead of two functions that can drift out of sync.
+  // Returns {targets, cols, closeId} together — cols/closeId describe the LIST JUST BUILT, not
+  // screenState, since Settings (and every modal above) can be opened on top of the avatar/
+  // weapon screens without screenState changing. Deriving cols from screenState separately (an
+  // earlier version of this code did exactly that) meant navigating the 1-column Settings list
+  // while screenState was still 'avatar'/'weapon' silently used a 2-column stride and skipped
+  // every other row — caught by the throwaway __gpTest harness, not by eye, which is exactly why
+  // it's worth keeping this as one return value instead of separate functions that can drift out
+  // of sync.
   if(!el('settings').classList.contains('hidden'))
-    return { targets:[...el('settings').querySelectorAll('.opt:not(.hidden)'), el('sClose')], cols:1 };
+    // .opt buttons and the two <input type=range> sliders interleave in DOM/visual order —
+    // querySelectorAll always returns document order regardless of which part of the selector
+    // matched, so this doesn't need to be built up manually.
+    return { targets:[...el('settings').querySelectorAll('.opt:not(.hidden), .slider input'), el('sClose')], cols:1, closeId:'sClose' };
   if(!el('results').classList.contains('hidden'))
-    return { targets:[el('againBtn'), el('menuBtn')], cols:1 };
+    return { targets:[el('againBtn'), el('menuBtn')], cols:1, closeId:null };   // no back target — matches touch (no close button either)
+  for(const m of GP_SIMPLE_MODALS){
+    if(!el(m.id).classList.contains('hidden')) return { targets:m.targets(), cols:1, closeId:m.closeId };
+  }
   if(screenState==='avatar')
-    return { targets:[...el('avatarGrid').querySelectorAll('.card:not(.locked)'), el('toWeaponBtn')], cols:GP_GRID_COLS };
+    return { targets:[...el('avatarGrid').querySelectorAll('.card:not(.locked)'), el('toWeaponBtn')], cols:GP_GRID_COLS, closeId:null };
   if(screenState==='weapon')
-    return { targets:[...el('weaponGrid').querySelectorAll('.card:not(.locked)'), el('dropInBtn')], cols:GP_GRID_COLS };
+    return { targets:[...el('weaponGrid').querySelectorAll('.card:not(.locked)'), el('dropInBtn')], cols:GP_GRID_COLS, closeId:null };
   if(screenState==='start')
-    return { targets:[el('toModeBtn'), el('achBtn'), el('shopBtn'), el('donateBtn')], cols:1 };
-  return { targets:[], cols:1 };
+    return { targets:[el('toModeBtn'), el('achBtn'), el('shopBtn'), el('donateBtn')], cols:1, closeId:null };
+  return { targets:[], cols:1, closeId:null };
 }
 function updateGamepadMenuNav(gp){
-  const {targets, cols} = gpMenuTargets();
+  const {targets, cols, closeId} = gpMenuTargets();
   // clear stale focus rings from whatever was focused a screen ago before bailing/recomputing
   document.querySelectorAll('.gpfocus').forEach(t=>t.classList.remove('gpfocus'));
   if(!targets.length) return;
   if(gpFocusIdx>=targets.length) gpFocusIdx=targets.length-1;
-  if(gp.navLeft)  gpFocusIdx = Math.max(0, gpFocusIdx-1);
-  if(gp.navRight) gpFocusIdx = Math.min(targets.length-1, gpFocusIdx+1);
-  if(gp.navUp)    gpFocusIdx = Math.max(0, gpFocusIdx-cols);
-  if(gp.navDown)  gpFocusIdx = Math.min(targets.length-1, gpFocusIdx+cols);
+  const focused = targets[gpFocusIdx];
+  const isSlider = focused && focused.tagName==='INPUT' && focused.type==='range';
+  if(isSlider && (gp.navLeft||gp.navRight)){
+    // left/right on a focused slider adjusts its value instead of moving the cursor — up/down
+    // still moves between rows, same convention as most console settings menus
+    const step=+focused.step||1, dir=gp.navLeft?-1:1;
+    focused.value = clamp(+focused.value + dir*step, +focused.min, +focused.max);
+    focused.dispatchEvent(new Event('input',{bubbles:true}));   // reuses the existing sfxVol/aimSens listeners verbatim
+  } else {
+    if(gp.navLeft)  gpFocusIdx = Math.max(0, gpFocusIdx-1);
+    if(gp.navRight) gpFocusIdx = Math.min(targets.length-1, gpFocusIdx+1);
+  }
+  if(gp.navUp)   gpFocusIdx = Math.max(0, gpFocusIdx-cols);
+  if(gp.navDown) gpFocusIdx = Math.min(targets.length-1, gpFocusIdx+cols);
   targets[gpFocusIdx].classList.add('gpfocus');
-  if(gp.confirm){ audioInit(); targets[gpFocusIdx].click(); }
-  else if(gp.back && !el('settings').classList.contains('hidden')){ audioInit(); el('sClose').click(); }
+  if(gp.confirm && !isSlider){ audioInit(); targets[gpFocusIdx].click(); }   // a slider has nothing to "click" — left/right already adjusts it
+  else if(gp.back && closeId){ audioInit(); el(closeId).click(); }
 }
 function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
