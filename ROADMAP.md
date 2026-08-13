@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.40.2). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.41.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -129,6 +129,45 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
 - Web pages cannot trigger or complete Bluetooth pairing themselves (that's an OS-level
   handshake) — this card's job is purely live status + pointing the player at the right OS
   setting, not literally "connecting" a controller from in-page.
+
+## v2.41.0 — "Local 2-player co-op" (shipped)
+
+- [x] **Auto-join on 2nd controller** — `tryJoinPlayer2()` (`index.html`) checks the connected-pad
+      list every frame while a match is live (and once at `spawnMatch()`, and on every
+      `gamepadconnected` event) and spawns Player 2 the instant a 2nd pad is present — no join
+      screen. Player 2 is gamepad-only by design (no touch/keyboard fallback) and has no separate
+      save/profile: fixed avatar, Player 1's current weapon, kills/XP/coins still accrue to
+      Player 1's `meta`, same as a guest controller on a console.
+- [x] **Per-controller input, not shared globals** — `readGamepad()` was refactored into
+      `readGamepadFrom(gp, edgeState)`, a pure function taking an explicit prev-button-state bag,
+      because the old module-level `gpRP`/`gpLP`/etc. singletons would have silently corrupted
+      each other's edge-detection the moment two controllers were both pressing buttons. Two
+      independent state bags (`gp1Edge`/`gp2Edge`) now exist. `updatePlayer(h,dt,gp,readShared)`
+      gained a `readShared` flag so Player 2 never reads the shared `keys{}`/`mouse`/on-screen
+      joystick singletons that Player 1's input still uses — without it, keyboard/touch input
+      would have silently steered BOTH players at once.
+- [x] **Shared, non-zooming camera** — the camera frames the midpoint of both alive players;
+      `leashPlayer2()` gently clamps Player 2's position to stay within camera range of Player 1
+      after each frame's movement, so a co-op partner can't wander off-screen. A dynamic
+      zoom-to-fit-both camera was **deliberately cut** from this pass — the codebase's culling
+      (`inView()`), vignette, and a couple of other draw-time rects all assume the visible world
+      span equals exactly `W×H`; correctly threading a variable zoom through all of them without
+      being able to verify the result on a real 2-controller device was judged a worse tradeoff
+      than a simple position leash that touches zero rendering code. If zoom is wanted later,
+      every `cam.x`/`cam.y` read in the file currently assumes zoom≡1 — audit all of them together.
+- [x] **Per-player rumble + naming** — `gpRumble()` now takes a `padIndex` so each player's own
+      controller rumbles on their own hits/kills, not always pad 0 (`h.gpIndex`, set at spawn).
+      Kill-feed text was fixed to use `e.isPlayer2` before the existing `e.isPlayer` check, since
+      Player 2 is also `isPlayer:true` (that's what exempts them from bot AI) — without the
+      `isPlayer2` check first, every Player 2 kill/death would have displayed Player 1's name.
+- **Design choice, not a bug**: the match ends when Player 1 dies, regardless of Player 2's
+  state — this already fell out of the existing `if(!player.alive)` end-check with zero code
+  change, and matches "results/achievements are Player 1's run" from the auto-join design above.
+- **Still open**: real 2-controller on-device playtest — verified headless via a mocked
+  `navigator.getGamepads()` (join, independent movement, the leash, per-player rumble targeting,
+  and kill-feed naming all checked and passing), but mocked input can't validate actual feel,
+  whether the leash radius (`Math.min(W,H)*0.42`) is comfortable in practice, or real controller
+  pairing behavior.
 
 ## Design pillars (don't break these)
 
