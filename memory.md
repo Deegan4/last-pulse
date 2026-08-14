@@ -92,6 +92,13 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.42.3 — Weapon select uses real PNG art.** Fixed the weapon-select card renderer so
+  `weaponIcon(w)` draws the loaded `w.img` PNG for both the upgraded original weapons and the new
+  weapons, falling back to `drawGun()` only if the image is missing. Also made `loadImg()` rebuild
+  the weapon grid after assets decode, so opening weapon select before image load no longer leaves
+  stale procedural card art on-screen. The iOS wrapper now uses a non-persistent `WKWebView`
+  data store and clears website data before loading `GameContent/index.html`, preventing the
+  simulator from showing stale bundled HTML/assets after reinstall.
 - **iOS wrapper crash fix — GameContent bundled.** Fixed the native iOS wrapper crash on open by
   moving `GameViewController.swift` into the `LastPulse` target source folder, restoring
   `LastPulse/Info.plist`, setting the executable product name to `LastPulse`, and changing

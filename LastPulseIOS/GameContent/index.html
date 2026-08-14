@@ -1095,7 +1095,8 @@ function loadImg(k, src){
   const im = new Image();
   im.onload  = ()=>{ IMG[k].ok=true; groundKey='';           // force the ground pattern to rebuild
     try{ if(screenState==='start') renderMenu();             // refresh the menu portrait
-      const ag=el('avatarGrid'); if(ag && ag.children.length) buildAvatarGrid(); }catch(e){} };
+      const ag=el('avatarGrid'); if(ag && ag.children.length) buildAvatarGrid();
+      const wg=el('weaponGrid'); if(wg && wg.children.length) buildWeaponGrid(); }catch(e){} };
   im.onerror = ()=>{ IMG[k].ok=false; };
   IMG[k]={img:im, ok:false}; im.src=src;
 }
@@ -1147,8 +1148,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.42.2';
+const GAME_VERSION = '2.42.3';
 const CHANGELOG = [
+  { v:'2.42.3', items:[
+    ['🎨','Weapon cards show the real art','weapon select now redraws with the PNG art for upgraded and new guns as soon as assets load'],
+  ]},
   { v:'2.42.2', items:[
     ['🔫','New weapons up front','Pulse SMG, Arc Rifle, Frost Blaster & Rocket Launcher are unlocked from Lv 1 and featured first in weapon select'],
   ]},
@@ -4184,12 +4188,24 @@ function drawGun(name,c){
 // render a weapon's real gun art onto a hi-res canvas for the select-grid card — big and crisp
 // (the plate background + tier ring come from CSS; DPR-scaled so it stays sharp on retina)
 function weaponIcon(w){
+  const art=imgOk(w.img);
   const g=GUNK[w.name]||{l:14}; const x0=-11, x1=g.l+9, span=x1-x0;
   const CW=124, CH=58, DPR=3;
   const c=document.createElement('canvas'); c.width=CW*DPR; c.height=CH*DPR;
   c.style.width=CW+'px'; c.style.height=CH+'px';
   const o=c.getContext('2d'); o.scale(DPR,DPR);
   o.lineJoin='round'; o.lineCap='round';
+  if(art){
+    o.save();
+    o.shadowColor='rgba(0,0,0,.36)'; o.shadowBlur=5; o.shadowOffsetY=2;
+    const pad=6, maxW=CW-pad*2, maxH=CH-pad*2;
+    const sw=art.naturalWidth||art.width, sh=art.naturalHeight||art.height;
+    const sc=Math.min(maxW/sw, maxH/sh);
+    const dw=sw*sc, dh=sh*sc;
+    o.drawImage(art, (CW-dw)/2, (CH-dh)/2, dw, dh);
+    o.restore();
+    return c;
+  }
   const sc=Math.min(3.6,(CW-14)/span);                 // fill the plate — bigger guns
   o.translate((CW-span*sc)/2 - x0*sc, CH/2+1.5*sc); o.scale(sc,sc);
   // soft contact shadow under the gun

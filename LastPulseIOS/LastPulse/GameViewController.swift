@@ -8,6 +8,7 @@ final class GameViewController: UIViewController, WKNavigationDelegate {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
+        configuration.websiteDataStore = .nonPersistent()
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init(nibName: nil, bundle: nil)
     }
@@ -29,7 +30,13 @@ final class GameViewController: UIViewController, WKNavigationDelegate {
             assertionFailure("GameContent/index.html is missing from the app bundle")
             return
         }
-        webView.loadFileURL(gameURL, allowingReadAccessTo: gameURL.deletingLastPathComponent())
+        let readAccessURL = gameURL.deletingLastPathComponent()
+        WKWebsiteDataStore.default().removeData(
+            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
+            modifiedSince: .distantPast
+        ) { [weak self] in
+            self?.webView.loadFileURL(gameURL, allowingReadAccessTo: readAccessURL)
+        }
     }
 
     override var prefersStatusBarHidden: Bool { true }
