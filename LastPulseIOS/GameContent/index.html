@@ -1148,8 +1148,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.42.3';
+const GAME_VERSION = '2.42.4';
 const CHANGELOG = [
+  { v:'2.42.4', items:[
+    ['🔎','Bigger fighters & in-hand weapons','characters are larger on the field and held weapons are scaled up so the new art reads clearly during gameplay'],
+  ]},
   { v:'2.42.3', items:[
     ['🎨','Weapon cards show the real art','weapon select now redraws with the PNG art for upgraded and new guns as soon as assets load'],
   ]},
@@ -1706,7 +1709,10 @@ let perfAcc = 0, perfN = 0, perfPeakZ = 0, perfLog = 0;
 
 // ---------- Tunables ----------
 const R = 15;                 // collision radius (humans)
-const HERO_H = 58;            // on-field hero sprite height (px) — nameplate offset tracks this
+const CHAR_VISUAL_SCALE = 1.18;       // drawn chibi scale only; collisions stay at R
+const HERO_H = 70;                    // on-field hero sprite height (px) — nameplate offset tracks this
+const WEAPON_HAND_SCALE = 1.22;       // procedural in-hand fallback scale
+const WEAPON_PNG_HAND_SCALE = 1.55;   // real PNG in-hand art scale
 let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
 const CAMPFIRE = { r:72, heal:6 };   // heal radius (px) and hp/sec near a fire
 
@@ -4079,10 +4085,20 @@ function drawWeaponArt(w){
   if(!art) return false;
   const g = GUNK[w.name] || {l:14};
   const srcX = 18, srcY = 0, srcW = 336, srcH = 174;
-  const scale = g.l / 220;
+  const scale = (g.l / 220) * WEAPON_PNG_HAND_SCALE;
   const dw = srcW * scale, dh = srcH * scale;
   ctx.drawImage(art, srcX, srcY, srcW, srcH, -dw*0.05, -dh*0.42, dw, dh);
   return true;
+}
+function heldWeaponLen(w){
+  const g = GUNK[(w&&w.name)||'Pistol'] || {l:14};
+  return g.l * (imgOk(w&&w.img) ? WEAPON_PNG_HAND_SCALE : WEAPON_HAND_SCALE);
+}
+function drawHeldWeapon(w, fallbackName){
+  if(drawWeaponArt(w)) return;
+  ctx.save(); ctx.scale(WEAPON_HAND_SCALE, WEAPON_HAND_SCALE);
+  drawGun(fallbackName);
+  ctx.restore();
 }
 function drawGun(name,c){
   c=c||ctx;
@@ -4236,7 +4252,7 @@ function drawHuman(h){
   const bob=(moving?Math.sin(h.walk)*(1.1+1.7*spd01):0)+breath, step=moving?Math.sin(h.walk)*(1.8+3.2*spd01):0;
   const ga=h.aim, flash=h.hitFlash>0;
   const oneHand = h.weapon && (h.weapon.name==='Pistol'||h.weapon.name==='Magnum');
-  ctx.save(); ctx.translate(x,y); ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.save(); ctx.translate(x,y); ctx.scale(CHAR_VISUAL_SCALE, CHAR_VISUAL_SCALE); ctx.lineJoin='round'; ctx.lineCap='round';
   // shadow
   ctx.fillStyle='rgba(0,0,0,.20)'; ctx.beginPath(); ctx.ellipse(0,19,15,5,0,0,TAU); ctx.fill();
   // lean the body into the run (shadow stays flat): stronger, scales with horizontal speed + run bounce
@@ -4308,14 +4324,14 @@ function drawHuman(h){
   ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
   ctx.strokeStyle=flash?'#fff':L.skin; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
   ctx.translate(reach,2); if(Math.cos(ga)<0) ctx.scale(1,-1);
-  if(!drawWeaponArt(h.weapon)) drawGun(gname);
+  drawHeldWeapon(h.weapon, gname);
   // support hand on the foregrip for two-handed weapons
-  if(!oneHand && !flash){ const gl=(GUNK[gname]||{l:14}).l, fx=gl*0.45;
+  if(!oneHand && !flash){ const gl=heldWeaponLen(h.weapon), fx=gl*0.45;
     ctx.strokeStyle=INK; ctx.lineWidth=4.6; ctx.beginPath(); ctx.moveTo(fx-7,6); ctx.lineTo(fx,2.2); ctx.stroke();
     ctx.strokeStyle=L.skin; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(fx-7,6); ctx.lineTo(fx,2.2); ctx.stroke();
     ctx.fillStyle=L.skin; ctx.strokeStyle=INK; ctx.lineWidth=1.2;
     ctx.beginPath(); ctx.arc(fx,2.2,2.5,0,TAU); ctx.fill(); ctx.stroke(); }
-  if(h.muzzleT>0){ const gl=(GUNK[gname]||{l:14}).l, mr=h.muzzleR||7; ctx.save(); ctx.translate(gl+1,0);
+  if(h.muzzleT>0){ const gl=heldWeaponLen(h.weapon), mr=h.muzzleR||7; ctx.save(); ctx.translate(gl+1,0);
     ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
     ctx.fillStyle='#fff6c0'; for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2+0.4);
       ctx.beginPath(); ctx.moveTo(0,-mr*0.34); ctx.lineTo(mr*1.4+rand(0,3),0); ctx.lineTo(0,mr*0.34); ctx.closePath(); ctx.fill(); ctx.restore(); }
@@ -4397,11 +4413,11 @@ function drawWalkBody(img, DW, DH, gait){
 function drawHeroArm(h, bob){
   const L = h.look || (h.avatar && h.avatar.look) || {skin:'#f0c8a0', outfit:'#556'};
   const ga = h.aim, gname = h.weapon ? h.weapon.name : 'Pistol';
-  const gl = (GUNK[gname]||{l:14}).l;
+  const gl = heldWeaponLen(h.weapon);
   const oneHand = h.weapon && (h.weapon.name==='Pistol' || h.weapon.name==='Magnum');
   const reach = 12 - (h.recoil>0 ? h.recoil*3 : 0);        // recoil kicks the gun back
   const sleeve = L.outfit || '#556', skin = L.skin || '#f0c8a0';
-  ctx.save(); ctx.translate(0, -3 + bob*0.6); ctx.rotate(ga);   // shoulder pivot at the chest, bobbing with the body
+  ctx.save(); ctx.translate(0, -3 + bob*0.6); ctx.scale(CHAR_VISUAL_SCALE, CHAR_VISUAL_SCALE); ctx.rotate(ga);   // shoulder pivot at the chest, bobbing with the body
   ctx.lineJoin='round'; ctx.lineCap='round';
   // upper arm: dark outline under a sleeve-coloured limb
   ctx.strokeStyle=INK; ctx.lineWidth=6.4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,1); ctx.stroke();
@@ -4410,7 +4426,7 @@ function drawHeroArm(h, bob){
   ctx.translate(reach,1); if(Math.cos(ga)<0) ctx.scale(1,-1);
   ctx.fillStyle=skin; ctx.strokeStyle=INK; ctx.lineWidth=1.2;
   ctx.beginPath(); ctx.arc(0.4,0.4,2.7,0,TAU); ctx.fill(); ctx.stroke();     // trigger hand
-  if(!drawWeaponArt(h.weapon)) drawGun(gname);
+  drawHeldWeapon(h.weapon, gname);
   // support hand on the foregrip for two-handed weapons
   if(!oneHand){ const fx=gl*0.45;
     ctx.strokeStyle=INK; ctx.lineWidth=4.6; ctx.beginPath(); ctx.moveTo(fx-6.5,6.5); ctx.lineTo(fx,2.4); ctx.stroke();

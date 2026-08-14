@@ -92,6 +92,12 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.42.4 — Bigger field characters and held weapons.** Added explicit visual scale tunables:
+  `CHAR_VISUAL_SCALE=1.18`, `HERO_H=70`, `WEAPON_HAND_SCALE=1.22`, and
+  `WEAPON_PNG_HAND_SCALE=1.55`. This enlarges on-field characters and makes the real PNG weapons
+  read clearly in their hands while leaving `R=15` collision/movement balance unchanged. Both
+  drawn chibis and sprite heroes use the larger held-weapon path, with support hands and muzzle
+  flashes moved to the scaled weapon length.
 - **v2.42.3 — Weapon select uses real PNG art.** Fixed the weapon-select card renderer so
   `weaponIcon(w)` draws the loaded `w.img` PNG for both the upgraded original weapons and the new
   weapons, falling back to `drawGun()` only if the image is missing. Also made `loadImg()` rebuild
