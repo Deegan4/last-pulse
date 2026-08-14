@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
-_Last updated: 2026-08-13. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v2.39.2). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+_Last updated: 2026-08-14. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
+v2.43.1). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -81,7 +81,12 @@ versions before anyone corrected it — see the git history if you want the old 
 - **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header
   (unaffected by `vercel.json`, which validate.mjs doesn't check — verify deploy-config changes
   with `node -e "JSON.parse(...)"` instead). Never commit `window.__hook` test hooks (`window.__game`
-  is the permanent shipped one — `grep -c "window.__" index.html` must stay 1). **New this
+  is the permanent shipped one — `grep -c "window.__" index.html` must stay 1). **iOS signing
+  safety:** do not push Apple account/signing secrets to GitHub. Keep Apple account emails, Team IDs
+  unless explicitly approved, App Store Connect API key IDs/issuer IDs, `.p8` keys, certificates,
+  provisioning profiles, `.ipa` files, `.xcarchive` bundles, and export/signing logs out of the
+  repo. Prefer local Xcode account settings or command-line `DEVELOPMENT_TEAM=...` overrides for
+  TestFlight builds; always inspect `git diff --cached` before pushing release work. **New this
   session**: a benchmark that looks like a clear win against synthetic fixture data can still be a
   net loss against the real system's actual state distribution (dogpile ring vs. random disc) —
   always re-verify a promising isolated-benchmark result against the real running game before
@@ -92,6 +97,17 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **iOS App Store icon validation fix.** Added a real `Assets.xcassets/AppIcon.appiconset` to the
+  iOS target, generated required App Store icon PNGs from the existing Last Pulse 512px icon
+  (`120x120` iPhone, `152x152` iPad, plus `180x180`, `167x167`, and `1024x1024`), wired the asset
+  catalog into the Resources phase, and set `CFBundleIconName=AppIcon` in `Info.plist`. This
+  addresses App Store validation errors 90713, 90022, and 90023.
+- **iOS/TestFlight prep — signing safety note.** Updated the iOS wrapper metadata to
+  `CFBundleShortVersionString=2.43.1`, `CFBundleVersion=2`, and
+  `ITSAppUsesNonExemptEncryption=false`; verified an unsigned Release archive succeeds. Real
+  TestFlight upload remains blocked until the Apple Developer team/account, provisioning profile,
+  and App Store Connect app record for `com.lastpulse.game` exist locally/in ASC. Per user
+  instruction, Apple account/team/API/provisioning secrets must not be committed or pushed.
 - **v2.43.1 — Centered v2 weapon arms.** Moved the live PNG-hero weapon rig from the old belly-ish
   default pivot to named chest anchors (`HERO_ARM_ANCHOR_X = 0`, `HERO_ARM_ANCHOR_Y = -15`) so the
   aiming arm sits centered on the upgraded character sprites instead of drifting low/off-body.
