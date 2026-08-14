@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node '/Volumes/SAMSUNG 1TB/last-pulse/.codex/hooks/post-edit-parse-check.mjs'",
+            "statusMessage": "parse-checking index.html"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node '/Volumes/SAMSUNG 1TB/last-pulse/.codex/hooks/session-start.mjs'"
+          }
+        ]
+      }
+    ]
+  }
+}
