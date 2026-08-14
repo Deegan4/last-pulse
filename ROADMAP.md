@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.38.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.41.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -47,6 +47,128 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
 - [x] **Tooling gates** — `validate.mjs` now gates the ROADMAP header version and every `--mode`
       named in the docs against `MODES`; `driver.mjs` gained a `--waves` balance/perf harness.
 
+## v2.37 — "Deeper controller support" (shipped)
+
+- [x] **Gamepad grapple + pause** — `readGamepad()`/`updatePlayer()` (`index.html`) already
+      covered move/aim/fire/reload/lightning/bomb; added grapple (L3, button 10) and a Start
+      (button 9) pause toggle, freeing button 9 off the old bomb cluster (bomb is now button 6
+      only). Gamepad is now sampled once per frame into `curGp` (was a per-frame double-read bug
+      waiting to break edge-detection on every other button — see memory.md).
+- [x] **Controller-detected HUD indicator** — a quiet 🎮 icon appears top-right once `gpSeen`
+      flips true, so players know their input was picked up.
+- [x] **Gamepad menu navigation** (shipped v2.40.0) — see below.
+
+## v2.38 — "Distinct monster silhouettes" (shipped)
+
+- [x] **Stalker gets a distinct silhouette** — leaner torso proportions (`tw`/`th` in `drawZombie`
+      now branch on `stalker`, thinner than `runner`) plus a 3-spike quilled ridge along the back,
+      drawn in the same behind-torso layer as the brute's shoulder spikes.
+- [x] **Juggernaut gets visible armor** — a flat chest plate, angular shoulder guards, and 3 rivet
+      accents (`eye`-colored) drawn over the torso. Closes the v1.13 gap where the roadmap text
+      called juggernauts "armored" long before the art did.
+- [x] Both additions gated `&& !flash` like existing brute-spike/spitter-sac/bloater-blister
+      details, so they cleanly vanish during hit-flash the same way everything else does.
+
+## v2.40 — "Gamepad menu navigation" (shipped)
+
+- [x] **Full controller menu coverage** — `readGamepad()` (`index.html`) gained edge-triggered
+      `navUp`/`navDown`/`navLeft`/`navRight` (d-pad or left-stick, one step per press) and
+      `confirm` (A button); `updateGamepadMenuNav()` drives focus across the avatar grid, weapon
+      grid, settings list, and results screen using the same single per-frame `curGp` sample
+      `loop()` already took for in-match input — no second `readGamepad()` call anywhere.
+- [x] **`curGp` now sampled on every screen**, not just `'playing'` — was previously gated behind
+      `screenState==='playing'`, which is exactly why menus couldn't read the pad before.
+- [x] **X/B doubles as menu Back** (closes Settings), reusing the same edge-triggered `reload`
+      signal already used in-match — same "one button, two contexts" pattern Start already
+      established for pause-toggle.
+- [x] **`.gpfocus` focus ring** — a cyan outline distinct from `.card.sel`'s lime "equipped"
+      border, so "what's focused" and "what's selected" never look like the same thing.
+- Verified via a throwaway `window.__gpTest` hook driving `updateGamepadMenuNav()` directly with
+  synthetic input (headless Chromium reports an empty gamepad list, so real hardware can't be
+  simulated) — confirmed focus moves correctly through every grid/list and `confirm`/`back`
+  trigger the right underlying click handlers. **Still needs a real-controller playtest** for
+  button feel — synthetic input can't validate that.
+
+## v2.40.1 — "Full menu coverage + DualSense rumble" (shipped)
+
+- [x] **Achievements, Shop, Support, Add-to-Home-Screen, What's New** all added to
+      `GP_SIMPLE_MODALS` (`index.html`) — each is just its action button(s) + Close, in visual
+      order; Shop cards reuse the existing `#shopGrid` delegated click listener since `.click()`
+      on the card itself still matches `e.target.closest('[data-upg],[data-shop]')`.
+- [x] **Settings sliders (SFX volume, aim sensitivity) are gamepad-adjustable** — left/right on a
+      focused `<input type=range>` steps its value and dispatches a real `input` event, reusing
+      the existing `sfxVol`/`aimSens` listeners verbatim rather than duplicating their logic.
+- [x] **`gpMenuTargets()` now returns `{targets, cols, closeId}` together** — closeId travels with
+      the target list so `back` closes whichever modal is actually open, not just Settings.
+- [x] **DualSense rumble** — `gpRumble()` calls the standard Gamepad API's `vibrationActuator`
+      (feature-detected, try/catch-wrapped so a missing rumble can never throw mid-combat) on two
+      moments: the player taking a hit (magnitude scaled with damage) and landing a kill. Works
+      identically over Bluetooth and USB — no PS5-specific code needed, since rumble is part of
+      the same `'standard'`-mapping abstraction as button/axis reads.
+- [x] **Non-standard controller mapping is now surfaced to the player**, not just devtools — the
+      connect toast reads "buttons may be misaligned" when `gamepad.mapping !== 'standard'`
+      (known gap on some Safari/WebKit + DualSense-over-Bluetooth combinations), in addition to
+      the existing `console.warn` for diagnosability.
+- **Still open**: real-hardware verification for both the menu coverage and the rumble feel —
+  synthetic input can drive the code paths and confirm nothing throws, but not confirm how a
+  real DualSense over Bluetooth actually feels or whether `mapping` reports `'standard'` on your
+  target browsers.
+
+## v2.40.2 — "Controller status in Settings" (shipped)
+
+- [x] **Live controller-status card** — a new `.ctrlrow` info card in the Settings modal
+      (`index.html`, `#sCtrlRow`) shows "🟢 &lt;pad name&gt; connected" or "⚪ No controller
+      connected", refreshed every frame Settings is open (`syncControllerStatus()`, called from
+      `loop()`'s menu branch, `openSettings()`, and both `gamepadconnected`/`gamepaddisconnected`
+      listeners) plus a hint line: pairing instructions when nothing's connected, control-scheme
+      reminder when something is, or a non-standard-mapping warning when relevant.
+- Addresses direct user feedback: there was previously **nothing in the UI** telling a player a
+  controller could be paired at all, or confirming a pairing worked — the only prior signal was a
+  small 🎮 HUD icon that only appears mid-match once `gpSeen` flips true (which itself requires
+  actual stick/button movement), not discoverable before dropping into a fight.
+- Web pages cannot trigger or complete Bluetooth pairing themselves (that's an OS-level
+  handshake) — this card's job is purely live status + pointing the player at the right OS
+  setting, not literally "connecting" a controller from in-page.
+
+## v2.41.0 — "Local 2-player co-op" (shipped)
+
+- [x] **Auto-join on 2nd controller** — `tryJoinPlayer2()` (`index.html`) checks the connected-pad
+      list every frame while a match is live (and once at `spawnMatch()`, and on every
+      `gamepadconnected` event) and spawns Player 2 the instant a 2nd pad is present — no join
+      screen. Player 2 is gamepad-only by design (no touch/keyboard fallback) and has no separate
+      save/profile: fixed avatar, Player 1's current weapon, kills/XP/coins still accrue to
+      Player 1's `meta`, same as a guest controller on a console.
+- [x] **Per-controller input, not shared globals** — `readGamepad()` was refactored into
+      `readGamepadFrom(gp, edgeState)`, a pure function taking an explicit prev-button-state bag,
+      because the old module-level `gpRP`/`gpLP`/etc. singletons would have silently corrupted
+      each other's edge-detection the moment two controllers were both pressing buttons. Two
+      independent state bags (`gp1Edge`/`gp2Edge`) now exist. `updatePlayer(h,dt,gp,readShared)`
+      gained a `readShared` flag so Player 2 never reads the shared `keys{}`/`mouse`/on-screen
+      joystick singletons that Player 1's input still uses — without it, keyboard/touch input
+      would have silently steered BOTH players at once.
+- [x] **Shared, non-zooming camera** — the camera frames the midpoint of both alive players;
+      `leashPlayer2()` gently clamps Player 2's position to stay within camera range of Player 1
+      after each frame's movement, so a co-op partner can't wander off-screen. A dynamic
+      zoom-to-fit-both camera was **deliberately cut** from this pass — the codebase's culling
+      (`inView()`), vignette, and a couple of other draw-time rects all assume the visible world
+      span equals exactly `W×H`; correctly threading a variable zoom through all of them without
+      being able to verify the result on a real 2-controller device was judged a worse tradeoff
+      than a simple position leash that touches zero rendering code. If zoom is wanted later,
+      every `cam.x`/`cam.y` read in the file currently assumes zoom≡1 — audit all of them together.
+- [x] **Per-player rumble + naming** — `gpRumble()` now takes a `padIndex` so each player's own
+      controller rumbles on their own hits/kills, not always pad 0 (`h.gpIndex`, set at spawn).
+      Kill-feed text was fixed to use `e.isPlayer2` before the existing `e.isPlayer` check, since
+      Player 2 is also `isPlayer:true` (that's what exempts them from bot AI) — without the
+      `isPlayer2` check first, every Player 2 kill/death would have displayed Player 1's name.
+- **Design choice, not a bug**: the match ends when Player 1 dies, regardless of Player 2's
+  state — this already fell out of the existing `if(!player.alive)` end-check with zero code
+  change, and matches "results/achievements are Player 1's run" from the auto-join design above.
+- **Still open**: real 2-controller on-device playtest — verified headless via a mocked
+  `navigator.getGamepads()` (join, independent movement, the leash, per-player rumble targeting,
+  and kill-feed naming all checked and passing), but mocked input can't validate actual feel,
+  whether the leash radius (`Math.min(W,H)*0.42`) is comfortable in practice, or real controller
+  pairing behavior.
+
 ## Design pillars (don't break these)
 
 1. **One file, no build** — everything stays in `index.html`; features that need a backend or
@@ -64,8 +186,11 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
 
 - [x] **Campfire heal aura** — `campfireHeal(h,dt)`: `CAMPFIRE.heal` hp/s within `CAMPFIRE.r`,
       green heal sparks. Player-only for now (bots could be added — small compute cost).
-- [ ] **Wall blood streaks** — _deferred_: blood is particle-based (`spark`) with no wall
-      collision; needs a vertical streak-decal variant + spray-vs-wall test. Fiddliest item.
+- [x] **Wall blood streaks** (shipped v2.34.2) — `hurt()`/`die()` call `spraySplatOnWall`, which
+      finds the nearest building wall segment within ~22px of the hit and, if close enough, drops
+      a fading drip decal (`wallStreaks[]`) drawn on the wall face in `drawBuilding`. Interior
+      wall-frame (`drawBuildingBase`) doesn't get streaks — only the exterior facade — so a fight
+      that moves inside won't show marks on the interior frame; revisit if that's noticeable.
 - [x] **Indoor-aware zombies** — `updateZombie` routes to the nearest door (skirts the nearer
       corner when on the wrong side) via `insideBuilding`. Verified: zombie navigates 247→20px.
 - [x] **Second door on large houses** — `wallRects` adds a top-wall door gap for `w>BIG_HOUSE`
@@ -109,12 +234,26 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 
 ## v1.13 — "Modes & Bosses"
 
-- [ ] **Boss waves in Horde** — every 5th wave spawns a boss zombie (huge brute variant: hp bar
-      banner, ground-slam AoE, guaranteed loot drop).
-- [ ] **Payload-style event in BR** — a supply convoy crosses the map mid-match; whoever
-      escorts/loots it gets a gold weapon. Gives mid-game a reason to move.
-- [ ] **Mutators** — occasional match modifiers announced at drop-in (low gravity bombs, 2×
-      zombies, fog night). One `MUTATORS` table + a spawn-time pick.
+- [x] **Boss waves in Horde** (shipped v2.20.0–v2.21.1) — every 5th wave spawns armored
+      `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`, `index.html:1625`),
+      count scaling with wave (`1+floor(hordeWave/10)`, `index.html:2843`). _Not_ built: no
+      dedicated boss hp-bar banner, no ground-slam AoE attack, no guaranteed-loot-drop table —
+      juggernauts use the same contact-damage and drop logic as regular zombies, just scaled up.
+      If the original "huge brute with hp banner + AoE slam + guaranteed loot" vision is still
+      wanted, that's new work, not a bug fix — split into its own bullet if approved. _(v2.38.0:
+      juggernauts finally look armored — visible chest plate + shoulder guards in `drawZombie` —
+      closing a gap where the roadmap text called them "armored" for 8+ versions before the art
+      did.)_
+- [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
+      v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
+- [x] **Mutators** (shipped v2.35.0) — a `MUTATORS` table (`index.html`, "Match mutators"
+      section) + `pickMutator()` (35% chance, else vanilla) picked once in `spawnMatch`'s horde
+      branch and announced via `toast()` + a persistent HUD row (`#mutRow`). Three modifiers:
+      **Swarm Night** (`zMul:2`, doubles both the initial and per-wave zombie spawn counts),
+      **Deep Fog** (`fog:true`, forces night + shrinks/darkens the vision vignette in
+      `drawDayNight`), **Low Gravity** (`bombFuseMul`/`bombRadMul`, bombs hang longer and blast
+      wider). No apply/revert step needed — `spawnMatch` already rebuilds the world from scratch
+      each match, so every consumer just reads `activeMutator` directly at the point of use.
 
 ## Balance & tuning backlog (needs real-device playtests)
 
@@ -142,7 +281,6 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
   ride on a free tier. Needs user approval for a hosted service.
 - **PWA install** — manifest + service worker for home-screen install and offline play. Two
   extra files; breaks the "one file" pillar, so it's an explicit user call.
-- **Gamepad menu navigation** — in-match gamepad works; menus are touch/mouse-only today.
 
 ## Release conventions (recap)
 

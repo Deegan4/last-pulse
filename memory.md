@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
-_Last updated: 2026-07-17. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v2.24.1). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+_Last updated: 2026-08-13. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
+v2.39.2). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -10,36 +10,302 @@ royale** — a from-scratch remake inspired by the StickyGames title _Don't Die_
 canvas-drawn; no original sprites). Everything lives in [`index.html`](index.html): the game
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
-## Session handoff — 2026-07-17
-_Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below._
+## Session handoff — 2026-08-13
+_Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below.
+This section is a rolling "as of right now" summary — overwrite it (don't append) each session so it
+never goes stale like the 2026-07-17 version it replaced did (it sat frozen at v2.24.1 for ~10 shipped
+versions before anyone corrected it — see the git history if you want the old text)._
 
-- **Where things stand:** production is **v2.24.1**, everything below is merged to `main` (HEAD `fdc61f8`)
-  and live via Vercel. Working branch `claude/builders-feature-buildings-p0jpez` is synced to `main`.
-- **Shipped this session (all merged):** v2.22.0 **Builders** (in-match build mode + scrap) → v2.22.1 music
-  timing fix → v2.23.0 **Donate** button (Stripe Payment Link) → v2.24.0 **music removed** (SFX kept) + donate
-  restyle → SFX param cleanup → v2.24.1 **black status-bar bar fix** (the `#game` box-shadow letterbox recolor).
+- **Where things stand:** production is **v2.39.2**, merged to `main`. Working branch
+  `claude/next-steps-v8p4vf` is one commit ahead of `main` with **PR #89 open (draft, not yet
+  merged)** — a deploy-config-only change (see below), no `GAME_VERSION` bump. Note: some of this
+  window's shipped versions (v2.38.0, v2.39.0–2.39.2) landed from a **second, concurrent Claude
+  session working the same branch** — PRs #87/#88 — not from this session; this doc reconciles
+  both sessions' work into one accurate snapshot.
+- **Shipped since last handoff:**
+  - **v2.38.0** — distinct visual silhouettes for `stalker` (spine ridge) and `juggernaut` (armor
+    plating) in `drawZombie()`, replacing plain recolors. Shipped by the concurrent session.
+  - **v2.39.0–2.39.2 — weapon art pass**, done across three rounds prompted by user-supplied
+    photorealistic weapon reference images. Each time, clarified via `AskUserQuestion` that the
+    ask was a *design cue* to reinterpret in the existing flat-canvas style, not a literal
+    photorealistic match (a fundamentally different rendering technique) — checked for a Meshy MCP
+    server first (not available: not connected, no `MESHY_API_KEY`) before falling back to flat
+    canvas. Result: Minigun got a belt + grille, Pistol a hammer, Rifle a wood-stock color/`wood`
+    flag, SMG a suppressor — all in `GUNK`/`drawGun()` with the file's established
+    BEHIND/MAIN/OVER-BODY layering.
+- **This session's actual work:**
+  1. **Investigated `separate()` perf per user request, shipped nothing.** Built a synthetic
+     Node benchmark suggesting a 2-3x regression in the existing spatial-hash grid under a tight
+     zombie dogpile, built a density-adaptive hybrid fix — then re-verified **in the real running
+     game** (Playwright, forced dogpile) before trusting it, and the fix measured *worse* in situ:
+     real zombies self-organize into a ring under continuous `separate()` pushback, unlike the
+     static random disc the synthetic benchmark assumed. Correctly declined to ship a fix that
+     only looked good against unrepresentative fixture data. At the real ~85-entity horde ceiling,
+     `separate()` costs <0.2ms/frame — not a meaningful chugging source either way. See
+     `expert-web-game-dev-workspace/iteration-1/eval-0-perf-collision/with_skill/report.md` in the
+     scratchpad for the full numbers if picked up again.
+  2. **Created a new Claude Skill: `expert-web-game-dev`** (`/root/.claude/skills/expert-web-game-dev/SKILL.md`),
+     generalizing this project's demonstrated engineering rigor (measure before claiming perf
+     wins, verify visual changes are actually visible not just error-free, audit state-ordering/
+     draw-layering bugs, close with a cited technical next-steps section) into a reusable skill
+     for any browser/JS game codebase. Vibe-tested with two isolated worktree-agent runs (collision
+     perf — see above — and a visual-detail task that added tattered streamers to the runner
+     zombie, verified via a real crop-comparison screenshot); both runs held up well. Test-run
+     artifacts (not committed) live under
+     `/tmp/.../scratchpad/expert-web-game-dev-workspace/iteration-1/`.
+  3. **PR #89 (open, draft): `vercel.json` Cache-Control headers.** `index.html` and non-`.glb`
+     assets (`loader.js`, `manifest.json`) stay `no-cache, must-revalidate`; `.glb` model files get
+     a year-long `immutable` cache since they're large and rarely change and aren't content-hashed.
+     Header-rule ordering matters — Vercel applies matching rules cumulatively with later rules
+     winning ties, so the general `/assets/(.*)` rule is listed *before* the more specific
+     `/assets/(.*).glb` rule, not after.
 - **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
   `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
 - **Open / parked:**
-  1. **On-device confirm the black-bar fix** — device-only symptom; if the home-screen icon still shows black,
-     delete & re-add it (iOS caches the standalone config from first save).
-  2. **Stripe "After payment → Redirect"** to the production URL so donors return to the game (Stripe Dashboard
-     setting). **A Stripe MCP connector (`mcp__Stripe__*`) became available late in the session** — earlier it
-     wasn't; a future session can inspect/configure via `get_stripe_account_info` + `stripe_api_read/write`
-     (ToolSearch to load schemas) before touching the live Payment Link.
-  3. Optional seam tweak: if the green status-bar strip reads darker than the menu top, nudge `#111d0c`→`#16260f`.
-  4. Parked ideas: achievement hook for the builder (`matchStat.built` already tracked), donation amount tiers
-     (needs one fixed-price Payment Link each), file-based `<audio loop>` soundtrack if music is ever wanted back.
-- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v`; drive with the run-brawl-arena
-  driver (three.js CORS + suspended WebAudio headless are non-failures); never commit `window.__hook` test hooks
-  (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
+  1. **Merge PR #89** once reviewed — deploy-config only, no code/version change, low risk.
+  2. **Playtest v2.36.0's bigger-map/mutator changes on-device** — still verified headless only,
+     carried over from two sessions ago.
+  3. **Profile `draw()` and the particle/floater pipeline, not `separate()`** — this session's
+     real finding is that `separate()` is a non-issue at current scale; if "chugging" reports
+     continue, `draw()`'s per-frame `drawables.sort()` (index.html:3137) and `particles[]`/
+     `floaters[]`/`splats[]` growth are the more plausible next place to measure, not the collision
+     grid.
+  4. **Balance backlog needs a fresh look** — `COMBO_WIN`, spawn distances, wave pacing were tuned
+     against the OLD 3000-unit arena and pre-mutator zombie counts; both changed materially since.
+  5. **Dried-blood aging** (`ROADMAP.md` v1.11) — low priority, needs numeric rgb storage instead
+     of the current `'rgba(r,g,b,'` prefix-string trick.
+  6. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
+     generated. Needs an explicit yes/no from the user (add the key, or drop the moonshot).
+  7. **Gamepad still NOT wired into menus** (avatar/weapon grids, settings, results are mouse/
+     touch-only DOM overlays) — carried over, unchanged this session.
+- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header
+  (unaffected by `vercel.json`, which validate.mjs doesn't check — verify deploy-config changes
+  with `node -e "JSON.parse(...)"` instead). Never commit `window.__hook` test hooks (`window.__game`
+  is the permanent shipped one — `grep -c "window.__" index.html` must stay 1). **New this
+  session**: a benchmark that looks like a clear win against synthetic fixture data can still be a
+  net loss against the real system's actual state distribution (dogpile ring vs. random disc) —
+  always re-verify a promising isolated-benchmark result against the real running game before
+  shipping, not just against a bigger synthetic N. **From two sessions ago, still true**: (a)
+  string-concatenated Map keys (`cx+','+cy`) are measurably slower than packed-integer keys at this
+  codebase's scale; (b) a benchmark harness that re-`eval`/`new Function()`s the code-under-test
+  *inside* the timed loop, or that omits a field the real code filters on (like `.alive`), will
+  silently produce meaningless numbers.
 
 ## Current state (done)
-
-- **iOS shell added (2026-08-14):** `LastPulseIOS/` is a generated Xcode iOS app that bundles the existing canvas game in a full-screen `WKWebView`, preserving offline gameplay and local assets while exposing iPhone/iPad orientation and safe-area behavior.
-- **v2.36.0 weapon expansion (2026-08-14):** added four late-game weapons—Pulse SMG, Arc Rifle, Frost Blaster, and Rocket Launcher—with generated card art, transparent cropped sprites, arc piercing, cryo slow, explosive rockets, new tracer colors, and iOS-bundled copies under `LastPulseIOS/GameContent/assets/img/`.
-- **v2.37.0 original arsenal upgrade (2026-08-14):** buffed the pre-existing 12 weapons only—damage, magazines, reloads, range, fire cadence, spread identity, and special text—while leaving the v2.36.0 weapons unchanged.
-- **v2.38.0 original weapon art pass (2026-08-14):** replaced the procedural card visuals for the pre-existing 12 weapons with individually cropped, transparent premium sprites; the four v2.36.0 weapon visuals remain unchanged.
+- **v2.39.2 — SMG suppressor.** Second reference image (a single floating photorealistic bullpup
+  carbine over a neon cyberpunk city, no accompanying text) — same rendering-technique mismatch
+  as v2.39.1's reference, PLUS a mood/setting element (neon night city) not in the game's
+  established sunny-suburb tone. Given the ambiguity (no text, and a new element that could imply
+  a much bigger ask than weapon art), asked two follow-up `AskUserQuestion`s rather than guess:
+  (1) is this another weapon cue, a request to recheck Meshy, or a broader art-direction shift —
+  user confirmed "another weapon design cue"; (2) which weapon — offered SMG (plainest remaining,
+  matches the "generic barrel" pattern from v2.39.0) vs Tommy (already has a `drum` flag the
+  reference's cylinder could extend) — user picked **SMG**. Added a new `finned:1` GUNK flag: a
+  chunky ribbed cylinder/suppressor sleeve over the barrel (rounded-rect body + a sheen highlight
+  + 4 vertical rib lines), drawn in the OVER-BODY mid-layer attachments section alongside
+  scope/bipod/pump. SMG now reads with real silhouette instead of a plain thin barrel. Verified
+  via a throwaway hook (never committed, `grep -c "window.__" index.html` back to 1): high-zoom
+  render shows the cylinder clearly, distinct sheen and rib lines legible, not just present;
+  `validate.mjs` and `--play --shoot` both green, 0 new errors.
+- **v2.39.1 — Rifle wood stock.** Follow-up to v2.39.0: user shared a photorealistic 3D-rendered
+  weapon reference image and asked to match it. That style (wood-grain textures, dynamic
+  lighting, particle muzzle flash, DOF background) is a fundamentally different rendering
+  technique than the game's flat canvas-shape art — matching it literally would mean generating
+  real raster sprite assets (like the hero portraits), not tuning `drawGun()`. Asked via
+  `AskUserQuestion`; user wanted raster art via the **Meshy MCP** specifically — checked, and no
+  Meshy server is available in this session at all (not connected, not pending-auth — matches the
+  long-standing `MESHY_API_KEY`-blocked status already in this file). Told the user it needs
+  authorizing via claude.ai connector settings (or the API key added to env config) before any
+  session can use it. Re-asked scope; user chose "push the flat canvas style further" — reference
+  for proportions/silhouette cues only, no textures/lighting, staying in `drawGun()`'s existing
+  style. Picked the one clear, high-confidence signal from a low-fidelity (garbled-OCR-labeled)
+  reference rather than guess broadly across all 12 weapons: **Rifle** was the only long gun
+  rendered in flat grey/black with zero wood, while the reference clearly reads as a wood-stocked
+  hunting rifle, and Shotgun/Crossbow already have the exact `wood` grain-wave flag needed. Changed
+  `Rifle`'s `GUNK` body color `#3a3f48`→`#7a5836` (a warmer/lighter walnut, kept distinct from
+  Shotgun `#6a4a2e`/Crossbow `#6a4e2a`) and added `wood:1` — zero new code, reused the existing
+  grain-wave renderer. Verified via a throwaway hook (never committed): Rifle/Shotgun/Crossbow
+  rendered side-by-side at high zoom, Rifle reads as a distinct warm wood tone, no errors;
+  `validate.mjs` and `--play --shoot` both green.
+- **v2.39.0 — Weapon detail pass.** User asked to "upgrade the weapons visuals," explicitly
+  framed as matching v2.38.0's stalker/juggernaut convention ("give the plainest silhouettes a
+  real signature detail, in a clearly-layered behind/over-body pass") and asked for an ordering-
+  bug audit + a verification hook, mirroring that commit's own process. Audited `GUNK`
+  (`index.html`) for the weapon-art equivalent of "recolored zombie with zero silhouette" —
+  **Minigun** (`fat,cluster` only, no `guard` even) and **Pistol** (`serr,guard` only) were the
+  two sparsest entries, same gap pattern as pre-v2.38 stalker/juggernaut. Added: Minigun gets a
+  visible **ammo belt** (drawn in a new explicit BEHIND-BODY layer, before the main body fill —
+  the comment there explicitly calls out that drawing a "behind" layer after its subject is
+  exactly the `zty`-class ordering mistake the stalker fix caught) plus a **heat-vent grille**
+  with a faint orange glow (OVER-BODY detail pass). Pistol gets a small rear **hammer** (OVER-BODY
+  pass). Also added explicit `---- BEHIND BODY ----` / `---- MAIN BODY ----` / `---- OVER BODY
+  ----` banner comments through `drawGun()` — an ordering-bug **audit**, not a rewrite (all
+  existing locals were already declared before use, no live `zty`-style bug found — the banners
+  make the convention explicit so a *future* addition doesn't introduce one). Verified via a
+  throwaway hook (never committed, `grep -c "window.__" index.html` back to 1): all 12 weapons
+  render 0 errors in both draw paths (`weaponIcon` menu cards + in-hand `drawGun` via
+  `drawHeroArm`) across a full lineup at varied aim poses; a direct high-zoom `drawGun()` render
+  (bypassing character/HUD chrome) confirmed the belt, grille, and hammer are each clearly
+  legible, not just theoretically present — the first attempt at this crop cut off the hammer at
+  the canvas edge, a reminder that "no errors" and "actually visible" are different checks.
+- **v2.38.0 — Distinct monster silhouettes.** `drawZombie()` (`index.html`) previously gave real
+  shape treatment only to `normal`/`runner`/`brute` (plus small add-on glows for `spitter`/
+  `bloater`); `stalker` and `juggernaut` rendered as recolored/rescaled `normal` zombies with zero
+  distinguishing silhouette. Added: `stalker` gets a leaner torso (`tw`/`th` now branch on
+  `stalker`, thinner than even `runner`) plus a 3-spike quilled ridge along its back edge (drawn
+  in the same "behind torso" layer as the brute's shoulder spikes). `juggernaut` gets visible armor
+  — a flat chest plate, two angular shoulder guards, and 3 rivet dots in the `eye` accent color —
+  drawn over the torso, before the front arm. Both additions are gated `&& !flash` like the
+  existing brute-spike/spitter-sac/bloater-blister details, so they vanish during hit-flash the
+  same way. **Real bug caught and fixed along the way**: `zty` (torso top y) was declared inside
+  the TORSO section, but the new stalker-ridge block (drawn earlier, in the "behind torso" layer)
+  needed it too — hoisted the `const zty=-6+bob*0.2;` declaration up next to `bob`, removed the
+  now-duplicate declaration below. Verified via a throwaway `window.__spawnKind`/`__flashLunge`
+  hook on a scratch copy (never committed — `grep -c "window.__" index.html` confirmed back to 1
+  before finishing): side-by-side screenshots show all four kinds (normal/brute/stalker/juggernaut)
+  clearly distinct at a glance, and the lunge-attack pose renders correctly with armor intact.
+  **One open question, NOT a regression**: hit-flash white-recolor didn't visibly show up in any
+  headless screenshot even with `hitFlash` confirmed >0 at capture time — reproduced identically on
+  unmodified `normal` zombies, so it's a pre-existing headless/screenshot-timing quirk (likely rAF
+  paint timing vs. CDP screenshot capture), not something this change broke. Worth a real-device
+  glance next playtest, but not blocking.
+- **v2.37.0 — Deeper controller support.** `readGamepad()` (`index.html`) already covered
+  move/aim/fire/reload/lightning/bomb; added grapple (L3, button 10) wired to `castGrapple(h)`
+  in `updatePlayer()`, and Start (button 9) to toggle pause via `openSettings()`/`closeSettings()`.
+  Freed button 9 off the old bomb cluster (bomb is now button 6 only) since Start needed a clean
+  edge-triggered button. Pause has to work while paused, but `updatePlayer()` only runs when
+  `!paused` — so gamepad is now polled once per frame in `loop()` into a module-level `curGp`,
+  and `updatePlayer()` reads that instead of calling `readGamepad()` itself; calling it twice a
+  frame would have silently broken edge-detection for every other gamepad button (the prev-state
+  vars like `gpRP` get stomped by the second call, so the second call always sees `current===prev`
+  and never reports an edge). Added a quiet 🎮 top-right HUD indicator once `gpSeen` flips true.
+  Menu/UI navigation (avatar/weapon grids, settings, results) intentionally left mouse/touch-only.
+  Needs an on-device controller playtest — headless can't simulate real gamepad input.
+- **Perf: spatial-hash `separate()`** (no version bump — internal refactor, no player-visible
+  change; on the v2.36.0 branch, user: "Start on the spatial hash rewrite for separate()" after
+  it was flagged as the biggest headroom risk following the bigger arena + Swarm Night mutator).
+  `separate()` (`index.html`) was a full O(n²) all-pairs pass over every alive human+zombie, run
+  once per frame — with the bigger arena and 2x mutator able to push 150-180+ entities in late
+  waves, that's 15-16k distance checks/frame. Replaced with a uniform spatial hash (bucket by
+  `Math.floor(x/64)`/`Math.floor(y/64)`, 64 chosen since it's ≥ the largest possible `r_a+r_b`
+  — juggernaut r:26 is the biggest entity — so any colliding pair is guaranteed same-or-adjacent
+  cell; 3x3 neighbor scan per entity). **Two real mistakes caught by actually measuring instead of
+  trusting Big-O, both left in the code comment as a warning for next time**: (1) a first version
+  keyed the Map with a template string (`cx+','+cy`) and was measurably SLOWER than brute force at
+  every size tested (30→220 entities) — string concat + string-keyed Map lookups cost more in V8
+  than the comparisons they saved; fixed with a packed-integer key. (2) even fixed, a **buggy
+  benchmark harness** (synthetic entities missing the `.alive` flag the shipped code filters on,
+  and later `new Function()` re-compiling the shipped code *inside* the timed loop) produced
+  wildly wrong numbers twice before a harness that compiles the function once and supplies valid
+  `.alive` entities gave the trustworthy read: **a wash (≈1.0x) at the game's actual current
+  ceiling (~99 entities: 15 humans + up to 84 zombies under Swarm Night)**, only becoming a real
+  win above that (1.3x@150, 1.95x@220, 2.2x@400). Shipped anyway — not a regression at today's
+  scale, real headroom if density climbs further — but the code comment explicitly says NOT to
+  cite "2-5x win" since that only shows up well beyond current gameplay. Also caught and fixed:
+  the grid changes *intra-frame pair-processing order* vs the old strict-ascending-index loop
+  (this is a single-pass Gauss-Seidel relaxation, not a closed-form solve, so order affects the
+  exact per-frame trajectory) — verified across 200 randomized configs that both orderings are
+  symmetric (neither systematically leaves more residual overlap) and converge equivalently within
+  ~30 frames, so this doesn't matter for gameplay. Verified: `validate.mjs` green; `--play --shoot`
+  0 new errors, and one run happened to roll Swarm Night live — screenshot shows a real 20-zombie
+  cluster around the player with correct, non-overlapping separation.
+- **v2.36.0** — **Bigger, richer map + upgraded minimap** (user: "upgrade the maps" → scoped via
+  AskUserQuestion to three things: more content on the existing map, a better minimap, and a
+  bigger arena). `ARENA` 3000→4000 (~1.8× the area); `PHASES`/`farSpawn`/`decorSpot` are all
+  already ARENA-relative fractions so they scaled for free, and `zoneActive()` returns
+  `gameMode!=='horde'` so the dormant BR zone-shrink logic (the only thing with radii baked off
+  the old ARENA) is inert in the only active mode anyway — nothing to migrate. `buildDecor()`
+  counts bumped ~30–60% (not a flat area-scale 1.8×, to keep the bigger map feeling like "more to
+  explore" rather than just diluting the old density at the same perf cost) — buildings 9–16→
+  13–22, ponds 7–10→9–13, trees/bush/grass/flowers/rocks all up proportionally. New landmark:
+  **graveyard** (`TALL_DECOR`, unlocks Lv20 alongside the existing campfire/fence/well/statue
+  milestones) — 3 weathered leaning tombstones + a low iron fence with a sagging chain rail, drawn
+  in the same canvas-shape style as the other landmarks (no new art assets). **Minimap** upgraded
+  from 108→132px, now renders water ponds (was invisible before) and landmarks as colour-coded
+  dots (`MINI_LANDMARK_COL`), plus a player facing-direction tick so orientation reads at a glance.
+  Verified headless: `validate.mjs` green; `--play --shoot` 0 new errors (FPS 35–55, fine); a
+  throwaway hook forced `meta.level=25` + `buildDecor()` and confirmed 2 graveyards spawn with
+  `ARENA===4000`, screenshot showed the tombstones rendering correctly in-world; the live-match
+  minimap screenshot shows ponds/buildings/landmark dots all rendering distinctly.
+- **v2.35.2** — **Fixed the overshoot v2.35.1 introduced.** A SECOND Screen Fit report on the same
+  device (after v2.35.1 shipped) showed the swap was gone (`inner: 393x793`, correctly portrait-
+  shaped and matching `screen: 393x852`'s width) but a NEW mismatch appeared: `stage rect: h 945`
+  vs the real viewport `793` — off by 152. Root cause: v2.35.1's `measureViewport()` fix
+  unconditionally replaced `vh` with `screen.height` (852) whenever standalone, even when the
+  browser's own measurement was already correct — then `resize()`'s pre-existing pull-up-and-
+  extend trick (`stage.height = gh+st+sb`, meant to make the canvas paint under the status bar in
+  a Safari TAB) added the insets **again** on top of an already-full-screen `gh`, double-counting
+  by exactly `st+sb` (59+34=93 ≈ the reported 152 discrepancy incl. rounding/settle-timer drift).
+  That pull-up trick is a no-op in a real Safari tab (`effInsets()` returns 0/0 there, confirmed
+  v2.34.1) — it was ONLY ever "live" in standalone, where the webview already covers the full
+  physical screen and needs no pulling-under. Two-part fix: (1) `measureViewport()` now only
+  overrides `vw`/`vh` with screen-derived values in two narrow, evidenced cases — a genuine shape/
+  orientation MISMATCH (the v2.35.1 swap bug), detected via an independent `screen.orientation`
+  signal rather than comparing the suspect `vw`/`vh`; or when `safeTopPx()`/`safeBottomPx()` are
+  BOTH <8 (env() is independently known to be lying — the same threshold `effInsets()` already
+  uses to decide whether to substitute, matching the original v2.31.5 "short + lying env()" bug
+  pattern). Otherwise it trusts the browser's own self-consistent numbers, which is exactly what
+  this device was reporting the second time. (2) `resize()` no longer adds `st+sb` to the stage
+  size in standalone — it fills `gw`/`gh` directly at `top:0`, since the webview already covers
+  the whole screen; the pull-up-and-extend path is now Safari-tab-only (where it was always a
+  no-op anyway). Verified headless across 5 spoofed cases (Playwright `addInitScript` overriding
+  `navigator.standalone`/`window.screen`, plus a HOOK-injected `safeTopPx`/`safeBottomPx`
+  override since those are closure-scoped and unreachable from outside): this exact 793-consistent
+  report (stage now exactly 393×793, was 393×945), the v2.35.1 swap case (still fixes to
+  393×852, matching the real screen), the original v2.31.5 short-report+lying-env case (still
+  fixes to 390×844, no regression), a plain Safari tab, and desktop (both untouched). 0 page
+  errors in all five; `validate.mjs` and the headless `--play --shoot` smoke test both pass.
+  **Caveat**: this is now TWO rounds on the same device — ask for a third Screen Fit report before
+  fully trusting this is done; the diagnostic's own check #1 (`stage==visualViewport.height`)
+  can't validate a fix that correctly DISAGREES with a lying viewport (the Report-A/historical
+  cases), so a real device confirmation still matters more than the headless simulation here.
+- **v2.35.1** — **Fixed a real portrait/landscape viewport swap** (user screenshot + a Screen Fit
+  report resolved it — no more blind fixes). Report showed, on a standalone iPhone with a
+  physically-portrait 393×852 screen: `innerWidth/innerHeight/visualViewport/clientHeight` ALL
+  agreed on **852×393 — landscape-shaped** — while `screen.width/height` correctly read 393×852.
+  `measureViewport()`'s standalone screen-clamp used `vw>=vh` to *guess* orientation before
+  deciding how to remap `screen.width/height` — a chicken-and-egg bug, since `vw`/`vh` were
+  exactly the swapped values already known to lie. Root cause was distinct from the earlier
+  short-innerHeight bug (v2.31.5) this clamp was originally written for; the old "clamp up, never
+  down" logic couldn't correct an *over*-reported width anyway. Fix: derive orientation from an
+  INDEPENDENT signal (`screen.orientation.type`, falling back to `matchMedia('(orientation:
+  portrait)')`) instead of comparing the suspect `vw`/`vh`, then set `vw`/`vh` directly from
+  `screen.width/height` (not clamp-up) so an over-reported/swapped dimension gets corrected, not
+  preserved. Verified headless with three spoofed cases (Playwright `addInitScript` overriding
+  `navigator.standalone`/`window.screen`): (1) the user's exact swapped-report scenario → stage
+  now 393×852 (was computing 852×467, the clipped/half-filled layout in the screenshot); (2) the
+  original v2.31.5 short-innerHeight case (390×801 reported, 390×844 real) → still corrects to
+  390×844, no regression; (3) desktop non-standalone → untouched (1280×800). 0 page errors in all
+  three; `node scripts/validate.mjs` and the headless `--play --shoot` smoke test both pass (the
+  CDN CORS console error remains the pre-existing, confirmed-unrelated one).
+- **v2.35.0** — **Match mutators** (closes `ROADMAP.md` v1.13's Mutators item). A `MUTATORS` table
+  (new "Match mutators" section, right after the daily-challenge code) + `pickMutator()` (35%
+  chance per Horde match, else vanilla) picked once in `spawnMatch`'s horde branch, announced via
+  `toast()` + a persistent HUD row (`#mutRow`/`#statMut`). Three modifiers, each read directly off
+  `activeMutator` at the point of use (no apply/revert step — `spawnMatch` already rebuilds the
+  world from scratch every match): **Swarm Night** (`zMul:2`, doubles the initial *and* per-wave
+  zombie spawn counts), **Deep Fog** (`fog:true`, forces `timeOfDay='night'` and shrinks/darkens
+  the vision vignette in `drawDayNight`, radius 280→170 / darkness .30→.48), **Low Gravity**
+  (`bombFuseMul:1.8`/`bombRadMul:1.4`, bombs hang longer before detonating and blast a wider
+  radius). Picked 🎲 (dice) and 🌙 (moon, not 🌫️ fog — the fog emoji's glyph is missing from this
+  sandbox's headless Chromium font, rendered as a blank box; swapped to something universally
+  supported rather than risk it on real devices too). Verified: `node scripts/validate.mjs`;
+  headless `--play --shoot`; a throwaway `window.__t`/`__forceMut`/`__wave`/`__bomb` hook (never
+  committed) forced each mutator directly and confirmed wave-2 zombie count 14→28 under Swarm
+  Night, bomb fuse 0.85→1.53 and blast radius ×1.4 under Low Gravity, and a real HUD screenshot
+  under Deep Fog showing the correct icon/text + night vignette; 0 page errors throughout.
+- **v2.34.2** — **Wall blood streaks** (closes the long-deferred `ROADMAP.md` v1.11 item). `hurt()`
+  and `die()` call the new `spraySplatOnWall(x,y,dmg)`: finds the nearest building-wall segment
+  within ~22px of the hit (via the existing `wallRects(o)`), and if close enough drops a fading
+  drip decal into `wallStreaks[]` (local coords, capped 160, decays like `splats`). Drawn as a
+  linear-gradient vertical stroke on the wall face in `drawBuilding`, clipped to the wall's rounded
+  rect so it never bleeds past corners. Only the exterior facade gets streaks — the interior
+  wall-frame in `drawBuildingBase` doesn't — so marks vanish if the fight moves inside; noted as a
+  known limitation in ROADMAP rather than solved. Verified visually via a throwaway `window.__t`
+  hook (never committed) that teleported the player to a barn wall and forced 8 hits — screenshot
+  showed a clean streak clipped to the wall, `node scripts/validate.mjs` and the headless
+  `--play --shoot` smoke test both pass (the CDN CORS console error is pre-existing on `main`,
+  confirmed via `git stash`, not a regression from this change).
 - **v2.33.0** — **BR & Squads retired; horde kill counting FIXED** (user: "take out battle royale and
   squads"). Flow: `#modeScreen` deleted; `toModeBtn` (PLAY) → `goAvatar()` directly; `gameMode` hard-set
   `'horde'` (ignores stored `dd2_mode` — old saves held 'br'); `show()` array, `renderModeSel`, `MODE_NAME`,
@@ -116,12 +382,9 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   binaries are proxy-blocked; the Playwright bundled ffmpeg is VP8-only but extracts PNG frames). **Headless
   input gotchas:** `isTouch` evaluates TRUE headless (hover:none/pointer:coarse) → mouse/space fire dead-code;
   patch `matchMedia` via `addInitScript` to force the desktop path, then hold Space (`keys[' ']`) to fire.
-- **BUG (parked): horde kills never count.** `killsTotal++` only fires for human targets (`isHumanTarget`,
-  ~line 1869), so in Endless Horde the HUD/results kill counter stays 0, "+1 KILL" toasts and streaks never
-  fire, and `killsTotal*5` kill-coins + `killsTotal*10` end XP pay nothing. Zombie kills only grant the inline
-  8×combo XP. Fix sketch: in horde, count zombie kills into `killsTotal` — but rebalance first: wave-6 run
-  ≈ 111 zombie kills → 555 kill-coins vs a BR win's ~75, so horde needs a lower per-kill coin rate (e.g.
-  `killsTotal*1` in horde) or a coin cap. Do as its own versioned change with a balance pass.
+- **BUG (FIXED in v2.33.0, see above): horde kills never count.** Was: `killsTotal++` only fired for
+  human targets, so Endless Horde's kill counter/coins/XP stayed dead. Left here for the historical
+  fix-sketch trail; the v2.33.0 entry above has what actually shipped.
 - **v2.31.5** — **Bottom black bar fixed** (user screenshot from the installed Home Screen app, v2.31.4: dead
   black strip ~51pt at the bottom; the RECURRING "black bar" family — `?safeprobe` exists from earlier rounds).
   Root cause: `resize()` pinned the stage to `window.innerHeight` px, and iOS **standalone** cold-launch
@@ -873,7 +1136,11 @@ ROADMAP.md checked off / re-prioritized as things ship; this file stays the reco
 already landed.
 
 ## Open questions for the user
-- Real on-phone feel: movement speed, fire cadence, zombie pressure, weapon balance, and the new
-  v1.8.0 shop/daily/coin flow — needs playtest feedback to tune (are trail prices fair?).
-- Batch several changes per `GAME_VERSION` bump, or bump every ship? (Currently: bump per ship.)
-- Provide `MESHY_API_KEY` via environment config to unblock 3D character generation?
+_(Superseded the old v1.8.0-era list here — those were answered or overtaken long ago; current
+open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
+- Real on-phone feel of v2.35.0's mutators: does Swarm Night's 2× density feel fun or just
+  overwhelming? Is Low Gravity's bigger/floatier bomb a real tactical choice or just numbers?
+- Balance backlog is still all open (`ROADMAP.md`): combo window, door width, weapon DPS spread —
+  none have real playtest answers yet.
+- Provide `MESHY_API_KEY` via environment config to unblock 3D character generation (25/28 assets
+  still ungenerated), or explicitly drop the moonshot?

@@ -108,7 +108,11 @@ Pipeline (top-down in the file):
 Press-once actions read keyboard presses (`R` reload, `Q` lightning, `E` bomb, `F` grapple) or
 button taps; continuous actions (movement, hold-to-fire) read live state. Touch uses two dynamic
 joysticks (`moveVec` left, `aimVec` right with auto-fire). Gamepad is also supported
-(`readGamepad`). Mirror this split when adding controls.
+(`readGamepad`: move/aim/fire/reload/lightning/bomb/grapple/pause) — it's sampled **once per
+frame** in `loop()` into module-level `curGp`, since `readGamepad()` mutates its own prev-state
+edge-detection vars (`gpRP`/`gpLP`/etc.) and a second call in the same frame would silently kill
+edge-triggering for every button. Menu/UI screens (avatar/weapon grids, settings, results) are
+still mouse/touch-only. Mirror this split when adding controls.
 
 ## Validation
 
