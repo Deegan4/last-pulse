@@ -1119,21 +1119,21 @@ function loadImg(k, src){
 loadImg('grass',     'assets/img/ground-grass.png');
 loadImg('tree',      'assets/img/decor-tree.png');
 loadImg('bush',      'assets/img/decor-bush.png');
-loadImg('hero-kai',   'assets/img/hero-kai.png');
-loadImg('hero-milo',  'assets/img/hero-milo.png');
-loadImg('hero-chip',  'assets/img/hero-chip.png');
-loadImg('hero-lila',  'assets/img/hero-lila.png');
-loadImg('hero-yuki',  'assets/img/hero-yuki.png');
-loadImg('hero-vex',   'assets/img/hero-vex.png');
-loadImg('hero-sarge', 'assets/img/hero-sarge.png');
-loadImg('hero-finn',  'assets/img/hero-finn.png');
-loadImg('hero-cypher','assets/img/hero-cypher.png');
-loadImg('hero-shade', 'assets/img/hero-shade.png');
-loadImg('hero-nova',  'assets/img/hero-nova.png');
-loadImg('hero-blaze', 'assets/img/hero-blaze.png');
-loadImg('hero-reaper','assets/img/hero-reaper.png');
-loadImg('hero-onyx',  'assets/img/hero-onyx.png');
-loadImg('hero-titan', 'assets/img/hero-titan.png');
+loadImg('hero-kai',   'assets/img/hero-kai-v2.png');
+loadImg('hero-milo',  'assets/img/hero-milo-v2.png');
+loadImg('hero-chip',  'assets/img/hero-chip-v2.png');
+loadImg('hero-lila',  'assets/img/hero-lila-v2.png');
+loadImg('hero-yuki',  'assets/img/hero-yuki-v2.png');
+loadImg('hero-vex',   'assets/img/hero-vex-v2.png');
+loadImg('hero-sarge', 'assets/img/hero-sarge-v2.png');
+loadImg('hero-finn',  'assets/img/hero-finn-v2.png');
+loadImg('hero-cypher','assets/img/hero-cypher-v2.png');
+loadImg('hero-shade', 'assets/img/hero-shade-v2.png');
+loadImg('hero-nova',  'assets/img/hero-nova-v2.png');
+loadImg('hero-blaze', 'assets/img/hero-blaze-v2.png');
+loadImg('hero-reaper','assets/img/hero-reaper-v2.png');
+loadImg('hero-onyx',  'assets/img/hero-onyx-v2.png');
+loadImg('hero-titan', 'assets/img/hero-titan-v2.png');
 // ===== Weapon art (fail-safe: drawGun's vector rendering is the fallback) =====
 loadImg('weapon-pistol',  'assets/img/weapon-pistol-v2.png');
 loadImg('weapon-rifle',   'assets/img/weapon-rifle-v2.png');
@@ -1164,8 +1164,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.42.5';
+const GAME_VERSION = '2.43.0';
 const CHANGELOG = [
+  { v:'2.43.0', items:[
+    ['🦸','Roster art upgraded','all 15 fighters now use polished v2 sprites with stronger silhouettes, cleaner outlines, and richer costume detail'],
+    ['🔫','Held weapons tuned','in-hand weapon scale is slightly smaller while keeping the corrected transparent-padding crop'],
+  ]},
   { v:'2.42.5', items:[
     ['🎯','Weapon art trimmed correctly','held weapons and weapon cards now crop transparent padding so the guns are no longer tiny or offset'],
   ]},
@@ -1730,8 +1734,8 @@ let perfAcc = 0, perfN = 0, perfPeakZ = 0, perfLog = 0;
 const R = 15;                 // collision radius (humans)
 const CHAR_VISUAL_SCALE = 1.18;       // drawn chibi scale only; collisions stay at R
 const HERO_H = 70;                    // on-field hero sprite height (px) — nameplate offset tracks this
-const WEAPON_HAND_SCALE = 1.22;       // procedural in-hand fallback scale
-const WEAPON_PNG_HAND_SCALE = 1.55;   // real PNG in-hand art scale
+const WEAPON_HAND_SCALE = 1.12;       // procedural in-hand fallback scale
+const WEAPON_PNG_HAND_SCALE = 1.38;   // real PNG in-hand art scale
 let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
 const CAMPFIRE = { r:72, heal:6 };   // heal radius (px) and hp/sec near a fire
 

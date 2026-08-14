@@ -92,6 +92,13 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.43.0 — Full roster v2 sprite pass.** Used Prompt Perfect to sharpen the art direction,
+  then generated a cohesive 5x3 upgraded hero sheet preserving the existing 15 identities and
+  armless/front-facing sprite format. Extracted the generated sheet with connected-component alpha
+  trimming into `hero-*-v2.png` files plus `hero-assets-v2.png`, wired the existing `hero-*`
+  image keys to the v2 files, and copied the assets into the iOS bundle. Also tuned held weapon
+  scale down slightly (`WEAPON_PNG_HAND_SCALE 1.55 -> 1.38`, `WEAPON_HAND_SCALE 1.22 -> 1.12`)
+  while keeping the v2.42.5 transparent-padding crop fix.
 - **v2.42.5 — Weapon PNG alpha trim.** Fixed the visible weapon-size/offset issue by computing
   alpha bounds for loaded PNGs in `loadImg()` and drawing only the non-transparent crop in both
   `drawWeaponArt()` and `weaponIcon()`. The old paths scaled the full square image/crop including
