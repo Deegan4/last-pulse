@@ -1091,9 +1091,25 @@ const RANGE_SCALE = 1.7;
 // non-empty, so every draw path can `const im = imgOk(...)` and fall back to canvas shapes.
 const IMG = {};
 function imgOk(k){ const e=IMG[k]; return (e && e.ok && e.img && e.img.naturalWidth>0) ? e.img : null; }
+function imgBounds(k){
+  const e=IMG[k];
+  return (e && e.bounds) ? e.bounds : null;
+}
+function alphaBounds(im){
+  try{
+    const w=im.naturalWidth||im.width, h=im.naturalHeight||im.height;
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    const o=c.getContext('2d',{willReadFrequently:true}); o.drawImage(im,0,0);
+    const d=o.getImageData(0,0,w,h).data; let x0=w,y0=h,x1=-1,y1=-1;
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){ if(d[(y*w+x)*4+3]>12){ if(x<x0)x0=x; if(y<y0)y0=y; if(x>x1)x1=x; if(y>y1)y1=y; } }
+    if(x1<x0 || y1<y0) return {x:0,y:0,w,h};
+    const pad=3; x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad); x1=Math.min(w-1,x1+pad); y1=Math.min(h-1,y1+pad);
+    return {x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};
+  }catch(e){ return null; }
+}
 function loadImg(k, src){
   const im = new Image();
-  im.onload  = ()=>{ IMG[k].ok=true; groundKey='';           // force the ground pattern to rebuild
+  im.onload  = ()=>{ IMG[k].ok=true; IMG[k].bounds=alphaBounds(im); groundKey='';           // force the ground pattern to rebuild
     try{ if(screenState==='start') renderMenu();             // refresh the menu portrait
       const ag=el('avatarGrid'); if(ag && ag.children.length) buildAvatarGrid();
       const wg=el('weaponGrid'); if(wg && wg.children.length) buildWeaponGrid(); }catch(e){} };
@@ -1148,8 +1164,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.42.4';
+const GAME_VERSION = '2.42.5';
 const CHANGELOG = [
+  { v:'2.42.5', items:[
+    ['🎯','Weapon art trimmed correctly','held weapons and weapon cards now crop transparent padding so the guns are no longer tiny or offset'],
+  ]},
   { v:'2.42.4', items:[
     ['🔎','Bigger fighters & in-hand weapons','characters are larger on the field and held weapons are scaled up so the new art reads clearly during gameplay'],
   ]},
@@ -4084,10 +4103,11 @@ function drawWeaponArt(w){
   const art = imgOk(w.img);
   if(!art) return false;
   const g = GUNK[w.name] || {l:14};
-  const srcX = 18, srcY = 0, srcW = 336, srcH = 174;
+  const b = imgBounds(w.img) || {x:0,y:0,w:art.naturalWidth||art.width,h:art.naturalHeight||art.height};
+  const srcX = b.x, srcY = b.y, srcW = b.w, srcH = b.h;
   const scale = (g.l / 220) * WEAPON_PNG_HAND_SCALE;
   const dw = srcW * scale, dh = srcH * scale;
-  ctx.drawImage(art, srcX, srcY, srcW, srcH, -dw*0.05, -dh*0.42, dw, dh);
+  ctx.drawImage(art, srcX, srcY, srcW, srcH, -dw*0.08, -dh*0.55, dw, dh);
   return true;
 }
 function heldWeaponLen(w){
@@ -4215,10 +4235,11 @@ function weaponIcon(w){
     o.save();
     o.shadowColor='rgba(0,0,0,.36)'; o.shadowBlur=5; o.shadowOffsetY=2;
     const pad=6, maxW=CW-pad*2, maxH=CH-pad*2;
-    const sw=art.naturalWidth||art.width, sh=art.naturalHeight||art.height;
+    const b=imgBounds(w.img) || {x:0,y:0,w:art.naturalWidth||art.width,h:art.naturalHeight||art.height};
+    const sw=b.w, sh=b.h;
     const sc=Math.min(maxW/sw, maxH/sh);
     const dw=sw*sc, dh=sh*sc;
-    o.drawImage(art, (CW-dw)/2, (CH-dh)/2, dw, dh);
+    o.drawImage(art, b.x, b.y, b.w, b.h, (CW-dw)/2, (CH-dh)/2, dw, dh);
     o.restore();
     return c;
   }

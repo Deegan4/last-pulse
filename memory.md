@@ -92,6 +92,11 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.42.5 — Weapon PNG alpha trim.** Fixed the visible weapon-size/offset issue by computing
+  alpha bounds for loaded PNGs in `loadImg()` and drawing only the non-transparent crop in both
+  `drawWeaponArt()` and `weaponIcon()`. The old paths scaled the full square image/crop including
+  transparent padding, which made the actual gun inside the sprite look tiny or misplaced,
+  especially in characters' hands.
 - **v2.42.4 — Bigger field characters and held weapons.** Added explicit visual scale tunables:
   `CHAR_VISUAL_SCALE=1.18`, `HERO_H=70`, `WEAPON_HAND_SCALE=1.22`, and
   `WEAPON_PNG_HAND_SCALE=1.55`. This enlarges on-field characters and makes the real PNG weapons
