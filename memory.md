@@ -92,6 +92,9 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.43.1 — Centered v2 weapon arms.** Moved the live PNG-hero weapon rig from the old belly-ish
+  default pivot to named chest anchors (`HERO_ARM_ANCHOR_X = 0`, `HERO_ARM_ANCHOR_Y = -15`) so the
+  aiming arm sits centered on the upgraded character sprites instead of drifting low/off-body.
 - **v2.43.0 — Full roster v2 sprite pass.** Used Prompt Perfect to sharpen the art direction,
   then generated a cohesive 5x3 upgraded hero sheet preserving the existing 15 identities and
   front-facing sprite format. First pass was too close to the old anime-chibi look, so regenerated
