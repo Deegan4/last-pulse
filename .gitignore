@@ -4,6 +4,7 @@
 .claude/worktrees/
 # misc
 node_modules/
+build/
 *.log
 .DS_Store
 .vercel
