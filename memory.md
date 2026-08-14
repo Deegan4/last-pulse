@@ -92,6 +92,22 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.42.0 — Real weapon PNG art, in-hand.** Wired the 12 `weapon-*-v2.png` sci-fi renders
+  (already present in `assets/img/`) onto the 12 existing `WEAPONS` entries via a new `img:'weapon-*'`
+  key per entry + matching `loadImg` calls (mirrors the `hero-*` convention, added right after them).
+  Ported `drawWeaponArt(w)` — the working logic was already sitting stranded in
+  `LastPulseIOS/GameContent/index.html` from prior unfinished work — next to `GUNK`/`drawGun`; it
+  crops a fixed source rect from the loaded PNG, scales by the weapon's `GUNK` barrel length, and
+  returns `false` if the image isn't loaded/decoded yet so the caller falls back to the vector
+  `drawGun`. Wired both in-hand call sites (`drawHuman`'s chibi arm and `drawHeroArm` for
+  "armless" sprite heroes) as `if(!drawWeaponArt(h.weapon)) drawGun(gname);`. Deliberately did
+  NOT add the 4 extra PNGs (Pulse SMG, Arc Rifle, Frost Blaster, Rocket Launcher) as new `WEAPONS`
+  entries — inventing balanced dmg/mag/reload/unlock stats for 4 new guns is a separate design
+  decision, not an art-wiring task; those 4 PNGs remain unused. Also left the weapon-select grid
+  (`weaponIcon`/`buildWeaponGrid`) vector-only — `weaponIcon` renders onto its own isolated
+  off-screen canvas with different scale/translate math than the in-hand pivot frame
+  `drawWeaponArt` assumes, so wiring PNGs there needs its own positioning formula rather than a
+  drop-in reuse; the in-hand render is the higher-value target and was prioritized instead.
 - **v2.39.2 — SMG suppressor.** Second reference image (a single floating photorealistic bullpup
   carbine over a neon cyberpunk city, no accompanying text) — same rendering-technique mismatch
   as v2.39.1's reference, PLUS a mood/setting element (neon night city) not in the game's
