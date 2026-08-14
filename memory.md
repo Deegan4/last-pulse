@@ -92,6 +92,11 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.42.1 — New weapon entries restored.** Added `Pulse SMG`, `Arc Rifle`, `Frost Blaster`, and
+  `Rocket Launcher` back into `WEAPONS` with visible late-game unlocks (Lv 13-16), matching
+  `loadImg` calls, `GUNK` definitions for select-card/in-hand rendering, and restored special
+  projectile flags (`arc` chain zap and `frost` slow). This supersedes the v2.42.0 art-only choice
+  that left those four PNGs unused, which made players think the new weapons had disappeared.
 - **v2.42.0 — Real weapon PNG art, in-hand.** Wired the 12 `weapon-*-v2.png` sci-fi renders
   (already present in `assets/img/`) onto the 12 existing `WEAPONS` entries via a new `img:'weapon-*'`
   key per entry + matching `loadImg` calls (mirrors the `hero-*` convention, added right after them).

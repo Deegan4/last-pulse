@@ -135,6 +135,10 @@
   .card:active{transform:scale(.98)}
   .card.sel{border-color:#d6ff6e;box-shadow:0 0 0 2px #d6ff6e44, 0 8px 22px rgba(0,0,0,.3)}
   .card.locked{opacity:.55;cursor:not-allowed}
+  /* gamepad menu-cursor ring — outline (not border/box-shadow) so it layers cleanly over .sel's
+     own border-color/box-shadow on cards, and over .opt/.btn elsewhere, without fighting layout */
+  .gpfocus{outline:3px solid #5ad1ff!important;outline-offset:2px;
+    box-shadow:0 0 0 5px rgba(90,209,255,.28)!important}
   .card .lock{position:absolute;top:8px;right:9px;font-size:18px;filter:grayscale(1)}
   .card .por{height:84px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px}
   .card .por canvas{display:block}
@@ -293,13 +297,22 @@
   #gearHud{position:absolute;left:10px;top:10px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
     background:rgba(40,56,24,.85);color:#fff;font-size:19px;pointer-events:auto;cursor:pointer;
     display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
-  #mmwrap{position:absolute;right:10px;top:10px;background:rgba(20,30,12,.5);border:1px solid var(--line);
-    border-radius:14px;padding:8px}
-  #minimap{width:108px;height:108px;border-radius:8px;border:2px solid rgba(0,0,0,.45);background:#243818;display:block}
+  #mmwrap{position:absolute;right:10px;top:10px;width:148px;pointer-events:none}
+  #mmBody{position:absolute;right:0;top:38px;background:rgba(20,30,12,.5);border:1px solid var(--line);
+    border-radius:14px;padding:8px;pointer-events:auto;transform-origin:top right;
+    transition:transform .22s cubic-bezier(.2,1.5,.4,1),opacity .16s}
+  #mmwrap.collapsed #mmBody{transform:scale(.08);opacity:0;pointer-events:none}
+  #minimap{width:132px;height:132px;border-radius:8px;border:2px solid rgba(0,0,0,.45);background:#243818;display:block}
   #stats{margin-top:7px;font-weight:800;font-size:12.5px;color:#fff;text-shadow:1px 1px 0 rgba(0,0,0,.45)}
   .srow{display:flex;align-items:center;gap:5px;line-height:1.75}
   .srow .si{font-size:12px;width:16px;text-align:center;opacity:.92}
   .srow b{color:#fff} .srow.safe b{color:#ffe27a}
+  /* the small pill that opens / closes the minimap panel, top-right corner of #mmwrap */
+  #mmFab{position:absolute;right:0;top:0;width:34px;height:34px;border-radius:50%;pointer-events:auto;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;
+    border:2px solid rgba(255,255,255,.55);background:rgba(20,30,12,.72);box-shadow:0 3px 8px rgba(0,0,0,.4);z-index:1}
+  #mmFab .fabChevron{transition:transform .22s;line-height:1;transform:rotate(0deg)}
+  #mmwrap.collapsed #mmFab .fabChevron{transform:rotate(180deg)}
 
   /* ---------- Touch / controls ---------- */
   #ctrl{position:absolute;inset:0;z-index:14;pointer-events:none}
@@ -409,6 +422,13 @@
   .modal .opt:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
   .modal .opt .oic{font-size:20px;width:24px;text-align:center;flex:0 0 auto}
   .modal .opt.danger{background:#7a1f24;color:#ffd9dd;box-shadow:0 4px 0 rgba(0,0,0,.35)}   /* quit to menu */
+  /* controller status card — visually matches .opt (and stays a gamepad-nav stop so pad users can
+     see their own connection state), but it's informational, not a button: no cursor/press feel */
+  .modal .opt.ctrlrow{cursor:default;align-items:flex-start}
+  .modal .opt.ctrlrow:active{transform:none;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  .ctrltxt{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .ctrltxt b{font-size:14.5px}
+  .ctrltxt span{font-size:11.5px;font-weight:600;color:#5a6a4a;line-height:1.4}
   /* subtle, occasional donation nudge on the results screen */
   .rdonate{font-size:13px;color:#e2c8ff;opacity:.9;cursor:pointer;text-align:center;
     background:rgba(150,90,230,.14);border:1px solid rgba(190,140,255,.35);border-radius:999px;
@@ -590,8 +610,10 @@
   @keyframes sheen{0%,68%{left:-70%}100%{left:135%}}
   .achbtn{border:1.5px solid var(--stroke);border-radius:999px;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
   /* HUD: frosted panels + notch safe-areas */
-  #mmwrap{background:rgba(14,22,9,.55);border:1.5px solid var(--stroke);border-radius:16px;
+  #mmBody{background:rgba(14,22,9,.55);border:1.5px solid var(--stroke);border-radius:16px;
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
+  #mmFab{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   #gearHud{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   #gearHud,#xpwrap{top:calc(10px + var(--sat))}
@@ -635,74 +657,6 @@
     #powers #scrapHud{justify-self:center}
     .power{width:54px;height:54px;font-size:23px}
   }
-
-  /* ---------- Short viewports: the MAIN MENU ----------------------------------------------
-     The portrait column is ~700px of content. Anywhere shorter than that — every iPhone in
-     landscape (375–440px tall) and an iPhone SE in a Safari tab (522px) — Shop, Achievements
-     and Support fell below the fold. `.screen` scrolls, so they were reachable, but a start
-     menu whose buttons you have to discover by scrolling reads as broken. Two rules fix it. */
-
-  /* 1. Landscape (short AND wide): spend the wide axis instead of the tall one. Identity and
-        PLAY on the left, everything secondary on the right, both columns scroll-free. */
-  @media (max-height:560px) and (min-width:600px){
-    #startScreen.menu{display:grid;align-content:center;justify-items:center;
-      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-      column-gap:22px;row-gap:7px;padding:calc(var(--sat) + 8px) 18px calc(var(--sab) + 8px);
-      overflow-y:auto}
-    /* EVERY child is pinned to an explicit cell. With auto-placement the two columns share row
-       heights, so the page ends up as tall as (tallest-left + tallest-right) per row and the
-       last control still falls off a 375px-tall screen. Pinned rows let the right column run
-       past the left one instead of stacking with it. */
-    #startScreen.menu > .heading{grid-area:1/1;font-size:clamp(19px,4.2vh,28px);margin:0;align-self:center}
-    #startScreen.menu > .fighter{grid-area:2/1;margin:0 auto;width:min(100%,330px)}
-    #startScreen.menu > .btn.play{grid-area:3/1;margin:0;padding:12px 30px;font-size:17px;min-height:46px}
-    #startScreen.menu > #dailyCard{grid-area:1/2;width:min(100%,340px);margin:0}
-    #startScreen.menu > #statsCard{grid-area:2/2;width:min(100%,340px);margin:0}
-    #startScreen.menu > .menurow:has(#achBtn){grid-area:3/2;width:min(100%,340px);margin:0}
-    #startScreen.menu > .menurow:has(#donateBtn){grid-area:4/2;width:min(100%,340px);margin:0}
-    #startScreen.menu > .a2hsbtn{grid-area:5/2;margin:0}
-    #startScreen.menu > .footer{grid-area:6/1/6/3;margin:0}
-    /* the portrait shrinks hardest — it is the single tallest element in the left column */
-    #startScreen.menu .fighterPortrait{width:44px;height:52px}
-    #startScreen.menu .fighterEdit{display:none}   /* a hint, not a control */
-    /* 44pt is Apple's minimum touch target — compress the padding, never the hit box */
-    #startScreen.menu .achbtn{padding:8px 12px;font-size:13px;min-height:44px}
-    #startScreen.menu .dailycard,#startScreen.menu .statscard{padding:7px 10px;font-size:12px}
-  }
-
-  /* 2. Short but NARROW (SE in a Safari tab): no room for two columns, so compress the single
-        column instead — trim the vertical rhythm rather than dropping any control. */
-  /* Narrow AND short — a 375px-wide iPhone (SE, 13 mini) in a Safari tab, where browser chrome
-     eats ~145px. The menu column wants ~680px; these viewports give 510–650. Two columns won't
-     fit at 375px wide, so the height comes out of the three tallest elements instead: the logo
-     (139px), the stats grid (136px) and the fighter card — none of which are controls. */
-  @media (max-height:700px) and (max-width:389px){
-    /* A grid, so the two secondary rows can share ONE line — that single change buys back the
-       ~50px that pushed Support off the bottom of a 522px Safari tab on an iPhone SE. */
-    #startScreen.menu{display:grid;grid-template-columns:1fr 1fr;align-content:start;
-      justify-items:center;column-gap:8px;row-gap:7px;
-      padding:calc(var(--sat) + 6px) 14px calc(var(--sab) + 6px)}
-    #startScreen.menu > .logo{grid-area:1/1/1/3;font-size:clamp(26px,9vw,40px);margin:0;line-height:1}
-    #startScreen.menu > .logo small{font-size:clamp(11px,3.2vw,15px);letter-spacing:4px;margin-top:2px}
-    #startScreen.menu .statscard{gap:6px}
-    #startScreen.menu .statscard .st{padding:5px 3px}
-    #startScreen.menu .statscard .st b{font-size:16px}
-    #startScreen.menu .statscard .st span{font-size:9.5px;letter-spacing:.3px}
-    #startScreen.menu .lvlrow,#startScreen.menu .rankrow{margin:2px 0}
-    #startScreen.menu > .footer{font-size:11px}
-    #startScreen.menu > .fighter{grid-area:2/1/2/3;margin:0 auto}
-    #startScreen.menu > .btn.play{grid-area:3/1/3/3;margin:0;padding:12px 30px;font-size:18px;min-height:46px}
-    #startScreen.menu > #dailyCard{grid-area:4/1/4/3;margin:0}
-    #startScreen.menu > #statsCard{grid-area:5/1/5/3;margin:0}
-    #startScreen.menu > .menurow:has(#achBtn){grid-area:6/1;width:100%;margin:0}
-    #startScreen.menu > .menurow:has(#donateBtn){grid-area:6/2;width:100%;margin:0}
-    #startScreen.menu > .a2hsbtn{grid-area:7/1/7/3;margin:0}
-    #startScreen.menu > .footer{grid-area:8/1/8/3;margin:0}
-    #startScreen.menu .fighterPortrait{width:46px;height:56px}
-    #startScreen.menu .fighterEdit{display:none}
-    #startScreen.menu .achbtn{padding:8px 8px;font-size:12px;min-height:44px}
-    #startScreen.menu .dailycard,#startScreen.menu .statscard{padding:8px 10px;font-size:12px}
-  }
 </style>
 </head>
 <body>
@@ -714,13 +668,17 @@
     <button id="gearHud" aria-label="settings">⚙</button>
     <div id="xpwrap"><span id="lvlText">LV 1</span><div id="xpbar"><div id="xpfill"></div></div></div>
     <div id="mmwrap">
-      <canvas id="minimap" width="108" height="108"></canvas>
-      <div id="stats">
-        <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
-        <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
-        <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
-        <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
+      <div id="mmBody">
+        <canvas id="minimap" width="132" height="132"></canvas>
+        <div id="stats">
+          <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
+          <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
+          <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
+          <div class="srow" id="mutRow" style="display:none"><span class="si">🎲</span><b id="statMut">--</b></div>
+          <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
+        </div>
       </div>
+      <div id="mmFab" role="button" aria-label="Toggle minimap" title="Toggle minimap"><span class="fabChevron">︿</span></div>
     </div>
   </div>
 
@@ -805,6 +763,10 @@
       <button class="opt" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
       <button class="opt" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
       <button class="opt" id="sName"><span class="oic">✏️</span>Change Name</button>
+      <div class="opt ctrlrow" id="sCtrlRow"><span class="oic">🎮</span>
+        <div class="ctrltxt"><b id="sCtrlStatus">⚪ No controller connected</b>
+          <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
+      </div>
       <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
         <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
@@ -927,13 +889,7 @@ function safeBottomPx(){
 // Effective insets: trust env() when it reports, but iOS standalone is KNOWN to lie (env()=0)
 // on some versions — there we substitute standard hardware values (54pt status/notch strip,
 // 34pt home indicator) rather than render bars. Non-Apple / desktop: env()=0 and stays 0.
-// Test-only override: ?insets=47,34 forces the safe-area insets. Headless browsers cannot
-// emulate env(safe-area-inset-*) — without this, scripts/screens.mjs can only ever exercise
-// the no-notch path, which is the one that was never broken. Ignored unless the param is set.
-const FORCED_INSETS = (()=>{ const m=/[?&]insets=(\d+)[,x](\d+)/.exec(location.search);
-  return m ? {st:+m[1], sb:+m[2]} : null; })();
 function effInsets(){
-  if(FORCED_INSETS) return FORCED_INSETS;
   let st=safeTopPx(), sb=safeBottomPx();
   if(isApple() && inStandalone()){
     if(st<8) st=54;
@@ -949,15 +905,36 @@ function measureViewport(){
   let vw = Math.max(window.innerWidth||0,  document.documentElement.clientWidth||0,  vv?Math.round(vv.width):0)  || 360;
   let vh = Math.max(window.innerHeight||0, document.documentElement.clientHeight||0, vv?Math.round(vv.height):0) || 640;
   // Installed Home Screen app: the web view genuinely covers the entire screen, but WebKit can
-  // report innerHeight short by the home-indicator strip at launch with no corrective resize
-  // event — the classic "black bar at the bottom". screen.* is in CSS px on iOS, so clamp up
-  // to the true screen size (orientation-aware: screen.width/height don't swap on rotation).
+  // misreport the viewport at launch in two DIFFERENT ways, confirmed via two separate user Screen
+  // Fit reports on the same portrait 393×852 phone:
+  //  (a) fully SWAPPED to the other orientation's numbers — inner/clientHeight/visualViewport ALL
+  //      agreed on a landscape-shaped 852×393. A swap corrupts vw/vh themselves, so guessing
+  //      orientation by comparing vw>=vh trusts the exact numbers already known to lie — use an
+  //      INDEPENDENT signal (screen.orientation) instead, and replace vw/vh outright.
+  //  (b) genuinely short but SELF-CONSISTENT and CORRECTLY SHAPED — a later report on the same
+  //      device read 393×793 everywhere (not swapped) with env() ALSO reporting real, non-lying
+  //      inset values (59/34, both ≥8). Clamping that up to screen.height (852) — what a first
+  //      attempt at this fix did — overshot the stage past the real viewport, because this
+  //      device's own numbers were trustworthy the whole time; env() only lies (and takes the
+  //      rest of the viewport measurement down with it) when its own probe reads suspiciously low
+  //      (<8, the same signal effInsets() already uses to decide whether to substitute). So: only
+  //      clamp up toward screen size when that lying-env signal is present; otherwise trust the
+  //      browser's own (correctly-shaped) numbers as measured.
   if(inStandalone()){
     const s1 = screen.width||0, s2 = screen.height||0;
-    const fullW = vw >= vh ? Math.max(s1,s2) : Math.min(s1,s2);
-    const fullH = vw >= vh ? Math.min(s1,s2) : Math.max(s1,s2);
-    if(fullW > vw) vw = fullW;
-    if(fullH > vh) vh = fullH;
+    if(s1 && s2){
+      const portrait = (window.screen && screen.orientation && screen.orientation.type)
+        ? screen.orientation.type.indexOf('portrait')===0
+        : matchMedia('(orientation: portrait)').matches;
+      const fullW = portrait ? Math.min(s1,s2) : Math.max(s1,s2);
+      const fullH = portrait ? Math.max(s1,s2) : Math.min(s1,s2);
+      const reportedPortrait = vw <= vh;
+      if(reportedPortrait !== portrait){ vw = fullW; vh = fullH; }             // (a) wholesale swap
+      else if(safeTopPx()<8 && safeBottomPx()<8){                              // (b) env() is lying too
+        if(fullW > vw) vw = fullW;
+        if(fullH > vh) vh = fullH;
+      }
+    }
   }
   return { vw, vh };
 }
@@ -969,30 +946,33 @@ function resize(){
   let gw = m.vw, gh = m.vh;
   if (!(gw > 0)) gw = 360;                   // fallbacks if anything went sideways
   if (!(gh > 0)) gh = 640;
-  // Pull the stage up under the status bar and extend it by the same amount, so the CANVAS
-  // (field + ambient menu horde) paints the notch strip instead of the flat page background.
-  // Since v2.32.0 the menus are translucent over the live field, so a flat strip up there reads
-  // as a "black bar" — the field must go edge-to-edge. Safe because .screen pads its content
-  // with env(safe-area-inset-top) (title stays below the clock) and the HUD pins itself with the
-  // same env offsets. In Safari (no inset) st is 0 and this is a no-op.
   const ins = effInsets(), st = ins.st, sb = ins.sb;
   // publish the effective insets — ALL safe-area CSS reads var(--sat)/--sab, so when env()
   // lies (iOS standalone) the substituted hardware values reposition the title/HUD too.
   document.documentElement.style.setProperty('--sat', st+'px');
   document.documentElement.style.setProperty('--sab', sb+'px');
-  stage.style.top = (-st) + 'px';
-  // The CSS fallback is `inset:0; margin:auto` (a letterbox that works before JS runs). Once we
-  // set top+height explicitly the box is OVER-CONSTRAINED — bottom:0 is still in force — and CSS
-  // resolves that by re-centring through the auto margins, which silently ate half the bottom
-  // inset (a 34pt home indicator became a 17px upward shift on every notched iPhone). Release
-  // the edges JS now owns so the declared top/height are the ones that apply.
-  stage.style.bottom = 'auto';
-  stage.style.left = '0px';
-  stage.style.right = 'auto';
-  stage.style.margin = '0';
-  stage.style.width = gw + 'px';
-  stage.style.height = (gh + st + sb) + 'px';
-  gh += st + sb;
+  if(inStandalone()){
+    // Installed Home Screen app: the webview already covers the ENTIRE physical screen — there's
+    // no browser chrome above it to "pull the canvas under" the way a Safari tab needs. gw/gh
+    // (from measureViewport) already represent that full extent, so just fill it at top:0. Insets
+    // exist purely to keep CONTENT (menu text, HUD) padded away from the notch/home-indicator via
+    // --sat/--sab CSS padding — they must NOT also inflate the stage's own size, or the stage
+    // overshoots the real screen (confirmed via a Screen Fit report: stage computed 945px tall
+    // against a 793px viewport once gw/gh were already correct — the double-count was the bug).
+    stage.style.top = '0px';
+    stage.style.width = gw + 'px';
+    stage.style.height = gh + 'px';
+  } else {
+    // Safari tab: pull the stage up under the status bar and extend it by the same amount, so the
+    // CANVAS paints the notch strip instead of the flat page background (a flat strip up there
+    // reads as a "black bar" now that menus are translucent over the live field, v2.32.0+). In
+    // practice effInsets() returns 0/0 in a plain tab (confirmed v2.34.1), so this is a no-op —
+    // kept for older Safari versions/edge cases that might still report a nonzero inset in a tab.
+    stage.style.top = (-st) + 'px';
+    stage.style.width = gw + 'px';
+    stage.style.height = (gh + st + sb) + 'px';
+    gh += st + sb;
+  }
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = gw; H = gh;
   cv.width = Math.max(1, Math.floor(W * DPR));
@@ -1086,18 +1066,22 @@ const AVATARS = [
   {name:'Titan',  speed:4.4, health:150, unlock:26, img:'hero-titan',  armless:true, aura:'#ff5a5a', look:{skin:'#e8b48c',hair:'#3a3f47',outfit:'#33373d',style:'horns'}},
 ];
 const WEAPONS = [
-  {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
-  {name:'Rifle',   icon:'🪖', dmg:10,  mag:10, reload:1.25, range:150, fireCd:0.10, mode:'auto',    unlock:1,  special:'10 bullets per ammo'},
-  {name:'Shotgun', icon:'💥', dmg:20,  mag:2,  reload:1.25, range:150, fireCd:0.62, mode:'shotgun', unlock:2,  special:'wide pellet spread'},
-  {name:'SMG',     icon:'🧨', dmg:8,   mag:25, reload:1.6,  range:200, fireCd:0.07, mode:'auto',    unlock:3,  special:'blazing fire rate'},
-  {name:'Magnum',  icon:'🔩', dmg:55,  mag:6,  reload:1.8,  range:340, fireCd:0.40, mode:'semi',    unlock:4,  special:'heavy-hitting revolver'},
-  {name:'Sniper',  icon:'🎯', dmg:250, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage'},
-  {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt'},
-  {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire'},
-  {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds'},
-  {name:'Tommy',   icon:'🎻', dmg:11,  mag:30, reload:1.7,  range:190, fireCd:0.085,mode:'auto',    unlock:8,  special:'drum-mag auto — steady spray'},
-  {name:'Launcher',icon:'🚀', dmg:40,  mag:1,  reload:2.6,  range:340, fireCd:1.2,  mode:'launcher',unlock:12, special:'explosive rocket — splash damage'},
-  {name:'Vipers',  icon:'🐍', dmg:9,   mag:24, reload:1.7,  range:210, fireCd:0.09, mode:'auto', twin:true, unlock:15, special:'twin barrels — double the lead'},
+  {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit',        img:'weapon-pistol'},
+  {name:'Rifle',   icon:'🪖', dmg:10,  mag:10, reload:1.25, range:150, fireCd:0.10, mode:'auto',    unlock:1,  special:'10 bullets per ammo',                  img:'weapon-rifle'},
+  {name:'Shotgun', icon:'💥', dmg:20,  mag:2,  reload:1.25, range:150, fireCd:0.62, mode:'shotgun', unlock:2,  special:'wide pellet spread',                   img:'weapon-shotgun'},
+  {name:'SMG',     icon:'🧨', dmg:8,   mag:25, reload:1.6,  range:200, fireCd:0.07, mode:'auto',    unlock:3,  special:'blazing fire rate',                    img:'weapon-smg'},
+  {name:'Magnum',  icon:'🔩', dmg:55,  mag:6,  reload:1.8,  range:340, fireCd:0.40, mode:'semi',    unlock:4,  special:'heavy-hitting revolver',               img:'weapon-magnum'},
+  {name:'Sniper',  icon:'🎯', dmg:250, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage',        img:'weapon-sniper'},
+  {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt',                 img:'weapon-crossbow'},
+  {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire',                 img:'weapon-flame'},
+  {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds',          img:'weapon-minigun'},
+  {name:'Tommy',   icon:'🎻', dmg:11,  mag:30, reload:1.7,  range:190, fireCd:0.085,mode:'auto',    unlock:8,  special:'drum-mag auto — steady spray',         img:'weapon-tommy'},
+  {name:'Launcher',icon:'🚀', dmg:40,  mag:1,  reload:2.6,  range:340, fireCd:1.2,  mode:'launcher',unlock:12, special:'explosive rocket — splash damage',     img:'weapon-launcher'},
+  {name:'Vipers',  icon:'🐍', dmg:9,   mag:24, reload:1.7,  range:210, fireCd:0.09, mode:'auto', twin:true, unlock:15, special:'twin barrels — double the lead', img:'weapon-vipers'},
+  {name:'Pulse SMG',icon:'⚡', dmg:7,   mag:36, reload:1.45, range:230, fireCd:0.055,mode:'auto',    unlock:13, special:'hyper-fast pulse stream',             img:'weapon-pulse-smg'},
+  {name:'Arc Rifle',icon:'🔷', dmg:18,  mag:14, reload:1.9,  range:360, fireCd:0.18, mode:'auto', arc:true, unlock:14, special:'electric rounds chain once',   img:'weapon-arc-rifle'},
+  {name:'Frost Blaster',icon:'❄️', dmg:12, mag:28, reload:2.0, range:250, fireCd:0.12, mode:'auto', frost:true, unlock:15, special:'slows enemies on hit',       img:'weapon-frost-blaster'},
+  {name:'Rocket Launcher',icon:'🚀', dmg:62, mag:2, reload:3.2, range:390, fireCd:1.35, mode:'launcher', unlock:16, special:'heavy rockets — bigger splash',     img:'weapon-rocket-launcher'},
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
@@ -1133,6 +1117,23 @@ loadImg('hero-blaze', 'assets/img/hero-blaze.png');
 loadImg('hero-reaper','assets/img/hero-reaper.png');
 loadImg('hero-onyx',  'assets/img/hero-onyx.png');
 loadImg('hero-titan', 'assets/img/hero-titan.png');
+// ===== Weapon art (fail-safe: drawGun's vector rendering is the fallback) =====
+loadImg('weapon-pistol',  'assets/img/weapon-pistol-v2.png');
+loadImg('weapon-rifle',   'assets/img/weapon-rifle-v2.png');
+loadImg('weapon-shotgun', 'assets/img/weapon-shotgun-v2.png');
+loadImg('weapon-smg',     'assets/img/weapon-smg-v2.png');
+loadImg('weapon-magnum',  'assets/img/weapon-magnum-v2.png');
+loadImg('weapon-sniper',  'assets/img/weapon-sniper-v2.png');
+loadImg('weapon-crossbow','assets/img/weapon-crossbow-v2.png');
+loadImg('weapon-flame',   'assets/img/weapon-flame-v2.png');
+loadImg('weapon-minigun', 'assets/img/weapon-minigun-v2.png');
+loadImg('weapon-tommy',   'assets/img/weapon-tommy-v2.png');
+loadImg('weapon-launcher','assets/img/weapon-launcher-v2.png');
+loadImg('weapon-vipers',  'assets/img/weapon-vipers-v2.png');
+loadImg('weapon-pulse-smg',      'assets/img/weapon-pulse-smg.png');
+loadImg('weapon-arc-rifle',      'assets/img/weapon-arc-rifle.png');
+loadImg('weapon-frost-blaster',  'assets/img/weapon-frost-blaster.png');
+loadImg('weapon-rocket-launcher','assets/img/weapon-rocket-launcher.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
 
 // ===== Donations (Stripe) =====
@@ -1146,11 +1147,60 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.35.0';
+const GAME_VERSION = '2.42.1';
 const CHANGELOG = [
+  { v:'2.42.1', items:[
+    ['🔫','New weapons restored','Pulse SMG, Arc Rifle, Frost Blaster & Rocket Launcher now appear in the weapon grid and keep their special projectile behavior'],
+  ]},
+  { v:'2.42.0', items:[
+    ['🔫','Real weapon art, in-hand','all 12 guns now render as painterly sci-fi art in your fighter\'s hands instead of flat vector shapes — falls back to the old drawn look automatically if art fails to load'],
+  ]},
+  { v:'2.41.0', items:[
+    ['🎮','Local 2-player co-op','plug in a 2nd controller mid-match and Player 2 drops in automatically, fighting side by side with their own health/ammo, weapon, and minimap dot — the camera keeps both of you in view as long as you stay reasonably close together'],
+  ]},
+  { v:'2.40.2', items:[
+    ['🎮','Controller status in Settings','Settings now shows whether a controller is connected (and its name) live, plus how to pair one via your device\'s Bluetooth settings — there was previously nothing in the UI about controller support at all'],
+  ]},
+  { v:'2.40.1', items:[
+    ['🎮','Full gamepad menu coverage + DualSense rumble','Achievements, Shop, Support, Add-to-Home-Screen and What\'s New are all controller-navigable now, Settings sliders (SFX volume, aim sensitivity) adjust with left/right, and taking a hit or landing a kill now pulses your controller — DualSense rumble works the same over Bluetooth as wired, no special-casing needed'],
+  ]},
+  { v:'2.40.0', items:[
+    ['🎮','Gamepad menu navigation','fighter/weapon select, settings, and results are now fully controller-navigable — d-pad or left stick to move, A to confirm, X/B to back out of settings — a controller player can finally get in a match without touching the screen'],
+  ]},
+  { v:'2.39.3', items:[
+    ['🗺️','Minimap is now collapsible','tap the pill in its top-right corner to tuck it away — it was sitting right over the "GET READY" banner at match start on some screens'],
+  ]},
+  { v:'2.39.2', items:[
+    ['🔧','SMG got a suppressor', 'a chunky ribbed cylinder now sits along the barrel — the SMG was the plainest gun left, now it has real silhouette'],
+  ]},
+  { v:'2.39.1', items:[
+    ['🪵','Rifle got a wood stock','the starter Rifle was the only long gun with no wood furniture — now it looks the part'],
+  ]},
+  { v:'2.39.0', items:[
+    ['🔫','Weapon detail pass','the Minigun now feeds from a visible ammo belt with a heat-vent grille, and the Pistol has a proper hammer — the last two guns that read as generic barrels now have real character'],
+  ]},
+  { v:'2.38.0', items:[
+    ['👹','Distinct monster silhouettes','stalkers now have a leaner build with a quilled spine ridge, and juggernauts wear visible armor plating — no more mistaking them for a recolored zombie'],
+  ]},
+  { v:'2.37.0', items:[
+    ['🎮','Deeper controller support','grapple (L3) and pause (Start) now work on gamepad, plus a quiet 🎮 HUD indicator once a controller is detected'],
+  ]},
+  { v:'2.36.0', items:[
+    ['🗺️','A bigger world','the arena is ~80% larger, with more buildings, ponds and greenery to explore'],
+    ['🪦','New landmark: graveyard','a weathered plot of tombstones joins campfires, wells and statues at level 20'],
+    ['📍','Sharper minimap','bigger, now shows ponds and landmarks, plus a facing tick so you know which way you’re looking'],
+  ]},
+  { v:'2.35.2', items:[
+    ['📱','Screen fit, take two','the installed app was leaving a gap at the bottom of the screen on some phones — fixed'],
+  ]},
+  { v:'2.35.1', items:[
+    ['📱','Fixed a portrait/landscape mixup','the installed app could size itself sideways on launch, clipping the title — fixed'],
+  ]},
   { v:'2.35.0', items:[
-    ['🩸','Kills sound visceral','bone cracks, wet gurgles and a body hitting the dirt — every kill has weight now'],
-    ['📱','Menu fits short screens','landscape phones get a two-column start menu; small iPhones get a compact one — no more scrolling to find Shop & Support'],
+    ['🎲','Match mutators','occasional Horde runs drop in with a twist — Swarm Night, Deep Fog, or Low Gravity bombs'],
+  ]},
+  { v:'2.34.2', items:[
+    ['🩸','Walls remember','a hit near a house wall now leaves a drip streak behind — the building carries the fight'],
   ]},
   { v:'2.34.1', items:[
     ['📱','No more black bars','Safari’s top & bottom bars now blend into the game instead of framing it in near-black'],
@@ -1523,6 +1573,19 @@ const DAILIES = [
 ];
 function dayKey(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 function todaysDaily(){ const k=dayKey(); let h=0; for(let i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0; return DAILIES[h%DAILIES.length]; }
+
+// ===== Match mutators =====
+// Occasional whole-match modifiers announced at drop-in (ROADMAP v1.13). Each entry carries the
+// numeric knobs that the relevant systems (wave spawn, bomb throw/blast, night vignette) read
+// directly off `activeMutator` — no apply/revert step needed since spawnMatch rebuilds the world
+// from scratch every match anyway.
+const MUTATORS = [
+  {id:'horde2x',  icon:'🧟', name:'SWARM NIGHT',  desc:'Every wave spawns twice the zombies',        zMul:2},
+  {id:'fogNight', icon:'🌙', name:'DEEP FOG',       desc:'Endless night — your light barely reaches',  fog:true},
+  {id:'lowGrav',  icon:'🎈', name:'LOW GRAVITY',   desc:'Bombs hang longer and blast wider',          bombFuseMul:1.8, bombRadMul:1.4},
+];
+const MUTATOR_CHANCE = 0.35;    // "occasional" — most matches stay vanilla
+function pickMutator(){ return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
 function dailyDoneToday(){ return meta.dailyDone===dayKey(); }
 // Called at match end (before results render). Returns true if the daily was just completed.
 function checkDaily(ctx){
@@ -1571,7 +1634,7 @@ function avatarUnlocked(a){ return meta.level >= a.unlock; }
 // ============================================================
 //  World
 // ============================================================
-const ARENA = 3000;
+const ARENA = 4000;
 const cam = {x:0,y:0};
 let screenState = 'start';   // 'start'|'avatar'|'weapon'|'playing'|'results'
 let paused = false;
@@ -1586,6 +1649,7 @@ const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast
 const MODES = ['horde'];
 let gameMode = MODES[0];  // Endless Horde is the only mode (BR & Squads retired v2.33.0)
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
+let activeMutator = null;                   // this match's MUTATORS entry, or null — see spawnMatch
 let hordeWave = 0;
 let hordeStallT = 0, hordeLastAlive = 0;    // wave-clear stall watchdog (unsticks stranded stragglers)
 let aimWX = 0, aimWY = 0, aimShow = false;  // reticle world target
@@ -1610,6 +1674,7 @@ const scraps = [];         // collectible scrap bits (the currency for building)
 const drops = [];          // descending supply crates
 const hitmarks = [];       // hit/kill markers (player feedback)
 const splats = [];         // ground blood decals
+const wallStreaks = [];    // blood drips left on building walls (local coords: o.x+s.x, o.y+s.y0)
 const dmgDirs = [];        // damage-direction indicators (player)
 let confetti = [];         // victory celebration
 let lastWin = false, victoryT = 0, nextDrop = 18;
@@ -1621,6 +1686,7 @@ let zoneWarn = 0;
 let heartT = 0;                             // low-health heartbeat cadence
 let zReinforce = 0;                         // BR/Squad zombie reinforcement cadence
 let player = null;
+let player2 = null;   // local co-op: 2nd human-controlled entity, joins when a 2nd gamepad is detected (see tryJoinPlayer2)
 let startTime = 0, elapsed = 0, shake = 0, lastT = performance.now();
 let killsTotal = 0, fieldSize = 15;
 let matchStat = {dmgTaken:0, grappled:false};
@@ -1750,17 +1816,19 @@ const BKINDS={
   barn:  {roof:['#4a3730','#5a4038']},             // red planks, X-braced big doors, hayloft
   cabin: {roof:['#4a6a44','#6a5a3a']},             // log-course walls + stovepipe
 };
-const TALL_DECOR={campfire:1,fence:1,well:1,statue:1};   // level-milestone landmarks (y-sorted)
+const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1};   // level-milestone landmarks (y-sorted)
 function buildDecor(){
   decor.length=0; obstacles.length=0;
   timeOfDay = pick(['day','day','dusk','night']);   // mostly day, sometimes dusk/night
   // the world grows with your level: more houses (each hiding loot), more ponds and
-  // greenery, and new landmarks unlock at level milestones (see below)
+  // greenery, and new landmarks unlock at level milestones (see below). Counts here are tuned
+  // for the v2.36 arena bump (3000→4000, ~1.8x the area) — scaled up but not 1:1 with area, so
+  // the bigger map reads as MORE to explore rather than just diluting the old density.
   const lvl = meta.level;
-  const nBuild = Math.min(9 + Math.floor(lvl/4), 16);
-  const nWater = Math.min(7 + Math.floor(lvl/8), 10);
+  const nBuild = Math.min(13 + Math.floor(lvl/4), 22);
+  const nWater = Math.min(9 + Math.floor(lvl/8), 13);
   const xtra   = Math.min(lvl, 20);                 // generic density bonus
-  for(let i=0;i<80;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
+  for(let i=0;i<112;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
   for(let i=0;i<nWater;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
   // buildings (cover) — kept apart and away from the very centre
   for(let i=0;i<nBuild;i++){ let b, ok=false, tries=0;
@@ -1776,17 +1844,18 @@ function buildDecor(){
         if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
       tries++; } while(!ok && tries<40);
     if(ok){ obstacles.push(b); decor.push(b); } }
-  for(let i=0;i<26+Math.floor(xtra*0.7);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
-  for(let i=0;i<34+xtra;i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
-  for(let i=0;i<66+xtra*2;i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
-  for(let i=0;i<26+xtra;i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
-  for(let i=0;i<14+Math.floor(xtra/2);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
-  for(let i=0;i<6+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
+  for(let i=0;i<36+Math.floor(xtra*0.9);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
+  for(let i=0;i<46+Math.floor(xtra*1.3);i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
+  for(let i=0;i<92+Math.floor(xtra*2.6);i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
+  for(let i=0;i<36+Math.floor(xtra*1.3);i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
+  for(let i=0;i<20+Math.floor(xtra*0.7);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
+  for(let i=0;i<8+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
   // level-milestone landmarks — the map gains character as you rank up
-  if(lvl>=3)  for(let i=0;i<3;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
-  if(lvl>=6)  for(let i=0;i<5;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
-  if(lvl>=10) for(let i=0;i<2;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
-  if(lvl>=15) for(let i=0;i<2;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
+  if(lvl>=3)  for(let i=0;i<4;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
+  if(lvl>=6)  for(let i=0;i<7;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
+  if(lvl>=10) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
+  if(lvl>=15) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
+  if(lvl>=20) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
   campfires = decor.filter(d=>d.type==='campfire');   // cache for the heal-aura check
 }
@@ -1881,35 +1950,44 @@ function menuSceneUpdate(dt){
 function spawnMatch(){
   humans.length=0; zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
-  pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
+  pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   builds.length=0; scraps.length=0;
-  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14);
+  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14); activeMutator=null;
   hordeStallT=0; hordeLastAlive=0;
   combo=0; comboT=0; hitstop=0;
   menuAmbient=false;                                     // real match takes over the canvas
   matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
+  player2 = null;   // fresh match always starts solo; tryJoinPlayer2() re-adds them if a 2nd pad is present
   buildDecor();
   // interior loot — every house hides a pickup (a reason to step inside)
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
-  player.team=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
+  player.team=0; player.gpIndex=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
   player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null;
   player.scrap=0; player.buildSel=-1; player.placeCd=0;   // builder state (start with mode off)
   player.magMul=magMulMeta(); player.mag=magCap(player);  // Extended Magazines upgrade → wider mag, start full
   humans.push(player);
+  tryJoinPlayer2(connectedPads());   // catch a 2nd controller that was ALREADY connected before drop-in, not just one that connects mid-match
   // scattered scrap caches — a reason to explore; seeds your first walls before the first kills
   for(let i=0;i<10;i++){ const s=decorSpot(90); scraps.push(makeScrap(s.x,s.y,randi(4,8))); }
 
   if(gameMode==='horde'){
     fieldSize=1; hordeWave=1;
+    activeMutator = pickMutator();
+    if(activeMutator){
+      if(activeMutator.fog) timeOfDay='night';
+      toast(activeMutator.icon+' '+activeMutator.name+' — '+activeMutator.desc);
+      el('statMut').textContent = activeMutator.icon+' '+activeMutator.name;
+      el('mutRow').style.display = '';
+    } else el('mutRow').style.display = 'none';
     // two 2-story watchtowers to climb and shoot down from (Horde only)
     for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
       while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
       const tw={type:'tower', tower:true, x:clamp(sp.x-TOWER_W/2,120,ARENA-120-TOWER_W), y:clamp(sp.y-TOWER_H/2,120,ARENA-120-TOWER_H),
         w:TOWER_W, h:TOWER_H, roof:'#6b7178'};
       obstacles.push(tw); decor.push(tw); }
-    const n=10; for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
+    const n=Math.round(10*(activeMutator?.zMul||1)); for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
   } else if(gameMode==='squad'){
     fieldSize=16;
     const allyNames=['Buddy','Scout','Doc','Tank'];
@@ -1965,6 +2043,9 @@ function bulletFx(w){
     case 'Shotgun':  return {col:'#ffd9a0',lw:2,  tl:0.008,glow:0, tip:1.0, mz:11, kick:1.7, sparks:9, spread:.7, push:60, shake:5};
     case 'Magnum':   return {col:'#ffe07a',lw:3.8,tl:0.02, glow:7, tip:2.0, mz:9,  kick:1.6, sparks:7, spread:.6, push:38, shake:4};
     case 'SMG':      return {col:'#fff2c8',lw:2.2,tl:0.013,glow:0, tip:1.2, mz:6,  kick:.8,  sparks:3, spread:.5, push:18, shake:0};
+    case 'Pulse SMG':return {col:'#8ff6ff',lw:2.1,tl:0.011,glow:6, tip:1.3, mz:7,  kick:.65, sparks:4, spread:.45, push:14, shake:0};
+    case 'Arc Rifle':return {col:'#78d7ff',lw:3.3,tl:0.022,glow:11,tip:1.8, mz:8,  kick:1.1, sparks:7, spread:.55, push:25, shake:2};
+    case 'Frost Blaster': return {col:'#c9f7ff',lw:3.0,tl:0.02, glow:9, tip:1.7, mz:7.5,kick:.95,sparks:6, spread:.55, push:22, shake:1};
     case 'Minigun':  return {col:'#fff0b0',lw:2.4,tl:0.016,glow:3, tip:1.3, mz:7,  kick:.7,  sparks:3, spread:.5, push:16, shake:0};
     case 'Tommy':    return {col:'#ffe7b0',lw:2.8,tl:0.014,glow:0, tip:1.4, mz:6.5,kick:.9,  sparks:4, spread:.5, push:20, shake:0};
     default:         return {col:'#fff3c0',lw:3,  tl:0.013,glow:0, tip:1.5, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
@@ -2005,7 +2086,7 @@ function fire(h){
     let dmg=w.dmg, crit=false;
     if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
     bullets.push({ x:h.x+Math.cos(a)*16 - Math.sin(h.aim)*perp, y:h.y+Math.sin(a)*16 + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
-      life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper', hits:0,
+      life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper'||w.arc, arc:w.arc, frost:w.frost, hits:0,
       color: crit?'#ffd24a':fx.col, lw: crit?4.2:fx.lw, tl: fx.tl, glow: crit?10:fx.glow, tip: crit?2.2:fx.tip });
   }
   h.mag--;
@@ -2018,6 +2099,28 @@ function fire(h){
   if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
   sfx('shoot', w);
   if(h.mag<=0) startReload(h);
+}
+// if a hit lands within DOOR_HALF-ish range of a building wall, leave a drip streak on that
+// wall's facade (local coords, so it moves with the building — buildings never move, so this
+// is really just x-y, but local coords keep the draw side simple and match drawBuilding's frame)
+function spraySplatOnWall(x, y, dmg){
+  let bestWr=null, bestObs=null, bestD=22;
+  for(const o of obstacles){
+    if(o.type!=='building') continue;
+    if(x<o.x-40||x>o.x+o.w+40||y<o.y-40||y>o.y+o.h+40) continue;
+    for(const wr of wallRects(o)){
+      const nx=clamp(x,wr[0],wr[0]+wr[2]), ny=clamp(y,wr[1],wr[1]+wr[3]);
+      const d=Math.hypot(x-nx,y-ny);
+      if(d<bestD){ bestD=d; bestWr=wr; bestObs=o; }
+    }
+  }
+  if(!bestObs) return;
+  const sx=clamp(x,bestWr[0]+3,bestWr[0]+bestWr[2]-3);
+  const topY=clamp(y,bestWr[1],bestWr[1]+bestWr[3]);
+  const len=Math.min(rand(14,28)+dmg*0.15, bestWr[1]+bestWr[3]-topY);
+  if(len<4) return;
+  wallStreaks.push({o:bestObs, x:sx-bestObs.x, y0:topY-bestObs.y, len, w:rand(2.5,4.5), t:9,
+    col:'rgba(120,22,30,'});
 }
 function hurt(e, dmg, src, isHumanTarget){
   if(!e.alive) return;
@@ -2036,10 +2139,12 @@ function hurt(e, dmg, src, isHumanTarget){
   if(dmg>=12 && splats.length<220)
     splats.push({x:e.x+Math.cos(a0)*rand(6,20), y:e.y+rand(2,12), r:rand(5,10)+dmg*0.06, t:4,
       col:'rgba(120,22,30,'});
+  if(dmg>=12 && wallStreaks.length<160) spraySplatOnWall(e.x, e.y, dmg);
   if(dmg>0) floaters.push({x:e.x, y:e.y-R-10, vy:-34, t:0.7, txt:Math.round(dmg), col: dmg>=60?'#ffd24a':'#fff'});
   // player feedback
   if(src && src.isPlayer && dmg>0){ hitmarks.push({x:e.x,y:e.y-6,t:0.22,kill:false}); sfx('tick',null,e); }
-  if(e.isPlayer && src && src!==e){ dmgDirs.push({a:Math.atan2(src.y-e.y,src.x-e.x), t:1.0}); }
+  if(e.isPlayer && src && src!==e){ dmgDirs.push({a:Math.atan2(src.y-e.y,src.x-e.x), t:1.0});
+    if(e.gpIndex!=null) gpRumble(e.gpIndex, 110, clamp(dmg/70,0.15,0.55), clamp(dmg/45,0.1,0.5)); }   // rumbles THIS player's own pad, not always pad 0
   if(e.hp<=0){ die(e, src, isHumanTarget); }
 }
 function die(e, src, isHumanTarget){
@@ -2052,11 +2157,12 @@ function die(e, src, isHumanTarget){
   splats.push({x:e.x, y:e.y+6, r:rand(16,26), t:7, col:goreCol});
   for(let k=0;k<2;k++) splats.push({x:e.x+Math.cos(ka)*rand(14,34)+rand(-8,8),           // satellite pools
     y:e.y+6+rand(-6,14), r:rand(6,12), t:6, col:goreCol});
+  if(wallStreaks.length<160) spraySplatOnWall(e.x, e.y, 24);
   sfx('die',null,e);
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
     if(src.isPlayer){
-      shake=Math.min(shake+5,14);
+      shake=Math.min(shake+5,14); if(src.gpIndex!=null) gpRumble(src.gpIndex, 90, 0.25, 0.6);
       hitmarks.push({x:e.x,y:e.y-6,t:0.42,kill:true}); sfx('kill',null,e);
       // kill combo: chain kills inside the window for up to 3x XP + escalating slow-mo
       combo = comboT>0 ? combo+1 : 1; comboT=COMBO_WIN;
@@ -2083,8 +2189,11 @@ function die(e, src, isHumanTarget){
       scraps.push(makeScrap(e.x, e.y, big?randi(5,8):(run?randi(1,2):randi(2,4)))); } }
   if(e.isPlayer){ shake=Math.min(shake+10,18); }
   if(isHumanTarget){
-    const victim = e.isPlayer?meta.name:e.name;
-    const killer = src ? (src.weapon ? (src.isPlayer?meta.name:src.name) : 'A zombie') : 'The safe zone';
+    // isPlayer2 checked FIRST: it's the more specific case, and must win over the plain isPlayer
+    // branch below (player 2 is also isPlayer:true — that's what exempts them from bot AI — so
+    // checking isPlayer alone here would misattribute every player-2 kill/death to player 1's name)
+    const victim = e.isPlayer2?e.name : e.isPlayer?meta.name:e.name;
+    const killer = src ? (src.weapon ? (src.isPlayer2?src.name : src.isPlayer?meta.name:src.name) : 'A zombie') : 'The safe zone';
     killFeed.unshift({ txt: killer+'  ☠  '+victim, t:5, you: e.isPlayer || (src&&src.isPlayer) });
     if(killFeed.length>4) killFeed.pop();
     checkEnd();
@@ -2112,7 +2221,8 @@ function castLightning(h){
 function throwBomb(h){
   if(h.bombCd>0 || grace>0) return; h.bombCd=10;
   const a=h.aim, d=180;
-  bombs.push({x:h.x, y:h.y, tx:h.x+Math.cos(a)*d, ty:h.y+Math.sin(a)*d, t:0, fuse:0.85, owner:h, sx:h.x, sy:h.y});
+  const fuse=0.85*(activeMutator?.bombFuseMul||1);
+  bombs.push({x:h.x, y:h.y, tx:h.x+Math.cos(a)*d, ty:h.y+Math.sin(a)*d, t:0, fuse, owner:h, sx:h.x, sy:h.y});
   if(h.isPlayer) sfx('throw');
 }
 
@@ -2265,7 +2375,7 @@ function zombieBurst(e){
   sfx('boom',null,e);
 }
 function explode(b){
-  const RAD=130, RAD2=RAD*RAD;
+  const RAD=130*(activeMutator?.bombRadMul||1), RAD2=RAD*RAD;
   for(let i=0;i<30;i++) spark(b.x,b.y, i%2?'#ffb13d':'#ff5a2a', rand(80,360), rand(0,TAU), .8);
   rings.push({x:b.x, y:b.y, t:0, dur:0.45, r0:14, r1:RAD+30, col:'255,200,110', lw:5});
   rings.push({x:b.x, y:b.y, t:0, dur:0.7,  r0:8,  r1:RAD,    col:'255,255,255', lw:2.5});
@@ -2370,8 +2480,10 @@ function setupTouch(){
   bind('grapBtn',()=>player&&castGrapple(player));
   bind('buildBtn',()=>player&&cycleBuild(player));
   bind('powerFab', togglePowers);   // open / close the ability cluster
+  bind('mmFab', toggleMinimap);     // open / close the minimap panel
 }
 function togglePowers(){ const p=el('powers'); if(p){ p.classList.toggle('collapsed'); sfx('tick'); } }
+function toggleMinimap(){ const p=el('mmwrap'); if(p){ p.classList.toggle('collapsed'); sfx('tick'); } }
 
 // ============================================================
 //  Audio
@@ -2494,27 +2606,6 @@ function growl(f0,d,v,fa,fb){ if(!actx) return;
 }
 // wet flesh impact — a dull low thud plus a short mid splat, no metallic ring
 function flesh(v){ fnoise(0.045,(v||0.16),'bandpass',420,1.3,180); fnoise(0.02,(v||0.16)*0.7,'lowpass',900); tone(120,0.05,'sine',(v||0.16)*0.5,70); }
-// a throat full of fluid: bandpass noise whose centre frequency is WOBBLED by an LFO. The
-// irregularity is the whole effect — a steady filter reads as wind, a moving one reads as wet.
-function gurgle(d,v){ if(!actx||!NOISE||!budget()) return;
-  const s=actx.createBufferSource(); s.buffer=NOISE;
-  const f=actx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=rand(320,430); f.Q.value=rand(4,6);
-  const lfo=actx.createOscillator(), lg=actx.createGain(), t=actx.currentTime;
-  lfo.type='sine'; lfo.frequency.value=rand(11,19); lg.gain.value=rand(200,320);
-  lfo.connect(lg); lg.connect(f.frequency);
-  const g=actx.createGain();
-  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v||0.1,t+0.03); g.gain.exponentialRampToValueAtTime(0.0001,t+d);
-  s.connect(f); f.connect(g); g.connect(sink());
-  s.start(t, Math.random()*(2-d-0.05), d+0.02); lfo.start(t); lfo.stop(t+d+0.02); voice(d); }
-// bone letting go — ~10ms, bright and resonant. Short enough to read as a snap, not a click.
-function crack(v){ const b=v||0.11;
-  fnoise(0.010,b,'bandpass',rand(1900,2600),7); fnoise(0.006,b*0.7,'highpass',5200,0.9); }
-// dead weight hitting dirt: mass thud + the sub you feel + a clothing scuff + grit settling
-function bodyfall(v){ const b=v||0.13;
-  fnoise(0.11,b,'lowpass',240,0.8,95);
-  tone(rand(58,74),0.13,'sine',b*0.8,rand(34,44));
-  fnoise(0.05,b*0.45,'bandpass',520,1.6,300);
-  if(budget()) for(let i=0;i<3;i++) later(rand(30,150),()=>fnoise(0.03,rand(0.012,0.03),'bandpass',rand(1400,3400),6)); }
 let lastShot=0, lastTick=0, lastHit=0, lastDie=0;
 // sfx(kind, mode, src) — `src` is an optional world-space {x,y} (an entity): when given, the sound
 // is panned and distance-attenuated relative to the player instead of playing flat and centred.
@@ -2563,31 +2654,15 @@ function _sfx(kind,mode){
   else if(kind==='tick'){ const t=performance.now(); if(t-lastTick<45) return; lastTick=t;
     flesh(0.10); fnoise(0.012,0.05,'highpass',3600,1); }                 // wet hit + thin hitmarker tick
   else if(kind==='kill'){ const t=performance.now(); if(t-lastHit<40) return; lastHit=t;
-    // the body coming apart: wet rupture → rib crack → gut thump. The old 880Hz square sweep
-    // was the last arcade sound in the kill; the hitmarker is now a dry noise tick instead,
-    // so the player still gets confirmation without a musical note over the gore.
-    flesh(0.22);
-    fnoise(0.10,0.12,'bandpass',rand(230,300),1.2,110);                       // deep wet burst
-    if(Math.random()<0.7) later(rand(8,26),()=>crack(0.10));                  // not every kill snaps bone
-    later(rand(20,45),()=>tone(rand(52,64),0.14,'sine',0.11,rand(30,38)));    // gut thump
-    fnoise(0.008,0.05,'highpass',4200,0.9); }                                 // hitmarker tick
+    flesh(0.2); fnoise(0.09,0.1,'bandpass',260,1.2,120); tone(880,0.06,'square',0.07,1320); }  // meat, then the UI ping
   else if(kind==='combo'){ const n=Math.min(mode||2,9); tone(420+n*95,0.1,'square',0.15,560+n*95); tone(210+n*45,0.12,'triangle',0.1); }
   else if(kind==='streak'){ const n=Math.min(mode||2,4); [660,880,1100,1320].slice(0,n).forEach((f,i)=>setTimeout(()=>tone(f,0.12,'square',0.14),i*70)); }
   else if(kind==='pickup'){ tone(720,0.1,'sine',0.13,1120); }
   else if(kind==='loot'){ [700,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,0.14,'triangle',0.15),i*80)); }
   else if(kind==='die'){ const t=performance.now(); if(t-lastDie<70) return; lastDie=t;
-    // Three deaths, picked at random, so a 40-zombie wave doesn't machine-gun one sample.
-    // Every variant ends with the body hitting dirt — that impact is what sells the kill.
-    const v=Math.random();
-    if(v<0.4){                                                   // a cry choked off mid-breath
-      growl(rand(140,195),rand(0.26,0.34),0.16,rand(340,470),rand(950,1300));
-      later(rand(120,180),()=>gurgle(rand(0.14,0.20),0.075)); }
-    else if(v<0.75){                                             // drowning — barely any voice left
-      gurgle(rand(0.26,0.36),0.11);
-      growl(rand(120,160),0.18,0.075,rand(300,400),rand(800,1050)); }
-    else                                                         // just air leaving the lungs
-      fnoise(rand(0.20,0.30),0.075,'bandpass',rand(700,1000),1.1,rand(300,460));
-    later(rand(170,240),()=>bodyfall(rand(0.11,0.16))); }
+    // a dying throat, then the body hitting the dirt — not a descending sawtooth beep
+    growl(rand(150,205),0.42,0.17,rand(360,480),rand(1000,1320));
+    later(190,()=>{ fnoise(0.13,0.13,'lowpass',260,0.8,110); tone(70,0.12,'sine',0.1,44); }); }
   else if(kind==='boom'){
     pin(0.1); fnoise(0.05,0.28,'highpass',2600,0.5); tone(120,0.12,'square',0.24,42);   // crack + concussion
     tone(84,0.55,'sawtooth',0.26,32); fnoise(0.5,0.24,'lowpass',900,0.6,200); tone(46,0.5,'sine',0.2,26); // body + sub
@@ -2640,7 +2715,7 @@ function updateBot(h,dt){
   } else { h.lockT=0; if(!out){ if(h.think<=0){ h.wanderA=rand(0,TAU); h.think=rand(.8,1.8); } h.think-=dt;
     mvx+=Math.cos(h.wanderA)*0.5; mvy+=Math.sin(h.wanderA)*0.5; h.aim=angLerp(h.aim,h.wanderA,0.08); } }
   const m=len(mvx,mvy);
-  if(m>0){ const sp=h.speed*(out?1.1:0.95); h.vx+=(mvx/m*sp-h.vx)*0.2; h.vy+=(mvy/m*sp-h.vy)*0.2; h.walk+=dt*8; }
+  if(m>0){ const sp=h.speed*(out?1.1:0.95)*(h.slowT>0?0.62:1); h.vx+=(mvx/m*sp-h.vx)*0.2; h.vy+=(mvy/m*sp-h.vy)*0.2; h.walk+=dt*8; }
   else { h.vx*=0.8; h.vy*=0.8; }
   stepDust(h,dt);
 }
@@ -2650,6 +2725,7 @@ function updateZombie(z,dt){
   if(z.burn>0){ z.burn-=dt; z.hp-=9*dt;
     if(Math.random()<dt*12) spark(z.x+rand(-7,7), z.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2, .4);
     if(z.hp<=0){ die(z, z.burnSrc, false); return; } }
+  if(z.slowT>0) z.slowT-=dt;
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
   if(tgt && near.d<(z.ranged?540:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
@@ -2686,7 +2762,7 @@ function updateZombie(z,dt){
   }
   if(z.lunge>0) z.lunge-=dt*3.2;
   const m=len(mvx,mvy);
-  if(m>0){ z.vx+=(mvx/m*z.speed-z.vx)*0.12; z.vy+=(mvy/m*z.speed-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
+  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
   // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
   // stomp-clods on each footfall, normals scuff the odd puff
@@ -2706,14 +2782,21 @@ function updateZombie(z,dt){
 // ============================================================
 //  Update
 // ============================================================
-function updatePlayer(h,dt){
+// `gp` is this human's OWN gamepad sample (curGp for player 1, curGp2 for player 2 — see loop()).
+// `readShared` gates keyboard/mouse/touch input: those are single-device UI singletons (one
+// `keys{}`, one `mouse`, one on-screen joystick pair) that must stay exclusive to whichever human
+// is the "primary" local player, or player 2's presence would silently also steer/aim player 1
+// (and vice versa) every frame both are being updated. Player 2 is gamepad-only by design — no
+// touch/keyboard fallback — so it always passes readShared=false.
+function updatePlayer(h,dt,gp,readShared){
   if(!h.alive) return;
   if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=magCap(h); }
-  const gp=readGamepad();
   let mx=0,my=0;
-  if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
-  if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
-  if(moveVec.active){ mx+=moveVec.x; my+=moveVec.y; }
+  if(readShared){
+    if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
+    if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
+    if(moveVec.active){ mx+=moveVec.x; my+=moveVec.y; }
+  }
   if(gp){ mx+=gp.mx; my+=gp.my; }
   const m=len(mx,my);
   if(h.grap){ // rope physics owns velocity — input only steers (pumps the swing)
@@ -2739,13 +2822,17 @@ function updatePlayer(h,dt){
   // aim + fire
   let firing=false, mouseAim=false;
   if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=Math.atan2(gp.ay,gp.ax); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
-  else if(aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
-  else if(!isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
-  if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); }
-  // reticle world target
-  if(mouseAim){ aimWX=mouse.x+cam.x; aimWY=mouse.y+cam.y; }
-  else { aimWX=h.x+Math.cos(h.aim)*130; aimWY=h.y+Math.sin(h.aim)*130; }
-  aimShow = mouseAim || firing || aimVec.active || !!(gp&&(Math.abs(gp.ax)+Math.abs(gp.ay))>0.25);
+  else if(readShared && aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
+  else if(readShared && !isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
+  if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
+  // reticle world target — player-1-only screen overlay globals (aimWX/aimWY/aimShow); player 2
+  // doesn't get an on-screen reticle in this pass, a deliberate scope cut, not an oversight — see
+  // memory.md 2-player entry
+  if(readShared){
+    if(mouseAim){ aimWX=mouse.x+cam.x; aimWY=mouse.y+cam.y; }
+    else { aimWX=h.x+Math.cos(h.aim)*130; aimWY=h.y+Math.sin(h.aim)*130; }
+    aimShow = mouseAim || firing || aimVec.active || !!(gp&&(Math.abs(gp.ax)+Math.abs(gp.ay))>0.25);
+  }
   if(Math.cos(h.aim)) h.faceX=Math.cos(h.aim)<0?-1:1;
   // build mode hijacks the fire input to drop structures instead of shooting
   if(h.placeCd>0) h.placeCd-=dt;
@@ -2761,24 +2848,217 @@ function updatePlayer(h,dt){
   const tr = meta.trail!=='none' && shopItem(meta.trail);
   if(tr && (h.vx*h.vx+h.vy*h.vy)>3600 && Math.random()<dt*14)
     spark(h.x+rand(-5,5), h.y+rand(8,15), pick(tr.colors), rand(6,22), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.3,.55));
-  // low-health heartbeat — quickens as HP drops toward zero
-  const lf = h.maxhp>0 ? h.hp/h.maxhp : 1;
-  if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
-  else heartT=0;
+  // low-health heartbeat — quickens as HP drops toward zero. readShared-gated: heartT is a
+  // single shared timer, so letting player 2 also drive it would make the cadence reflect
+  // whichever of the two humans updatePlayer() happened to process last each frame.
+  if(readShared){
+    const lf = h.maxhp>0 ? h.hp/h.maxhp : 1;
+    if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
+    else heartT=0;
+  }
 }
-let gpRP=false,gpLP=false,gpBP=false,gpSeen=false;
-function readGamepad(){
-  if(!navigator.getGamepads) return null;
-  let gp=null; const pads=navigator.getGamepads();
-  for(const p of pads){ if(p){ gp=p; break; } }
+let gpSeen=false, curGp=null, curGp2=null;
+// Edge-trigger state is a per-CONTROLLER bag, not module-level singletons — a second local
+// gamepad (co-op player 2) needs its OWN prev-frame button state, or it would corrupt player 1's
+// edge detection (and vice versa) every time both controllers happened to press something the
+// same frame. This is the exact bug class CLAUDE.md's "Input edge / continuous split" warns
+// about: readGamepad() mutates mutable prev-state, so sharing that state across two independent
+// input sources silently breaks edge-triggering for whichever one reads second.
+function makeGpEdgeState(){ return {RP:false,LP:false,BP:false,GP:false,StP:false,UpP:false,DnP:false,LtP:false,RtP:false,AP:false}; }
+let gp1Edge = makeGpEdgeState(), gp2Edge = makeGpEdgeState();
+// Reads ONE already-resolved Gamepad object against ITS OWN edge-state bag. Callers own picking
+// which raw pad and which state bag to pass in (see loop()) — this function no longer does its
+// own "find a pad" scan, so the same logic serves player 1 and player 2 without duplication.
+function readGamepadFrom(gp, st){
   if(!gp) return null;
   const dz=v=>Math.abs(v)<0.18?0:v, btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
   const mx=dz(gp.axes[0]||0), my=dz(gp.axes[1]||0), ax=dz(gp.axes[2]||0), ay=dz(gp.axes[3]||0);
   const fire=btn(7)||btn(5)||btn(0);
-  const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6)||btn(9);
-  const reload=rN&&!gpRP, light=lN&&!gpLP, bomb=bN&&!gpBP; gpRP=rN; gpLP=lN; gpBP=bN;
+  const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6), gN=btn(10), stN=btn(9);
+  const reload=rN&&!st.RP, light=lN&&!st.LP, bomb=bN&&!st.BP, grapple=gN&&!st.GP, start=stN&&!st.StP;
+  st.RP=rN; st.LP=lN; st.BP=bN; st.GP=gN; st.StP=stN;
+  // menu cursor: d-pad buttons (12-15) OR the left stick past a generous threshold — either one
+  // moves the focus exactly one cell per press/flick, never continuously
+  const upN=btn(12)||my<-0.5, dnN=btn(13)||my>0.5, ltN=btn(14)||mx<-0.5, rtN=btn(15)||mx>0.5, aN=btn(0);
+  const navUp=upN&&!st.UpP, navDown=dnN&&!st.DnP, navLeft=ltN&&!st.LtP, navRight=rtN&&!st.RtP, confirm=aN&&!st.AP;
+  st.UpP=upN; st.DnP=dnN; st.LtP=ltN; st.RtP=rtN; st.AP=aN;
   if(!gpSeen && (mx||my||ax||ay||fire)){ gpSeen=true; audioInit(); }
-  return {mx,my,ax,ay,fire,reload,light,bomb};
+  // `reload` (X/B — already edge-triggered above) doubles as menu Back, same reuse pattern as
+  // Start doubling as pause-toggle even while paused
+  return {mx,my,ax,ay,fire,reload,light,bomb,grapple,start,navUp,navDown,navLeft,navRight,confirm,back:reload};
+}
+// Connected pads in slot order, filtered to non-null — the 1st is player 1's, the 2nd (if
+// player2 has joined) is player 2's. Matches the old readGamepad()'s "first non-null" behavior
+// for player 1 exactly, so solo play is unaffected byte-for-byte.
+function connectedPads(){ return navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; }
+// Local co-op: player 2 auto-joins the moment a second physical controller shows up while a
+// match is live — no join screen, no separate save/profile (they use a fixed avatar + player 1's
+// current weapon; kills/XP/coins still accrue to player 1's meta, same as a guest controller on
+// a console). Called every frame from loop() with that frame's already-fetched pads array so
+// this never triggers a second navigator.getGamepads() call of its own.
+function tryJoinPlayer2(pads){
+  if(player2 || !player || !player.alive) return;
+  if(!pads || !pads[1]) return;
+  player2 = makeHuman(true, AVATARS[(meta.avatar+1)%AVATARS.length], WEAPONS[meta.weapon], 'Player 2');
+  player2.isPlayer2 = true; player2.gpIndex = 1; player2.team = 0;
+  player2.x = clamp(player.x + rand(-70,-40), R, ARENA-R);
+  player2.y = clamp(player.y + rand(-30,30), R, ARENA-R);
+  player2.lightCd=0; player2.bombCd=0; player2.grapCd=0; player2.grap=null;
+  player2.scrap=0; player2.buildSel=-1; player2.placeCd=0;
+  player2.magMul=1; player2.mag=magCap(player2);
+  humans.push(player2);
+  toast('🎮 Player 2 joined!'); sfx('pickup');
+}
+// Co-op uses ONE shared, non-zooming camera (see draw() — it frames the midpoint of both alive
+// players at a fixed 1:1 world-to-screen scale, same as solo play). A dynamic zoom-to-fit-both
+// camera was considered and deliberately cut for this pass: the codebase's culling (inView()),
+// vignette, and a couple of other draw-time rects all assume the visible world span equals
+// exactly W×H — correctly threading a variable zoom through all of them without being able to
+// verify the result on a real 2-controller device felt like a worse tradeoff than a simple
+// position leash that keeps both players on-screen without touching rendering at all. If a
+// zoomed camera is wanted later, search this file for every `cam.x`/`cam.y` read (not just this
+// comment) — each one currently assumes zoom===1.
+function leashPlayer2(){
+  if(!player2 || !player2.alive || !player || !player.alive) return;
+  const maxLeash = Math.min(W,H)*0.42;
+  const dx=player2.x-player.x, dy=player2.y-player.y, d=Math.hypot(dx,dy);
+  if(d>maxLeash){ const k=maxLeash/d; player2.x=player.x+dx*k; player2.y=player.y+dy*k; }
+}
+// Bluetooth/USB pads (PS5 DualSense included) fire connect/disconnect events independent of the
+// per-frame poll above — listen directly so pairing success is visible right away instead of
+// waiting for gpSeen to flip on the first stick/button read (which on a freshly-paired Bluetooth
+// pad can lag a beat), and so a non-'standard' mapping is at least diagnosable instead of quietly
+// producing dead or scrambled input. The Gamepad API's 'standard' mapping is WHY DualSense,
+// DualShock, and Xbox pads already work identically here — there's no PS5-specific code path to
+// add; support IS readGamepad() as written, as long as the browser reports 'standard'. That has
+// been true on Chrome/Edge (desktop + Android) for DualSense over both USB and Bluetooth for
+// years; the one environment with known historical gaps is Safari/WebKit (desktop and iOS), where
+// some versions have reported DualSense with mapping !== 'standard' or with axes 2/3 (right
+// stick) silently absent. Can't be fixed from here — it's a browser-side mapping table gap, not
+// something a web page's JS can patch — but it can be surfaced instead of silently eating input.
+window.addEventListener('gamepadconnected', e=>{
+  const gp=e.gamepad;
+  if(!gpSeen){ gpSeen=true; audioInit(); }
+  if(gp.mapping!=='standard'){
+    // surfaced to the PLAYER too, not just devtools — a silent console.warn is useless to someone
+    // whose buttons just don't work after pairing over Bluetooth
+    toast('🎮 '+(gp.id||'Controller')+' connected (buttons may be misaligned)');
+    console.warn('[gamepad] "'+gp.id+'" reported mapping="'+(gp.mapping||'(none)')+'" (expected "standard") — button/axis indices in readGamepad() may not line up; this is a browser limitation, not fixable in-page');
+  } else toast('🎮 '+(gp.id||'Controller')+' connected');
+  syncControllerStatus();
+  if(screenState==='playing') tryJoinPlayer2(connectedPads());   // 2nd controller pairing mid-match auto-joins co-op
+});
+window.addEventListener('gamepaddisconnected', ()=>{ toast('🎮 Controller disconnected'); syncControllerStatus(); });
+// Live controller-status card in Settings — added because a player pairing a controller had
+// NOTHING in the UI telling them how, or confirming it worked; a silent 🎮 HUD icon that only
+// appears once gpSeen flips true (which itself requires actual stick/button movement) mid-match
+// is not discoverable before you're already in a fight. Bluetooth pairing itself always happens
+// at the OS level — a web page cannot trigger or complete that handshake — so this card's job is
+// purely to show LIVE status and point the player at the right OS setting, not to "connect" one.
+function syncControllerStatus(){
+  const row=el('sCtrlStatus'), hint=el('sCtrlHint');
+  if(!row || el('settings').classList.contains('hidden')) return;   // cheap no-op when the card isn't visible
+  const pads = connectedPads();
+  if(!pads.length){
+    row.textContent = '⚪ No controller connected';
+    hint.textContent = 'Pair one in your device\'s Bluetooth settings first, then press any button on it here.';
+    return;
+  }
+  const bad = pads.find(p=>p.mapping!=='standard');
+  row.textContent = pads.length>1
+    ? '🟢 '+pads.length+' controllers connected (2-player co-op ready)'
+    : '🟢 '+(pads[0].id||'Controller')+' connected';
+  hint.textContent = bad
+    ? '⚠️ "'+bad.id+'" reported as a non-standard layout — buttons may be misaligned. Try updating your browser or OS.'
+    : pads.length>1
+      ? 'Player 2 joins automatically on drop-in. D-pad/stick to move, A to confirm, X/B to go back in menus.'
+      : 'D-pad or left stick to move the cursor, A to confirm, X/B to go back. Connect a 2nd controller for co-op.';
+}
+// Haptic feedback (DualSense's rumble works over both USB and Bluetooth via the standard Gamepad
+// API — no vendor-specific code needed) for the two moments players most want to FEEL: taking a
+// hit and landing a kill. Feature-detected and wrapped in try/catch since vibrationActuator is
+// unsupported on plenty of browsers/pads — a missing rumble should never be able to throw and
+// interrupt hurt()/die(), which run in the middle of live combat.
+function gpRumble(padIndex, duration, weakMagnitude, strongMagnitude){
+  try{
+    const pads = navigator.getGamepads && navigator.getGamepads();
+    const act = pads && pads[padIndex] && pads[padIndex].vibrationActuator;
+    if(act && act.playEffect) act.playEffect('dual-rumble', {duration, startDelay:0, weakMagnitude, strongMagnitude});
+  }catch(err){}
+}
+// ---- Gamepad menu navigation ----
+// Avatar/weapon grids, settings, and results were mouse/touch-only DOM overlays even after
+// in-match gamepad support (v2.37.0) shipped — a controller player could get in and fight but
+// couldn't reach the fight in the first place. This reuses the SAME curGp sample loop() already
+// takes once/frame (see readGamepad() above); it must never call readGamepad() again itself.
+let gpFocusIdx = 0;
+// `.grid` (avatarGrid/weaponGrid) is a fixed 2-column CSS grid (index.html ~line 132) — hard-code
+// it rather than reading computed style every frame; if that layout ever goes responsive this is
+// the one place to update.
+const GP_GRID_COLS = 2;
+// Single-purpose modals (informational or one-action): just their action button(s) + Close, in
+// visual order. Shop cards are individually clickable via #shopGrid's delegated listener
+// (e.target.closest('[data-upg],[data-shop]')) — clicking the card element itself still hits
+// that delegate correctly since closest() matches the element it's called on too.
+const GP_SIMPLE_MODALS = [
+  {id:'shop',        closeId:'shopClose',   targets:()=>[...el('shopGrid').querySelectorAll('.shopcard'), el('shopClose')]},
+  {id:'achievements',closeId:'achClose',    targets:()=>[el('achClose')]},   // achievement cards are display-only, not clickable
+  {id:'donate',      closeId:'donateClose', targets:()=>[el('donateGo'), el('donateClose')]},
+  {id:'a2hs',        closeId:'a2hsClose',   targets:()=>[el('a2hsClose')]},
+  {id:'whatsnew',    closeId:'wnClose',     targets:()=>[el('wnClose')]},
+];
+function gpMenuTargets(){
+  // Recomputed each call instead of cached: the grids rebuild whenever level/unlocks change
+  // (buildAvatarGrid/buildWeaponGrid), so a cached NodeList would go stale silently.
+  // Returns {targets, cols, closeId} together — cols/closeId describe the LIST JUST BUILT, not
+  // screenState, since Settings (and every modal above) can be opened on top of the avatar/
+  // weapon screens without screenState changing. Deriving cols from screenState separately (an
+  // earlier version of this code did exactly that) meant navigating the 1-column Settings list
+  // while screenState was still 'avatar'/'weapon' silently used a 2-column stride and skipped
+  // every other row — caught by the throwaway __gpTest harness, not by eye, which is exactly why
+  // it's worth keeping this as one return value instead of separate functions that can drift out
+  // of sync.
+  if(!el('settings').classList.contains('hidden'))
+    // .opt buttons and the two <input type=range> sliders interleave in DOM/visual order —
+    // querySelectorAll always returns document order regardless of which part of the selector
+    // matched, so this doesn't need to be built up manually.
+    return { targets:[...el('settings').querySelectorAll('.opt:not(.hidden), .slider input'), el('sClose')], cols:1, closeId:'sClose' };
+  if(!el('results').classList.contains('hidden'))
+    return { targets:[el('againBtn'), el('menuBtn')], cols:1, closeId:null };   // no back target — matches touch (no close button either)
+  for(const m of GP_SIMPLE_MODALS){
+    if(!el(m.id).classList.contains('hidden')) return { targets:m.targets(), cols:1, closeId:m.closeId };
+  }
+  if(screenState==='avatar')
+    return { targets:[...el('avatarGrid').querySelectorAll('.card:not(.locked)'), el('toWeaponBtn')], cols:GP_GRID_COLS, closeId:null };
+  if(screenState==='weapon')
+    return { targets:[...el('weaponGrid').querySelectorAll('.card:not(.locked)'), el('dropInBtn')], cols:GP_GRID_COLS, closeId:null };
+  if(screenState==='start')
+    return { targets:[el('toModeBtn'), el('achBtn'), el('shopBtn'), el('donateBtn')], cols:1, closeId:null };
+  return { targets:[], cols:1, closeId:null };
+}
+function updateGamepadMenuNav(gp){
+  const {targets, cols, closeId} = gpMenuTargets();
+  // clear stale focus rings from whatever was focused a screen ago before bailing/recomputing
+  document.querySelectorAll('.gpfocus').forEach(t=>t.classList.remove('gpfocus'));
+  if(!targets.length) return;
+  if(gpFocusIdx>=targets.length) gpFocusIdx=targets.length-1;
+  const focused = targets[gpFocusIdx];
+  const isSlider = focused && focused.tagName==='INPUT' && focused.type==='range';
+  if(isSlider && (gp.navLeft||gp.navRight)){
+    // left/right on a focused slider adjusts its value instead of moving the cursor — up/down
+    // still moves between rows, same convention as most console settings menus
+    const step=+focused.step||1, dir=gp.navLeft?-1:1;
+    focused.value = clamp(+focused.value + dir*step, +focused.min, +focused.max);
+    focused.dispatchEvent(new Event('input',{bubbles:true}));   // reuses the existing sfxVol/aimSens listeners verbatim
+  } else {
+    if(gp.navLeft)  gpFocusIdx = Math.max(0, gpFocusIdx-1);
+    if(gp.navRight) gpFocusIdx = Math.min(targets.length-1, gpFocusIdx+1);
+  }
+  if(gp.navUp)   gpFocusIdx = Math.max(0, gpFocusIdx-cols);
+  if(gp.navDown) gpFocusIdx = Math.min(targets.length-1, gpFocusIdx+cols);
+  targets[gpFocusIdx].classList.add('gpfocus');
+  if(gp.confirm && !isSlider){ audioInit(); targets[gpFocusIdx].click(); }   // a slider has nothing to "click" — left/right already adjusts it
+  else if(gp.back && closeId){ audioInit(); el(closeId).click(); }
 }
 function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
@@ -2792,13 +3072,49 @@ function integrate(h,dt){
   if(h.burn>0 && h.alive){ h.burn-=dt; h.hp-=9*dt;
     if(Math.random()<dt*12) spark(h.x+rand(-7,7), h.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2+rand(-.4,.4), .4);
     if(h.hp<=0) die(h, h.burnSrc, true); }
+  if(h.slowT>0) h.slowT-=dt;
 }
+// Uniform spatial hash: any colliding pair (dist < r_a+r_b) is guaranteed to land in the same or
+// an adjacent cell as long as SEP_CELL >= the largest possible r_a+r_b (juggernaut r:26 is the
+// biggest entity, so 2*26=52 is the worst case — 64 leaves margin). Bucketing + a 3x3 neighbor
+// scan turns the old O(n^2) all-pairs pass into ~O(n) candidate checks — with two hard-learned
+// caveats from actually measuring it (scratchpad benchmark, not committed; function compiled ONCE
+// outside the timed loop, matching real per-frame cost, not re-`eval`'d per call):
+//   1. A first version keyed the Map with a template string (`cx+','+cy`) and was SLOWER than
+//      brute force at every size tested — string concat + string-keyed Map lookups cost more than
+//      the comparisons they save at this scale. Fixed by packing cx/cy into one integer key
+//      (`(cx+OFFSET)*8192+(cy+OFFSET)`, collision-free for this arena/cell size) instead.
+//   2. Even with the integer key, this is a WASH (≈1.0x) at the game's actual current ceiling
+//      (~99 entities: 15 humans + up to 84 zombies under Swarm Night) — the win only becomes real
+//      above that: 1.3x by n≈150, 1.95x by n≈220, 2.2x by n≈400. Below ~80 entities (most of a
+//      normal match) brute force is faster and the grid is pure overhead. Shipped anyway because
+//      it's not a regression at today's scale and buys real headroom if density climbs further
+//      (bigger arena, future mutators/waves) — but don't cite this as a "2-5x win," that number
+//      only shows up well beyond what the game currently produces.
+// `if(j<=i) continue` resolves each pair exactly once (same pair SET as the old i<j loop) but NOT
+// in the same order — this is a single-pass Gauss-Seidel-style relaxation, so intra-frame
+// trajectories differ slightly from the old code. Verified this doesn't matter: across 200
+// randomized configs the two orderings are symmetric (neither systematically leaves more residual
+// overlap), converging equivalently within ~30 frames at realistic swarm densities. Don't force
+// global ordering to "fix" this — it would reintroduce the O(n^2) cost for a property nothing
+// downstream depends on.
+const SEP_CELL = 64, SEP_GRID_OFFSET = 8192;
+function sepKey(cx,cy){ return (cx+SEP_GRID_OFFSET)*8192 + (cy+SEP_GRID_OFFSET); }
 function separate(){
   const all=[...humans.filter(h=>h.alive), ...zombies.filter(z=>z.alive)];
-  for(let i=0;i<all.length;i++){ const a=all[i];
-    for(let j=i+1;j<all.length;j++){ const b=all[j];
-      const dx=b.x-a.x,dy=b.y-a.y,d=len(dx,dy),min=(a.r||R)+(b.r||R);
-      if(d>0&&d<min){ const p=(min-d)/2,nx=dx/d,ny=dy/d; a.x-=nx*p;a.y-=ny*p;b.x+=nx*p;b.y+=ny*p; } } }
+  const n=all.length;
+  const grid=new Map();
+  for(let i=0;i<n;i++){ const e=all[i];
+    const key=sepKey(Math.floor(e.x/SEP_CELL), Math.floor(e.y/SEP_CELL));
+    let bucket=grid.get(key); if(!bucket){ bucket=[]; grid.set(key,bucket); } bucket.push(i); }
+  for(let i=0;i<n;i++){ const a=all[i];
+    const cx=Math.floor(a.x/SEP_CELL), cy=Math.floor(a.y/SEP_CELL);
+    for(let gx=cx-1; gx<=cx+1; gx++) for(let gy=cy-1; gy<=cy+1; gy++){
+      const bucket=grid.get(sepKey(gx,gy)); if(!bucket) continue;
+      for(const j of bucket){ if(j<=i) continue;
+        const b=all[j];
+        const dx=b.x-a.x,dy=b.y-a.y,d=len(dx,dy),min=(a.r||R)+(b.r||R);
+        if(d>0&&d<min){ const p=(min-d)/2,nx=dx/d,ny=dy/d; a.x-=nx*p;a.y-=ny*p;b.x+=nx*p;b.y+=ny*p; } } } }
 }
 function updateBullets(dt){
   for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i];
@@ -2809,13 +3125,15 @@ function updateBullets(dt){
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
-        hurt(z,b.dmg,b.owner,false); if(b.flame) ignite(z,b.owner);
+        hurt(z,b.dmg,b.owner,false); if(b.flame) ignite(z,b.owner); if(b.frost) z.slowT=Math.max(z.slowT||0,2.0);
+        if(b.arc && b.hits===0){ const n=nearestHuman(z,false).o; if(n&&n!==b.owner&&n!==z){ hurt(n,b.dmg*.55,b.owner,!!n.isPlayer); zaps.push({x1:z.x,y1:z.y,x2:n.x,y2:n.y,t:.18}); } }
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
     if(!gone) for(const h of humans){ if(!h.alive||h===b.owner||(b.owner&&h.team===b.owner.team)) continue;
       if(dist2(b.x,b.y,h.x,h.y)<(R+3)*(R+3)){
         if(b.boom){ gone=true; break; }
-        hurt(h,b.dmg,b.owner,true); if(b.flame) ignite(h,b.owner);
+        hurt(h,b.dmg,b.owner,true); if(b.flame) ignite(h,b.owner); if(b.frost) h.slowT=Math.max(h.slowT||0,1.6);
+        if(b.arc && b.hits===0){ const n=nearestHuman(h,false).o; if(n&&n!==b.owner&&n!==h){ hurt(n,b.dmg*.55,b.owner,!!n.isPlayer); zaps.push({x1:h.x,y1:h.y,x2:n.x,y2:n.y,t:.18}); } }
         h.vx+=b.vx*0.04; h.vy+=b.vy*0.04;
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
@@ -2887,6 +3205,7 @@ function updateParticles(dt){
   for(let i=hitmarks.length-1;i>=0;i--){ hitmarks[i].t-=dt; if(hitmarks[i].t<=0) hitmarks.splice(i,1); }
   for(let i=dmgDirs.length-1;i>=0;i--){ dmgDirs[i].t-=dt; if(dmgDirs[i].t<=0) dmgDirs.splice(i,1); }
   for(let i=splats.length-1;i>=0;i--){ splats[i].t-=dt; if(splats[i].t<=0) splats.splice(i,1); }
+  for(let i=wallStreaks.length-1;i>=0;i--){ wallStreaks[i].t-=dt; if(wallStreaks[i].t<=0) wallStreaks.splice(i,1); }
   if(streakT>0) streakT-=dt;
   if(comboT>0){ comboT-=dt; if(comboT<=0) combo=0; }
   if(toastT>0){ toastT-=dt; if(toastT<=0) el('toast').style.opacity='0'; }
@@ -2960,7 +3279,8 @@ function hordeUpdate(dt){
   hordeWave++; hordeStallT=0;
   const boss = hordeWave>=5 && hordeWave%5===0;                     // every 5th wave: armored elites
   toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave+' — CLEARED, next wave!'); sfx('warn');
-  const n=Math.min(8+hordeWave*3, 42);                             // steeper ramp so it doesn't stay trivial
+  const zMul=activeMutator?.zMul||1;
+  const n=Math.min((8+hordeWave*3)*zMul, 42*zMul);                 // steeper ramp so it doesn't stay trivial
   for(let i=0;i<n;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
     while(dist2(s.x,s.y,player.x,player.y)<500*500 && tries<10);
     const z=makeZombie(s.x,s.y,hordeKind(hordeWave)); hordeScale(z,hordeWave); zombies.push(z); }
@@ -2993,7 +3313,7 @@ function specPick(){ let best=null,bk=-2; for(const h of humans){ if(!h.alive) c
 function endSpectate(){ spectating=false; el('specBar').classList.add('hidden'); }
 function ord(n){ const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
 function showResults(win, place){
-  screenState='results'; endSpectate();
+  screenState='results'; endSpectate(); gpFocusIdx=0;
   const horde = gameMode==='horde';
   let xpEarned = win?120:40; xpEarned += killsTotal*(horde?2:10); if(horde) xpEarned += hordeWave*15;
   const lv=grantXp(xpEarned);
@@ -3059,7 +3379,13 @@ function showResults(win, place){
 function draw(){
   ctx.clearRect(0,0,W,H);
   gtime = performance.now()/1000;
-  const t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA/2,y:ARENA/2});
+  let t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA/2,y:ARENA/2});
+  // co-op: frame the MIDPOINT of both players instead of just player 1, so player 2 doesn't drift
+  // toward the camera's edge. leashPlayer2() (called after integrate() each frame) is what
+  // actually keeps them close enough for this midpoint to stay meaningful — see its comment for
+  // why this camera doesn't zoom to fit both.
+  if(!spectating && player2 && player2.alive && player && player.alive)
+    t = {x:(player.x+player2.x)/2, y:(player.y+player2.y)/2, vx:(player.vx+player2.vx)/2, vy:(player.vy+player2.vy)/2};
   // camera look-ahead: lead the view in the direction of travel so fast movement feels dynamic
   const lx=(t.vx||0)*MOVE.camLead, ly=(t.vy||0)*MOVE.camLead;
   let tcx=clamp(t.x+lx-W/2,0,Math.max(0,ARENA-W)), tcy=clamp(t.y+ly-H/2,0,Math.max(0,ARENA-H));
@@ -3185,6 +3511,9 @@ function draw(){
       const w=ctx.measureText(f.txt).width; ctx.fillStyle='rgba(0,0,0,.4)'; roundRect(8,ky-12,w+12,18,4); ctx.fill();
       ctx.fillStyle=f.you?'#ffe27a':'#fff'; ctx.fillText(f.txt,14,ky+1); ky+=22; }
     ctx.globalAlpha=1;
+    // controller-detected indicator — quiet confirmation once a gamepad has sent input
+    if(gpSeen){ ctx.globalAlpha=0.85; ctx.font='14px Trebuchet MS, sans-serif'; ctx.textAlign='right';
+      ctx.fillText('🎮', W-10, 26); ctx.globalAlpha=1; ctx.textAlign='left'; }
     // out-of-zone red vignette + warning
     if(zoneActive()&&player&&player.alive&&grace<=0&&outsideZone(player)){
       const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.30,W/2,H/2,Math.max(W,H)*0.72);
@@ -3265,9 +3594,10 @@ function drawDayNight(){
     const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(255,120,40,.16)'); g.addColorStop(1,'rgba(80,30,70,.20)');
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   } else { // night
-    ctx.fillStyle='rgba(20,30,72,.30)'; ctx.fillRect(0,0,W,H);
+    const fog=activeMutator?.fog;
+    ctx.fillStyle=fog?'rgba(20,30,72,.48)':'rgba(20,30,72,.30)'; ctx.fillRect(0,0,W,H);
     if(player&&player.alive){ const px=player.x-cam.x, py=player.y-cam.y;
-      const g=ctx.createRadialGradient(px,py,18,px,py,280); g.addColorStop(0,'rgba(255,240,200,.20)'); g.addColorStop(1,'rgba(255,240,200,0)');
+      const g=ctx.createRadialGradient(px,py,18,px,py,fog?170:280); g.addColorStop(0,'rgba(255,240,200,.20)'); g.addColorStop(1,'rgba(255,240,200,0)');
       ctx.globalCompositeOperation='lighter'; ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.globalCompositeOperation='source-over'; }
   }
   ctx.restore();
@@ -3361,6 +3691,13 @@ function drawBuilding(d){
     for(let px=x+16; px<x+w-6; px+=18){ ctx.beginPath(); ctx.moveTo(px,y); ctx.lineTo(px,y+h); ctx.stroke(); }
     ctx.fillStyle='rgba(240,235,225,.85)'; ctx.fillRect(x,y+h*0.5,w,3);
   } else ctx.fillStyle='rgba(120,90,50,.16)', ctx.fillRect(x,y+h*0.5,w,2.5); // house/shop wall trim line
+  // blood streaks left on this wall — drawn on the plain wall face, under windows/door dressing
+  if(wallStreaks.length){ for(const s of wallStreaks){ if(s.o!==d) continue;
+    const sx=x+s.x, sy=y+s.y0, a=clamp(s.t/9,0,1)*0.7;
+    const g=ctx.createLinearGradient(sx,sy,sx,sy+s.len);
+    g.addColorStop(0,s.col+(a*0.9)+')'); g.addColorStop(1,s.col+'0)');
+    ctx.strokeStyle=g; ctx.lineWidth=s.w; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx,sy+s.len); ctx.stroke(); } }
   ctx.restore();
   if(kind==='shop'){
     // --- SHOP: low shopfront window + striped awning + hanging sign ---
@@ -3518,6 +3855,32 @@ function drawDecor(d){
     ctx.strokeStyle='rgba(0,0,0,.28)'; ctx.lineWidth=1.1;               // cracks + moss
     ctx.beginPath(); ctx.moveTo(x-4,y-14); ctx.lineTo(x-1,y-10); ctx.lineTo(x-3,y-8); ctx.stroke();
     ctx.fillStyle='rgba(90,140,70,.5)'; ctx.beginPath(); ctx.arc(x-9,y-5,2.6,0,TAU); ctx.arc(x+11,y-3,2,0,TAU); ctx.fill();
+    return; }
+  if(d.type==='graveyard'){ const x=d.x, y=d.y, sd=d.seed||0;
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(x,y+6,34,11,0,0,TAU); ctx.fill();
+    ctx.fillStyle='rgba(70,90,50,.35)'; ctx.beginPath(); ctx.ellipse(x,y+2,32,12,0,0,TAU); ctx.fill();   // patchy dead grass
+    // low iron fence border (2 corner posts each side + a sagging chain rail)
+    ctx.strokeStyle='#3a4038'; ctx.lineWidth=2.2;
+    for(const px of [x-30,x-10,x+12,x+30]){ ctx.beginPath(); ctx.moveTo(px,y+9); ctx.lineTo(px,y-2); ctx.stroke();
+      ctx.fillStyle='#4a5148'; ctx.beginPath(); ctx.arc(px,y-2,1.6,0,TAU); ctx.fill(); }
+    ctx.strokeStyle='#4a5148'; ctx.lineWidth=1.4; ctx.beginPath();
+    ctx.moveTo(x-30,y-1); ctx.quadraticCurveTo(x-20,y+3,x-10,y-1);
+    ctx.moveTo(x-10,y-1); ctx.quadraticCurveTo(x+1,y+3,x+12,y-1);
+    ctx.moveTo(x+12,y-1); ctx.quadraticCurveTo(x+21,y+3,x+30,y-1); ctx.stroke();
+    // 3 weathered tombstones, staggered heights/lean via the seed
+    const stones=[{ox:-16,h:16,lean:-0.06},{ox:0,h:21,lean:0.03+sd*0.05},{ox:16,h:14,lean:0.07}];
+    for(const s of stones){ const sx=x+s.ox, sy=y-2;
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(s.lean);
+      ctx.fillStyle='rgba(0,0,0,.15)'; ctx.beginPath(); ctx.ellipse(0,1.5,7,2.4,0,0,TAU); ctx.fill();
+      ctx.fillStyle='#8f8d86'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(-5,-s.h*0.62); ctx.arc(0,-s.h*0.62,5,Math.PI,0);
+      ctx.lineTo(5,0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1;                        // engraved cross + moss
+      ctx.beginPath(); ctx.moveTo(0,-s.h*0.5); ctx.lineTo(0,-s.h*0.18);
+      ctx.moveTo(-2.6,-s.h*0.38); ctx.lineTo(2.6,-s.h*0.38); ctx.stroke();
+      ctx.fillStyle='rgba(90,130,70,.45)'; ctx.beginPath(); ctx.arc(-3,-1,1.8,0,TAU); ctx.fill();
+      ctx.restore(); }
     return; }
   if(d.type==='dirt'){ ctx.fillStyle = timeOfDay==='night'?'rgba(80,64,40,.45)':'rgba(150,120,72,.4)';
     ctx.beginPath(); ctx.ellipse(d.x,d.y,d.s,d.s*0.62,0,0,TAU); ctx.fill();
@@ -3687,22 +4050,22 @@ function drawDrop(d){
   ctx.restore();
 }
 const GUNK={
-  Pistol:  {l:11,c:'#454a53',serr:1,guard:1},
-  Rifle:   {l:20,c:'#3a3f48',stock:1,mag:1,sight:1,vents:1,muzzle:1,guard:1},
+  Pistol:  {l:11,c:'#454a53',serr:1,guard:1,hammer:1},
+  Rifle:   {l:20,c:'#7a5836',stock:1,mag:1,sight:1,vents:1,muzzle:1,guard:1,wood:1},
   Shotgun: {l:17,c:'#6a4a2e',stock:1,pump:1,tip:1,wood:1,guard:1},
-  SMG:     {l:14,c:'#3a3f48',stock:1,mag:1,muzzle:1,guard:1},
+  SMG:     {l:14,c:'#3a3f48',stock:1,mag:1,muzzle:1,guard:1,finned:1},
   Magnum:  {l:13,c:'#4a5058',cyl:1,nickel:1,guard:1},
   Sniper:  {l:26,c:'#2a2f38',scope:1,stock:1,bipod:1,sight:1,brake:1,muzzle:1,guard:1},
   Crossbow:{l:16,c:'#6a4e2a',bow:1,wood:1,guard:1},
   Flame:   {l:13,c:'#8a3a2a',tank:1,nozzle:1,hazard:1},
-  Minigun: {l:18,c:'#2a2f38',fat:1,cluster:1},
+  Minigun: {l:18,c:'#2a2f38',fat:1,cluster:1,belt:1,grille:1},
   Tommy:   {l:16,c:'#5a4a3a',drum:1,stock:1,foregrip:1,wood:1,muzzle:1,guard:1},
   Launcher:{l:20,c:'#4a5a38',tube:1,stock:1,guard:1},
   Vipers:  {l:14,c:'#2f333b',twin:1,stock:1,mag:1,muzzle:1,guard:1},
-  'Pulse SMG': {l:15,c:'#27343b',stock:1,mag:1,muzzle:1,guard:1,vents:1},
-  'Arc Rifle': {l:23,c:'#49356b',stock:1,scope:1,muzzle:1,guard:1,brake:1},
-  'Frost Blaster': {l:15,c:'#567887',tank:1,nozzle:1,guard:1},
-  'Rocket Launcher': {l:22,c:'#4a5a38',tube:1,stock:1,guard:1}};
+  'Pulse SMG':{l:15,c:'#244b5a',stock:1,mag:1,muzzle:1,guard:1,finned:1,vents:1},
+  'Arc Rifle':{l:22,c:'#25445f',stock:1,mag:1,sight:1,scope:1,muzzle:1,guard:1,vents:1},
+  'Frost Blaster':{l:17,c:'#4d7890',tank:1,nozzle:1,guard:1,brake:1},
+  'Rocket Launcher':{l:23,c:'#5a4238',tube:1,stock:1,guard:1,scope:1}};
 function drawWeaponArt(w){
   if(!w || !w.img) return false;
   const art = imgOk(w.img);
@@ -3718,6 +4081,7 @@ function drawGun(name,c){
   c=c||ctx;
   const g=GUNK[name]||{l:14,c:'#3a3f48'}, ink='rgba(0,0,0,.38)';
   c.lineJoin='round'; c.lineWidth=1;
+  // ---- BEHIND BODY (drawn first so the main body occludes their near edge) ----
   // shoulder stock (behind the hand)
   if(g.stock){ c.fillStyle='#2b2e35'; c.strokeStyle=ink; roundRect(-7,-1,8,4.5,1.5,c); c.fill(); c.stroke(); }
   // magazine below the body
@@ -3727,7 +4091,14 @@ function drawGun(name,c){
   if(!g.fat){ c.save(); c.translate(2.6,1.6); c.rotate(0.32); c.fillStyle='#26282e'; c.strokeStyle=ink;
     roundRect(-1.5,0,3,5.6,1.2,c); c.fill(); c.stroke(); c.restore(); }
   if(g.foregrip){ c.fillStyle='#26282e'; c.strokeStyle=ink; roundRect(g.l*0.58,2,2.4,4,1,c); c.fill(); c.stroke(); }
-  // main body
+  // minigun ammo belt, feeding up into the body from below — drawn before the body on purpose
+  // (declared/drawn here, in the BEHIND-BODY pass, not after: this is exactly the class of
+  // ordering mistake the stalker-ridge fix caught — a "behind" layer accidentally drawn after
+  // the thing it's meant to sit behind renders on top instead and looks wrong)
+  if(g.belt){ c.strokeStyle='#3a3f28'; c.lineWidth=3.2; c.beginPath(); c.moveTo(6,4); c.quadraticCurveTo(2,10,-3,9); c.stroke();
+    c.fillStyle='#caa15a'; for(let k=0;k<4;k++){ const t=k/3, bx=6+(-3-6)*t, by=4+Math.sin(t*Math.PI)*5.5+t*5;
+      c.beginPath(); c.arc(bx,by,1,0,TAU); c.fill(); } c.lineWidth=1; }
+  // ---- MAIN BODY ----
   c.strokeStyle=ink; c.fillStyle=g.c;
   if(g.fat){ roundRect(-1,-4.2,g.l+1,8.4,2.5,c); c.fill(); c.stroke();
     c.fillStyle='#5a5f68'; for(let i=0;i<4;i++) c.fillRect(2+i*4,-4.2,1.8,8.4);
@@ -3742,6 +4113,7 @@ function drawGun(name,c){
   else { roundRect(0,-2,g.l,4,1.4,c); c.fill(); c.stroke();
     c.fillStyle='rgba(255,255,255,.22)'; c.fillRect(1.5,-1.7,g.l-3,1);        // top sheen
     c.fillStyle='rgba(0,0,0,.18)'; c.fillRect(1.5,1.1,g.l-3,0.9); }           // under-shade
+  // ---- OVER BODY: mid-layer attachments (cylinder/sights/scope/pump/tank/bow/drum, one per gun) ----
   // twin lower barrel (Vipers)
   if(g.twin){ c.fillStyle=g.c; c.strokeStyle=ink; roundRect(1,2.4,g.l-2,3,1.2,c); c.fill(); c.stroke();
     c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(2.5,2.7,g.l-5,0.8);
@@ -3753,6 +4125,12 @@ function drawGun(name,c){
   if(g.scope){ c.fillStyle='#16171b'; c.strokeStyle=ink; roundRect(5,-5.2,8,2.9,1.2,c); c.fill(); c.stroke();
     c.fillStyle='#86d4ff'; c.beginPath(); c.arc(12.2,-3.7,1,0,TAU); c.fill(); }
   if(g.bipod){ c.strokeStyle='#22252b'; c.lineWidth=1.5; c.beginPath(); c.moveTo(g.l-7,2); c.lineTo(g.l-9,7.5); c.moveTo(g.l-7,2); c.lineTo(g.l-4,7.5); c.stroke(); c.lineWidth=1; }
+  // ribbed suppressor-style cylinder along the barrel (SMG) — a chunky attached sleeve with
+  // heat-sink fins, distinct from the plain muzzle cap other guns use
+  if(g.finned){ c.fillStyle='#4a4f58'; c.strokeStyle=ink; roundRect(g.l*0.32,-2.6,g.l*0.34,5.2,1.8,c); c.fill(); c.stroke();
+    c.fillStyle='rgba(255,255,255,.14)'; c.fillRect(g.l*0.32+0.8,-2.2,1.2,4.4);
+    c.strokeStyle='rgba(0,0,0,.4)'; c.lineWidth=1;
+    for(let k=0;k<4;k++){ const fx=g.l*0.32+2.2+k*1.9; c.beginPath(); c.moveTo(fx,-2.6); c.lineTo(fx,2.6); c.stroke(); } c.lineWidth=1; }
   if(g.pump){ c.fillStyle='#4a3320'; c.strokeStyle=ink; roundRect(g.l*0.42,1.6,6.5,3,1.4,c); c.fill(); c.stroke();
     c.fillStyle='rgba(255,255,255,.12)'; c.fillRect(g.l*0.42+0.6,2,5,0.9); }
   if(g.tip){ c.fillStyle='#565b64'; c.strokeStyle=ink; roundRect(g.l-4,-2,4.5,4,1,c); c.fill(); c.stroke(); }
@@ -3769,7 +4147,9 @@ function drawGun(name,c){
   if(g.drum){ c.fillStyle='#34343c'; c.strokeStyle=ink; c.beginPath(); c.arc(7,4.6,3.9,0,TAU); c.fill(); c.stroke();
     c.fillStyle='rgba(255,255,255,.16)'; c.beginPath(); c.arc(5.8,3.4,1.4,0,TAU); c.fill();
     c.strokeStyle='rgba(0,0,0,.3)'; c.beginPath(); c.arc(7,4.6,2,0,TAU); c.stroke(); }
-  // ---- detail pass: per-gun flair ----
+  // ---- OVER BODY: detail pass, per-gun flair (drawn last so it sits on top of everything above) ----
+  if(g.hammer){ c.fillStyle='#2e3138'; c.strokeStyle=ink; c.lineWidth=1;    // pistol rear hammer
+    c.beginPath(); c.moveTo(-1.8,-2.6); c.lineTo(-3.4,-4.6); c.lineTo(-1.2,-3.6); c.closePath(); c.fill(); c.stroke(); }
   if(g.guard){ c.strokeStyle='#1c1f26'; c.lineWidth=1.3;                    // trigger guard loop
     c.beginPath(); c.arc(0.8,3.1,2.4,-0.25,Math.PI*0.95); c.stroke(); c.lineWidth=1; }
   if(g.serr){ c.strokeStyle='rgba(255,255,255,.3)'; c.lineWidth=0.9;        // slide serrations
@@ -3792,6 +4172,11 @@ function drawGun(name,c){
   if(g.cluster){ c.fillStyle='#3a4048'; c.strokeStyle=ink;                   // rotary barrel cluster
     for(const oy of [-2.3,0,2.3]){ c.beginPath(); c.arc(g.l+1.6,oy,1.5,0,TAU); c.fill(); c.stroke(); }
     c.fillStyle='rgba(0,0,0,.5)'; for(const oy of [-2.3,0,2.3]){ c.beginPath(); c.arc(g.l+1.6,oy,0.6,0,TAU); c.fill(); } }
+  if(g.grille){ c.fillStyle='rgba(0,0,0,.36)';                               // minigun heat-vent grille
+    for(let k=0;k<3;k++) c.fillRect(g.l*0.28+k*3.2,-3.6,2,2.6);
+    c.strokeStyle='rgba(255,120,60,.5)'; c.lineWidth=0.8;                    // faint heat-glow lines
+    c.beginPath(); for(let k=0;k<3;k++){ c.moveTo(g.l*0.28+k*3.2+0.4,2.4); c.lineTo(g.l*0.28+k*3.2+1.6,2.4); }
+    c.stroke(); c.lineWidth=1; }
 }
 // render a weapon's real gun art onto a hi-res canvas for the select-grid card — big and crisp
 // (the plate background + tier ring come from CSS; DPR-scaled so it stays sharp on retina)
@@ -4101,11 +4486,13 @@ function drawZombie(z){
   const moving=(z.vx*z.vx+z.vy*z.vy)>200;
   const lunge=Math.max(0,z.lunge||0);
   const runner=z.kind==='runner', brute=z.kind==='brute';
+  const stalker=z.kind==='stalker', juggernaut=z.kind==='juggernaut';
   const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
   const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
   const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute?2.4:3.4):0;
-  const tw=brute?11.5:runner?6.4:8, th=brute?16:runner?13.5:15;   // torso half-width / height per kind
+  const tw=brute?11.5:runner?6.4:stalker?5.5:8, th=brute?16:runner?13.5:stalker?12.5:15;   // torso half-width / height per kind
+  const zty=-6+bob*0.2;   // torso top y — computed early so behind-torso layers (spikes/ridge) can use it
   const night = timeOfDay!=='day';
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
   // ground shadow + a faint, pulsing eye-coloured menace pool
@@ -4130,6 +4517,11 @@ function drawZombie(z){
   if(brute && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
     for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*8,-9); ctx.lineTo(sx*13.5,-16); ctx.lineTo(sx*10.5,-8.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
 
+  // ---- STALKER spine ridge (behind the torso; a lean, quilled silhouette) ----
+  if(stalker && !flash){ ctx.fillStyle=SH; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
+    for(let i=0;i<3;i++){ const ry=zty+2+i*(th*0.42), fx=flip*(-tw-0.5);
+      ctx.beginPath(); ctx.moveTo(fx,ry-1.5); ctx.lineTo(fx-flip*3.6,ry); ctx.lineTo(fx,ry+1.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+
   // ---- LEGS (wide, planted stance; brute stomps) ----
   const lw=brute?7:runner?4.6:5.4;
   ctx.strokeStyle=INK; ctx.lineWidth=brute?8:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
@@ -4137,7 +4529,6 @@ function drawZombie(z){
   ctx.fillStyle='#20301a'; ctx.beginPath(); ctx.ellipse(-lw-1,17.4+step,3,1.8,0,0,TAU); ctx.ellipse(lw+1,17.4-step,3,1.8,0,0,TAU); ctx.fill();  // rotted feet
 
   // ---- TORSO (tattered, exposed ribcage) ----
-  const zty=-6+bob*0.2;
   ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=TO; roundRect(-tw,zty,tw*2,th,4); ctx.fill(); ctx.stroke();
   if(!flash){ ctx.save(); roundRect(-tw,zty,tw*2,th,4); ctx.clip();
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(-tw,zty,tw*0.6,th+2);                 // dim sheen
@@ -4153,6 +4544,16 @@ function drawZombie(z){
     // torn hem
     ctx.fillStyle=torso; for(let k=-1;k<=1;k++){ const kx=k*tw*0.62; ctx.beginPath(); ctx.moveTo(kx-2.4,zty+th); ctx.lineTo(kx,zty+th+3.4); ctx.lineTo(kx+2.4,zty+th); ctx.closePath(); ctx.fill(); }
     ctx.strokeStyle='rgba(120,20,16,.6)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-tw*0.4,zty+2); ctx.lineTo(-tw*0.15,zty+6); ctx.stroke(); }  // blood streak
+
+  // ---- JUGGERNAUT armor plating (over the torso — chest plate + shoulder guards) ----
+  if(juggernaut && !flash){
+    ctx.fillStyle='#3a3f3e'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;
+    roundRect(-tw*0.82,zty+1.5,tw*1.64,th*0.6,2); ctx.fill(); ctx.stroke();
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*(tw+1),zty-1); ctx.lineTo(sx*(tw+7),zty+2); ctx.lineTo(sx*(tw+1),zty+7); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle=eye; ctx.globalAlpha=0.85;
+    for(const rx2 of [-tw*0.4,0,tw*0.4]){ ctx.beginPath(); ctx.arc(rx2,zty+th*0.32,1,0,TAU); ctx.fill(); }
+    ctx.globalAlpha=1;
+  }
 
   // ---- FRONT reaching arm (claws forward, thrown out on a lunge) ----
   const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(brute?12:runner?15:13)+lunge*5;
@@ -4205,11 +4606,19 @@ function drawZone(){
 }
 
 // minimap
+const MINI_LANDMARK_COL = {campfire:'#ff8a2a', well:'#7fc8e8', statue:'#c9c2b0', graveyard:'#8f8d86'};
 function drawMini(){
-  const S=108, sc=S/ARENA; mctx.clearRect(0,0,S,S);
+  const S=132, sc=S/ARENA; mctx.clearRect(0,0,S,S);
   mctx.fillStyle='#2c4a1e'; mctx.fillRect(0,0,S,S);
+  // water ponds — drawn first so buildings/landmarks read on top
+  mctx.fillStyle='rgba(80,150,190,.55)';
+  for(const d of decor){ if(d.type!=='water') continue;
+    mctx.beginPath(); mctx.ellipse(d.x*sc,d.y*sc,Math.max(1,d.s*sc),Math.max(1,d.s*0.64*sc),0,0,TAU); mctx.fill(); }
   // buildings
   mctx.fillStyle='rgba(220,200,170,.55)'; for(const o of obstacles) mctx.fillRect(o.x*sc,o.y*sc,Math.max(1,o.w*sc),Math.max(1,o.h*sc));
+  // level-milestone landmarks — small colour-coded dots so the map reads as a real place, not just cover
+  for(const d of decor){ const col=MINI_LANDMARK_COL[d.type]; if(!col) continue;
+    mctx.fillStyle=col; mctx.beginPath(); mctx.arc(d.x*sc,d.y*sc,1.6,0,TAU); mctx.fill(); }
   if(zoneActive()){ mctx.beginPath(); mctx.arc(zone.cx*sc,zone.cy*sc,Math.max(0,zone.r)*sc,0,TAU);
     mctx.strokeStyle='rgba(255,255,255,.85)'; mctx.lineWidth=1.3; mctx.stroke();
     mctx.fillStyle='rgba(255,255,255,.06)'; mctx.fill(); }
@@ -4217,7 +4626,17 @@ function drawMini(){
   for(const h of humans){ if(!h.alive||h.isPlayer) continue;
     mctx.fillStyle = h.team===player.team ? '#7bd0ff' : '#ff5a4a';   // allies blue-ish, enemies red
     mctx.beginPath(); mctx.arc(h.x*sc,h.y*sc,2,0,TAU); mctx.fill(); }
-  if(player&&player.alive){ mctx.fillStyle='#7bff4a'; mctx.beginPath(); mctx.arc(player.x*sc,player.y*sc,3,0,TAU); mctx.fill();
+  if(player&&player.alive){
+    const px=player.x*sc, py=player.y*sc;
+    mctx.strokeStyle='rgba(255,255,255,.8)'; mctx.lineWidth=1.6; mctx.beginPath();   // facing tick
+    mctx.moveTo(px,py); mctx.lineTo(px+Math.cos(player.aim)*7,py+Math.sin(player.aim)*7); mctx.stroke();
+    mctx.fillStyle='#7bff4a'; mctx.beginPath(); mctx.arc(px,py,3,0,TAU); mctx.fill();
+    mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke(); }
+  if(player2&&player2.alive){   // cyan, matching the .gpfocus controller-accent color used elsewhere
+    const px=player2.x*sc, py=player2.y*sc;
+    mctx.strokeStyle='rgba(255,255,255,.8)'; mctx.lineWidth=1.6; mctx.beginPath();
+    mctx.moveTo(px,py); mctx.lineTo(px+Math.cos(player2.aim)*7,py+Math.sin(player2.aim)*7); mctx.stroke();
+    mctx.fillStyle='#5ad1ff'; mctx.beginPath(); mctx.arc(px,py,3,0,TAU); mctx.fill();
     mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke(); }
 }
 
@@ -4257,15 +4676,27 @@ function loop(now){
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
   const perfT0 = (screenState==='playing' && zombies.length>30) ? performance.now() : 0;   // heavy-frame sample
+  // Sample every connected pad once/frame, EVERY screen — menus read curGp too, not just
+  // gameplay. Slot 0 is always player 1's (matches the old "first non-null" readGamepad()
+  // exactly, so solo play sees byte-identical behavior); slot 1 becomes player 2's only once
+  // they've actually joined, so a second controller sitting connected-but-idle before joining
+  // never accidentally steals a frame of edge-state from a bystander read.
+  const pads = connectedPads();
+  curGp = readGamepadFrom(pads[0], gp1Edge);
+  curGp2 = player2 ? readGamepadFrom(pads[1], gp2Edge) : null;
+  if(curGp && curGp.start){ if(paused) closeSettings(); else openSettings(); }
   if(screenState==='playing' && !paused){
     elapsed=(now-startTime)/1000;
     if(hitstop>0){ hitstop-=dt; dt*=0.15; }   // kill slow-mo: world crawls for a beat
     if(grace>0) grace-=dt;
     if(zoneActive()){ if(grace<=0){ zoneUpdate(dt); reinforceZombies(dt); } if(zoneWarn>0) zoneWarn-=dt; }
     else hordeUpdate(dt);
-    updatePlayer(player,dt);
+    tryJoinPlayer2(pads);   // cheap: bails immediately unless player2 is still null and pads[1] exists
+    updatePlayer(player,dt,curGp,true);
+    if(player2 && player2.alive) updatePlayer(player2,dt,curGp2,false);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
+    leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();
     updateBuilds(dt); updateBullets(dt); updateBombs(dt); updatePickups(dt); updateScraps(dt); updateParticles(dt);
@@ -4273,7 +4704,7 @@ function loop(now){
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }
     refreshHud(); drawMini();
-  } else { updateParticles(dt); menuSceneUpdate(dt); }
+  } else { updateParticles(dt); menuSceneUpdate(dt); if(curGp) updateGamepadMenuNav(curGp); syncControllerStatus(); }
   draw();
   if(perfT0){ perfAcc+=performance.now()-perfT0; perfN++; perfPeakZ=Math.max(perfPeakZ,zombies.length);
     if(now-perfLog>2000){ const ms=perfAcc/Math.max(1,perfN);
@@ -4287,6 +4718,7 @@ function loop(now){
 // ============================================================
 function show(id){ ['startScreen','avatarScreen','weaponScreen'].forEach(s=>el(s).classList.toggle('hidden', s!==id));
   if(id==='startScreen'){ renderStats(); renderMenu(); maybeDonateToast(); }
+  gpFocusIdx=0;   // new screen = new focus target list; don't carry a stale index over
 }
 // one gentle, once-per-session menu nudge after a couple of matches (only if donations are set up)
 let donateToastShown=false;
@@ -4622,8 +5054,8 @@ el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/1
 // settings
 function openSettings(){ paused=true; el('settings').classList.remove('hidden');
   el('sQuit').classList.toggle('hidden', screenState!=='playing');   // only offer "quit to menu" mid-match
-  syncSliders(); }
-function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; }
+  syncSliders(); syncControllerStatus(); gpFocusIdx=0; }
+function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; gpFocusIdx=0; }
 // abandon the current match and return to the main menu (state is overwritten on the next Play)
 function quitToMenu(){
   el('settings').classList.add('hidden'); el('results').classList.add('hidden'); el('specBar').classList.add('hidden');
