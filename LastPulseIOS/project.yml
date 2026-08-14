@@ -9,12 +9,13 @@ targets:
     platform: iOS
     sources:
       - path: LastPulse
-    resources:
       - path: GameContent
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lastpulse.game
-        PRODUCT_NAME: Last Pulse
+        PRODUCT_NAME: LastPulse
         SWIFT_VERSION: 5.0
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_FILE: LastPulse/Info.plist

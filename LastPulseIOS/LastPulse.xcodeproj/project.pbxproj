@@ -7,14 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2106259937881A342E7CF133 /* GameViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F82CC19D5A8532E8E1E752B5 /* GameViewController.swift */; };
 		51D22DA8A35EF607B8F1A0D5 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9940BBCD3FA5FA1878DA03A0 /* AppDelegate.swift */; };
+		82F5952F82E5446750C00B7D /* GameContent in Resources */ = {isa = PBXBuildFile; fileRef = 4F37286D854ABD1EA43EABC6 /* GameContent */; };
 		D0861D669DC522588D9BA6CF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 958E178ABA1B685E84EF4407 /* SceneDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		25555F74490A677F1072445E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		4DD4D7CE447B6EECF04E003F /* LastPulse.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LastPulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F37286D854ABD1EA43EABC6 /* GameContent */ = {isa = PBXFileReference; lastKnownFileType = folder; path = GameContent; sourceTree = SOURCE_ROOT; };
 		958E178ABA1B685E84EF4407 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		9940BBCD3FA5FA1878DA03A0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		F82CC19D5A8532E8E1E752B5 /* GameViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -30,6 +35,8 @@
 			isa = PBXGroup;
 			children = (
 				9940BBCD3FA5FA1878DA03A0 /* AppDelegate.swift */,
+				F82CC19D5A8532E8E1E752B5 /* GameViewController.swift */,
+				25555F74490A677F1072445E /* Info.plist */,
 				958E178ABA1B685E84EF4407 /* SceneDelegate.swift */,
 			);
 			path = LastPulse;
@@ -38,6 +45,7 @@
 		C205F580C0557A79B00DC280 = {
 			isa = PBXGroup;
 			children = (
+				4F37286D854ABD1EA43EABC6 /* GameContent */,
 				9CB40ADC6A75CC7393A71E83 /* LastPulse */,
 				75A3FCEBA4350C11D37520CC /* Products */,
 			);
@@ -51,6 +59,7 @@
 			buildConfigurationList = 12FED11551471B5EF4D7E06F /* Build configuration list for PBXNativeTarget "LastPulse" */;
 			buildPhases = (
 				BCBA37ADB310E21BE97B76E0 /* Sources */,
+				0AB90B1A7856E4CD7BF4B57E /* Resources */,
 			);
 			buildRules = (
 			);
@@ -96,12 +105,24 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		0AB90B1A7856E4CD7BF4B57E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				82F5952F82E5446750C00B7D /* GameContent in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		BCBA37ADB310E21BE97B76E0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				51D22DA8A35EF607B8F1A0D5 /* AppDelegate.swift in Sources */,
+				2106259937881A342E7CF133 /* GameViewController.swift in Sources */,
 				D0861D669DC522588D9BA6CF /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -184,7 +205,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lastpulse.game;
-				PRODUCT_NAME = "Last Pulse";
+				PRODUCT_NAME = LastPulse;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -203,7 +224,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lastpulse.game;
-				PRODUCT_NAME = "Last Pulse";
+				PRODUCT_NAME = LastPulse;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

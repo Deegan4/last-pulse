@@ -92,6 +92,12 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **iOS wrapper crash fix — GameContent bundled.** Fixed the native iOS wrapper crash on open by
+  moving `GameViewController.swift` into the `LastPulse` target source folder, restoring
+  `LastPulse/Info.plist`, setting the executable product name to `LastPulse`, and changing
+  `project.yml` so `GameContent/` is copied as a folder resource. Verified with
+  `build_run_sim`: app builds, installs, and launches on iPhone 17 Pro simulator with
+  `GameContent/index.html` present in the `.app` bundle.
 - **v2.42.2 — New weapons visible immediately.** Changed the four restored weapons to
   `unlock:1` and added `featured:true`; `buildWeaponGrid()` now renders featured weapons first
   via a display-order array without changing the underlying `WEAPONS` indexes used by saves. This
