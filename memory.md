@@ -35,6 +35,11 @@ _Snapshot for whoever picks this up next. Details for each shipped item are in "
   (`window.__game` is the permanent shipped one); `safeTopPx()` is now dead code (harmless), left in place.
 
 ## Current state (done)
+
+- **iOS shell added (2026-08-14):** `LastPulseIOS/` is a generated Xcode iOS app that bundles the existing canvas game in a full-screen `WKWebView`, preserving offline gameplay and local assets while exposing iPhone/iPad orientation and safe-area behavior.
+- **v2.36.0 weapon expansion (2026-08-14):** added four late-game weapons—Pulse SMG, Arc Rifle, Frost Blaster, and Rocket Launcher—with generated card art, transparent cropped sprites, arc piercing, cryo slow, explosive rockets, new tracer colors, and iOS-bundled copies under `LastPulseIOS/GameContent/assets/img/`.
+- **v2.37.0 original arsenal upgrade (2026-08-14):** buffed the pre-existing 12 weapons only—damage, magazines, reloads, range, fire cadence, spread identity, and special text—while leaving the v2.36.0 weapons unchanged.
+- **v2.38.0 original weapon art pass (2026-08-14):** replaced the procedural card visuals for the pre-existing 12 weapons with individually cropped, transparent premium sprites; the four v2.36.0 weapon visuals remain unchanged.
 - **v2.33.0** — **BR & Squads retired; horde kill counting FIXED** (user: "take out battle royale and
   squads"). Flow: `#modeScreen` deleted; `toModeBtn` (PLAY) → `goAvatar()` directly; `gameMode` hard-set
   `'horde'` (ignores stored `dd2_mode` — old saves held 'br'); `show()` array, `renderModeSel`, `MODE_NAME`,

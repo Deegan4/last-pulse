@@ -1086,18 +1086,22 @@ const AVATARS = [
   {name:'Titan',  speed:4.4, health:150, unlock:26, img:'hero-titan',  armless:true, aura:'#ff5a5a', look:{skin:'#e8b48c',hair:'#3a3f47',outfit:'#33373d',style:'horns'}},
 ];
 const WEAPONS = [
-  {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
-  {name:'Rifle',   icon:'🪖', dmg:10,  mag:10, reload:1.25, range:150, fireCd:0.10, mode:'auto',    unlock:1,  special:'10 bullets per ammo'},
-  {name:'Shotgun', icon:'💥', dmg:20,  mag:2,  reload:1.25, range:150, fireCd:0.62, mode:'shotgun', unlock:2,  special:'wide pellet spread'},
-  {name:'SMG',     icon:'🧨', dmg:8,   mag:25, reload:1.6,  range:200, fireCd:0.07, mode:'auto',    unlock:3,  special:'blazing fire rate'},
-  {name:'Magnum',  icon:'🔩', dmg:55,  mag:6,  reload:1.8,  range:340, fireCd:0.40, mode:'semi',    unlock:4,  special:'heavy-hitting revolver'},
-  {name:'Sniper',  icon:'🎯', dmg:250, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage'},
-  {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt'},
-  {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire'},
-  {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds'},
-  {name:'Tommy',   icon:'🎻', dmg:11,  mag:30, reload:1.7,  range:190, fireCd:0.085,mode:'auto',    unlock:8,  special:'drum-mag auto — steady spray'},
-  {name:'Launcher',icon:'🚀', dmg:40,  mag:1,  reload:2.6,  range:340, fireCd:1.2,  mode:'launcher',unlock:12, special:'explosive rocket — splash damage'},
-  {name:'Vipers',  icon:'🐍', dmg:9,   mag:24, reload:1.7,  range:210, fireCd:0.09, mode:'auto', twin:true, unlock:15, special:'twin barrels — double the lead'},
+  {name:'Pistol',  icon:'🔫', img:'weapon-pistol-v2', dmg:34,  mag:6,  reload:1.8,  range:320, fireCd:0.31, mode:'semi',    unlock:1,  special:'50% chance of a devastating critical hit'},
+  {name:'Rifle',   icon:'🪖', img:'weapon-rifle-v2', dmg:12,  mag:12, reload:1.15, range:175, fireCd:0.095,mode:'auto',    unlock:1,  special:'stable automatic fire with 12-round mags'},
+  {name:'Shotgun', icon:'💥', img:'weapon-shotgun-v2', dmg:23,  mag:3,  reload:1.2,  range:165, fireCd:0.58, mode:'shotgun', unlock:2,  special:'wide six-pellet spread with heavy knockback'},
+  {name:'SMG',     icon:'🧨', img:'weapon-smg-v2', dmg:9,   mag:30, reload:1.5,  range:215, fireCd:0.065,mode:'auto',    unlock:3,  special:'blazing fire rate and bigger magazine'},
+  {name:'Magnum',  icon:'🔩', img:'weapon-magnum-v2', dmg:62,  mag:6,  reload:1.7,  range:360, fireCd:0.38, mode:'semi',    unlock:4,  special:'heavy-hitting revolver with brutal pushback'},
+  {name:'Sniper',  icon:'🎯', img:'weapon-sniper-v2', dmg:280, mag:1,  reload:2.8,  range:640, fireCd:0.86, mode:'sniper',  unlock:5,  special:'pierces — extreme range and damage'},
+  {name:'Crossbow',icon:'🏹', img:'weapon-crossbow-v2', dmg:108, mag:1,  reload:1.2,  range:520, fireCd:0.84, mode:'sniper',  unlock:6,  special:'silent piercing bolt with quick reload'},
+  {name:'Flame',   icon:'🔥', img:'weapon-flame-v2', dmg:8,   mag:90, reload:2.0,  range:135, fireCd:0.038,mode:'flame',   unlock:7,  special:'sets enemies on fire with a longer reach'},
+  {name:'Minigun', icon:'🌀', img:'weapon-minigun-v2', dmg:10,  mag:70, reload:3.1,  range:280, fireCd:0.047,mode:'auto',    unlock:9,  special:'huge mag — mows down crowds faster'},
+  {name:'Tommy',   icon:'🎻', img:'weapon-tommy-v2', dmg:12,  mag:36, reload:1.55, fireCd:0.08, mode:'auto',    unlock:8,  special:'drum-mag auto — steady, forgiving spray'},
+  {name:'Launcher',icon:'🚀', img:'weapon-launcher-v2', dmg:48,  mag:1,  reload:2.4,  range:365, fireCd:1.1,  mode:'launcher',unlock:12, special:'explosive rocket — bigger splash damage'},
+  {name:'Vipers',  icon:'🐍', img:'weapon-vipers-v2', dmg:10,  mag:28, reload:1.55, range:230, fireCd:0.085,mode:'auto', twin:true, unlock:15, special:'twin barrels — double the lead with tighter control'},
+  {name:'Pulse SMG', icon:'⚡', img:'weapon-pulse-smg', dmg:12, mag:36, reload:1.8, range:230, fireCd:0.075, mode:'auto', unlock:13, special:'cyan pulse rounds — tight, fast spray'},
+  {name:'Arc Rifle', icon:'🔮', img:'weapon-arc-rifle', dmg:72, mag:5, reload:2.2, range:430, fireCd:0.58, mode:'sniper', arc:true, unlock:14, special:'electric bolts pierce two targets'},
+  {name:'Frost Blaster', icon:'❄️', img:'weapon-frost-blaster', dmg:18, mag:18, reload:2.0, range:190, fireCd:0.16, mode:'auto', frost:true, unlock:15, special:'cryo rounds slow enemies'},
+  {name:'Rocket Launcher', icon:'🚀', img:'weapon-rocket-launcher', dmg:58, mag:1, reload:2.8, range:370, fireCd:1.25, mode:'launcher', unlock:16, special:'heavy rockets with explosive splash'},
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
@@ -1133,6 +1137,22 @@ loadImg('hero-blaze', 'assets/img/hero-blaze.png');
 loadImg('hero-reaper','assets/img/hero-reaper.png');
 loadImg('hero-onyx',  'assets/img/hero-onyx.png');
 loadImg('hero-titan', 'assets/img/hero-titan.png');
+loadImg('weapon-pulse-smg', 'assets/img/weapon-pulse-smg.png');
+loadImg('weapon-arc-rifle', 'assets/img/weapon-arc-rifle.png');
+loadImg('weapon-frost-blaster', 'assets/img/weapon-frost-blaster.png');
+loadImg('weapon-rocket-launcher', 'assets/img/weapon-rocket-launcher.png');
+loadImg('weapon-pistol-v2', 'assets/img/weapon-pistol-v2.png');
+loadImg('weapon-rifle-v2', 'assets/img/weapon-rifle-v2.png');
+loadImg('weapon-shotgun-v2', 'assets/img/weapon-shotgun-v2.png');
+loadImg('weapon-smg-v2', 'assets/img/weapon-smg-v2.png');
+loadImg('weapon-magnum-v2', 'assets/img/weapon-magnum-v2.png');
+loadImg('weapon-sniper-v2', 'assets/img/weapon-sniper-v2.png');
+loadImg('weapon-crossbow-v2', 'assets/img/weapon-crossbow-v2.png');
+loadImg('weapon-flame-v2', 'assets/img/weapon-flame-v2.png');
+loadImg('weapon-minigun-v2', 'assets/img/weapon-minigun-v2.png');
+loadImg('weapon-tommy-v2', 'assets/img/weapon-tommy-v2.png');
+loadImg('weapon-launcher-v2', 'assets/img/weapon-launcher-v2.png');
+loadImg('weapon-vipers-v2', 'assets/img/weapon-vipers-v2.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
 
 // ===== Donations (Stripe) =====
@@ -1146,8 +1166,17 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.35.0';
+const GAME_VERSION = '2.38.0';
 const CHANGELOG = [
+  { v:'2.38.0', items:[
+    ['✨','Original arsenal visually upgraded','Pistol, Rifle, Shotgun, SMG, Magnum, Sniper, Crossbow, Flame, Minigun, Tommy, Launcher and Vipers now have new premium card art'],
+  ]},
+  { v:'2.37.0', items:[
+    ['⬆️','Original arsenal upgraded','the original 12 weapons received damage, magazine, reload, range and fire-rate tuning'],
+  ]},
+  { v:'2.36.0', items:[
+    ['🔫','Four new weapons','Pulse SMG, Arc Rifle, Frost Blaster and Rocket Launcher expand the late-game arsenal with new card art and combat identities'],
+  ]},
   { v:'2.35.0', items:[
     ['🩸','Kills sound visceral','bone cracks, wet gurgles and a body hitting the dirt — every kill has weight now'],
     ['📱','Menu fits short screens','landscape phones get a two-column start menu; small iPhones get a compact one — no more scrolling to find Shop & Support'],
@@ -1692,7 +1721,7 @@ function makeHuman(isPlayer, avatar, weapon, name){
     x:0, y:0, vx:0, vy:0, aim:-Math.PI/2,
     hp:avatar.health, maxhp:avatar.health, speed:avatar.speed*42,
     alive:true, mag:weapon.mag, reloading:0, fireCd:0, walk:0, hitFlash:0, kills:0, faceX:1, seed:rand(0,9),
-    shield:0, burn:0, burnSrc:null, streak:0, lastKillT:-99, team:0, ally:false, muzzleT:0, recoil:0,
+    shield:0, burn:0, burnSrc:null, slowT:0, streak:0, lastKillT:-99, team:0, ally:false, muzzleT:0, recoil:0,
     onTower:null, climbCd:0,   // watchtower state — must be numeric so the climb guard (climbCd<=0) fires
 
     // ai
@@ -1960,6 +1989,9 @@ function startReload(h){ if(h.reloading<=0 && h.mag<magCap(h)) h.reloading=h.wea
 // recoil kick, spark count/spread, knockback push, and player screen shake.
 function bulletFx(w){
   switch(w.name){
+    case 'Pulse SMG': return {col:'#5eeaff',lw:2.4,tl:0.016,glow:8,tip:1.4,mz:7,kick:.72,sparks:4,spread:.35,push:20,shake:0};
+    case 'Arc Rifle': return {col:'#d9a6ff',lw:4.2,tl:0.055,glow:16,tip:2.8,mz:11,kick:1.7,sparks:10,spread:.2,push:38,shake:5};
+    case 'Frost Blaster': return {col:'#b7f4ff',lw:3,tl:0.018,glow:10,tip:1.8,mz:8,kick:1,sparks:6,spread:.55,push:24,shake:1};
     case 'Sniper':   return {col:'#cdecff',lw:4.5,tl:0.05, glow:12,tip:2.6, mz:10, kick:1.9, sparks:8, spread:.5, push:34, shake:6};
     case 'Crossbow': return {col:'#d8b46a',lw:3,  tl:0.07, glow:5, tip:1.6, mz:3,  kick:1.2, sparks:2, spread:.3, push:20, shake:0};
     case 'Shotgun':  return {col:'#ffd9a0',lw:2,  tl:0.008,glow:0, tip:1.0, mz:11, kick:1.7, sparks:9, spread:.7, push:60, shake:5};
@@ -2005,7 +2037,7 @@ function fire(h){
     let dmg=w.dmg, crit=false;
     if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
     bullets.push({ x:h.x+Math.cos(a)*16 - Math.sin(h.aim)*perp, y:h.y+Math.sin(a)*16 + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
-      life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper', hits:0,
+      life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper'||w.arc, arc:w.arc, frost:w.frost, hits:0,
       color: crit?'#ffd24a':fx.col, lw: crit?4.2:fx.lw, tl: fx.tl, glow: crit?10:fx.glow, tip: crit?2.2:fx.tip });
   }
   h.mag--;
@@ -2640,12 +2672,13 @@ function updateBot(h,dt){
   } else { h.lockT=0; if(!out){ if(h.think<=0){ h.wanderA=rand(0,TAU); h.think=rand(.8,1.8); } h.think-=dt;
     mvx+=Math.cos(h.wanderA)*0.5; mvy+=Math.sin(h.wanderA)*0.5; h.aim=angLerp(h.aim,h.wanderA,0.08); } }
   const m=len(mvx,mvy);
-  if(m>0){ const sp=h.speed*(out?1.1:0.95); h.vx+=(mvx/m*sp-h.vx)*0.2; h.vy+=(mvy/m*sp-h.vy)*0.2; h.walk+=dt*8; }
+  if(m>0){ const slow=h.slowT>0?0.52:1, sp=h.speed*(out?1.1:0.95)*slow; h.vx+=(mvx/m*sp-h.vx)*0.2; h.vy+=(mvy/m*sp-h.vy)*0.2; h.walk+=dt*8; }
   else { h.vx*=0.8; h.vy*=0.8; }
   stepDust(h,dt);
 }
 function updateZombie(z,dt){
   if(z.hitFlash>0) z.hitFlash-=dt;
+  if(z.slowT>0) z.slowT-=dt;
   if(z.attackCd>0) z.attackCd-=dt;
   if(z.burn>0){ z.burn-=dt; z.hp-=9*dt;
     if(Math.random()<dt*12) spark(z.x+rand(-7,7), z.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2, .4);
@@ -2686,7 +2719,7 @@ function updateZombie(z,dt){
   }
   if(z.lunge>0) z.lunge-=dt*3.2;
   const m=len(mvx,mvy);
-  if(m>0){ z.vx+=(mvx/m*z.speed-z.vx)*0.12; z.vy+=(mvy/m*z.speed-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
+  if(m>0){ const slow=z.slowT>0?0.42:1; z.vx+=(mvx/m*z.speed*slow-z.vx)*0.12; z.vy+=(mvy/m*z.speed*slow-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
   // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
   // stomp-clods on each footfall, normals scuff the odd puff
@@ -2781,6 +2814,7 @@ function readGamepad(){
   return {mx,my,ax,ay,fire,reload,light,bomb};
 }
 function integrate(h,dt){
+  if(h.slowT>0) h.slowT-=dt;
   h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
   if(h.onTower) clampToRoof(h); else resolveObstacles(h);   // roof campers move on the platform, not the ground
   if(h.fireCd>0) h.fireCd-=dt; if(h.hitFlash>0) h.hitFlash-=dt;
@@ -2810,12 +2844,16 @@ function updateBullets(dt){
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
         hurt(z,b.dmg,b.owner,false); if(b.flame) ignite(z,b.owner);
+        if(b.frost) z.slowT=Math.max(z.slowT||0,2.2);
+        if(b.arc) for(let k=0;k<5;k++) spark(z.x,z.y-5,'#d9a6ff',rand(80,180),rand(0,TAU),.45);
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
     if(!gone) for(const h of humans){ if(!h.alive||h===b.owner||(b.owner&&h.team===b.owner.team)) continue;
       if(dist2(b.x,b.y,h.x,h.y)<(R+3)*(R+3)){
         if(b.boom){ gone=true; break; }
         hurt(h,b.dmg,b.owner,true); if(b.flame) ignite(h,b.owner);
+        if(b.frost) h.slowT=Math.max(h.slowT||0,2.2);
+        if(b.arc) for(let k=0;k<5;k++) spark(h.x,h.y-5,'#d9a6ff',rand(80,180),rand(0,TAU),.45);
         h.vx+=b.vx*0.04; h.vy+=b.vy*0.04;
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
@@ -3698,7 +3736,11 @@ const GUNK={
   Minigun: {l:18,c:'#2a2f38',fat:1,cluster:1},
   Tommy:   {l:16,c:'#5a4a3a',drum:1,stock:1,foregrip:1,wood:1,muzzle:1,guard:1},
   Launcher:{l:20,c:'#4a5a38',tube:1,stock:1,guard:1},
-  Vipers:  {l:14,c:'#2f333b',twin:1,stock:1,mag:1,muzzle:1,guard:1}};
+  Vipers:  {l:14,c:'#2f333b',twin:1,stock:1,mag:1,muzzle:1,guard:1},
+  'Pulse SMG': {l:15,c:'#27343b',stock:1,mag:1,muzzle:1,guard:1,vents:1},
+  'Arc Rifle': {l:23,c:'#49356b',stock:1,scope:1,muzzle:1,guard:1,brake:1},
+  'Frost Blaster': {l:15,c:'#567887',tank:1,nozzle:1,guard:1},
+  'Rocket Launcher': {l:22,c:'#4a5a38',tube:1,stock:1,guard:1}};
 function drawGun(name,c){
   c=c||ctx;
   const g=GUNK[name]||{l:14,c:'#3a3f48'}, ink='rgba(0,0,0,.38)';
@@ -3781,6 +3823,11 @@ function drawGun(name,c){
 // render a weapon's real gun art onto a hi-res canvas for the select-grid card — big and crisp
 // (the plate background + tier ring come from CSS; DPR-scaled so it stays sharp on retina)
 function weaponIcon(w){
+  const art=imgOk(w.img);
+  if(art){
+    const c=document.createElement('canvas'); c.width=372; c.height=174; c.style.width='124px'; c.style.height='58px';
+    const o=c.getContext('2d'); o.imageSmoothingEnabled=true; o.drawImage(art,18,0,336,174); return c;
+  }
   const g=GUNK[w.name]||{l:14}; const x0=-11, x1=g.l+9, span=x1-x0;
   const CW=124, CH=58, DPR=3;
   const c=document.createElement('canvas'); c.width=CW*DPR; c.height=CH*DPR;
