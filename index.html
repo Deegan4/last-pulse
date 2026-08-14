@@ -1164,8 +1164,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.43.1';
+const GAME_VERSION = '2.43.2';
 const CHANGELOG = [
+  { v:'2.43.2', items:[
+    ['📱','iOS rotation enabled','the iOS wrapper now declares portrait and landscape orientations so the app can rotate with the device'],
+    ['🔫','Weapons sized down again','held weapons are slightly smaller for a cleaner fit in the upgraded fighters’ hands'],
+  ]},
   { v:'2.43.1', items:[
     ['🎯','Weapon arms centered','live aiming arms now attach at the fighter chest instead of drifting low on the new v2 character sprites'],
   ]},
@@ -1739,8 +1743,8 @@ const CHAR_VISUAL_SCALE = 1.18;       // drawn chibi scale only; collisions stay
 const HERO_H = 70;                    // on-field hero sprite height (px) — nameplate offset tracks this
 const HERO_ARM_ANCHOR_X = 0;           // live weapon-arm pivot on PNG heroes, in sprite-local pixels
 const HERO_ARM_ANCHOR_Y = -15;         // chest-height anchor; avoids belly-mounted arms on v2 sprites
-const WEAPON_HAND_SCALE = 1.12;       // procedural in-hand fallback scale
-const WEAPON_PNG_HAND_SCALE = 1.38;   // real PNG in-hand art scale
+const WEAPON_HAND_SCALE = 1.06;       // procedural in-hand fallback scale
+const WEAPON_PNG_HAND_SCALE = 1.30;   // real PNG in-hand art scale
 let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
 const CAMPFIRE = { r:72, heal:6 };   // heal radius (px) and hp/sec near a fire
 

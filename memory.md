@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
 _Last updated: 2026-08-14. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v2.43.1). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+v2.43.2). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -97,6 +97,12 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.43.2 — iOS rotation + smaller held weapons.** Enabled iOS rotation by declaring
+  `UISupportedInterfaceOrientations` / `UISupportedInterfaceOrientations~ipad` in the wrapper
+  `Info.plist` while the UIKit controller already returns `.all`. Trimmed held weapon scale again
+  (`WEAPON_PNG_HAND_SCALE 1.38 -> 1.30`, `WEAPON_HAND_SCALE 1.12 -> 1.06`) so guns sit cleaner in
+  the upgraded character hands. Synced web and iOS bundled `index.html`; bumped iOS wrapper metadata
+  to `CFBundleShortVersionString=2.43.2`, `CFBundleVersion=3`.
 - **iOS App Store icon validation fix.** Added a real `Assets.xcassets/AppIcon.appiconset` to the
   iOS target, generated required App Store icon PNGs from the existing Last Pulse 512px icon
   (`120x120` iPhone, `152x152` iPad, plus `180x180`, `167x167`, and `1024x1024`), wired the asset
