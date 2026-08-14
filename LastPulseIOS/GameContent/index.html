@@ -1078,10 +1078,10 @@ const WEAPONS = [
   {name:'Tommy',   icon:'🎻', dmg:11,  mag:30, reload:1.7,  range:190, fireCd:0.085,mode:'auto',    unlock:8,  special:'drum-mag auto — steady spray',         img:'weapon-tommy'},
   {name:'Launcher',icon:'🚀', dmg:40,  mag:1,  reload:2.6,  range:340, fireCd:1.2,  mode:'launcher',unlock:12, special:'explosive rocket — splash damage',     img:'weapon-launcher'},
   {name:'Vipers',  icon:'🐍', dmg:9,   mag:24, reload:1.7,  range:210, fireCd:0.09, mode:'auto', twin:true, unlock:15, special:'twin barrels — double the lead', img:'weapon-vipers'},
-  {name:'Pulse SMG',icon:'⚡', dmg:7,   mag:36, reload:1.45, range:230, fireCd:0.055,mode:'auto',    unlock:13, special:'hyper-fast pulse stream',             img:'weapon-pulse-smg'},
-  {name:'Arc Rifle',icon:'🔷', dmg:18,  mag:14, reload:1.9,  range:360, fireCd:0.18, mode:'auto', arc:true, unlock:14, special:'electric rounds chain once',   img:'weapon-arc-rifle'},
-  {name:'Frost Blaster',icon:'❄️', dmg:12, mag:28, reload:2.0, range:250, fireCd:0.12, mode:'auto', frost:true, unlock:15, special:'slows enemies on hit',       img:'weapon-frost-blaster'},
-  {name:'Rocket Launcher',icon:'🚀', dmg:62, mag:2, reload:3.2, range:390, fireCd:1.35, mode:'launcher', unlock:16, special:'heavy rockets — bigger splash',     img:'weapon-rocket-launcher'},
+  {name:'Pulse SMG',icon:'⚡', dmg:7,   mag:36, reload:1.45, range:230, fireCd:0.055,mode:'auto',    unlock:1, special:'hyper-fast pulse stream',             img:'weapon-pulse-smg', featured:true},
+  {name:'Arc Rifle',icon:'🔷', dmg:18,  mag:14, reload:1.9,  range:360, fireCd:0.18, mode:'auto', arc:true, unlock:1, special:'electric rounds chain once',   img:'weapon-arc-rifle', featured:true},
+  {name:'Frost Blaster',icon:'❄️', dmg:12, mag:28, reload:2.0, range:250, fireCd:0.12, mode:'auto', frost:true, unlock:1, special:'slows enemies on hit',       img:'weapon-frost-blaster', featured:true},
+  {name:'Rocket Launcher',icon:'🚀', dmg:62, mag:2, reload:3.2, range:390, fireCd:1.35, mode:'launcher', unlock:1, special:'heavy rockets — bigger splash',     img:'weapon-rocket-launcher', featured:true},
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
@@ -1147,8 +1147,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.42.1';
+const GAME_VERSION = '2.42.2';
 const CHANGELOG = [
+  { v:'2.42.2', items:[
+    ['🔫','New weapons up front','Pulse SMG, Arc Rifle, Frost Blaster & Rocket Launcher are unlocked from Lv 1 and featured first in weapon select'],
+  ]},
   { v:'2.42.1', items:[
     ['🔫','New weapons restored','Pulse SMG, Arc Rifle, Frost Blaster & Rocket Launcher now appear in the weapon grid and keep their special projectile behavior'],
   ]},
@@ -4963,7 +4966,9 @@ function buildWeaponGrid(){
   const maxDps = Math.max(...WEAPONS.map(w=>wstats(w).dps));    // strongest gun → full Power bar
   const ownedDps = WEAPONS.filter(weaponUnlocked).map(w=>wstats(w).dps);
   const rankOf = d => ownedDps.filter(x=>x>d).length + 1;       // #1 = best DPS you own (locked guns aren't ranked)
-  WEAPONS.forEach((w,i)=>{
+  const order=WEAPONS.map((_,i)=>i).sort((a,b)=>(WEAPONS[b].featured?1:0)-(WEAPONS[a].featured?1:0));
+  order.forEach(i=>{
+    const w=WEAPONS[i];
     const unlocked=weaponUnlocked(w), sel=i===meta.weapon, s=wstats(w), tier=weaponTier(w);
     const card=document.createElement('div'); card.className='card wcard t-'+tier.k+(sel?' sel':'')+(unlocked?'':' locked');
     card.style.setProperty('--tier', tier.c); card.style.setProperty('--tw', tier.w);

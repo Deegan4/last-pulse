@@ -92,6 +92,11 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.42.2 — New weapons visible immediately.** Changed the four restored weapons to
+  `unlock:1` and added `featured:true`; `buildWeaponGrid()` now renders featured weapons first
+  via a display-order array without changing the underlying `WEAPONS` indexes used by saves. This
+  makes `Pulse SMG`, `Arc Rifle`, `Frost Blaster`, and `Rocket Launcher` visible/selectable on a
+  fresh level-1 save instead of being buried below the original arsenal.
 - **v2.42.1 — New weapon entries restored.** Added `Pulse SMG`, `Arc Rifle`, `Frost Blaster`, and
   `Rocket Launcher` back into `WEAPONS` with visible late-game unlocks (Lv 13-16), matching
   `loadImg` calls, `GUNK` definitions for select-card/in-hand rendering, and restored special
