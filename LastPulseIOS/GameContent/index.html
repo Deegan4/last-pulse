@@ -1168,8 +1168,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.48.0';
+const GAME_VERSION = '2.49.0';
 const CHANGELOG = [
+  { v:'2.49.0', items:[
+    ['👹','Enemy visual upgrade','every zombie type now has a stronger in-game silhouette: runners are leaner and red-streaked, spitters carry glowing acid sacs, bloaters pulse with blisters, stalkers bristle with quills, brutes show bone spikes, and juggernauts wear heavier armor'],
+  ]},
   { v:'2.48.0', items:[
     ['🌙','Back to the midnight-forest look','removed the wood/parchment "village" reskin (v2.46-2.47) — dated, cluttered, and off-palette per feedback. Menus and cards are frosted glass again: dark layered gradients, blurred panels, soft green/gold glow accents'],
   ]},
@@ -4667,6 +4670,19 @@ function zClaw(x,y,dir,fill,sc){ sc=sc||1;
   for(const a of [-0.55,0,0.55]){ ctx.beginPath(); ctx.moveTo(x,y);
     ctx.lineTo(x+dir*Math.cos(a)*4.6*sc, y+Math.sin(a)*4.6*sc-0.4); ctx.stroke(); }
 }
+function zSpike(x,y,len,ang,fill,sc){ sc=sc||1;
+  const ca=Math.cos(ang), sa=Math.sin(ang), bx=2.2*sc, px=-sa*bx, py=ca*bx;
+  ctx.fillStyle=fill; ctx.strokeStyle=INK; ctx.lineWidth=1.35*sc;
+  ctx.beginPath(); ctx.moveTo(x+px,y+py); ctx.lineTo(x+ca*len*sc,y+sa*len*sc); ctx.lineTo(x-px,y-py); ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+function zBlister(x,y,r,fill,glow){
+  ctx.save();
+  if(glow){ ctx.shadowColor=fill; ctx.shadowBlur=5; }
+  ctx.fillStyle=fill; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
+  ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.38)'; ctx.beginPath(); ctx.arc(x-r*.32,y-r*.38,Math.max(.6,r*.28),0,TAU); ctx.fill();
+  ctx.restore();
+}
 function drawZombie(z){
   // 2D monsters only — the old 3D billboard is disabled so these always render.
   const t=ZTYPES[z.kind]||ZTYPES.normal;
@@ -4674,13 +4690,14 @@ function drawZombie(z){
   const now=performance.now()/1000, seed=z.seed||0;
   const moving=(z.vx*z.vx+z.vy*z.vy)>200;
   const lunge=Math.max(0,z.lunge||0);
-  const runner=z.kind==='runner', brute=z.kind==='brute';
-  const stalker=z.kind==='stalker', juggernaut=z.kind==='juggernaut';
+  const runner=z.kind==='runner', brute=z.kind==='brute', spitter=z.kind==='spitter', bloater=z.kind==='bloater';
+  const stalker=z.kind==='stalker', juggernaut=z.kind==='juggernaut', normal=z.kind==='normal';
   const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
   const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
-  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute?2.4:3.4):0;
-  const tw=brute?11.5:runner?6.4:stalker?5.5:8, th=brute?16:runner?13.5:stalker?12.5:15;   // torso half-width / height per kind
+  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute||juggernaut?2.4:runner||stalker?4.1:3.4):0;
+  const tw=juggernaut?13.5:bloater?12.8:brute?11.5:runner?6.1:stalker?5.2:spitter?7.2:8;
+  const th=juggernaut?18:bloater?18.2:brute?16:runner?13.5:stalker?12.5:spitter?16.5:15;   // torso half-width / height per kind
   const zty=-6+bob*0.2;   // torso top y — computed early so behind-torso layers (spikes/ridge) can use it
   const night = timeOfDay!=='day';
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
@@ -4691,16 +4708,28 @@ function drawZombie(z){
   // lurch lean: pitched into the shamble with an uneven stagger (shadow stays flat)
   ctx.rotate(moving ? clamp(z.vx/1400,-0.1,0.1) + flip*0.05 + Math.sin(z.walk*0.5+seed)*0.055 + Math.sin(z.walk)*0.03
                     : Math.sin(now*1.6+seed)*0.03);
-  if(runner) ctx.rotate(flip*0.16);                          // runners hunch aggressively forward
+  if(runner) ctx.rotate(flip*0.18);                          // runners hunch aggressively forward
+  if(stalker) ctx.rotate(flip*0.09);
+  if(spitter) ctx.rotate(flip*-0.04);
   // attack lunge: snap toward the prey and swell up for a beat
   if(lunge>0){ ctx.translate(flip*lunge*6, -lunge*2); ctx.scale(1+lunge*0.12, 1+lunge*0.06); }
+
+  // ---- BACK silhouette gear: tails, tanks, armor backs ----
+  if(spitter && !flash){ ctx.save(); ctx.globalAlpha=.95; ctx.strokeStyle=INK; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(flip*-4,zty+8); ctx.quadraticCurveTo(flip*-17,zty+13,flip*-20,zty+3); ctx.stroke();
+    ctx.strokeStyle='#8ecf45'; ctx.lineWidth=3.1; ctx.beginPath(); ctx.moveTo(flip*-4,zty+8); ctx.quadraticCurveTo(flip*-17,zty+13,flip*-20,zty+3); ctx.stroke();
+    zBlister(flip*-18,zty+1,3.4,eye,true); ctx.restore(); }
+  if(bloater && !flash){ ctx.save(); ctx.globalAlpha=.82; ctx.fillStyle='rgba(198,255,74,.14)';
+    ctx.beginPath(); ctx.ellipse(0,zty+10,tw+5,th*.72,0,0,TAU); ctx.fill(); ctx.restore(); }
+  if(juggernaut && !flash){ ctx.fillStyle='#262c2a'; ctx.strokeStyle=INK; ctx.lineWidth=2;
+    roundRect(-tw*0.95,zty-2,tw*1.9,th*.58,3); ctx.fill(); ctx.stroke(); }
 
   // ---- BACK dragging arm (behind the body) ----
   const drag=moving?Math.sin(z.walk*0.5+seed)*1.6:sway*0.6;
   const bex=flip*(-tw-1)+drag*flip, bey=(brute?10:12)+Math.abs(drag)*0.4;
-  ctx.strokeStyle=INK; ctx.lineWidth=brute?8.5:runner?5:6.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
-  ctx.strokeStyle=SH; ctx.lineWidth=brute?6:runner?3.4:4.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
-  if(!flash) zClaw(bex,bey,-flip,skin,brute?1.35:runner?0.9:1);
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9.5:brute||bloater?8.5:runner||stalker?5:6.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
+  ctx.strokeStyle=SH; ctx.lineWidth=juggernaut?6.6:brute||bloater?6:runner||stalker?3.4:4.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
+  if(!flash) zClaw(bex,bey,-flip,skin,juggernaut?1.45:brute||bloater?1.35:runner||stalker?0.9:1);
 
   // ---- BRUTE shoulder bone-spikes (behind the torso) ----
   if(brute && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
@@ -4708,23 +4737,37 @@ function drawZombie(z){
 
   // ---- STALKER spine ridge (behind the torso; a lean, quilled silhouette) ----
   if(stalker && !flash){ ctx.fillStyle=SH; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
-    for(let i=0;i<3;i++){ const ry=zty+2+i*(th*0.42), fx=flip*(-tw-0.5);
-      ctx.beginPath(); ctx.moveTo(fx,ry-1.5); ctx.lineTo(fx-flip*3.6,ry); ctx.lineTo(fx,ry+1.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+    for(let i=0;i<5;i++){ const ry=zty-3+i*(th*0.31), fx=flip*(-tw-0.3);
+      zSpike(fx,ry,4.4+i*.35,Math.PI+(flip*.12),SH,.78); } }
+  if(runner && !flash){ ctx.strokeStyle='rgba(255,70,48,.42)'; ctx.lineWidth=1.3;
+    for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(flip*(-10-i*2),zty+3+i*4); ctx.lineTo(flip*(-17-i*2),zty+1+i*4); ctx.stroke(); } }
 
   // ---- LEGS (wide, planted stance; brute stomps) ----
-  const lw=brute?7:runner?4.6:5.4;
-  ctx.strokeStyle=INK; ctx.lineWidth=brute?8:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
-  ctx.strokeStyle=SH; ctx.lineWidth=brute?5.4:runner?3.4:4; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
-  ctx.fillStyle='#20301a'; ctx.beginPath(); ctx.ellipse(-lw-1,17.4+step,3,1.8,0,0,TAU); ctx.ellipse(lw+1,17.4-step,3,1.8,0,0,TAU); ctx.fill();  // rotted feet
+  const lw=juggernaut?8.4:bloater?7.4:brute?7:runner?4.6:stalker?4.2:5.4;
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8:runner||stalker?5.2:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
+  ctx.strokeStyle=SH; ctx.lineWidth=juggernaut?6.2:brute||bloater?5.4:runner||stalker?3.4:4; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
+  ctx.fillStyle=juggernaut?'#222826':'#20301a'; ctx.beginPath(); ctx.ellipse(-lw-1,17.4+step,runner?4:3,runner?1.4:1.8,0,0,TAU); ctx.ellipse(lw+1,17.4-step,runner?4:3,runner?1.4:1.8,0,0,TAU); ctx.fill();  // rotted feet
 
   // ---- TORSO (tattered, exposed ribcage) ----
-  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=TO; roundRect(-tw,zty,tw*2,th,4); ctx.fill(); ctx.stroke();
-  if(!flash){ ctx.save(); roundRect(-tw,zty,tw*2,th,4); ctx.clip();
+  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=TO;
+  if(bloater){ ctx.beginPath(); ctx.ellipse(0,zty+th*.52,tw,th*.66,0,0,TAU); ctx.fill(); ctx.stroke(); }
+  else if(stalker){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty+1); ctx.lineTo(tw*.55,zty+th); ctx.lineTo(-tw*.6,zty+th-1); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else roundRect(-tw,zty,tw*2,th,4), ctx.fill(), ctx.stroke();
+  if(!flash){ ctx.save();
+    if(bloater){ ctx.beginPath(); ctx.ellipse(0,zty+th*.52,tw,th*.66,0,0,TAU); ctx.clip(); }
+    else if(stalker){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty+1); ctx.lineTo(tw*.55,zty+th); ctx.lineTo(-tw*.6,zty+th-1); ctx.closePath(); ctx.clip(); }
+    else { roundRect(-tw,zty,tw*2,th,4); ctx.clip(); }
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(-tw,zty,tw*0.6,th+2);                 // dim sheen
     ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(tw*0.5,zty,tw*0.5,th+2);
     // exposed ribs (bone) — a sickly belly wound; brutes show muscle striations instead
-    if(brute){ ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.lineWidth=1.4;
+    if(juggernaut){ ctx.fillStyle='rgba(0,0,0,.24)'; ctx.fillRect(-tw,zty+th*.62,tw*2,th*.18);
+      ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1.2;
+      for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(-tw+2,zty+4+i*4); ctx.lineTo(tw-2,zty+3+i*4); ctx.stroke(); } }
+    else if(brute){ ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.lineWidth=1.4;
       for(let i=0;i<3;i++){ const yy=zty+4+i*4; ctx.beginPath(); ctx.moveTo(-tw+2,yy); ctx.quadraticCurveTo(0,yy+2.4,tw-2,yy); ctx.stroke(); } }
+    else if(bloater){ ctx.fillStyle='rgba(65,90,20,.48)'; ctx.beginPath(); ctx.ellipse(flip*1,zty+th*.52,tw*.5,th*.36,0,0,TAU); ctx.fill();
+      ctx.strokeStyle='rgba(198,255,74,.7)'; ctx.lineWidth=1.4;
+      for(let i=0;i<4;i++){ const yy=zty+4+i*3.4; ctx.beginPath(); ctx.moveTo(-tw*.45,yy); ctx.quadraticCurveTo(0,yy+2.8,tw*.42,yy+.5); ctx.stroke(); } }
     else { ctx.fillStyle='rgba(20,10,8,.5)'; ctx.beginPath(); ctx.ellipse(flip*2.5,zty+7,4.4,5.2,0,0,TAU); ctx.fill();  // dark gut cavity
       ctx.strokeStyle='#e6e0cc'; ctx.lineWidth=1.5;
       for(let i=0;i<3;i++){ const yy=zty+3.5+i*3.2; ctx.beginPath(); ctx.moveTo(-tw+1.5,yy); ctx.quadraticCurveTo(-1,yy+1.8,tw-1.5,yy-0.6); ctx.stroke(); }
@@ -4732,27 +4775,34 @@ function drawZombie(z){
     ctx.restore();
     // torn hem
     ctx.fillStyle=torso; for(let k=-1;k<=1;k++){ const kx=k*tw*0.62; ctx.beginPath(); ctx.moveTo(kx-2.4,zty+th); ctx.lineTo(kx,zty+th+3.4); ctx.lineTo(kx+2.4,zty+th); ctx.closePath(); ctx.fill(); }
-    ctx.strokeStyle='rgba(120,20,16,.6)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-tw*0.4,zty+2); ctx.lineTo(-tw*0.15,zty+6); ctx.stroke(); }  // blood streak
+    ctx.strokeStyle='rgba(120,20,16,.6)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-tw*0.4,zty+2); ctx.lineTo(-tw*0.15,zty+6); ctx.stroke();
+    if(normal){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1;
+      zSpike(flip*tw*.74,zty+2,5,flip>0?-1.05:-2.1,'#e8e0c8',.65); }
+    if(spitter){ ctx.strokeStyle=eye; ctx.lineWidth=1.5; ctx.globalAlpha=.8;
+      ctx.beginPath(); ctx.moveTo(flip*-tw*.7,zty+3); ctx.quadraticCurveTo(0,zty+9,flip*tw*.65,zty+5); ctx.stroke(); ctx.globalAlpha=1; }
+    if(bloater){ for(const bp of [[-7,zty+4,2.6],[7,zty+6,2.2],[-2,zty+12,3.1],[5,zty+15,1.9]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
+  }
 
   // ---- JUGGERNAUT armor plating (over the torso — chest plate + shoulder guards) ----
   if(juggernaut && !flash){
     ctx.fillStyle='#3a3f3e'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;
-    roundRect(-tw*0.82,zty+1.5,tw*1.64,th*0.6,2); ctx.fill(); ctx.stroke();
-    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*(tw+1),zty-1); ctx.lineTo(sx*(tw+7),zty+2); ctx.lineTo(sx*(tw+1),zty+7); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-    ctx.fillStyle=eye; ctx.globalAlpha=0.85;
-    for(const rx2 of [-tw*0.4,0,tw*0.4]){ ctx.beginPath(); ctx.arc(rx2,zty+th*0.32,1,0,TAU); ctx.fill(); }
+    roundRect(-tw*0.9,zty+1.5,tw*1.8,th*0.64,2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#545b58'; roundRect(-tw*.48,zty+3,tw*.96,th*.42,2); ctx.fill(); ctx.stroke();
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*(tw+1),zty-2); ctx.lineTo(sx*(tw+8),zty+2); ctx.lineTo(sx*(tw+2),zty+8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle=eye; ctx.globalAlpha=0.88;
+    for(const rx2 of [-tw*0.48,0,tw*0.48]){ ctx.beginPath(); ctx.arc(rx2,zty+th*0.34,1.15,0,TAU); ctx.fill(); }
     ctx.globalAlpha=1;
   }
 
   // ---- FRONT reaching arm (claws forward, thrown out on a lunge) ----
-  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(brute?12:runner?15:13)+lunge*5;
-  ctx.strokeStyle=INK; ctx.lineWidth=brute?8.5:runner?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
-  ctx.strokeStyle=SK; ctx.lineWidth=brute?6:runner?3.8:4.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
-  if(!flash) zClaw(flip*(rx+1),-2.6+paw,flip,skin,brute?1.5:runner?1.05:1.1);
+  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(juggernaut?13:brute||bloater?12:runner||stalker?16:spitter?14:13)+lunge*5;
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8.5:runner||stalker?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  ctx.strokeStyle=SK; ctx.lineWidth=juggernaut?6.2:brute||bloater?6:runner||stalker?3.8:4.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  if(!flash) zClaw(flip*(rx+1),-2.6+paw,flip,skin,juggernaut?1.55:brute||bloater?1.5:runner||stalker?1.08:1.1);
   else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(flip*(rx+1),-2.6+paw,2.4,0,TAU); ctx.fill(); }
 
   // ---- HEAD (lolls as it shambles; sits low & sunken on the brute) ----
-  const hy=-15+bob+(brute?3.5:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=brute?7.6:runner?7.4:8.6;
+  const hy=-15+bob+(juggernaut?4.4:brute?3.5:bloater?2.5:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=juggernaut?8.4:brute?7.6:runner?7.2:stalker?7.3:spitter?8.2:8.6;
   ctx.save(); ctx.translate(hx,0); ctx.rotate(Math.sin(z.walk*0.7+seed)*0.09 + (runner?flip*0.12:0));
   ctx.fillStyle=SK; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,hy,hr,0,TAU); ctx.fill(); ctx.stroke();
   if(!flash){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.arc(2.6,hy+1.8,hr*0.55,0,TAU); ctx.fill();
@@ -4765,6 +4815,12 @@ function drawZombie(z){
     ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(eox-0.5,eoy-0.6,0.7,0,TAU); ctx.arc(ex2-0.5,ey2-0.6,0.6,0,TAU); ctx.fill();
     // heavy angry brow
     ctx.strokeStyle=INK; ctx.lineWidth=1.7; ctx.beginPath(); ctx.moveTo(flip*-6,hy-4.4); ctx.lineTo(flip*-1,hy-2.6); ctx.moveTo(flip*1.6,hy-2.7); ctx.lineTo(flip*6,hy-4.2); ctx.stroke();
+    if(runner){ ctx.strokeStyle='#ff4630'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(flip*-7,hy-7); ctx.lineTo(flip*-2,hy-9.2); ctx.moveTo(flip*1,hy-8.8); ctx.lineTo(flip*6.5,hy-6.7); ctx.stroke(); }
+    if(stalker){ zSpike(flip*-1,hy-hr+1,5.5,-Math.PI/2,'#efe6cf',.72); zSpike(flip*4,hy-hr+3,4.6,-Math.PI/2+flip*.22,'#efe6cf',.62); }
+    if(spitter){ ctx.fillStyle=eye; ctx.globalAlpha=.48; ctx.beginPath(); ctx.ellipse(flip*.8,hy+6.4,4.8,3.5,0,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
+    if(juggernaut){ ctx.fillStyle='#343a38'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(0,hy,hr+1.2,Math.PI*.98,Math.PI*2.02); ctx.lineTo(hr*.72,hy-1.5); ctx.quadraticCurveTo(0,hy+3.5,-hr*.72,hy-1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=eye; ctx.globalAlpha=.85; ctx.fillRect(-3.9,hy-2.1,7.8,1.7); ctx.globalAlpha=1; }
   } else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(flip*-3.2,hy-1.6,2,0,TAU); ctx.arc(flip*3.4,hy-1,1.8,0,TAU); ctx.fill(); }
   // gaping maw with jagged fangs — snaps wide open on a lunge
   const open=1.2+lunge*3.4;
@@ -4773,7 +4829,8 @@ function drawZombie(z){
     for(let i=-2;i<=2;i++){ const fx=flip*0.5+i*1.5; ctx.beginPath(); ctx.moveTo(fx-0.8,hy+4.6-open); ctx.lineTo(fx,hy+4.6-open+1.7); ctx.lineTo(fx+0.8,hy+4.6-open); ctx.closePath(); ctx.fill(); }
     for(let i=-1;i<=1;i++){ const fx=flip*0.5+i*1.7; ctx.beginPath(); ctx.moveTo(fx-0.7,hy+4.6+open); ctx.lineTo(fx,hy+4.6+open-1.5); ctx.lineTo(fx+0.7,hy+4.6+open); ctx.closePath(); ctx.fill(); } }
   if(!flash && z.ranged){ ctx.save(); ctx.globalAlpha=0.55+0.25*Math.sin(now*5+seed);   // Spitter: glowing acid throat sac
-    ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(flip*0.5,hy+7.6,3.2,0,TAU); ctx.fill(); ctx.restore(); }
+    ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(flip*0.5,hy+7.6,3.2,0,TAU); ctx.fill();
+    ctx.strokeStyle=eye; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(flip*.5,hy+10); ctx.quadraticCurveTo(flip*1.5,hy+13.5,flip*.2,hy+15.5); ctx.stroke(); ctx.restore(); }
   if(!flash && z.boom){ ctx.fillStyle=eye; ctx.globalAlpha=0.45+0.2*Math.sin(now*4+seed);  // Bloater: pulsing acid blisters
     for(const bp of [[-6.5,-1.5],[6.5,-0.5],[-4,4.5],[5,4.5]]){ ctx.beginPath(); ctx.arc(bp[0],hy+bp[1],1.9,0,TAU); ctx.fill(); } ctx.globalAlpha=1; }
   ctx.restore();

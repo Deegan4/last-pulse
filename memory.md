@@ -97,6 +97,14 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.49.0 — upgraded all in-game enemy visuals.** Redrew the shared `drawZombie(z)` path so
+  every enemy kind has a stronger read in live combat without touching balance numbers in
+  `ZTYPES`: normals gained torn shoulder/bone damage, runners are narrower with red speed streaks
+  and sharper long limbs, spitters now carry a glowing acid tube/sac plus drool, bloaters have a
+  swollen pulsing belly with acid blisters, stalkers have a taller quilled spine/cranial spikes,
+  brutes retain the heavy bone-spike silhouette, and juggernauts now stack a dark back plate,
+  chest armor, shoulder guards, rivets and a helmet slit. Bumped `GAME_VERSION` 2.48.0 -> 2.49.0,
+  prepended the CHANGELOG entry, and synced `ROADMAP.md`'s gated version header.
 - **v2.48.0 — reverted the "village" theme back to the v2 midnight-forest glass look.**
   Per direct user feedback on the iOS wrapper screenshots: the v2.46.0-2.47.0 "fantasy village"
   reskin (thick wood/parchment borders, per-card corner bolts, heavy drop shadows) read as
