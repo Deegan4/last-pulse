@@ -9,6 +9,9 @@ build/
 .DS_Store
 .vercel
 
+# per-user Xcode IDE state (window layout, open editors) — always machine-local
+LastPulseIOS/LastPulse.xcodeproj/project.xcworkspace/xcuserdata/
+
 # Meshy intermediates — not shipped in-game (MODEL_FILES loads only the *-walk.glb + dennis.glb).
 # The raw pre-remesh textured meshes (emily.glb/bo.glb ~15-18MB) and review PNGs are regenerable
 # from the manifest task_ids, so keep them out of git history.

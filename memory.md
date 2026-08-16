@@ -97,6 +97,62 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.48.0 — reverted the "village" theme back to the v2 midnight-forest glass look.**
+  Per direct user feedback on the iOS wrapper screenshots: the v2.46.0-2.47.0 "fantasy village"
+  reskin (thick wood/parchment borders, per-card corner bolts, heavy drop shadows) read as
+  dated/generic, too cluttered, and off-palette. Deleted the whole self-contained `--village-*`
+  CSS override block (index.html, was ~170 lines starting at the "v2.47.0 fantasy village
+  polish" comment, ending right before the still-needed landscape-powers-row safety rule) —
+  confirmed via `grep` that no `--village-` custom property was referenced anywhere outside that
+  block, so removal was a clean, complete revert with no dangling references. That un-hides the
+  pre-existing "UI v2 — design-system override layer" glass theme (dark layered gradients,
+  frosted `backdrop-filter` panels, thin borders, soft green/gold glow accents, hero-button
+  sheen) that the village pass had been overriding via later-cascade rules on the same selectors
+  — it was never deleted, just shadowed. Bumped `GAME_VERSION` 2.47.0 → 2.48.0 (player-visible
+  change) with a CHANGELOG entry and synced `ROADMAP.md`'s header. Verified visually on the iPhone
+  17 Pro simulator build: main menu is now compact glass cards/pill buttons instead of stone
+  panels with corner bolts, matches/coins/wave stats still correctly restored via the SwiftData
+  bridge above (theme change didn't touch persistence).
+- **iOS native wrapper — fixed top-of-screen clipping + stray "Add to Home Screen" button.**
+  Root cause: `inStandalone()` (index.html, near `isApple()`) only detected two viewport
+  contexts — a normal browser tab, and an installed-PWA "standalone" `display-mode` — and
+  `effInsets()`/`measureViewport()` branch on it to decide whether the safe-area insets need
+  substituting and whether browser chrome is eating space above the content. The native
+  `WKWebView` wrapper (`LastPulseIOS/GameViewController.swift`) is a third context — full-bleed,
+  edge-to-edge, no chrome, behaviorally identical to standalone — but neither
+  `navigator.standalone` nor `display-mode:standalone` ever get set for a bare `WKWebView`, so it
+  fell through to the plain-tab path and clipped the "LAST PULSE" title under the notch/Dynamic
+  Island on every screen. Added `inNativeWrapper()` (checks for
+  `window.webkit.messageHandlers.nativeSave`, the same presence check the SwiftData save bridge
+  above already gates on) and OR'd it into `inStandalone()`, so the native wrapper now reuses the
+  already-proven standalone-mode insets/viewport math instead of new bespoke logic. Bonus fix:
+  `syncA2HS()` already hid the "Add to Home Screen" button whenever `inStandalone()` is true — so
+  this same change also correctly hides that nonsensical prompt inside the real installed app
+  (it was showing before). Verified visually on the same iPhone 17 Pro simulator build: title now
+  clears the notch with proper top padding, and the "Add to Home Screen" button is gone from the
+  main menu.
+- **iOS native SwiftData save bridge — fixes progress wiped on every relaunch.** Root cause:
+  `GameViewController`'s `WKWebView` uses `websiteDataStore: .nonPersistent()` and wipes
+  `WKWebsiteDataStore.default()` on every launch, so the web game's `localStorage`-backed
+  `meta` (level/xp/career stats/achievements/coins/etc, via `saveMeta()`) never survived an app
+  relaunch. Added `GameSave.swift` (`@Model`, one row keyed `"meta"`) + `GameSaveStore.swift`
+  (`@MainActor` `ModelContainer`/`ModelContext` wrapper) to `LastPulseIOS/LastPulse/` and
+  registered both in `project.pbxproj`. index.html mirrors every `saveMeta()` out via
+  `nativeSaveDebounced()` → `window.webkit.messageHandlers.nativeSave.postMessage(exportSave())`
+  (debounced 400ms, flushed immediately on `pagehide`/`visibilitychange`), reusing the existing
+  `LP1.`-prefixed save-code format from the save-code export/import feature rather than inventing
+  a new wire format. `GameViewController` persists that code via `GameSaveStore.saveCode()` (a
+  `WeakScriptMessageHandler` avoids a `WKUserContentController` retain cycle) and restores it by
+  injecting `window.__nativeBootCode` as a `WKUserScript` at `.atDocumentStart` — **has to be
+  document-start, not a post-`didFinish` `evaluateJavaScript` call**: the first attempt used
+  `didFinish`, which runs after the page's own script has already rendered the start-screen stats
+  from empty defaults, so the restored save silently didn't show up in the UI even though it was
+  correctly persisted. index.html reads `window.__nativeBootCode` and calls `importSave()` on it
+  immediately after `meta` is constructed (before any rendering). Verified end-to-end on an iPhone
+  17 Pro simulator build: played a match, quit to menu (`saveMeta()` fires), confirmed the row
+  landed in the SwiftData `default.store` (`ZGAMESAVE` table) via `sqlite3`, force-terminated the
+  app, relaunched, and confirmed the main menu now shows the restored wave/matches/coins instead
+  of resetting to a fresh Lv1 save.
 - **v2.43.2 — iOS rotation + smaller held weapons.** Enabled iOS rotation by declaring
   `UISupportedInterfaceOrientations` / `UISupportedInterfaceOrientations~ipad` in the wrapper
   `Info.plist` while the UIKit controller already returns `.all`. Trimmed held weapon scale again
@@ -1218,6 +1274,21 @@ versions before anyone corrected it — see the git history if you want the old 
 moonshots (Meshy 3D — still blocked on `MESHY_API_KEY` —, online, leaderboards, PWA). Keep
 ROADMAP.md checked off / re-prioritized as things ship; this file stays the record of what
 already landed.
+
+- v2.44.0: Upgraded the whole visual asset layer: menus/windows/HUD now use sharper neon
+  survival-console chrome, and the arena gained new readable prop assets (supply caches,
+  relay antennas, med tents, hazard barrels) plus richer pond/rock detailing.
+- v2.45.0: Switched the menu/window direction to the recommended comic survival poster style:
+  thick ink borders, pulp warning ribbons, hard offset shadows and brighter cards. Redrew the
+  new arena props with chunkier silhouettes, and changed the visual driver to serve over local
+  HTTP so screenshot validation avoids the file:// module CORS trap.
+- v2.46.0: Replaced the comic menu pass with a Clash-inspired fantasy village style: chunky
+  stone cards, carved wood frames, gold trim, red cloth banners, raised green/blue buttons and
+  warm paper HUD panels. Kept the local-HTTP screenshot driver fix from v2.45.0.
+- v2.47.0: Finished the full village-polish follow-up: beveled the title into a gold 3D strategy
+  logo, added metal bolt accents to cards/headers, deepened button press shadows, rethemed the
+  new props with wood/stone/gold/red-banner details, and marked the village battlefield polish
+  bundle shipped in ROADMAP.md.
 
 ## Open questions for the user
 _(Superseded the old v1.8.0-era list here — those were answered or overtaken long ago; current
