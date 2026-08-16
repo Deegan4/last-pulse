@@ -25,7 +25,7 @@
 
 import path from 'node:path';
 import fs from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import http from 'node:http';
 
 // ---- args ----
 const argv = process.argv.slice(2);
@@ -41,6 +41,33 @@ const keep = has('--keep-open');
 
 if (!fs.existsSync(file)) { console.error('index.html not found at', file); process.exit(2); }
 fs.mkdirSync(out, { recursive: true });
+
+// ---- serve locally instead of file:// so module scripts and relative assets load like production ----
+const rootDir = path.dirname(file);
+const entryName = path.basename(file);
+const MIME = {
+  '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
+  '.mjs':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8',
+  '.json':'application/json; charset=utf-8', '.png':'image/png', '.jpg':'image/jpeg',
+  '.jpeg':'image/jpeg', '.webp':'image/webp', '.svg':'image/svg+xml', '.glb':'model/gltf-binary',
+  '.wasm':'application/wasm', '.webmanifest':'application/manifest+json; charset=utf-8',
+};
+function serveFile(req, res) {
+  const rawPath = new URL(req.url || '/', 'http://127.0.0.1').pathname;
+  const rel = rawPath === '/' ? entryName : decodeURIComponent(rawPath.slice(1));
+  const target = path.resolve(rootDir, rel);
+  if (target !== rootDir && !target.startsWith(rootDir + path.sep)) {
+    res.writeHead(403); res.end('Forbidden'); return;
+  }
+  fs.readFile(target, (err, data) => {
+    if (err) { res.writeHead(404); res.end('Not found'); return; }
+    res.writeHead(200, { 'content-type': MIME[path.extname(target).toLowerCase()] || 'application/octet-stream' });
+    res.end(data);
+  });
+}
+const server = http.createServer(serveFile);
+await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const localURL = `http://127.0.0.1:${server.address().port}/`;
 
 // ---- resolve Playwright (installed, or the container's global node_modules) ----
 async function loadChromium() {
@@ -90,8 +117,8 @@ const shot = async name => {
   console.log('  shot →', p);
 };
 
-console.log('loading', pathToFileURL(file).href);
-await page.goto(pathToFileURL(file).href, { waitUntil: 'load' });
+console.log('loading', localURL);
+await page.goto(localURL, { waitUntil: 'load' });
 await page.waitForTimeout(700);
 await shot('01-start');
 
@@ -129,6 +156,7 @@ if (play) {
 }
 
 if (!keep) await browser.close();
+server.close();
 
 if (netErrors.length) console.log(`\nnote: ${netErrors.length} resource-load failure(s) ignored (blocked CDN — game falls back to 2D)`);
 console.log(errors.length ? `\nFAIL — ${errors.length} page error(s):` : '\nOK — no page errors.');

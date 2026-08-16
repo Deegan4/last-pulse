@@ -36,7 +36,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
-import { pathToFileURL } from 'node:url';
+import http from 'node:http';
 
 // ---- args ----
 const argv = process.argv.slice(2);
@@ -107,6 +107,33 @@ window.__m = function(){
   file = tmpFile;
 }
 
+// ---- serve locally instead of file:// so module scripts and relative assets load like production ----
+const rootDir = path.dirname(file);
+const entryName = path.basename(file);
+const MIME = {
+  '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
+  '.mjs':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8',
+  '.json':'application/json; charset=utf-8', '.png':'image/png', '.jpg':'image/jpeg',
+  '.jpeg':'image/jpeg', '.webp':'image/webp', '.svg':'image/svg+xml', '.glb':'model/gltf-binary',
+  '.wasm':'application/wasm', '.webmanifest':'application/manifest+json; charset=utf-8',
+};
+function serveFile(req, res) {
+  const rawPath = new URL(req.url || '/', 'http://127.0.0.1').pathname;
+  const rel = rawPath === '/' ? entryName : decodeURIComponent(rawPath.slice(1));
+  const target = path.resolve(rootDir, rel);
+  if (target !== rootDir && !target.startsWith(rootDir + path.sep)) {
+    res.writeHead(403); res.end('Forbidden'); return;
+  }
+  fs.readFile(target, (err, data) => {
+    if (err) { res.writeHead(404); res.end('Not found'); return; }
+    res.writeHead(200, { 'content-type': MIME[path.extname(target).toLowerCase()] || 'application/octet-stream' });
+    res.end(data);
+  });
+}
+const server = http.createServer(serveFile);
+await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const localURL = `http://127.0.0.1:${server.address().port}/`;
+
 // ---- resolve Playwright (installed, or the container's global node_modules) ----
 async function loadChromium() {
   const globalRoot = path.join(path.dirname(path.dirname(process.execPath)), 'lib', 'node_modules');
@@ -155,8 +182,8 @@ const shot = async name => {
   console.log('  shot →', p);
 };
 
-console.log('loading', pathToFileURL(file).href);
-await page.goto(pathToFileURL(file).href, { waitUntil: 'load' });
+console.log('loading', localURL);
+await page.goto(localURL, { waitUntil: 'load' });
 await page.waitForTimeout(700);
 await shot('01-start');
 
@@ -245,7 +272,7 @@ if (waves > 0) {
   console.log(`balance harness: horde, kiting bot, target wave ${waves}, ${runs} run(s) …`);
   const results = [];
   for (let i = 1; i <= runs; i++) {
-    if (i > 1) { await page.goto(pathToFileURL(file).href, { waitUntil: 'load' }); await page.waitForTimeout(700); }
+    if (i > 1) { await page.goto(localURL, { waitUntil: 'load' }); await page.waitForTimeout(700); }
     const r = await runWaveTrial(i);
     console.log(`  run ${i}: wave ${r.waveReached}, ${r.survivedSec}s, ${r.kills} kills, ` +
                 `${r.dmgTakenPerMin} dmg/min, peak ${r.peak.zombies}z/${r.peak.particles}p/${r.peak.splats}splat, min ${r.minFps} fps`);
@@ -299,6 +326,7 @@ if (waves > 0) {
 }
 
 if (!keep) await browser.close();
+server.close();
 // the instrumented copy is throwaway — never let a hooked index.html linger where it could be copied back
 if (tmpFile && !keep) { try { fs.rmSync(path.dirname(tmpFile), { recursive: true, force: true }); } catch {} }
 

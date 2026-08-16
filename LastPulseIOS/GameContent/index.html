@@ -648,6 +648,10 @@
   #modeScreen .modecard .mi{font-size:30px}
   #modeScreen .modecard .mt{font-size:18px}
   #modeScreen .modecard .md{font-size:12.5px}
+
+  /* v2.47.0's "fantasy village polish" (thick wood borders, corner bolts, parchment cards)
+     was removed here per user feedback — dated/generic, too cluttered, wrong palette. The
+     glass-card theme above (~line 560) it had overridden is what's live again. */
   /* In-game powers in landscape: a v2 safe-area rule (added later in the sheet than the
      original landscape query) had knocked the power buttons back to the portrait
      mid-screen spot, floating over the player. Re-assert the bottom-centre row here. */
@@ -1164,8 +1168,31 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.43.2';
+const GAME_VERSION = '2.48.0';
 const CHANGELOG = [
+  { v:'2.48.0', items:[
+    ['🌙','Back to the midnight-forest look','removed the wood/parchment "village" reskin (v2.46-2.47) — dated, cluttered, and off-palette per feedback. Menus and cards are frosted glass again: dark layered gradients, blurred panels, soft green/gold glow accents'],
+  ]},
+  { v:'2.47.0', items:[
+    ['👑','More 3D village title','the main logo now has gold beveling and deeper stacked shadows, closer to a fantasy strategy splash screen'],
+    ['🔩','Bolted village cards','weapon cards, menu panels and headers gained metal corner bolts, thicker trim and deeper button press states'],
+    ['🧱','Battlefield props rethemed','loot caches, barrels, signal posts and med tents now use wood, stone, gold and red-banner details to match the village UI'],
+  ]},
+  { v:'2.46.0', items:[
+    ['🏰','Village-style menus','menus and windows now use chunky stone panels, carved wood frames, gold trim and red banners for a Clash-inspired fantasy look'],
+    ['🛡️','Beveled game UI','buttons, cards, HUD rows and popups got heavier borders, raised shadows and warm village colors for better mobile readability'],
+    ['📸','Cleaner screenshots','the headless visual driver serves the game over local HTTP so optional module loading no longer trips the file:// CORS path'],
+  ]},
+  { v:'2.45.0', items:[
+    ['💥','Comic poster menus','menus and windows now use thick ink borders, pulp ribbons, hard shadows and brighter survival-comic cards instead of the glass console style'],
+    ['🧰','Chunkier world props','caches, barrels, antennas and med tents were redrawn with stronger outlines and toy-like silhouettes for better phone readability'],
+    ['📸','Cleaner screenshots','the headless visual driver now serves the game over local HTTP so optional module loading no longer trips the file:// CORS path'],
+  ]},
+  { v:'2.44.0', items:[
+    ['✨','Visual asset overhaul','menus, windows and HUD panels now use a sharper neon survival-console skin with scanner lines, glass edges and richer button depth'],
+    ['📦','New field props','supply caches, relay antennas, med tents and hazard barrels now decorate the arena with readable silhouettes and minimap pings'],
+    ['🌊','Objects got more detail','ponds, rocks and map landmarks gained stronger highlights, shadows and tiny animated touches so the world reads cleaner in motion'],
+  ]},
   { v:'2.43.2', items:[
     ['📱','iOS rotation enabled','the iOS wrapper now declares portrait and landscape orientations so the app can rotate with the device'],
     ['🔫','Weapons sized down again','held weapons are slightly smaller for a cleaner fit in the upgraded fighters’ hands'],
@@ -1500,6 +1527,11 @@ const meta = {
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
 };
+// iOS wrapper bridge: GameViewController injects window.__nativeBootCode (see
+// "Native (iOS wrapper) save bridge" below) at document-start, before this script runs —
+// localStorage above is empty there (WKWebView is non-persistent), so merge the native
+// SwiftData-backed save in now, before anything reads or renders `meta`.
+if(window.__nativeBootCode){ try{ importSave(window.__nativeBootCode); }catch(e){} }
 // roster shrank to the sprite heroes — clamp any stale saved index so nothing indexes past the table
 if(!(meta.avatar>=0 && meta.avatar<AVATARS.length)) meta.avatar=0;
 function xpNeed(lv){ return 80 + lv*40; }
@@ -1528,6 +1560,27 @@ function saveMeta(){
   safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
+  nativeSaveDebounced();
+}
+// ===== Native (iOS wrapper) save bridge =====
+// The iOS WKWebView wraps this page with a non-persistent data store (see LastPulseIOS/
+// GameViewController.swift) — localStorage does NOT survive an app relaunch there. Mirror
+// every save out to native via a message handler so GameSaveStore (SwiftData) can persist
+// it; the restore direction is window.__nativeBootCode, read once above right where `meta`
+// is constructed (see the comment there for why it has to happen that early). This is a
+// no-op in a normal browser (webkit.messageHandlers is undefined outside WKWebView).
+let __nativeSaveTimer=null;
+function nativeSaveNow(){
+  try{
+    clearTimeout(__nativeSaveTimer); __nativeSaveTimer=null;
+    window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeSave
+      && window.webkit.messageHandlers.nativeSave.postMessage(exportSave());
+  }catch(e){}
+}
+function nativeSaveDebounced(){
+  if(!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeSave)) return;
+  clearTimeout(__nativeSaveTimer);
+  __nativeSaveTimer=setTimeout(nativeSaveNow, 400);
 }
 // ===== Save health & transfer =====
 // Some browsers can't persist localStorage at all (private tabs, TikTok/Instagram in-app
@@ -1548,8 +1601,8 @@ function importSave(code){
   }catch(e){ return false; }
 }
 // flush on tab hide / app switch — belt & suspenders against abrupt closes losing a purchase
-window.addEventListener('pagehide',()=>{ try{ saveMeta(); }catch(e){} });
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'){ try{ saveMeta(); }catch(e){} } });
+window.addEventListener('pagehide',()=>{ try{ saveMeta(); nativeSaveNow(); }catch(e){} });
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'){ try{ saveMeta(); nativeSaveNow(); }catch(e){} } });
 
 // ===== Achievements =====
 // Career tests read `meta`; per-match feats read the `ctx` passed at match end.
@@ -1861,7 +1914,7 @@ const BKINDS={
   barn:  {roof:['#4a3730','#5a4038']},             // red planks, X-braced big doors, hayloft
   cabin: {roof:['#4a6a44','#6a5a3a']},             // log-course walls + stovepipe
 };
-const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1};   // level-milestone landmarks (y-sorted)
+const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1,cache:1,antenna:1,medtent:1,barrel:1};   // level-milestone landmarks + prop assets (y-sorted)
 function buildDecor(){
   decor.length=0; obstacles.length=0;
   timeOfDay = pick(['day','day','dusk','night']);   // mostly day, sometimes dusk/night
@@ -1895,6 +1948,10 @@ function buildDecor(){
   for(let i=0;i<36+Math.floor(xtra*1.3);i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
   for(let i=0;i<20+Math.floor(xtra*0.7);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
   for(let i=0;i<8+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
+  for(let i=0;i<8+Math.floor(xtra*0.35);i++){ const p=decorSpot(70); decor.push({type:'cache', x:p.x, y:p.y, s:rand(0.88,1.16), open:Math.random()<0.28}); }
+  for(let i=0;i<5+Math.floor(xtra*0.22);i++){ const p=decorSpot(80); decor.push({type:'barrel', x:p.x, y:p.y, s:rand(0.86,1.18), hot:Math.random()<0.36}); }
+  for(let i=0;i<3+Math.floor(lvl/10);i++){ const p=decorSpot(95); decor.push({type:'antenna', x:p.x, y:p.y, s:rand(0.9,1.15), blink:rand(0,TAU)}); }
+  for(let i=0;i<2+Math.floor(lvl/12);i++){ const p=decorSpot(105); decor.push({type:'medtent', x:p.x, y:p.y, s:rand(0.9,1.12), flip:Math.random()<0.5}); }
   // level-milestone landmarks — the map gains character as you rank up
   if(lvl>=3)  for(let i=0;i<4;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
   if(lvl>=6)  for(let i=0;i<7;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
@@ -3842,6 +3899,60 @@ function drawTower(d){
   }
 }
 function drawDecor(d){
+  if(d.type==='cache'){ const x=d.x, y=d.y, s=d.s||1, open=!!d.open;
+    ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';
+    ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(2,10,27,8,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#8b522c'; ctx.strokeStyle=INK; ctx.lineWidth=3.4; roundRect(-23,-17,46,25,5); ctx.fill(); ctx.stroke();
+    ctx.save(); roundRect(-21,-16,42,24,5); ctx.clip();
+    ctx.fillStyle='rgba(255,220,140,.18)'; ctx.fillRect(-21,-16,42,8);
+    ctx.fillStyle='rgba(0,0,0,.16)'; ctx.fillRect(8,-16,14,24);
+    ctx.strokeStyle='rgba(55,28,12,.45)'; ctx.lineWidth=1.6;
+    for(let px=-14; px<=14; px+=14){ ctx.beginPath(); ctx.moveTo(px,-15); ctx.lineTo(px,7); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(-25,-7,50,10,3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#2b1b10'; ctx.font='900 7px system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('LOOT',0,-2);
+    for(const bx of [-17,17]){ ctx.fillStyle='#f3d276'; ctx.strokeStyle=INK; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(bx,-2,2.7,0,TAU); ctx.fill(); ctx.stroke(); }
+    if(open){ ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=3; roundRect(-20,-28,40,12,4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#ffd35a'; ctx.beginPath(); ctx.ellipse(0,-12,15,4,0,0,TAU); ctx.fill(); ctx.stroke(); }
+    ctx.restore(); return; }
+  if(d.type==='barrel'){ const x=d.x, y=d.y, s=d.s||1, hot=d.hot;
+    ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';
+    ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(2,8,15,5,0,0,TAU); ctx.fill();
+    ctx.fillStyle=hot?'#b84431':'#7c5b36'; ctx.strokeStyle=INK; ctx.lineWidth=3.2; roundRect(-12,-23,24,31,5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=hot?'#e95b45':'#a8753f'; ctx.fillRect(-8,-19,5,23);
+    ctx.fillStyle='#d8c7a4'; ctx.strokeStyle=INK; ctx.lineWidth=2.2; ctx.beginPath(); ctx.ellipse(0,-23,12,4,0,0,TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.3; roundRect(-13,-14,26,5,1.5); ctx.fill(); ctx.stroke(); roundRect(-13,-2,26,5,1.5); ctx.fill(); ctx.stroke();
+    if(hot){ ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(-5,-11); ctx.lineTo(2,-8); ctx.lineTo(-2,-4); ctx.lineTo(6,2); ctx.stroke(); }
+    else { ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(4,-8,3,0,TAU); ctx.fill(); ctx.stroke(); }
+    ctx.restore(); return; }
+  if(d.type==='antenna'){ const x=d.x, y=d.y, s=d.s||1, pulse=0.5+0.5*Math.sin(gtime*4+d.blink);
+    ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(2,7,23,7,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#9a8a68'; ctx.strokeStyle=INK; ctx.lineWidth=3.2; roundRect(-17,0,34,10,3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.2; roundRect(-11,2,22,5,2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle=INK; ctx.lineWidth=5.8; ctx.beginPath(); ctx.moveTo(0,1); ctx.lineTo(0,-43); ctx.stroke();
+    ctx.strokeStyle='#8b522c'; ctx.lineWidth=3.1; ctx.beginPath(); ctx.moveTo(0,1); ctx.lineTo(0,-43); ctx.stroke();
+    ctx.strokeStyle=INK; ctx.lineWidth=3.2; ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(-17,1); ctx.moveTo(0,-18); ctx.lineTo(17,1); ctx.stroke();
+    ctx.fillStyle='#c84431'; ctx.strokeStyle=INK; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(1,-39); ctx.lineTo(18,-34); ctx.lineTo(1,-29); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='#ffd35a'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.moveTo(-15,-30); ctx.lineTo(14,-34); ctx.stroke();
+    ctx.fillStyle='rgba(255,211,90,'+(0.65+0.35*pulse)+')'; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,-45,4.8,0,TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='rgba(255,211,90,'+(0.25+0.22*pulse)+')'; ctx.lineWidth=1.8;
+    for(let r=11;r<=25;r+=7){ ctx.beginPath(); ctx.arc(0,-45,r,-0.85,-0.18); ctx.stroke(); ctx.beginPath(); ctx.arc(0,-45,r,Math.PI+0.18,Math.PI+0.85); ctx.stroke(); }
+    ctx.restore(); return; }
+  if(d.type==='medtent'){ const x=d.x, y=d.y, s=d.s||1, flip=d.flip?-1:1;
+    ctx.save(); ctx.translate(x,y); ctx.scale(s*flip,s); ctx.lineJoin='round';
+    ctx.fillStyle='rgba(0,0,0,.27)'; ctx.beginPath(); ctx.ellipse(2,9,35,10,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#e6d5ad'; ctx.strokeStyle=INK; ctx.lineWidth=3.4;
+    ctx.beginPath(); ctx.moveTo(-31,3); ctx.lineTo(-18,-20); ctx.lineTo(0,-30); ctx.lineTo(18,-20); ctx.lineTo(31,3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.beginPath(); ctx.moveTo(-31,3); ctx.lineTo(-18,-20); ctx.lineTo(0,-30); ctx.lineTo(18,-20); ctx.lineTo(31,3); ctx.closePath(); ctx.clip();
+    ctx.fillStyle='#c84431'; ctx.fillRect(0,-27,31,31);
+    ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(-29,-27,29,31);
+    ctx.strokeStyle='rgba(28,33,21,.32)'; ctx.lineWidth=1.8; for(let px=-22; px<28; px+=12){ ctx.beginPath(); ctx.moveTo(px,2); ctx.lineTo(px+13,-22); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=2.1; roundRect(-5,-24,10,18,1.5); ctx.fill(); ctx.stroke(); roundRect(-10,-19,20,9,1.5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.4; roundRect(-10,-7,20,10,2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#d8c7a4'; ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(-23,1,3,0,TAU); ctx.arc(23,1,3,0,TAU); ctx.fill(); ctx.stroke();
+    ctx.restore(); return; }
   if(d.type==='campfire'){ const x=d.x, y=d.y, ni=timeOfDay!=='day';
     ctx.lineJoin='round';
     ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(x,y+3,16,6,0,0,TAU); ctx.fill();
@@ -3950,6 +4061,13 @@ function drawDecor(d){
     // sun / moon glint
     ctx.fillStyle= timeOfDay==='night'?'rgba(210,225,255,.16)':'rgba(255,255,255,.14)'; ctx.beginPath();
     ctx.ellipse(d.x-d.s*0.28,d.y-d.s*0.18,d.s*0.4,d.s*0.18,-0.4,0,TAU); ctx.fill();
+    // tiny reeds and bright edge flecks make ponds read as hand-painted instead of flat ellipses
+    ctx.strokeStyle=timeOfDay==='night'?'rgba(100,145,92,.55)':'rgba(74,132,57,.65)'; ctx.lineCap='round';
+    for(let k=0;k<7;k++){ const a=(d.y*0.011+k*1.73), bx=d.x+Math.cos(a)*d.s*0.86, by=d.y+Math.sin(a)*d.s*0.53;
+      ctx.lineWidth=1.1+(k%3)*0.35; ctx.beginPath(); ctx.moveTo(bx,by+2); ctx.quadraticCurveTo(bx+Math.cos(a+1.1)*4,by-7,bx+Math.cos(a+0.7)*7,by-13); ctx.stroke(); }
+    ctx.fillStyle='rgba(255,255,255,.18)';
+    for(let k=0;k<5;k++){ const a=(d.x*0.017+k*2.1), fx=d.x+Math.cos(a)*d.s*0.72, fy=d.y+Math.sin(a)*d.s*0.42;
+      ctx.beginPath(); ctx.ellipse(fx,fy,3.5,1.1,a,0,TAU); ctx.fill(); }
     // lily pads (seeded per-pond so they don't jitter)
     for(let k=0;k<3;k++){ const a=(d.x*7+k*2.399), lx=d.x+Math.cos(a)*d.s*0.55, ly=d.y+Math.sin(a)*d.s*0.4*0.9, ps=d.s*0.16;
       ctx.fillStyle= timeOfDay==='night'?'#2e6a34':'#3f8a3f'; ctx.beginPath(); ctx.ellipse(lx,ly,ps,ps*0.7,a,0,TAU); ctx.fill();
@@ -3962,7 +4080,9 @@ function drawDecor(d){
     ctx.fillStyle='#8f9aa0'; ctx.strokeStyle=INK; ctx.lineWidth=1.6*s;
     ctx.beginPath(); ctx.moveTo(d.x-9*s,d.y+2*s); ctx.lineTo(d.x-5*s,d.y-7*s); ctx.lineTo(d.x+3*s,d.y-8*s); ctx.lineTo(d.x+9*s,d.y); ctx.lineTo(d.x+6*s,d.y+3*s); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle='rgba(0,0,0,.17)'; ctx.beginPath(); ctx.moveTo(d.x+3*s,d.y-8*s); ctx.lineTo(d.x+9*s,d.y); ctx.lineTo(d.x+6*s,d.y+3*s); ctx.lineTo(d.x+1*s,d.y-2*s); ctx.closePath(); ctx.fill();  // dark facet
-    ctx.fillStyle='rgba(255,255,255,.22)'; ctx.beginPath(); ctx.moveTo(d.x-5*s,d.y-7*s); ctx.lineTo(d.x+3*s,d.y-8*s); ctx.lineTo(d.x-1*s,d.y-3*s); ctx.closePath(); ctx.fill(); return; }
+    ctx.fillStyle='rgba(255,255,255,.22)'; ctx.beginPath(); ctx.moveTo(d.x-5*s,d.y-7*s); ctx.lineTo(d.x+3*s,d.y-8*s); ctx.lineTo(d.x-1*s,d.y-3*s); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='rgba(55,85,65,.42)'; ctx.lineWidth=1.1*s; ctx.beginPath(); ctx.moveTo(d.x-7*s,d.y+1*s); ctx.lineTo(d.x-2*s,d.y-1*s); ctx.moveTo(d.x+2*s,d.y+2*s); ctx.lineTo(d.x+6*s,d.y-1*s); ctx.stroke();
+    ctx.fillStyle='rgba(95,150,72,.55)'; ctx.beginPath(); ctx.arc(d.x-7*s,d.y+3*s,1.8*s,0,TAU); ctx.arc(d.x+7*s,d.y+2*s,1.4*s,0,TAU); ctx.fill(); return; }
   if(d.type==='flower'){ ctx.fillStyle='#3f7d33'; ctx.lineWidth=1; ctx.fillRect(d.x-0.6,d.y-5,1.2,5);
     ctx.fillStyle=d.c; ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=0.8;
     for(let k=0;k<5;k++){ const a=k/5*TAU; ctx.beginPath(); ctx.arc(d.x+Math.cos(a)*2.4,d.y-6+Math.sin(a)*2.4,1.9,0,TAU); ctx.fill(); ctx.stroke(); }
@@ -4675,7 +4795,8 @@ function drawZone(){
 }
 
 // minimap
-const MINI_LANDMARK_COL = {campfire:'#ff8a2a', well:'#7fc8e8', statue:'#c9c2b0', graveyard:'#8f8d86'};
+const MINI_LANDMARK_COL = {campfire:'#ff8a2a', well:'#7fc8e8', statue:'#c9c2b0', graveyard:'#8f8d86',
+  cache:'#d6ff6e', antenna:'#6fe6ff', medtent:'#f2f6e8', barrel:'#ff7d5c'};
 function drawMini(){
   const S=132, sc=S/ARENA; mctx.clearRect(0,0,S,S);
   mctx.fillStyle='#2c4a1e'; mctx.fillRect(0,0,S,S);
@@ -4887,7 +5008,16 @@ function closeDonate(){ el('donate').classList.add('hidden'); }
 // iPhone/iPad Safari can't trigger install programmatically, so we show step-by-step instructions.
 function isApple(){ return /iPad|iPhone|iPod/.test(navigator.userAgent)
   || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1); }   // iPadOS 13+ masquerades as Mac
-function inStandalone(){ return navigator.standalone===true || matchMedia('(display-mode: standalone)').matches; }
+function inNativeWrapper(){ return !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeSave); }
+// The native iOS wrapper (LastPulseIOS/GameViewController.swift) is a third viewport context
+// besides "normal browser tab" and "installed PWA": a full-bleed, edge-to-edge WKWebView with
+// no browser chrome — behaviorally identical to standalone (viewport genuinely covers the
+// whole screen under the notch), but neither navigator.standalone nor display-mode:standalone
+// ever get set for a bare WKWebView, so without this it fell through to the plain-tab path in
+// resize()/measureViewport() that assumes chrome eats space above the content, clipping the
+// top of the stage. Detected via the same messageHandlers.nativeSave presence the save bridge
+// already uses to gate itself.
+function inStandalone(){ return navigator.standalone===true || matchMedia('(display-mode: standalone)').matches || inNativeWrapper(); }
 function syncA2HS(){ const b=el('a2hsBtn'); if(b) b.classList.toggle('hidden', !(isApple() && !inStandalone())); }
 function openA2HS(){ el('a2hs').classList.remove('hidden'); }
 function closeA2HS(){ el('a2hs').classList.add('hidden'); }

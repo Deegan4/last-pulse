@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.43.2). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.48.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -46,6 +46,15 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
       distinguishes "correct in a Safari tab" from "insets broken in the installed app".
 - [x] **Tooling gates** — `validate.mjs` now gates the ROADMAP header version and every `--mode`
       named in the docs against `MODES`; `driver.mjs` gained a `--waves` balance/perf harness.
+
+## v2.47 — "Village battlefield polish" (shipped)
+
+- [x] **Clash-inspired menu identity** — the current menu skin uses beveled gold title lettering,
+      carved-wood headers, stone/parchment cards, raised green/blue buttons and red banner accents.
+- [x] **Village prop language** — the new supply caches, barrels, signal posts and med tents now
+      use wood, stone, gold and banner details so arena objects match the menu identity.
+- [x] **Clean visual validation** — the screenshot driver serves over local HTTP, avoiding the
+      old `file://` module CORS warning while still driving the real menu-to-match path.
 
 ## v2.37 — "Deeper controller support" (shipped)
 
