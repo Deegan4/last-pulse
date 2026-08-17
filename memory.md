@@ -97,6 +97,21 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.49.0 — Shop reachable from the pause menu.** Added a "🛒 Shop" button to the Settings
+  modal (`index.html`, `#sShop`, next to `#sName`), so players can spend coins on trails and
+  Extended Magazines mid-match without quitting to the main menu. Clicking it hides `#settings`
+  and calls the existing `openShop()` (unchanged — no new shop logic needed); a module-level
+  `shopFromSettings` flag makes `closeShop()` re-show `#settings` instead of leaving both modals
+  closed, so the flow is a clean "Settings → Shop → back to Settings → Close resumes the match"
+  loop. `screenState`/`paused` are untouched by this path (unlike `#sAvatar`/`#sWeapon`, which
+  intentionally leave Settings for a full-screen picker) — the match stays paused the whole time
+  since `openSettings()` already set `paused=true`, and `closeSettings()`'s existing
+  `if(screenState==='playing') paused=false` resumes it on final Close. No gamepad-nav code
+  changes needed: `gpMenuTargets()` already falls through to `GP_SIMPLE_MODALS`'s existing
+  `shop` entry once `#settings` is hidden, and the new `.opt` button is picked up automatically
+  by Settings' `.opt:not(.hidden)` selector. Verified with a throwaway Playwright script driving
+  the real served page (not just validate.mjs): pause → Shop opens with populated cards → Close
+  returns to Settings → Close resumes, zero console/page errors.
 - **v2.48.0 — reverted the "village" theme back to the v2 midnight-forest glass look.**
   Per direct user feedback on the iOS wrapper screenshots: the v2.46.0-2.47.0 "fantasy village"
   reskin (thick wood/parchment borders, per-card corner bolts, heavy drop shadows) read as

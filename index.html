@@ -767,6 +767,7 @@
       <button class="opt" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
       <button class="opt" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
       <button class="opt" id="sName"><span class="oic">✏️</span>Change Name</button>
+      <button class="opt" id="sShop"><span class="oic">🛒</span>Shop</button>
       <div class="opt ctrlrow" id="sCtrlRow"><span class="oic">🎮</span>
         <div class="ctrltxt"><b id="sCtrlStatus">⚪ No controller connected</b>
           <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
@@ -1168,8 +1169,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.48.0';
+const GAME_VERSION = '2.49.0';
 const CHANGELOG = [
+  { v:'2.49.0', items:[
+    ['🛒','Shop while paused','the pause menu now has a Shop button so you can spend coins on trails and Extended Magazines mid-match, without quitting to the main menu'],
+  ]},
   { v:'2.48.0', items:[
     ['🌙','Back to the midnight-forest look','removed the wood/parchment "village" reskin (v2.46-2.47) — dated, cluttered, and off-palette per feedback. Menus and cards are frosted glass again: dark layered gradients, blurred panels, soft green/gold glow accents'],
   ]},
@@ -4990,8 +4994,10 @@ function shopTap(id){
   } else { meta.trail=id; saveMeta(); }
   renderShop(); renderMenu();
 }
+let shopFromSettings=false;   // true when Shop was opened via the in-match Settings menu (pause), so Close returns to it
 function openShop(){ renderShop(); el('shop').classList.remove('hidden'); }
-function closeShop(){ el('shop').classList.add('hidden'); }
+function closeShop(){ el('shop').classList.add('hidden');
+  if(shopFromSettings){ shopFromSettings=false; el('settings').classList.remove('hidden'); gpFocusIdx=0; } }
 // ----- donate / support (opens the owner's Stripe Payment Link) -----
 function donateConfigured(){ return /^https:\/\/(buy\.stripe\.com|[a-z0-9-]+\.stripe\.com)\//i.test(STRIPE_DONATE_URL); }
 function openDonate(){
@@ -5359,6 +5365,7 @@ el('sAvatar').addEventListener('click',()=>{ closeSettings(); buildAvatarGrid();
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); });
 el('sWeapon').addEventListener('click',()=>{ closeSettings(); buildWeaponGrid(); screenState='weapon'; show('weaponScreen');
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); });
+el('sShop').addEventListener('click',()=>{ audioInit(); shopFromSettings=true; el('settings').classList.add('hidden'); openShop(); gpFocusIdx=0; });
 el('sName').addEventListener('click',()=>{ closeSettings(); screenState='start'; show('startScreen');
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); el('nameInput').focus(); });
 
