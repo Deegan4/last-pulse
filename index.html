@@ -767,21 +767,25 @@
   <div id="settings" class="modal hidden">
     <h2 class="heading">Settings</h2>
     <div class="stack">
-      <button class="opt" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
-      <button class="opt" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
-      <button class="opt" id="sName"><span class="oic">✏️</span>Change Name</button>
       <button class="opt" id="sShop"><span class="oic">🛒</span>Shop</button>
-      <div class="opt ctrlrow" id="sCtrlRow"><span class="oic">🎮</span>
-        <div class="ctrltxt"><b id="sCtrlStatus">⚪ No controller connected</b>
-          <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
-      </div>
       <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
         <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
         <input type="range" id="aimSens" min="30" max="200" step="10"></div>
-      <button class="opt" id="sExport"><span class="oic">💾</span>Copy Save Code</button>
-      <button class="opt" id="sImport"><span class="oic">📥</span>Enter Save Code</button>
-      <button class="opt" id="sFit"><span class="oic">📏</span>Screen Fit Check</button>
+      <div class="opt ctrlrow" id="sCtrlRow"><span class="oic">🎮</span>
+        <div class="ctrltxt"><b id="sCtrlStatus">⚪ No controller connected</b>
+          <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
+      </div>
+      <!-- mid-match (pause) starts these collapsed behind sMoreToggle — profile/save/diagnostic
+           options aren't what you reach for while a horde is bearing down. Pre-match (reached via
+           the avatar/weapon screen gear icons) shows everything, same as before this change. -->
+      <button class="opt" id="sMoreToggle"><span class="oic">⋯</span>More options</button>
+      <button class="opt sMoreItem" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
+      <button class="opt sMoreItem" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
+      <button class="opt sMoreItem" id="sName"><span class="oic">✏️</span>Change Name</button>
+      <button class="opt sMoreItem" id="sExport"><span class="oic">💾</span>Copy Save Code</button>
+      <button class="opt sMoreItem" id="sImport"><span class="oic">📥</span>Enter Save Code</button>
+      <button class="opt sMoreItem" id="sFit"><span class="oic">📏</span>Screen Fit Check</button>
       <button class="opt danger hidden" id="sQuit"><span class="oic">🏳️</span>Quit to Main Menu</button>
     </div>
     <button class="close" id="sClose">Close</button>
@@ -1172,8 +1176,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.50.0';
+const GAME_VERSION = '2.51.0';
 const CHANGELOG = [
+  { v:'2.51.0', items:[
+    ['🧹','Decluttered pause menu','the pause Settings screen now leads with Shop, audio/aim sliders, and controller status — profile editing, save codes, and the screen-fit check collapse behind a new "More options" toggle so pausing mid-fight is a quick glance, not a scroll'],
+  ]},
   { v:'2.50.0', items:[
     ['🎗️','Nameplate banners','4 new colored banners (crimson, azure, gold, violet) join the trail shop — a cosmetic pill behind your name in-match, buy & equip from Shop → Nameplate Banner'],
     ['☠️','Boss polish','Juggernauts now have a visible hp banner while alive, a telegraphed ground-slam AoE attack on top of their normal contact damage, and a guaranteed loot drop (bonus scrap + a pickup) on death'],
@@ -5342,8 +5349,20 @@ el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100
 el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings
+function syncMoreOptions(open){
+  // mid-match (screenState==='playing', i.e. reached via the pause gear icon) hides the toggle
+  // is unnecessary — profile/save/diagnostic items collapse by default there since they're not
+  // what a player needs while fighting; every other context (pre-match avatar/weapon screens)
+  // shows everything, same as before this button existed.
+  const midMatch = screenState==='playing';
+  el('sMoreToggle').classList.toggle('hidden', !midMatch);
+  const show = !midMatch || open;
+  document.querySelectorAll('.sMoreItem').forEach(b=>b.classList.toggle('hidden', !show));
+  el('sMoreToggle').innerHTML = '<span class="oic">'+(show?'▾':'⋯')+'</span>'+(show?'Fewer options':'More options');
+}
 function openSettings(){ paused=true; el('settings').classList.remove('hidden');
   el('sQuit').classList.toggle('hidden', screenState!=='playing');   // only offer "quit to menu" mid-match
+  syncMoreOptions(false);   // always starts collapsed on a fresh open
   syncSliders(); syncControllerStatus(); gpFocusIdx=0; }
 function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; gpFocusIdx=0; }
 // abandon the current match and return to the main menu (state is overwritten on the next Play)
@@ -5444,6 +5463,7 @@ if(!storageOk()){
 el('avatarGear').addEventListener('click',openSettings);
 el('weaponGear').addEventListener('click',openSettings);
 el('sClose').addEventListener('click',closeSettings);
+el('sMoreToggle').addEventListener('click',()=>{ syncMoreOptions(el('sAvatar').classList.contains('hidden')); gpFocusIdx=0; });
 el('sAvatar').addEventListener('click',()=>{ closeSettings(); buildAvatarGrid(); screenState='avatar'; show('avatarScreen');
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); });
 el('sWeapon').addEventListener('click',()=>{ closeSettings(); buildWeaponGrid(); screenState='weapon'; show('weaponScreen');
