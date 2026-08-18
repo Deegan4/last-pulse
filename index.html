@@ -486,6 +486,9 @@
     background:rgba(0,0,0,.3);border-radius:999px;padding:4px 10px}
   .dailycard.done .drw{color:#9de07a}
   .shopcard{cursor:pointer}
+  .shopHdr{font-size:12px;font-weight:800;color:#cddcb6;text-transform:uppercase;letter-spacing:.04em;
+    margin:8px 2px 0;opacity:.85}
+  .shopHdr:first-child{margin-top:0}
   .upgcard{background:linear-gradient(180deg,#fff3d8,#ffe6b0)}   /* upgrades stand apart from cosmetic trails */
   .upgcard .aic{filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
   .shopcard.equipped{outline:2px solid #7bbf2e}
@@ -1169,8 +1172,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.49.0';
+const GAME_VERSION = '2.50.0';
 const CHANGELOG = [
+  { v:'2.50.0', items:[
+    ['🎗️','Nameplate banners','4 new colored banners (crimson, azure, gold, violet) join the trail shop — a cosmetic pill behind your name in-match, buy & equip from Shop → Nameplate Banner'],
+    ['☠️','Boss polish','Juggernauts now have a visible hp banner while alive, a telegraphed ground-slam AoE attack on top of their normal contact damage, and a guaranteed loot drop (bonus scrap + a pickup) on death'],
+  ]},
   { v:'2.49.0', items:[
     ['🛒','Shop while paused','the pause menu now has a Shop button so you can spend coins on trails and Extended Magazines mid-match, without quitting to the main menu'],
   ]},
@@ -1527,6 +1534,7 @@ const meta = {
   coins: parseInt(safeGet('dd2_coins','0'),10) || 0,
   owned: (safeGet('dd2_owned','')||'').split(',').filter(Boolean),   // purchased shop item ids
   trail: safeGet('dd2_trail','none'),                                // equipped trail id
+  banner: safeGet('dd2_banner','none'),                              // equipped nameplate banner id
   magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
@@ -1562,6 +1570,7 @@ function saveMeta(){
   safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_sens',meta.aimSens);
   safeSet('dd2_ach', meta.achieved.join(','));
   safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
+  safeSet('dd2_banner',meta.banner);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
   nativeSaveDebounced();
@@ -1704,6 +1713,15 @@ const SHOP_ITEMS = [
   {id:'royal',  icon:'👑', name:'Royal Trail',   desc:'Gold & violet — walk like a king',cost:500, colors:['#ffd166','#c08bff']},
 ];
 function shopItem(id){ return SHOP_ITEMS.find(s=>s.id===id); }
+// Nameplate banners — a colored bar drawn under the player's name in drawNameplate(), purely
+// cosmetic like trails (own inventory/equip slot, doesn't touch stats).
+const BANNERS = [
+  {id:'crimson', icon:'🔴', name:'Crimson Banner', desc:'Bold red name banner',       cost:150, color:'#e2452f'},
+  {id:'azure',   icon:'🔵', name:'Azure Banner',   desc:'Cool blue name banner',      cost:150, color:'#5fa8ff'},
+  {id:'gold',    icon:'🟡', name:'Gold Banner',    desc:'Champion gold name banner',  cost:250, color:'#ffd166'},
+  {id:'violet',  icon:'🟣', name:'Violet Banner',  desc:'Royal violet name banner',   cost:250, color:'#c08bff'},
+];
+function bannerItem(id){ return BANNERS.find(b=>b.id===id); }
 // Extended Magazines — a permanent, coin-bought upgrade (meta.magLvl) that widens every weapon's
 // magazine. Tunables: capacity bonus per level and the coin cost of each tier.
 const MAG_MAX=3, MAG_STEP=0.20;          // up to +60% magazine capacity across all guns
@@ -1879,13 +1897,17 @@ const ZTYPES = {
   stalker:{ hp:26, dmg:11, sp:[132,168],r:11, skin:'#b7d86a', torso:'#3a4a2e', shade:'#7a3a86', eye:'#ff2ea0', size:0.80, w:0 },                 // fast, fragile swarm rusher (mid-game)
   juggernaut:{ hp:420,dmg:30,sp:[30,44], r:26, skin:'#4c6a3a', torso:'#28331f', shade:'#28401e', eye:'#ff7a1a', size:1.70, w:0, boss:true },      // armored mini-boss (milestone waves)
 };
+// Boss ground-slam AoE — a telegraphed heavy hit distinct from a juggernaut's normal contact
+// damage, on its own cooldown. `wind` is the visible windup (growing warning ring) before impact.
+const JUGGERNAUT_SLAM = { r:95, dmg:45, range:150, wind:0.6, cdMin:4.5, cdMax:6.5, knock:220 };
 const TOWER_W=88, TOWER_H=72, TOWER_ELEV=46;   // 2-story watchtower: footprint + rooftop rise (climb to shoot down)
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
 function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
   return { x,y, vx:0,vy:0, aim:0, kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
-    seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8) };
+    seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8),
+    boss:!!t.boss, slamCd:t.boss?rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax):0, slamWind:0 };
 }
 // ---- watchtower geometry: solid footprint, an inset walkable roof, and a south-facing ladder zone ----
 function towerRoof(t){ return {x:t.x+11, y:t.y+11, w:t.w-22, h:t.h-22}; }
@@ -2290,8 +2312,12 @@ function die(e, src, isHumanTarget){
   if(!isHumanTarget){ // zombie death pop
     rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
+    if(e.boss){   // guaranteed boss loot — no RNG gate, and a bigger scrap pile than any normal kill
+      scraps.push(makeScrap(e.x, e.y, randi(8,12)));
+      pickups.push(makePickup(e.x+rand(-14,14), e.y+rand(-14,14)));
+      if(src && src.isPlayer) toast('☠ BOSS DOWN — guaranteed drop!');
     // scrap salvage — the building currency; bigger corpses yield more
-    if(scraps.length<40 && Math.random()<0.62){ const big=(e.size||1)>=1.3, run=(e.size||1)<0.86;
+    } else if(scraps.length<40 && Math.random()<0.62){ const big=(e.size||1)>=1.3, run=(e.size||1)<0.86;
       scraps.push(makeScrap(e.x, e.y, big?randi(5,8):(run?randi(1,2):randi(2,4)))); } }
   if(e.isPlayer){ shake=Math.min(shake+10,18); }
   if(isHumanTarget){
@@ -2859,6 +2885,21 @@ function updateZombie(z,dt){
     } }
   else { if(z.think<=0){ z.wanderA=rand(0,TAU); z.think=rand(1,2.4); } z.think-=dt;
     mvx=Math.cos(z.wanderA)*0.5; mvy=Math.sin(z.wanderA)*0.5; }
+  // ---- BOSS ground-slam AoE: a telegraphed heavy hit, separate from normal contact damage ----
+  if(z.boss){
+    if(z.slamWind>0){ z.slamWind-=dt;
+      if(z.slamWind<=0){                                          // windup finished → the slam lands
+        for(const hh of humans){ if(!hh.alive) continue;
+          if(dist2(hh.x,hh.y,z.x,z.y) < JUGGERNAUT_SLAM.r*JUGGERNAUT_SLAM.r){
+            hurt(hh, JUGGERNAUT_SLAM.dmg, z, true);
+            const ka=Math.atan2(hh.y-z.y,hh.x-z.x); hh.vx+=Math.cos(ka)*JUGGERNAUT_SLAM.knock; hh.vy+=Math.sin(ka)*JUGGERNAUT_SLAM.knock;
+            if(hh.isPlayer) shake=Math.min(shake+8,18); } }
+        rings.push({x:z.x,y:z.y,t:0,dur:0.4,r0:10,r1:JUGGERNAUT_SLAM.r,col:'255,140,40',lw:4});
+        for(let i=0;i<14;i++) spark(z.x,z.y,'#caa46a',rand(80,220),rand(0,TAU),.5);
+        z.slamCd=rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax); }
+    } else if(z.slamCd>0){ z.slamCd-=dt; }
+    else if(tgt && near.d<JUGGERNAUT_SLAM.range && grace<=0){ z.slamWind=JUGGERNAUT_SLAM.wind; z.attackCd=Math.max(z.attackCd,1.2); }
+  }
   // chew through any solid player-built barricade we're pressed against (walls & turrets)
   if(z.attackCd<=0 && grace<=0 && builds.length){
     for(const b of builds){ if(!b.solid) continue;
@@ -3620,6 +3661,19 @@ function draw(){
     // controller-detected indicator — quiet confirmation once a gamepad has sent input
     if(gpSeen){ ctx.globalAlpha=0.85; ctx.font='14px Trebuchet MS, sans-serif'; ctx.textAlign='right';
       ctx.fillText('🎮', W-10, 26); ctx.globalAlpha=1; ctx.textAlign='left'; }
+    // boss hp banner — combined hp/maxhp across every alive juggernaut this wave, so multiple
+    // bosses (higher waves spawn more) still show one readable bar instead of stacking N of them
+    if(grace<=0){ let bhp=0,bmax=0,bn=0;
+      for(const z of zombies) if(z.alive && z.boss){ bhp+=z.hp; bmax+=z.maxhp; bn++; }
+      if(bn){ ctx.save(); ctx.textAlign='center';
+        const bw=Math.min(260,W*0.62), bx=W/2-bw/2, by=46;
+        ctx.font='800 12px Trebuchet MS, sans-serif'; ctx.fillStyle='#ffb37a';
+        ctx.fillText('☠ JUGGERNAUT'+(bn>1?' ×'+bn:''), W/2, by-4);
+        ctx.fillStyle='rgba(0,0,0,.5)'; roundRect(bx,by,bw,8,4); ctx.fill();
+        const frac=clamp(bhp/bmax,0,1);
+        ctx.fillStyle= frac>0.5?'#ff7a3a':frac>0.25?'#ff9b3d':'#ff4a3a'; roundRect(bx,by,bw*frac,8,4); ctx.fill();
+        ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1.5; roundRect(bx,by,bw,8,4); ctx.stroke();
+        ctx.restore(); } }
     // out-of-zone red vignette + warning
     if(zoneActive()&&player&&player.alive&&grace<=0&&outsideZone(player)){
       const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.30,W/2,H/2,Math.max(W,H)*0.72);
@@ -4638,6 +4692,11 @@ function drawHair(L,hy,flip){
 function drawNameplate(h){
   const x=h.x, y=h.y+18-HERO_H;   // sit just above the sprite's head (feet at +20, top at +20-HERO_H)
   ctx.textAlign='center'; ctx.font='800 11px Trebuchet MS, sans-serif';
+  // equipped nameplate banner — a colored pill behind the player's own name (purely cosmetic)
+  if(h.isPlayer && meta.banner!=='none'){ const bn=bannerItem(meta.banner);
+    if(bn){ const bw=ctx.measureText(h.name).width+14;
+      ctx.fillStyle=bn.color; ctx.globalAlpha=0.32; roundRect(x-bw/2,y-19,bw,15,7); ctx.fill(); ctx.globalAlpha=1;
+      ctx.strokeStyle=bn.color; ctx.lineWidth=1.2; roundRect(x-bw/2,y-19,bw,15,7); ctx.stroke(); } }
   ctx.fillStyle = h.isPlayer?'#9bff6e' : (!h.isPlayer && h.team===player.team)?'#8fd6ff' : '#ffffff'; ctx.fillText(h.name, x, y-9);
   // rarity accent under the player's name — ties the weapon-select rarity color into gameplay
   if(h.isPlayer){ const tw=Math.min(ctx.measureText(h.name).width+8,34);
@@ -4680,6 +4739,11 @@ function drawZombie(z){
   const lunge=Math.max(0,z.lunge||0);
   const runner=z.kind==='runner', brute=z.kind==='brute';
   const stalker=z.kind==='stalker', juggernaut=z.kind==='juggernaut';
+  // boss slam telegraph — a growing warning ring in WORLD space (not the local scaled transform
+  // below), so its radius matches the real JUGGERNAUT_SLAM.r hit area regardless of sprite size
+  if(z.boss && z.slamWind>0){ const k=1-clamp(z.slamWind/JUGGERNAUT_SLAM.wind,0,1);
+    ctx.save(); ctx.globalAlpha=0.22+0.4*k; ctx.strokeStyle='#ff6a2a'; ctx.lineWidth=3+2*k;
+    ctx.beginPath(); ctx.arc(z.x,z.y,JUGGERNAUT_SLAM.r*Math.min(1,k+0.15),0,TAU); ctx.stroke(); ctx.restore(); }
   const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
   const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
@@ -4969,6 +5033,7 @@ function renderShop(){
     +(m.maxed?' · MAX':' · Lv '+m.lvl+'/'+MAG_MAX)+'</span></div>'
     +'<button class="shopbtn'+(m.maxed?' on':'')+'">'+(m.maxed?'MAXED':('🪙 '+m.nextCost))+'</button></div>';
   el('shopGrid').innerHTML = magCard
+    + '<div class="shopHdr">Trails</div>'
     + '<div class="achcard shopcard'+(meta.trail==='none'?' equipped':'')+'" data-shop="none"><span class="aic">🚫</span>'
     +'<div class="atxt"><b>No Trail</b><span>Plain footsteps</span></div>'
     +'<button class="shopbtn'+(meta.trail==='none'?' on':'')+'">'+(meta.trail==='none'?'EQUIPPED':'EQUIP')+'</button></div>'
@@ -4976,6 +5041,15 @@ function renderShop(){
       const btn = eq?'EQUIPPED' : owned?'EQUIP' : '🪙 '+s.cost;
       return '<div class="achcard shopcard'+(eq?' equipped':'')+(!owned&&meta.coins<s.cost?' poor':'')+'" data-shop="'+s.id+'">'
         +'<span class="aic">'+s.icon+'</span><div class="atxt"><b>'+s.name+'</b><span>'+s.desc+'</span></div>'
+        +'<button class="shopbtn'+(eq?' on':'')+'">'+btn+'</button></div>'; }).join('')
+    + '<div class="shopHdr">Nameplate Banner</div>'
+    + '<div class="achcard shopcard'+(meta.banner==='none'?' equipped':'')+'" data-banner="none"><span class="aic">🚫</span>'
+    +'<div class="atxt"><b>No Banner</b><span>Plain nameplate</span></div>'
+    +'<button class="shopbtn'+(meta.banner==='none'?' on':'')+'">'+(meta.banner==='none'?'EQUIPPED':'EQUIP')+'</button></div>'
+    + BANNERS.map(b=>{ const owned=meta.owned.includes(b.id), eq=meta.banner===b.id;
+      const btn = eq?'EQUIPPED' : owned?'EQUIP' : '🪙 '+b.cost;
+      return '<div class="achcard shopcard'+(eq?' equipped':'')+(!owned&&meta.coins<b.cost?' poor':'')+'" data-banner="'+b.id+'">'
+        +'<span class="aic">'+b.icon+'</span><div class="atxt"><b>'+b.name+'</b><span>'+b.desc+'</span></div>'
         +'<button class="shopbtn'+(eq?' on':'')+'">'+btn+'</button></div>'; }).join('');
 }
 function buyMag(){ const m=magInfo();
@@ -4992,6 +5066,14 @@ function shopTap(id){
     meta.coins-=s.cost; meta.owned.push(s.id); meta.trail=s.id; saveMeta();
     toast(s.icon+' '+s.name+' purchased & equipped!'); sfx('level');
   } else { meta.trail=id; saveMeta(); }
+  renderShop(); renderMenu();
+}
+function bannerTap(id){
+  if(id!=='none' && !meta.owned.includes(id)){ const b=bannerItem(id); if(!b) return;
+    if(meta.coins<b.cost){ toast('Not enough coins — earn more in matches!'); return; }
+    meta.coins-=b.cost; meta.owned.push(b.id); meta.banner=b.id; saveMeta();
+    toast(b.icon+' '+b.name+' purchased & equipped!'); sfx('level');
+  } else { meta.banner=id; saveMeta(); }
   renderShop(); renderMenu();
 }
 let shopFromSettings=false;   // true when Shop was opened via the in-match Settings menu (pause), so Close returns to it
@@ -5225,7 +5307,8 @@ el('achClose').addEventListener('click',closeAchievements);
 el('shopBtn').addEventListener('click',()=>{ audioInit(); openShop(); });
 el('shopClose').addEventListener('click',closeShop);
 el('shopGrid').addEventListener('click',e=>{ const u=e.target.closest('[data-upg]'); if(u){ buyMag(); return; }
-  const c=e.target.closest('[data-shop]'); if(c) shopTap(c.dataset.shop); });
+  const c=e.target.closest('[data-shop]'); if(c){ shopTap(c.dataset.shop); return; }
+  const bn=e.target.closest('[data-banner]'); if(bn) bannerTap(bn.dataset.banner); });
 // donate / support
 el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
 el('donateGo').addEventListener('click',donateGo);
