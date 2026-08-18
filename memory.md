@@ -97,6 +97,39 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.52.0 — Map escalation on boss waves.** Direct user request: "add more maps as the horde
+  waves get harder". The codebase has no map-switching primitive — `buildDecor()` builds the
+  entire arena ONCE at `spawnMatch()` and scales with `meta.level`, not `hordeWave` — so a literal
+  "new map per milestone" would mean either rebuilding the world mid-match (risks stranding
+  zombies/the player inside new solid geometry) or maintaining N pre-authored layouts (real scope
+  creep for a single-file game with no map assets). Landed on **additive escalation** instead:
+  `escalateMap()` (`index.html`, right after `buildDecor()`) is called from the existing boss-wave
+  branch in `hordeUpdate()`'s wave-clear block (same 5th/10th/15th… milestone elites already use)
+  and appends `MAP_ESCALATE_PER` (2) new buildings to the LIVE `obstacles`/`decor` arrays, capped
+  at `MAP_ESCALATE_MAX` (6) calls per match (12 buildings total, roughly matching `buildDecor`'s
+  own max of 22). It reuses `buildDecor`'s own building-placement retry loop verbatim (clear of
+  other obstacles, ponds, arena centre/edges) plus one new check `buildDecor` doesn't need —
+  clearance against every living human — since `escalateMap()` can run with the player already
+  in the world. It's safe to call mid-match specifically because the wave-clear block only reaches
+  this point after confirming `aliveZ===0`, so zombies never need to be avoided. New buildings get
+  full wall/door/collision/zombie-pathing support for free — `wallRects()`/`insideBuilding()`/the
+  door-routing in `updateZombie()` all key off `obstacles[].type==='building'` shape, not when the
+  entry was created — so no new collision code was needed, only new array entries. `mapEscalations`
+  resets in `spawnMatch()` alongside the other horde-state resets. Rendering needed no changes:
+  the per-frame `draw()` loop already y-sorts a fresh `drawables[]` from scratch every frame
+  (`drawables.sort((a,b)=>a.y-b.y)`), so newly-appended decor/obstacles slot into the correct
+  y-order automatically — `buildDecor`'s own one-time `decor.sort()` call turned out to be
+  unrelated to that per-frame path and didn't need mirroring. Verified with a throwaway
+  `window.__esc()`/`window.__forceBossClear(wave)` hook pair (awk/python-inserted before the
+  correct IIFE close — the file has 4 separate `})();` closes across 2 `<script>` blocks, and the
+  first attempt at this hook landed in the wrong one, throwing `obstacles is not defined`; fixed by
+  matching specifically the `})();` immediately followed by `</script>` that is the FIRST such
+  pair, not the last, since the 3D-loader module's IIFE close matches the same bare-line pattern):
+  forced 8 boss-wave clears and confirmed `obstacles` 15→27 (exactly `MAX×PER`=12), `mapEscalations`
+  capped at exactly 6, and zero console/page errors. Also re-ran `scripts/validate.mjs` (horde-spawn
+  reachability gate still passes) and the `--waves 15` balance harness (no regressions, though the
+  kiting bot itself rarely reaches a boss wave in 90s — the hook test is what actually exercises
+  this feature, not the harness).
 - **v2.51.0 — Decluttered the pause menu.** Direct user feedback: the in-match Settings modal
   (opened via `#gearHud`, only reachable mid-match since `#gearHud` lives inside `#hud`) had grown
   to 12 rows (Avatar/Weapon/Name/Shop/controller status/2 sliders/Export/Import/Screen Fit/Quit) —
