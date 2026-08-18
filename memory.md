@@ -97,6 +97,26 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.51.0 — Decluttered the pause menu.** Direct user feedback: the in-match Settings modal
+  (opened via `#gearHud`, only reachable mid-match since `#gearHud` lives inside `#hud`) had grown
+  to 12 rows (Avatar/Weapon/Name/Shop/controller status/2 sliders/Export/Import/Screen Fit/Quit) —
+  a wall of buttons when all a paused player usually wants is Shop, volume, sensitivity, or Quit.
+  Reordered so Shop → sliders → controller status → Quit lead, and moved the profile-editing +
+  save-code + diagnostic items (Change Avatar/Weapon/Name, Copy/Enter Save Code, Screen Fit Check)
+  behind a new `#sMoreToggle` ("More options" / "Fewer options") that starts collapsed. Collapsing
+  is **context-aware**, not global: `syncMoreOptions()` checks `screenState==='playing'` — the
+  pause case (only way to reach `#gearHud`) starts collapsed (6 visible rows vs. 12 before), while
+  Settings reached from the pre-match avatar/weapon screens (`#avatarGear`/`#weaponGear` gear
+  icons) still shows everything with the toggle itself hidden, since that context is deliberately
+  about profile editing — zero regression there (verified: 10 rows visible, toggle hidden).
+  Implementation reuses the exact hide/show pattern `#sQuit` already used (`.classList.toggle
+  ('hidden', …)` on each `.sMoreItem` button individually, not a wrapper `<div>`) specifically so
+  the existing gamepad-nav query `.opt:not(.hidden)` in `gpMenuTargets()` keeps working with zero
+  changes — a wrapper div would have made the buttons still match that selector even while
+  invisible, silently breaking controller navigation into hidden rows. Verified with a throwaway
+  Playwright script driving the real served page: pause → 6 rows → click More options → 12 rows
+  screenshot-confirmed correct → pre-match avatar-screen Settings still shows all 10 rows with the
+  toggle hidden. Zero console/page errors in either path.
 - **v2.50.0 — Nameplate banners + boss polish.** Two independent features shipped together:
   - **Nameplate banners** (`BANNERS` table, `index.html`, next to `SHOP_ITEMS`): 4 colored
     cosmetics (crimson/azure/gold/violet, 150-250 🪙) bought/equipped from a new "Nameplate
