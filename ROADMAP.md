@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.51.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.52.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -259,6 +259,20 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       independently of their normal contact damage, giving players a dodge window; and death now
       guarantees a bonus scrap pile (8–12, vs. a normal kill's 62%-chance 5–8) plus a pickup
       spawn, instead of reusing the plain per-size drop chance every other zombie uses.
+- [x] **Map escalation** (shipped v2.52.0, direct user request) — the arena wasn't getting any
+      harder to move through as Horde waves climbed, only more crowded with zombies. `escalateMap()`
+      (`index.html`, right after `buildDecor()`) now runs on every boss wave (same 5th/10th/15th…
+      milestone `hordeUpdate()` already uses for elites) and additively drops `MAP_ESCALATE_PER`
+      (2) new buildings onto the live arena, capped at `MAP_ESCALATE_MAX` (6) escalations per
+      match. Deliberately additive-only — it reuses `buildDecor()`'s own building-placement retry
+      loop (clear of other obstacles/water/ARENA edges) plus a new clearance check against every
+      living human, and never clears or repositions existing decor/obstacles, since the horde loop
+      only calls it at the instant it has confirmed zero zombies are alive (nothing else to avoid).
+      New buildings get full existing wall/door/pathing support for free (`wallRects`/
+      `insideBuilding`/zombie door-routing all key off `obstacles[].type==='building'` shape, not
+      spawn time) — no new collision code needed. Verified via a throwaway `window.__esc()` hook
+      forcing 8 boss-wave clears: obstacles 15→27 (exactly `MAX×PER`=12), `mapEscalations` capped
+      at 6, zero page errors.
 - [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
       v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
 - [x] **Mutators** (shipped v2.35.0) — a `MUTATORS` table (`index.html`, "Match mutators"

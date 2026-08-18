@@ -1176,8 +1176,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.51.0';
+const GAME_VERSION = '2.52.0';
 const CHANGELOG = [
+  { v:'2.52.0', items:[
+    ['🧱','The map gets meaner as waves climb','every boss wave (5th, 10th, 15th…) also drops 2 new buildings onto the arena — more cover, more chokepoints — on top of the elites, up to 6 times per match'],
+  ]},
   { v:'2.51.0', items:[
     ['🧹','Decluttered pause menu','the pause Settings screen now leads with Shop, audio/aim sliders, and controller status — profile editing, save codes, and the screen-fit check collapse behind a new "More options" toggle so pausing mid-fight is a quick glance, not a scroll'],
   ]},
@@ -1773,6 +1776,13 @@ let gameMode = MODES[0];  // Endless Horde is the only mode (BR & Squads retired
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
 let activeMutator = null;                   // this match's MUTATORS entry, or null — see spawnMatch
 let hordeWave = 0;
+// Map escalation — every boss wave (5th, 10th, 15th…) also drops MAP_ESCALATE_PER new buildings
+// onto the arena, additively, so later waves fight over a more cut-up, chokepoint-heavy map
+// instead of just "the same map with more zombies". Capped so a very long run doesn't clutter the
+// arena into a maze; MAP_ESCALATE_MAX * MAP_ESCALATE_PER = 12, roughly matching buildDecor's own
+// max building count (22) added on top of a starting count as low as 13.
+const MAP_ESCALATE_MAX = 6, MAP_ESCALATE_PER = 2;
+let mapEscalations = 0;                     // escalateMap() call count this match, capped at MAP_ESCALATE_MAX
 let hordeStallT = 0, hordeLastAlive = 0;    // wave-clear stall watchdog (unsticks stranded stragglers)
 let aimWX = 0, aimWY = 0, aimShow = false;  // reticle world target
 let spectating = false, specTarget = null, deathPlace = 0, spectateT = 0;
@@ -1994,6 +2004,30 @@ function buildDecor(){
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
   campfires = decor.filter(d=>d.type==='campfire');   // cache for the heal-aura check
 }
+// Additive map escalation (Horde only) — called on boss waves from the wave-clear block. NEVER
+// clears or repositions existing decor/obstacles (that would strand zombies/the player inside
+// new solid geometry mid-fight); it only appends new buildings using the exact same
+// placement-and-retry rules buildDecor() uses for its own buildings, plus a clearance check
+// against every living human (buildDecor doesn't need that — it runs before anyone spawns).
+// Safe to call mid-match: it's only ever invoked at the "wave cleared" point, where the horde
+// loop has already confirmed zero zombies are alive, so there's nothing else to avoid placing on.
+function escalateMap(){
+  if(mapEscalations>=MAP_ESCALATE_MAX) return;
+  let added=0;
+  for(let i=0;i<MAP_ESCALATE_PER;i++){ let b, ok=false, tries=0;
+    do{ const w=rand(110,210), h=rand(90,170);
+      const kind = w>BIG_HOUSE ? (Math.random()<0.6?'barn':pick(['shop','house'])) : pick(['house','house','shop','cabin']);
+      b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, kind, roof:pick(BKINDS[kind].roof)}; ok=true;
+      if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
+      for(const o of obstacles) if(b.x<o.x+o.w+90 && b.x+b.w+90>o.x && b.y<o.y+o.h+90 && b.y+b.h+90>o.y) ok=false;
+      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+60, ph=wd.s*0.64+60;
+        if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
+      for(const h of humans){ if(!h.alive) continue;   // never drop a wall on a living player
+        if(h.x>b.x-70 && h.x<b.x+b.w+70 && h.y>b.y-70 && h.y<b.y+b.h+70){ ok=false; break; } }
+      tries++; } while(!ok && tries<40);
+    if(ok){ obstacles.push(b); decor.push(b); added++; } }   // drawables.sort() in draw() handles y-order — no decor re-sort needed
+  if(added){ mapEscalations++; toast('🧱 New buildings have appeared on the map'); }
+}
 // Buildings are hollow — 4 solid walls with a door gap at the bottom-centre, so entities
 // can walk inside through the door and bullets fly through the doorway but not the walls.
 const WALL_T = 9, DOOR_HALF = 21;   // gap 42px: humans (r15) fit easily, brutes (r20) barely
@@ -2087,7 +2121,7 @@ function spawnMatch(){
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   builds.length=0; scraps.length=0;
-  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14); activeMutator=null;
+  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; mapEscalations=0; zReinforce=rand(10,14); activeMutator=null;
   hordeStallT=0; hordeLastAlive=0;
   combo=0; comboT=0; hitstop=0;
   menuAmbient=false;                                     // real match takes over the canvas
@@ -3442,6 +3476,7 @@ function hordeUpdate(dt){
     for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
       while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
       const z=makeZombie(s.x,s.y,'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
+  if(boss) escalateMap();   // same milestone as boss waves — the map gets meaner right when the fight does
 }
 function enemiesLeft(){ let n=0; for(const h of humans) if(h.alive && h.team!==player.team) n++; return n; }
 function checkEnd(){
