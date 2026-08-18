@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.49.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.50.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -217,8 +217,11 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       SMG: `twin:true` fires 2 side-by-side bullets; `twin` GUNK art).
 - [x] **2 new avatars** — **Seraph** (Lv28, `halo` style) and **Diablo** (Lv32, `horns` style);
       both styles added to `drawHair` AND `portraitChibi`.
-- [ ] **Trail shop wave 2** — 4 more cosmetic trails (fire, frost, confetti, shadow) + a
-      **banner color** cosmetic slot on the nameplate. _(not yet)_
+- [x] **Trail shop wave 2** (shipped v2.50.0) — the trail roster had already grown to 6 (ember,
+      frost, toxic, shadow, star, royal) in earlier passes; this closes the remaining half of the
+      item, a **banner color** cosmetic slot on the nameplate: 4 colors (crimson, azure, gold,
+      violet), bought/equipped from Shop → Nameplate Banner, drawn as a colored pill behind the
+      player's own name in `drawNameplate`.
 - [ ] **Weekly challenge** — a harder 7-day cousin of the daily (worth 200 🪙), same
       deterministic day-hash pattern. _(not yet)_
 
@@ -245,14 +248,17 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 
 - [x] **Boss waves in Horde** (shipped v2.20.0–v2.21.1) — every 5th wave spawns armored
       `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`, `index.html:1625`),
-      count scaling with wave (`1+floor(hordeWave/10)`, `index.html:2843`). _Not_ built: no
-      dedicated boss hp-bar banner, no ground-slam AoE attack, no guaranteed-loot-drop table —
-      juggernauts use the same contact-damage and drop logic as regular zombies, just scaled up.
-      If the original "huge brute with hp banner + AoE slam + guaranteed loot" vision is still
-      wanted, that's new work, not a bug fix — split into its own bullet if approved. _(v2.38.0:
-      juggernauts finally look armored — visible chest plate + shoulder guards in `drawZombie` —
-      closing a gap where the roadmap text called them "armored" for 8+ versions before the art
-      did.)_
+      count scaling with wave (`1+floor(hordeWave/10)`, `index.html:2843`). _(v2.38.0: juggernauts
+      finally look armored — visible chest plate + shoulder guards in `drawZombie` — closing a gap
+      where the roadmap text called them "armored" for 8+ versions before the art did.)_
+- [x] **Boss polish** (shipped v2.50.0) — closes the "huge brute with hp banner + AoE slam +
+      guaranteed loot" gap called out above. A combined hp banner (`☠ JUGGERNAUT`, summed
+      hp/maxhp across every alive boss so multiple juggernauts on higher waves still show one
+      bar) draws at the top of the screen while any are alive; a telegraphed **ground-slam AoE**
+      (`JUGGERNAUT_SLAM`: 95px radius, 45 dmg, 0.6s windup ring, 4.5–6.5s cooldown) fires
+      independently of their normal contact damage, giving players a dodge window; and death now
+      guarantees a bonus scrap pile (8–12, vs. a normal kill's 62%-chance 5–8) plus a pickup
+      spawn, instead of reusing the plain per-size drop chance every other zombie uses.
 - [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
       v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
 - [x] **Mutators** (shipped v2.35.0) — a `MUTATORS` table (`index.html`, "Match mutators"

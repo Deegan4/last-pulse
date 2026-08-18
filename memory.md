@@ -97,6 +97,36 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.50.0 — Nameplate banners + boss polish.** Two independent features shipped together:
+  - **Nameplate banners** (`BANNERS` table, `index.html`, next to `SHOP_ITEMS`): 4 colored
+    cosmetics (crimson/azure/gold/violet, 150-250 🪙) bought/equipped from a new "Nameplate
+    Banner" section in the Shop modal (mirrors the existing trail section — `bannerTap()` is a
+    straight copy of `shopTap()`'s pattern, `meta.banner`/`dd2_banner` persist the same way
+    `meta.trail`/`dd2_trail` do). Equipped banner draws as a colored pill behind the player's own
+    name in `drawNameplate()`. This closes the ROADMAP's "Trail shop wave 2" item — the trail
+    half of that item had already shipped earlier (6 trails exist: ember/frost/toxic/shadow/
+    star/royal) under the roadmap's stale "not yet" marker; only the banner slot was actually
+    missing. `SHOP_ITEMS`'s existing `.shopcard` class and the shop's generic `[data-shop],
+    [data-banner]` click delegation meant gamepad menu nav picked up the new cards with zero
+    `gpMenuTargets()`/`GP_SIMPLE_MODALS` changes.
+  - **Boss polish** (juggernauts, `index.html`): the `boss:true` flag on `ZTYPES.juggernaut` had
+    existed since the mini-boss was added but was never read anywhere — `makeZombie()` now
+    copies it onto the instance (`z.boss`) so the rest of the pass can key off it. Added (1) a
+    combined hp banner (`☠ JUGGERNAUT`, sums hp/maxhp across every alive boss so multiple
+    juggernauts on higher waves — `1+floor(hordeWave/10)` — show one bar, not N stacked ones) at
+    the screen top while any are alive; (2) a telegraphed ground-slam AoE (`JUGGERNAUT_SLAM`
+    tunable: 95px radius, 45 dmg, 0.6s windup with a growing warning ring drawn in world space in
+    `drawZombie()`, 4.5-6.5s cooldown, 220 knockback) that fires independently of the juggernaut's
+    normal contact-damage cadence — `z.slamCd`/`z.slamWind` state machine in `updateZombie()`, a
+    separate code path from the existing melee-range contact hit so both can coexist without
+    double-dipping in the same frame; (3) guaranteed loot on death (8-12 scrap + a pickup spawn,
+    replacing the normal 62%-chance/size-scaled drop that every other zombie still uses) plus a
+    "BOSS DOWN — guaranteed drop!" toast. Verified end-to-end with a throwaway `window.__boss`
+    hook (spawn a juggernaut, force the windup, confirm player hp actually drops on the forced
+    slam tick, then `die()` it and confirm scrap/pickup counts increment) since the wave-15
+    balance harness's kiting bot flees more than it kills and never reliably reaches a boss wave
+    in a bounded test run — screenshots confirm the hp banner, telegraph ring, and toast all
+    render correctly together.
 - **v2.49.0 — Shop reachable from the pause menu.** Added a "🛒 Shop" button to the Settings
   modal (`index.html`, `#sShop`, next to `#sName`), so players can spend coins on trails and
   Extended Magazines mid-match without quitting to the main menu. Clicking it hides `#settings`
