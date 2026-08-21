@@ -326,11 +326,13 @@
     transform:translate(-50%,-50%) scale(.55);opacity:0;transition:opacity .12s,transform .12s;
     display:flex;align-items:center;justify-content:center}
   .stickbase::before{content:'';position:absolute;width:86px;height:86px;border-radius:50%;border:1px dashed rgba(255,255,255,.20)}
-  .stickbase.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  /* v2.53.0: sticks are invisible — zones still take touch input, but no base/knob/hint
+     graphics render, so the play area stays uncluttered. */
+  .stickbase.on{opacity:0!important;transform:translate(-50%,-50%) scale(1)}
   .stickknob{position:absolute;width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.92);
     transform:translate(-50%,-50%);opacity:0;transition:opacity .12s;
     box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 7px 11px rgba(255,255,255,.4), inset 0 -9px 13px rgba(0,0,0,.28)}
-  .stickknob.on{opacity:1}
+  .stickknob.on{opacity:0!important}
   #moveKnob{background:radial-gradient(circle at 38% 30%, #d6ecff, #6aa6ff 54%, #3f78d6)}
   #aimKnob{background:radial-gradient(circle at 38% 30%, #ffd6ba, #ff8a5b 52%, #ed5638)}
   /* resting hints in the corners (touch only) */
@@ -339,7 +341,7 @@
     border:2px solid rgba(255,255,255,.38);box-shadow:0 0 0 5px rgba(255,255,255,.045), inset 0 0 18px rgba(0,0,0,.26);
     display:flex;align-items:center;justify-content:center;transition:opacity .12s}
   #moveHint{left:26px} #aimHint{right:26px}
-  #moveHint.hide,#aimHint.hide{opacity:0}
+  #moveHint,#aimHint,#moveHint.hide,#aimHint.hide{opacity:0!important}
   /* CSS glyphs: move = plus, aim = crosshair ring */
   .gly{position:relative;width:40px;height:40px;opacity:.62}
   .gly.move::before,.gly.move::after{content:'';position:absolute;background:#fff;border-radius:2px}
@@ -1176,8 +1178,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.52.0';
+const GAME_VERSION = '2.53.0';
 const CHANGELOG = [
+  { v:'2.53.0', items:[
+    ['👻','Invisible joysticks','the on-screen move/aim sticks no longer draw a visible base, knob, or resting hint — the touch zones still work exactly the same, just with nothing cluttering the view'],
+    ['🔫','Brighter tracers','Pistol/Rifle bullets got a thicker, glowing tracer so shots read clearly against the grass instead of a barely-visible dash'],
+  ]},
   { v:'2.52.0', items:[
     ['🧱','The map gets meaner as waves climb','every boss wave (5th, 10th, 15th…) also drops 2 new buildings onto the arena — more cover, more chokepoints — on top of the elites, up to 6 times per match'],
   ]},
@@ -2217,7 +2223,7 @@ function bulletFx(w){
     case 'Frost Blaster': return {col:'#c9f7ff',lw:3.0,tl:0.02, glow:9, tip:1.7, mz:7.5,kick:.95,sparks:6, spread:.55, push:22, shake:1};
     case 'Minigun':  return {col:'#fff0b0',lw:2.4,tl:0.016,glow:3, tip:1.3, mz:7,  kick:.7,  sparks:3, spread:.5, push:16, shake:0};
     case 'Tommy':    return {col:'#ffe7b0',lw:2.8,tl:0.014,glow:0, tip:1.4, mz:6.5,kick:.9,  sparks:4, spread:.5, push:20, shake:0};
-    default:         return {col:'#fff3c0',lw:3,  tl:0.013,glow:0, tip:1.5, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
+    default:         return {col:'#fff3c0',lw:3.6,tl:0.022,glow:6, tip:2.2, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
   }
 }
 function fire(h){
