@@ -97,6 +97,18 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.53.0 — Invisible joysticks + brighter default tracers.** Direct user report: "bullets don't
+  fire" + "make the joysticks invisible". Firing itself checked out fine in headless testing (mouse
+  drive and a synthetic touch drag both fired and depleted the mag normally) — the real problem is
+  visibility: the default Pistol/Rifle `bulletFx()` entry (`index.html`) had `tl:0.013` (a ~10px
+  trail), `tip:1.5`, `glow:0` — against the busy grass background that reads as nothing happening,
+  not as a bullet. Bumped to `tl:0.022, tip:2.2, glow:6, lw:3.6` so shots are unambiguous; other
+  weapons' `bulletFx` entries are untouched (Sniper/Arc Rifle/etc. already had glow). Separately,
+  made the on-screen move/aim sticks fully invisible: `.stickbase`/`.stickknob` (and their `.on`
+  states) and `#moveHint`/`#aimHint` now force `opacity:0!important` — CSS-only, `stick()`'s DOM
+  positioning and `.on`-class toggling in the JS are untouched, so the touch zones (`#moveZone`/
+  `#aimZone`, `pointer-events:auto`) still work identically, just with nothing drawn under the
+  thumb.
 - **v2.52.0 — Map escalation on boss waves.** Direct user request: "add more maps as the horde
   waves get harder". The codebase has no map-switching primitive — `buildDecor()` builds the
   entire arena ONCE at `spawnMatch()` and scales with `meta.level`, not `hordeWave` — so a literal
