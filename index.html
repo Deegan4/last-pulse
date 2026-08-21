@@ -1178,8 +1178,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.53.0';
+const GAME_VERSION = '2.54.0';
 const CHANGELOG = [
+  { v:'2.54.0', items:[
+    ['🎯','Shots fire from the gun, not the hip','bullets, muzzle sparks and ejected shells now spawn from the actual drawn gun tip/hand — previously they left from a fixed radius around the character’s centre regardless of weapon length, so long guns like the Rifle and Sniper visibly fired from the hip'],
+  ]},
   { v:'2.53.0', items:[
     ['👻','Invisible joysticks','the on-screen move/aim sticks no longer draw a visible base, knob, or resting hint — the touch zones still work exactly the same, just with nothing cluttering the view'],
     ['🔫','Brighter tracers','Pistol/Rifle bullets got a thicker, glowing tracer so shots read clearly against the grass instead of a barely-visible dash'],
@@ -1841,6 +1844,9 @@ const CHAR_VISUAL_SCALE = 1.18;       // drawn chibi scale only; collisions stay
 const HERO_H = 70;                    // on-field hero sprite height (px) — nameplate offset tracks this
 const HERO_ARM_ANCHOR_X = 0;           // live weapon-arm pivot on PNG heroes, in sprite-local pixels
 const HERO_ARM_ANCHOR_Y = -15;         // chest-height anchor; avoids belly-mounted arms on v2 sprites
+const HERO_ARM_REACH = 12;             // shoulder-to-wrist length in drawHeroArm's local (pre-scale)
+                                        // space — shared with gunTip()/wristPos() below so bullets
+                                        // spawn from the same point the arm is actually drawn at
 const WEAPON_HAND_SCALE = 1.06;       // procedural in-hand fallback scale
 const WEAPON_PNG_HAND_SCALE = 1.30;   // real PNG in-hand art scale
 let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
@@ -2226,32 +2232,44 @@ function bulletFx(w){
     default:         return {col:'#fff3c0',lw:3.6,tl:0.022,glow:6, tip:2.2, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
   }
 }
+// True hand/muzzle world positions — mirror the exact transform chain drawHeroArm() uses to draw
+// the gun (shoulder anchor at HERO_ARM_ANCHOR_X/Y -> CHAR_VISUAL_SCALE -> rotate to h.aim -> arm
+// reach [-> barrel length]), so shots/sparks/shells leave from where the gun is actually drawn
+// instead of a fixed 16px radius from the character's centre regardless of weapon or art scale
+// (that mismatch was most visible on long guns like Rifle/Sniper — bullets read as firing from the
+// hip). Recoil is deliberately excluded: it's a post-shot kickback animation, not part of where the
+// muzzle sits at the instant a shot leaves.
+function wristPos(h){ const d=HERO_ARM_REACH*CHAR_VISUAL_SCALE;
+  return { x:h.x+Math.cos(h.aim)*d, y:h.y+HERO_ARM_ANCHOR_Y+Math.sin(h.aim)*d }; }
+function gunTip(h){ const d=(HERO_ARM_REACH+heldWeaponLen(h.weapon)+1)*CHAR_VISUAL_SCALE;
+  return { x:h.x+Math.cos(h.aim)*d, y:h.y+HERO_ARM_ANCHOR_Y+Math.sin(h.aim)*d }; }
 function fire(h){
   if(!h.alive || grace>0 || h.fireCd>0 || h.reloading>0) return;
   if(h.mag<=0){ startReload(h); return; }
   const w=h.weapon; h.fireCd = w.fireCd * (h.isPlayer?1:h.fireMul);
   const range=w.range*RANGE_SCALE;
   if(w.mode==='flame'){
-    const fspd=320;
+    const fspd=320, tip=gunTip(h);
     for(let i=0;i<3;i++){ const a=h.aim+rand(-0.34,0.34), sp=fspd*rand(.7,1.1);
-      bullets.push({ x:h.x+Math.cos(a)*14, y:h.y+Math.sin(a)*14, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+      bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
         life:range/fspd, owner:h, dmg:w.dmg, flame:true, hits:0, r:rand(4,8),
         color: pick(['#ff9b3d','#ff6a2a','#ffd24a']) }); }
     h.mag--; sfx('flame'); if(h.mag<=0) startReload(h); return;
   }
   if(w.mode==='launcher'){
-    const a=h.aim+(h.isPlayer?rand(-0.01,0.01):rand(-h.acc,h.acc)*0.5), rs=430;
-    bullets.push({ x:h.x+Math.cos(a)*18, y:h.y+Math.sin(a)*18, vx:Math.cos(a)*rs, vy:Math.sin(a)*rs,
+    const a=h.aim+(h.isPlayer?rand(-0.01,0.01):rand(-h.acc,h.acc)*0.5), rs=430, tip=gunTip(h);
+    bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*rs, vy:Math.sin(a)*rs,
       life:range/rs, owner:h, dmg:w.dmg, boom:true, rocket:true, hits:0,
       color:'#ffcaa0', lw:5, tl:0.02, glow:9, tip:3, aim:a });
     h.mag--; h.muzzleT=0.09; h.muzzleR=12; h.recoil=2.4;
-    for(let i=0;i<12;i++) spark(h.x+Math.cos(a)*16, h.y+Math.sin(a)*16, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
+    for(let i=0;i<12;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
     h.vx-=Math.cos(a)*48; h.vy-=Math.sin(a)*48; if(h.isPlayer) shake=Math.min(shake+6,14);
     sfx('shoot',w); if(h.mag<=0) startReload(h); return;
   }
   const spd = w.mode==='sniper'?1040 : w.mode==='shotgun'?560 : 780;
   const shots = w.mode==='shotgun'?6 : w.twin?2 : 1;
   const fx = bulletFx(w);
+  const tip = gunTip(h);
   // bots shoot wilder during the early-match warmup (see updateBot) — softens a fresh BR drop
   const botAcc = h.isPlayer ? 0 : h.acc * (1 + 1.6*(1-clamp(elapsed/18,0,1)));
   for(let i=0;i<shots;i++){
@@ -2260,16 +2278,16 @@ function fire(h){
     const perp = w.twin?(i===0?-3:3):0;   // twin barrels fire from side-by-side muzzles
     let dmg=w.dmg, crit=false;
     if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
-    bullets.push({ x:h.x+Math.cos(a)*16 - Math.sin(h.aim)*perp, y:h.y+Math.sin(a)*16 + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+    bullets.push({ x:tip.x - Math.sin(h.aim)*perp, y:tip.y + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
       life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper'||w.arc, arc:w.arc, frost:w.frost, hits:0,
       color: crit?'#ffd24a':fx.col, lw: crit?4.2:fx.lw, tl: fx.tl, glow: crit?10:fx.glow, tip: crit?2.2:fx.tip });
   }
   h.mag--;
   // muzzle flash + recoil scale with the gun
   h.muzzleT=0.06; h.muzzleR=fx.mz; h.recoil=fx.kick;
-  for(let i=0;i<fx.sparks;i++) spark(h.x+Math.cos(h.aim)*16, h.y+Math.sin(h.aim)*16, pick(['#ffd06a','#ffae3a','#fff1bf']), rand(50,150+fx.mz*8), h.aim+rand(-1,1)*fx.spread);
-  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2;  // ejected shell (red for shotgun)
-    spark(h.x+Math.cos(h.aim)*7, h.y+Math.sin(h.aim)*7-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
+  for(let i=0;i<fx.sparks;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#fff1bf']), rand(50,150+fx.mz*8), h.aim+rand(-1,1)*fx.spread);
+  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2, wrist=wristPos(h);  // ejected shell (red for shotgun), from the ejection port near the hand
+    spark(wrist.x, wrist.y-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
   h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
   if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
   sfx('shoot', w);
@@ -4675,7 +4693,7 @@ function drawHeroArm(h, bob){
   const ga = h.aim, gname = h.weapon ? h.weapon.name : 'Pistol';
   const gl = heldWeaponLen(h.weapon);
   const oneHand = h.weapon && (h.weapon.name==='Pistol' || h.weapon.name==='Magnum');
-  const reach = 12 - (h.recoil>0 ? h.recoil*3 : 0);        // recoil kicks the gun back
+  const reach = HERO_ARM_REACH - (h.recoil>0 ? h.recoil*3 : 0);        // recoil kicks the gun back
   const sleeve = L.outfit || '#556', skin = L.skin || '#f0c8a0';
   ctx.save(); ctx.translate(HERO_ARM_ANCHOR_X, HERO_ARM_ANCHOR_Y + bob*0.6); ctx.scale(CHAR_VISUAL_SCALE, CHAR_VISUAL_SCALE); ctx.rotate(ga);   // shoulder pivot at the chest, bobbing with the body
   ctx.lineJoin='round'; ctx.lineCap='round';
