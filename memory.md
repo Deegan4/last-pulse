@@ -97,6 +97,33 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.54.0 — Bullets now spawn from the drawn gun tip, not the hip.** Direct user report: "the
+  bullets don't fire from the guns they fire from the character's hip". `fire()` (`index.html`)
+  spawned every bullet/spark/shell at a flat, hardcoded 16px (14px flame, 18px launcher) radius
+  from `h.x,h.y` regardless of aim geometry, weapon, or the actual gun-arm rig — while the live
+  360° gun-arm rig (`drawHeroArm()`, all 15 roster avatars are `armless:true` and use it) draws the
+  gun through a real transform chain: shoulder anchor (`HERO_ARM_ANCHOR_X/Y`) → `CHAR_VISUAL_SCALE`
+  (1.18) → rotate to `h.aim` → arm reach → per-weapon barrel length (`heldWeaponLen()`, driven by
+  `GUNK[name].l`, 14–26px across the roster). The two never agreed, and the gap grew with barrel
+  length — most visible on the Rifle/Sniper/Arc Rifle, where the drawn muzzle sat well past the
+  fixed 16px spawn point, making shots visibly leave from the hip instead of the gun. Added
+  `gunTip(h)`/`wristPos(h)` (`index.html`, right before `fire()`) that mirror `drawHeroArm`'s exact
+  transform math to compute the true muzzle-tip and hand world positions; extracted the shared
+  `12` (shoulder-to-wrist reach) into a new `HERO_ARM_REACH` const so `drawHeroArm`'s draw geometry
+  and `gunTip`/`wristPos`'s spawn geometry can never drift apart again. Recoil is deliberately
+  excluded from the calc — it's a post-shot kickback animation, not part of where the muzzle sits
+  at the instant a shot leaves. Rewired every spawn point in `fire()`: standard/twin-barrel bullets
+  and their per-shot spread now originate from one `gunTip(h)` computed once per shot (previously
+  each pellet's spawn point was independently offset by its own spread-perturbed angle, which also
+  wasn't how a real muzzle works — one exit point, many trajectories), flame particles, the
+  launcher's rocket, muzzle sparks, and ejected shells (from `wristPos(h)`, the hand, not the
+  muzzle — shells eject near the ejection port). Verified via a throwaway `window.__gunTest(aimDeg)`
+  hook comparing a freshly-fired bullet's spawn point against `gunTip()`'s own math at 4 aim
+  angles (0°/90°/180°/-45°): exact match (delta 0.00,0.00) every time, and the correct asymmetric
+  distances fell out naturally from `HERO_ARM_ANCHOR_Y`'s shoulder offset (35.5px at aim 0°/180°,
+  17.2px aiming straight down, 44.1px aiming up-right) — confirming it's not just "always 16" with
+  extra steps. Screenshot of 5 rapid pistol shots shows tracers leaving cleanly from the held gun.
+  Zero console/page errors.
 - **v2.53.0 — Invisible joysticks + brighter default tracers.** Direct user report: "bullets don't
   fire" + "make the joysticks invisible". Firing itself checked out fine in headless testing (mouse
   drive and a synthetic touch drag both fired and depleted the mag normally) — the real problem is
