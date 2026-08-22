@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.54.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.55.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -273,6 +273,26 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       spawn time) — no new collision code needed. Verified via a throwaway `window.__esc()` hook
       forcing 8 boss-wave clears: obstacles 15→27 (exactly `MAX×PER`=12), `mapEscalations` capped
       at 6, zero page errors.
+- [x] **3 new late-game enemy kinds** (shipped v2.55.0, direct user request: "the enemies need to
+      look different and add more types... the game is kinda boring and repetitive") — `ZTYPES`
+      (`index.html`) gained **Howler** (violet/purple, screech pulse hastes nearby zombies for
+      3.5s — a support role with no prior equivalent below boss tier), **Carapace** (rust-orange,
+      flat 0.65× damage-reduction passive checked in `hurt()` — rewards burst over chip damage),
+      and **Husk** (pale bone, periodically spawns up to 3 weakened `runner` adds via a new
+      `spawner`/`spawnsLeft` flag — sustained pressure that isn't just `hordeScale()`'s bigger
+      numbers). Wave-gated into `hordeKind()` at 9/11/13 — deliberately past the existing
+      stalker@7 unlock, since nothing new had unlocked after wave 7 before this, which was a real
+      contributor to the "repetitive" complaint on long runs. Each got its own silhouette element
+      following the established behind/over-torso pattern (howler: flaring head-frill; carapace:
+      domed shell; husk: visible grub bumps that shrink as it spawns) and a hue family clearly off
+      the shared green-olive palette every other kind uses — verified visually via a throwaway
+      `window.__spawnKinds()` hook lining up all 10 kinds together (screenshot confirms howler/
+      carapace/husk read as distinct species at a glance, not recolors) and `window.__forceHowl()`
+      confirming the screech ring + frill flare fire correctly. `scripts/validate.mjs`'s
+      horde-spawn-reachability gate was extended to cover all 3 new kinds. Existing 7 kinds' colors
+      were deliberately left untouched — judged already distinct enough via eye-glow + their own
+      signature silhouette detail, and touching them risked unnecessary diff/regression for the
+      part of the complaint that wasn't actually about them.
 - [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
       v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
 - [x] **Mutators** (shipped v2.35.0) — a `MUTATORS` table (`index.html`, "Match mutators"

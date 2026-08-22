@@ -97,6 +97,52 @@ versions before anyone corrected it — see the git history if you want the old 
   silently produce meaningless numbers.
 
 ## Current state (done)
+- **v2.55.0 — 3 new enemy kinds + a real color pass on the roster.** Direct user request: "the
+  enemies need to look different and add more types... the game is kinda boring and repetitive".
+  Root-caused before building: `ZTYPES` (`index.html`) had 7 kinds but every one of them used a
+  green-olive skin/torso/shade family (normal `#86c85a`, runner `#a7c86a`, bloater `#8fb36a`,
+  stalker `#b7d86a`, etc.) — they only differed by size and one signature silhouette detail, so in
+  motion they read as "the same zombie, different size" rather than distinct threats. Separately,
+  `hordeKind()`'s wave-gated unlocks stopped at stalker@7 — nothing new ever appeared again for the
+  rest of an endless run, just `hordeScale()`'s numbers climbing. Both were real, separate causes
+  of "repetitive," and both got fixed:
+  - **Howler** (`index.html`, `ZTYPES.howler`, violet `#8a6a9a`/`#4a3560` family, unlocks wave 9) —
+    a support caster. Every 5-7s (`z.howlCd`) it screeches: every alive zombie within 190px gets
+    `z.hasteT=3.5`, and the movement-speed calc in `updateZombie()` picked up a `*(z.hasteT>0?1.35:
+    1)` multiplier (alongside the existing `slowT` slow multiplier). Visual: a `rings.push()`
+    shockwave + a head-frill (drawn in the existing head-decoration block, alongside the spitter
+    throat-sac/bloater-blister pattern) that flares wide for 0.35s (`z.howlFlash`) right when it
+    fires — NOT keyed off `howlCd` itself, since that resets to 5-7 in the same tick it fires and
+    would never read "just fired" if checked directly; that's the kind of one-frame timing bug this
+    pattern is worth flagging for the next kind added the same way.
+  - **Carapace** (`ZTYPES.carapace`, rust `#a8724a`/`#6b3a20`, unlocks wave 11) — an armored tank.
+    `hurt()` (`index.html`) gained one line, `if(e.armored) dmg*=0.65;`, applied before the existing
+    numeric-shield soak — a flat, unconditional reduction (a directional front/back weak-point
+    mechanic was considered and deliberately dropped: this is a top-down chibi game with only L/R
+    sprite-flip, no real facing concept, so a "shoot it from behind" mechanic would've been
+    confusing to telegraph and not worth the complexity for a first pass). Visual: a domed shell
+    drawn behind the torso (same layer/pattern as the existing brute-spikes/stalker-ridge blocks).
+  - **Husk** (`ZTYPES.husk`, pale bone `#c8cfc0`/`#5a5850`, unlocks wave 13) — a spawner. Every 6-9s,
+    up to 3 times per husk (`z.spawnsLeft`, decremented so it can't runaway-breed), it drops a
+    `hordeScale()`'d `runner` add nearby. Visual: small grub bumps drawn over the torso (same layer
+    as the juggernaut-armor block) that visibly shrink in count as `z.spawnsLeft` drops — the art
+    tracks the mechanic instead of needing a separate state indicator.
+  - All three wave-gated into `hordeKind()`'s existing weighted-table pattern at 9/11/13 (past the
+    old stalker@7 ceiling), and `makeZombie()` picked up the new flag copies (`howler`/`armored`/
+    `spawner`) plus their timers, following the exact pattern `boss`/`slamCd` already established
+    for the juggernaut. `scripts/validate.mjs`'s horde-spawn-reachability gate (`gated` array) was
+    extended to include all 3 — it's a hardcoded list, not auto-discovered, so a future kind needs
+    the same manual addition or the gate silently won't check it.
+  - Deliberately did NOT recolor the existing 7 kinds — they already have eye-glow variety (lime/
+    red/amber/pink/orange) plus their own signature silhouette flourish, and repainting established
+    kinds risked a large, high-regression-risk diff for a complaint that (once root-caused) was
+    really about the new-kind gap and the shared base-color monotony, not the existing 7 specifically.
+  - Verified via a throwaway `window.__spawnKinds()`/`window.__forceHowl()` hook lining up all 10
+    kinds together and forcing a screech: screenshot confirms howler/carapace/husk read as
+    genuinely distinct species at a glance (violet vs. rust vs. pale-bone vs. the green cluster),
+    hp scaled correctly per kind at a forced wave 13, and the screech ring + frill flare fire
+    correctly. `node scripts/validate.mjs` and the standard `--play --shoot` driver run both passed
+    clean. Zero console/page errors throughout.
 - **v2.54.0 — Bullets now spawn from the drawn gun tip, not the hip.** Direct user report: "the
   bullets don't fire from the guns they fire from the character's hip". `fire()` (`index.html`)
   spawned every bullet/spark/shell at a flat, hardcoded 16px (14px flame, 18px launcher) radius

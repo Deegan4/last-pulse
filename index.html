@@ -1178,8 +1178,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.54.0';
+const GAME_VERSION = '2.55.0';
 const CHANGELOG = [
+  { v:'2.55.0', items:[
+    ['👹','3 new late-game enemies','Howler (violet screamer that hastes nearby zombies — kill it first), Carapace (rust-armored tank that shrugs off chip damage), and Husk (pale bone husk that periodically drops weaker adds) unlock at waves 9/11/13, each with its own color family and silhouette so the horde keeps evolving deep into a run instead of just scaling numbers'],
+  ]},
   { v:'2.54.0', items:[
     ['🎯','Shots fire from the gun, not the hip','bullets, muzzle sparks and ejected shells now spawn from the actual drawn gun tip/hand — previously they left from a fixed radius around the character’s centre regardless of weapon length, so long guns like the Rifle and Sniper visibly fired from the hip'],
   ]},
@@ -1925,6 +1928,12 @@ const ZTYPES = {
   bloater:{ hp:95, dmg:16, sp:[36,52],  r:19, skin:'#8fb36a', torso:'#5a6b38', shade:'#4c7a32', eye:'#b6ff5a', size:1.28, w:0, boom:true },     // bursts into acid on death
   stalker:{ hp:26, dmg:11, sp:[132,168],r:11, skin:'#b7d86a', torso:'#3a4a2e', shade:'#7a3a86', eye:'#ff2ea0', size:0.80, w:0 },                 // fast, fragile swarm rusher (mid-game)
   juggernaut:{ hp:420,dmg:30,sp:[30,44], r:26, skin:'#4c6a3a', torso:'#28331f', shade:'#28401e', eye:'#ff7a1a', size:1.70, w:0, boss:true },      // armored mini-boss (milestone waves)
+  // Late-game additions (w:0, unlocked well past stalker@7 so the roster keeps growing instead of
+  // just scaling numbers forever) — each breaks from the shared green-olive palette onto its own
+  // hue family so it reads as a distinct threat at a glance, not a recolored normal/brute/stalker.
+  howler: { hp:48, dmg:10, sp:[70,100], r:14, skin:'#8a6a9a', torso:'#4a3560', shade:'#3a2850', eye:'#b46bff', size:1.0,  w:0, howler:true },     // violet support caster — screech hastes nearby zombies
+  carapace:{ hp:170,dmg:17, sp:[34,48],  r:19, skin:'#a8724a', torso:'#6b3a20', shade:'#4a2814', eye:'#4ad6ff', size:1.25, w:0, armored:true },     // rust carapace tank — flat damage reduction, slow
+  husk:   { hp:80, dmg:10, sp:[40,58],  r:17, skin:'#c8cfc0', torso:'#5a5850', shade:'#3a3830', eye:'#9fd8ff', size:1.15, w:0, spawner:true },     // pale bone husk — periodically drops weaker adds
 };
 // Boss ground-slam AoE — a telegraphed heavy hit distinct from a juggernaut's normal contact
 // damage, on its own cooldown. `wind` is the visible windup (growing warning ring) before impact.
@@ -1936,7 +1945,10 @@ function makeZombie(x,y,kind){
   return { x,y, vx:0,vy:0, aim:0, kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
     seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8),
-    boss:!!t.boss, slamCd:t.boss?rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax):0, slamWind:0 };
+    boss:!!t.boss, slamCd:t.boss?rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax):0, slamWind:0,
+    howler:!!t.howler, howlCd:t.howler?rand(2,4):0, howlFlash:0, hasteT:0,
+    armored:!!t.armored,
+    spawner:!!t.spawner, spawnCd:t.spawner?rand(3,5):0, spawnsLeft:t.spawner?3:0 };
 }
 // ---- watchtower geometry: solid footprint, an inset walkable roof, and a south-facing ladder zone ----
 function towerRoof(t){ return {x:t.x+11, y:t.y+11, w:t.w-22, h:t.h-22}; }
@@ -2317,6 +2329,9 @@ function spraySplatOnWall(x, y, dmg){
 }
 function hurt(e, dmg, src, isHumanTarget){
   if(!e.alive) return;
+  // Carapace: a flat carapace damage reduction (distinct from the numeric shield pickup below) —
+  // rewards burst weapons over chip damage, the "low-profile armored tank" wrinkle.
+  if(e.armored) dmg*=0.65;
   // armor soaks damage first
   if(e.shield>0){ const a=Math.min(e.shield,dmg); e.shield-=a; dmg-=a;
     for(let i=0;i<3;i++) spark(e.x,e.y-6,'#7fc8ff',rand(40,120),rand(0,TAU),.3); }
@@ -2923,6 +2938,7 @@ function updateZombie(z,dt){
     if(Math.random()<dt*12) spark(z.x+rand(-7,7), z.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2, .4);
     if(z.hp<=0){ die(z, z.burnSrc, false); return; } }
   if(z.slowT>0) z.slowT-=dt;
+  if(z.hasteT>0) z.hasteT-=dt;
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
   if(tgt && near.d<(z.ranged?540:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
@@ -2965,6 +2981,27 @@ function updateZombie(z,dt){
     } else if(z.slamCd>0){ z.slamCd-=dt; }
     else if(tgt && near.d<JUGGERNAUT_SLAM.range && grace<=0){ z.slamWind=JUGGERNAUT_SLAM.wind; z.attackCd=Math.max(z.attackCd,1.2); }
   }
+  // ---- HOWLER screech: periodic haste pulse to nearby zombies — a "kill this one first"
+  // priority target below boss tier, giving the horde a support role it didn't have before ----
+  if(z.howler){
+    if(z.howlCd>0) z.howlCd-=dt;
+    else if(grace<=0){ z.howlCd=rand(5,7); z.howlFlash=0.35;
+      for(const z2 of zombies){ if(z2.alive && z2!==z && dist2(z2.x,z2.y,z.x,z.y)<190*190) z2.hasteT=3.5; }
+      rings.push({x:z.x,y:z.y,t:0,dur:0.35,r0:6,r1:190,col:'180,107,255',lw:3});
+      for(let i=0;i<10;i++) spark(z.x,z.y,'#b46bff',rand(60,150),rand(0,TAU),.4);
+    }
+  }
+  if(z.howlFlash>0) z.howlFlash-=dt;
+  // ---- HUSK spawner: periodically drops a weaker add — sustained pressure that isn't just
+  // hordeScale()'s "bigger numbers", capped per-husk so it can't runaway-breed ----
+  if(z.spawner && z.spawnsLeft>0){
+    if(z.spawnCd>0) z.spawnCd-=dt;
+    else if(grace<=0){ z.spawnCd=rand(6,9); z.spawnsLeft--;
+      const a=rand(0,TAU), sx=z.x+Math.cos(a)*24, sy=z.y+Math.sin(a)*24;
+      const add=makeZombie(sx,sy,'runner'); hordeScale(add,hordeWave); zombies.push(add);
+      for(let i=0;i<8;i++) spark(z.x,z.y,'#c8cfc0',rand(40,110),rand(0,TAU),.35);
+    }
+  }
   // chew through any solid player-built barricade we're pressed against (walls & turrets)
   if(z.attackCd<=0 && grace<=0 && builds.length){
     for(const b of builds){ if(!b.solid) continue;
@@ -2974,7 +3011,7 @@ function updateZombie(z,dt){
   }
   if(z.lunge>0) z.lunge-=dt*3.2;
   const m=len(mvx,mvy);
-  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
+  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1)*(z.hasteT>0?1.35:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
   // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
   // stomp-clods on each footfall, normals scuff the odd puff
@@ -3443,6 +3480,9 @@ function hordeKind(wave){
   if(wave>=4) t.push(['spitter', Math.min(0.05 + (wave-4)*0.010, 0.18)]);  // ranged pressure
   if(wave>=5) t.push(['bloater', Math.min(0.05 + (wave-5)*0.008, 0.16)]);  // area denial on death
   if(wave>=7) t.push(['stalker', Math.min(0.06 + (wave-7)*0.012, 0.24)]);  // swarm rush
+  if(wave>=9)  t.push(['howler',   Math.min(0.05 + (wave-9)*0.008, 0.14)]);   // haste support — priority kill target
+  if(wave>=11) t.push(['carapace', Math.min(0.05 + (wave-11)*0.008, 0.16)]);  // armored tank — rewards burst over chip damage
+  if(wave>=13) t.push(['husk',     Math.min(0.04 + (wave-13)*0.008, 0.14)]);  // spawner — sustained pressure, not just bigger numbers
   let sum=0; for(const e of t) sum+=e[1];
   let r=Math.random()*sum;
   for(const e of t){ r-=e[1]; if(r<=0) return e[0]; }
@@ -4805,6 +4845,7 @@ function drawZombie(z){
   const lunge=Math.max(0,z.lunge||0);
   const runner=z.kind==='runner', brute=z.kind==='brute';
   const stalker=z.kind==='stalker', juggernaut=z.kind==='juggernaut';
+  const howler=z.kind==='howler', carapace=z.kind==='carapace', husk=z.kind==='husk';
   // boss slam telegraph — a growing warning ring in WORLD space (not the local scaled transform
   // below), so its radius matches the real JUGGERNAUT_SLAM.r hit area regardless of sprite size
   if(z.boss && z.slamWind>0){ const k=1-clamp(z.slamWind/JUGGERNAUT_SLAM.wind,0,1);
@@ -4845,6 +4886,12 @@ function drawZombie(z){
     for(let i=0;i<3;i++){ const ry=zty+2+i*(th*0.42), fx=flip*(-tw-0.5);
       ctx.beginPath(); ctx.moveTo(fx,ry-1.5); ctx.lineTo(fx-flip*3.6,ry); ctx.lineTo(fx,ry+1.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
 
+  // ---- CARAPACE domed shell (behind the torso; a hunched, low-profile silhouette) ----
+  if(carapace && !flash){ ctx.fillStyle='#8a5a34'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;
+    ctx.beginPath(); ctx.ellipse(-1,zty+th*0.28,tw*1.15,th*0.62,0,Math.PI*0.92,Math.PI*2.08); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1;
+    for(const sx of [-tw*0.5,0,tw*0.5]){ ctx.beginPath(); ctx.moveTo(sx,zty-th*0.1); ctx.lineTo(sx,zty+th*0.5); ctx.stroke(); } }
+
   // ---- LEGS (wide, planted stance; brute stomps) ----
   const lw=brute?7:runner?4.6:5.4;
   ctx.strokeStyle=INK; ctx.lineWidth=brute?8:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
@@ -4878,6 +4925,12 @@ function drawZombie(z){
     ctx.globalAlpha=1;
   }
 
+  // ---- HUSK grub bumps (over the torso — the brood it periodically releases) ----
+  if(husk && !flash){ ctx.strokeStyle=INK; ctx.lineWidth=1.3;
+    for(let i=0;i<z.spawnsLeft;i++){ const bx=(-1+i)*(tw*0.6), by=zty+th*0.3;
+      ctx.fillStyle=skin; ctx.beginPath(); ctx.ellipse(bx,by,2.6,3.2,0,0,TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=eye; ctx.globalAlpha=0.5+0.2*Math.sin(now*3+seed+i); ctx.beginPath(); ctx.arc(bx,by,0.9,0,TAU); ctx.fill(); ctx.globalAlpha=1; } }
+
   // ---- FRONT reaching arm (claws forward, thrown out on a lunge) ----
   const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(brute?12:runner?15:13)+lunge*5;
   ctx.strokeStyle=INK; ctx.lineWidth=brute?8.5:runner?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
@@ -4910,6 +4963,12 @@ function drawZombie(z){
     ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(flip*0.5,hy+7.6,3.2,0,TAU); ctx.fill(); ctx.restore(); }
   if(!flash && z.boom){ ctx.fillStyle=eye; ctx.globalAlpha=0.45+0.2*Math.sin(now*4+seed);  // Bloater: pulsing acid blisters
     for(const bp of [[-6.5,-1.5],[6.5,-0.5],[-4,4.5],[5,4.5]]){ ctx.beginPath(); ctx.arc(bp[0],hy+bp[1],1.9,0,TAU); ctx.fill(); } ctx.globalAlpha=1; }
+  if(!flash && howler){ const flare=z.howlFlash>0?1:0;   // Howler: a frilled head-crest that flares wide on the screech
+    ctx.fillStyle=SH; ctx.strokeStyle=INK; ctx.lineWidth=1;
+    for(let i=-2;i<=2;i++){ const fa=i*0.42, fr=hr*(1.15+flare*0.5);
+      ctx.beginPath(); ctx.moveTo(Math.sin(fa)*hr*0.7,hy-Math.cos(fa)*hr*0.7);
+      ctx.lineTo(Math.sin(fa)*fr,hy-Math.cos(fa)*fr); ctx.lineTo(Math.sin(fa+0.15)*hr*0.7,hy-Math.cos(fa+0.15)*hr*0.7);
+      ctx.closePath(); ctx.fill(); ctx.stroke(); } }
   ctx.restore();
   ctx.restore();
   // tiny hp bar

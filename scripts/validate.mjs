@@ -150,7 +150,7 @@ try {
   const hkBody = hkStart >= 0 ? html.slice(hkStart, html.indexOf('\nfunction ', hkStart + 1)) : '';
   const inMix   = k => new RegExp(`['"]${k}['"]`).test(hkBody);
   const spawned = k => new RegExp(`makeZombie\\([^)]*['"]${k}['"]`).test(html);
-  const gated = ['spitter', 'bloater', 'stalker', 'juggernaut'];
+  const gated = ['spitter', 'bloater', 'stalker', 'juggernaut', 'howler', 'carapace', 'husk'];
   const dead = gated.filter(k => new RegExp(`\\b${k}\\s*:\\s*\\{`).test(html) && !inMix(k) && !spawned(k));
   if (dead.length) { console.error('✗ horde-spawn gate: defined but never spawned →', dead.join(', ')); process.exit(1); }
   console.log(`✓ horde-spawn reachable: ${gated.join(', ')} all have a spawn path`);
