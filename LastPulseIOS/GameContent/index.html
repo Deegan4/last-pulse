@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <!-- Tints iOS Safari's URL bar AND bottom toolbar. It MUST match the colour the canvas paints
        at the screen edges (~#446a30 top / #416730 bottom, measured) — a near-black value here is
        what reads as "black bars at the top and bottom" in a Safari tab, framing a bright green game. -->
@@ -269,6 +269,24 @@
     border:1px solid rgba(255,214,110,.5);color:#ffe6a8;font-weight:800;font-size:11px;
     padding:2px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.3px}
   .ranknext{font-size:10.5px;font-weight:700;color:#a9c47f}
+
+  .rosterStrip{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;width:min(84vw,340px);
+    margin:2px auto 4px;padding:2px 2px 6px;scrollbar-width:none}
+  .rosterStrip::-webkit-scrollbar{display:none}
+  .rosterItem{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;
+    cursor:pointer;transition:transform .08s}
+  .rosterItem:active{transform:scale(.93)}
+  .rosterItem .rip{width:44px;height:52px;border-radius:12px;background:rgba(0,0,0,.22);
+    display:flex;align-items:flex-end;justify-content:center;border:2px solid rgba(255,255,255,.14);
+    position:relative;overflow:hidden}
+  .rosterItem .rip canvas{transform:scale(.62);transform-origin:bottom}
+  .rosterItem.sel .rip{border-color:#a6e22e;box-shadow:0 0 10px rgba(166,226,46,.5)}
+  .rosterItem.locked .rip{filter:grayscale(1) brightness(.6)}
+  .rosterItem.locked .rip::after{content:'🔒';position:absolute;inset:0;display:flex;
+    align-items:center;justify-content:center;font-size:14px}
+  .rosterItem .rin{font-size:10px;font-weight:700;color:#cddcb6;max-width:48px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rosterItem.sel .rin{color:#d6ff6e}
 
   .modes{display:flex;flex-direction:column;gap:9px;width:min(84vw,340px);margin:8px auto 2px}
   .modecard{cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;
@@ -726,6 +744,8 @@
       </div>
     </div>
 
+    <div class="rosterStrip" id="rosterStrip"></div>
+
     <button class="btn play" id="toModeBtn"><span id="playLabel">▶ PLAY</span></button>
     <div id="dailyCard" class="dailycard"></div>
     <div id="statsCard" class="statscard"></div>
@@ -1168,8 +1188,17 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.49.0';
+const GAME_VERSION = '2.52.0';
 const CHANGELOG = [
+  { v:'2.52.0', items:[
+    ['🦸','Roster strip on the home screen','a horizontal row of every fighter now sits under your card — tap any unlocked hero to switch instantly, no need to open the full avatar picker'],
+  ]},
+  { v:'2.51.0', items:[
+    ['🧟','More enemy variants','every existing horde family now has a new sibling threat: Husk, Skitter, Crusher, Venomspine, Rottank, Wraith, and Colossus join the wave mix'],
+  ]},
+  { v:'2.50.0', items:[
+    ['🧟','New horde enemies','Leapers now pounce from mid-range and Howlers buff nearby zombies, adding pressure and priority targets to later waves'],
+  ]},
   { v:'2.49.0', items:[
     ['👹','Enemy visual upgrade','every zombie type now has a stronger in-game silhouette: runners are leaner and red-streaked, spitters carry glowing acid sacs, bloaters pulse with blisters, stalkers bristle with quills, brutes show bone spikes, and juggernauts wear heavier armor'],
   ]},
@@ -1873,18 +1902,28 @@ const ZTYPES = {
   runner:{ hp:30,  dmg:8,  sp:[120,150],r:12, skin:'#a7c86a', torso:'#6b4a2e', shade:'#5c7a3e', eye:'#ff4630', size:0.82, w:0.30 },
   brute: { hp:130, dmg:20, sp:[44,62],  r:20, skin:'#5a9a42', torso:'#3c5226', shade:'#3d6e2a', eye:'#ffd23a', size:1.35, w:0.12 },
   // Horde-only (w:0 → never in the default random mix; spawned by hordeKind/boss waves):
+  husk:{ hp:78, dmg:13, sp:[54,76], r:16, skin:'#9aa36a', torso:'#4f4a32', shade:'#5b5a36', eye:'#ffe66a', size:1.05, w:0, family:'normal' },        // tougher baseline shambler
+  skitter:{ hp:24, dmg:7, sp:[150,184], r:10, skin:'#c1d96a', torso:'#493b2a', shade:'#637a36', eye:'#ff8a3d', size:0.74, w:0, family:'runner' },    // tiny, very fast runner
+  crusher:{ hp:175, dmg:24, sp:[34,48], r:22, skin:'#66884d', torso:'#303f24', shade:'#314f28', eye:'#ffb347', size:1.48, w:0, family:'brute' },      // slow heavy bruiser
   spitter:{ hp:42, dmg:9,  sp:[46,66],  r:14, skin:'#9ed86a', torso:'#4a6b3a', shade:'#5c8a3e', eye:'#c6ff2e', size:0.95, w:0, ranged:true },  // ranged acid lobber
+  venomspine:{ hp:36, dmg:11, sp:[58,78], r:13, skin:'#7edb8b', torso:'#305b3a', shade:'#34844c', eye:'#5cff89', size:0.88, w:0, family:'spitter', ranged:true }, // quicker acid lobber
   bloater:{ hp:95, dmg:16, sp:[36,52],  r:19, skin:'#8fb36a', torso:'#5a6b38', shade:'#4c7a32', eye:'#b6ff5a', size:1.28, w:0, boom:true },     // bursts into acid on death
+  rottank:{ hp:140, dmg:18, sp:[26,40], r:22, skin:'#a38f5b', torso:'#62502f', shade:'#5f5a33', eye:'#d6ff58', size:1.42, w:0, family:'bloater', boom:true }, // tanky acid rupturer
   stalker:{ hp:26, dmg:11, sp:[132,168],r:11, skin:'#b7d86a', torso:'#3a4a2e', shade:'#7a3a86', eye:'#ff2ea0', size:0.80, w:0 },                 // fast, fragile swarm rusher (mid-game)
+  wraith:{ hp:34, dmg:13, sp:[116,146], r:12, skin:'#8fd0c8', torso:'#253c45', shade:'#4a5e8e', eye:'#8fe8ff', size:0.86, w:0, family:'stalker' }, // evasive quilled hunter
+  leaper:{ hp:48, dmg:14, sp:[92,118],  r:13, skin:'#b4d65c', torso:'#4d5b2d', shade:'#6b7332', eye:'#ffcf36', size:0.92, w:0, leaper:true },    // pounces from mid-range
+  howler:{ hp:74, dmg:10, sp:[54,72],   r:16, skin:'#78b8a5', torso:'#315050', shade:'#2f6a64', eye:'#61f7ff', size:1.08, w:0, howl:true },       // buffs nearby undead
   juggernaut:{ hp:420,dmg:30,sp:[30,44], r:26, skin:'#4c6a3a', torso:'#28331f', shade:'#28401e', eye:'#ff7a1a', size:1.70, w:0, boss:true },      // armored mini-boss (milestone waves)
+  colossus:{ hp:560,dmg:36,sp:[24,36], r:29, skin:'#526646', torso:'#20271f', shade:'#24371f', eye:'#ff4f1a', size:1.92, w:0, family:'juggernaut', boss:true }, // rarer boss variant
 };
 const TOWER_W=88, TOWER_H=72, TOWER_ELEV=46;   // 2-story watchtower: footprint + rooftop rise (climb to shoot down)
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
 function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
-  return { x,y, vx:0,vy:0, aim:0, kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
+  return { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
-    seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8) };
+    seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom,
+    leaper:!!t.leaper, howl:!!t.howl, spitCd:rand(0.6,1.8), leapCd:rand(0.8,2.2), howlCd:rand(1.2,3.0), frenzyT:0 };
 }
 // ---- watchtower geometry: solid footprint, an inset walkable roof, and a south-facing ladder zone ----
 function towerRoof(t){ return {x:t.x+11, y:t.y+11, w:t.w-22, h:t.h-22}; }
@@ -2479,6 +2518,17 @@ function zombieBurst(e){
     if(d2<RAD2){ const dd=e.dmg*1.7*(1-Math.sqrt(d2)/RAD); if(dd>0){ hurt(o, Math.max(8,dd), null, true); if(o.isPlayer) shake=Math.min(shake+3,15); } } }
   sfx('boom',null,e);
 }
+// Howler support pulse — nearby zombies get a short movement frenzy, forcing the player to
+// decide whether to burn down the support unit or kite the sped-up pack.
+function zombieHowl(z){
+  const RAD=245, RAD2=RAD*RAD;
+  rings.push({x:z.x, y:z.y, t:0, dur:0.55, r0:12, r1:RAD, col:'96,247,255', lw:3});
+  floaters.push({x:z.x, y:z.y-34, vy:-30, t:0.75, txt:'HOWL', col:'#61f7ff'});
+  for(let i=0;i<16;i++) spark(z.x,z.y-14, i%2?'#61f7ff':'#b9ffff', rand(70,210), rand(0,TAU), .55);
+  for(const o of zombies){ if(!o.alive || o===z) continue;
+    if(dist2(z.x,z.y,o.x,o.y)<RAD2) o.frenzyT=Math.max(o.frenzyT||0,3.2); }
+  sfx('warn',null,z);
+}
 function explode(b){
   const RAD=130*(activeMutator?.bombRadMul||1), RAD2=RAD*RAD;
   for(let i=0;i<30;i++) spark(b.x,b.y, i%2?'#ffb13d':'#ff5a2a', rand(80,360), rand(0,TAU), .8);
@@ -2827,13 +2877,16 @@ function updateBot(h,dt){
 function updateZombie(z,dt){
   if(z.hitFlash>0) z.hitFlash-=dt;
   if(z.attackCd>0) z.attackCd-=dt;
+  if(z.leapCd>0) z.leapCd-=dt;
+  if(z.howlCd>0) z.howlCd-=dt;
+  if(z.frenzyT>0) z.frenzyT-=dt;
   if(z.burn>0){ z.burn-=dt; z.hp-=9*dt;
     if(Math.random()<dt*12) spark(z.x+rand(-7,7), z.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2, .4);
     if(z.hp<=0){ die(z, z.burnSrc, false); return; } }
   if(z.slowT>0) z.slowT-=dt;
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
-  if(tgt && near.d<(z.ranged?540:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
+  if(tgt && near.d<(z.ranged?540:z.howl?560:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
     if(z.ranged){                                            // Spitter: hold a standoff distance & lob acid
       const ideal=290;
       if(near.d<ideal-70){ mvx=-Math.cos(z.aim); mvy=-Math.sin(z.aim); }      // too close → back off
@@ -2841,6 +2894,12 @@ function updateZombie(z,dt){
       else { const s=(z.seed|0)%2?1:-1; mvx=Math.cos(z.aim+Math.PI/2)*0.5*s; mvy=Math.sin(z.aim+Math.PI/2)*0.5*s; }  // strafe
       z.spitCd-=dt;
       if(z.spitCd<=0 && grace<=0 && near.d<500){ z.spitCd=rand(1.7,2.6); z.lunge=1; spitAcid(z,tgt); }
+    } else if(z.howl){                                       // Howler: standoff support that frenzies nearby undead
+      const ideal=330;
+      if(near.d<ideal-80){ mvx=-Math.cos(z.aim); mvy=-Math.sin(z.aim); }
+      else if(near.d>ideal+90){ mvx=Math.cos(z.aim); mvy=Math.sin(z.aim); }
+      else { const s=(z.seed|0)%2?1:-1; mvx=Math.cos(z.aim+Math.PI/2)*0.45*s; mvy=Math.sin(z.aim+Math.PI/2)*0.45*s; }
+      if(z.howlCd<=0 && grace<=0 && near.d<540){ z.howlCd=rand(4.2,5.8); z.lunge=1; zombieHowl(z); }
     } else {
       // if the prey is holed up in a building we aren't in, route to a door gap (around the
       // walls via the nearer corner when we're on the wrong side) instead of grinding the wall
@@ -2853,6 +2912,11 @@ function updateZombie(z,dt){
         else { gx=(z.x<cx)?b.x-28:b.x+b.w+28; gy=outside; }    // skirt the nearer corner to reach it
       }
       const a=Math.atan2(gy-z.y,gx-z.x); mvx=Math.cos(a); mvy=Math.sin(a);
+      if(z.leaper && z.leapCd<=0 && grace<=0 && near.d>80 && near.d<340){
+        z.leapCd=rand(2.4,3.4); z.lunge=1.25;
+        z.vx+=Math.cos(a)*280; z.vy+=Math.sin(a)*280;
+        for(let i=0;i<8;i++) spark(z.x-rand(-5,5), z.y+14, '#c8b46a', rand(40,120), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.25,.45));
+      }
       if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0 && !tgt.onTower){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
         tgt.vx+=Math.cos(a)*120; tgt.vy+=Math.sin(a)*120; if(tgt.isPlayer) shake=Math.min(shake+4,10); }
     } }
@@ -2867,7 +2931,7 @@ function updateZombie(z,dt){
   }
   if(z.lunge>0) z.lunge-=dt*3.2;
   const m=len(mvx,mvy);
-  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
+  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1)*(z.frenzyT>0?1.24:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6*(z.frenzyT>0?1.2:1); if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
   // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
   // stomp-clods on each footfall, normals scuff the odd puff
@@ -3332,10 +3396,18 @@ function hordeKind(wave){
     ['normal',  Math.max(0.10, 0.62 - wave*0.030)],
     ['runner',  Math.min(0.20 + wave*0.010, 0.40)],
   ];
+  if(wave>=2) t.push(['husk',    Math.min(0.05 + (wave-2)*0.008, 0.16)]);  // tougher shambler variant
   if(wave>=3) t.push(['brute',   Math.min(0.10 + wave*0.012, 0.30)]);
+  if(wave>=4) t.push(['skitter', Math.min(0.04 + (wave-4)*0.008, 0.15)]);  // tiny speed variant
   if(wave>=4) t.push(['spitter', Math.min(0.05 + (wave-4)*0.010, 0.18)]);  // ranged pressure
   if(wave>=5) t.push(['bloater', Math.min(0.05 + (wave-5)*0.008, 0.16)]);  // area denial on death
+  if(wave>=5) t.push(['crusher', Math.min(0.04 + (wave-5)*0.007, 0.14)]);  // heavy bruiser variant
+  if(wave>=6) t.push(['leaper',  Math.min(0.05 + (wave-6)*0.011, 0.17)]);  // mid-range pounce pressure
+  if(wave>=6) t.push(['venomspine', Math.min(0.035 + (wave-6)*0.007, 0.12)]); // fast acid variant
+  if(wave>=7) t.push(['rottank', Math.min(0.035 + (wave-7)*0.006, 0.11)]); // tanky rupture variant
   if(wave>=7) t.push(['stalker', Math.min(0.06 + (wave-7)*0.012, 0.24)]);  // swarm rush
+  if(wave>=8) t.push(['wraith',  Math.min(0.04 + (wave-8)*0.007, 0.13)]);  // ghostly stalker variant
+  if(wave>=9) t.push(['howler',  Math.min(0.04 + (wave-9)*0.007, 0.13)]);  // support aura priority target
   let sum=0; for(const e of t) sum+=e[1];
   let r=Math.random()*sum;
   for(const e of t){ r-=e[1]; if(r<=0) return e[0]; }
@@ -3392,7 +3464,7 @@ function hordeUpdate(dt){
   if(boss){ const nb=1+Math.floor(hordeWave/10);                    // 1 juggernaut @w5, 2 @w10-15, 3 @w20…
     for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
       while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
-      const z=makeZombie(s.x,s.y,'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
+      const z=makeZombie(s.x,s.y,(hordeWave>=15 && Math.random()<0.35)?'colossus':'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
 }
 function enemiesLeft(){ let n=0; for(const h of humans) if(h.alive && h.team!==player.team) n++; return n; }
 function checkEnd(){
@@ -4690,14 +4762,17 @@ function drawZombie(z){
   const now=performance.now()/1000, seed=z.seed||0;
   const moving=(z.vx*z.vx+z.vy*z.vy)>200;
   const lunge=Math.max(0,z.lunge||0);
-  const runner=z.kind==='runner', brute=z.kind==='brute', spitter=z.kind==='spitter', bloater=z.kind==='bloater';
-  const stalker=z.kind==='stalker', juggernaut=z.kind==='juggernaut', normal=z.kind==='normal';
+  const fam=z.family||z.kind;
+  const runner=fam==='runner', brute=fam==='brute', spitter=fam==='spitter', bloater=fam==='bloater';
+  const stalker=fam==='stalker', leaper=fam==='leaper', howler=fam==='howler', juggernaut=fam==='juggernaut', normal=fam==='normal';
+  const husk=z.kind==='husk', skitter=z.kind==='skitter', crusher=z.kind==='crusher', venomspine=z.kind==='venomspine';
+  const rottank=z.kind==='rottank', wraith=z.kind==='wraith', colossus=z.kind==='colossus';
   const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
   const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
-  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute||juggernaut?2.4:runner||stalker?4.1:3.4):0;
-  const tw=juggernaut?13.5:bloater?12.8:brute?11.5:runner?6.1:stalker?5.2:spitter?7.2:8;
-  const th=juggernaut?18:bloater?18.2:brute?16:runner?13.5:stalker?12.5:spitter?16.5:15;   // torso half-width / height per kind
+  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute||juggernaut?2.4:runner||stalker||leaper?4.1:3.4):0;
+  const tw=colossus?14.8:crusher?12.8:rottank?14.5:husk?9.4:juggernaut?13.5:bloater?12.8:brute?11.5:skitter?5.4:runner?6.1:wraith?5.7:stalker?5.2:leaper?6.8:howler?9.4:venomspine?6.7:spitter?7.2:8;
+  const th=colossus?20.5:crusher?17.5:rottank?19.5:husk?16.5:juggernaut?18:bloater?18.2:brute?16:skitter?12:runner?13.5:wraith?13.8:stalker?12.5:leaper?14.2:howler?17.2:venomspine?15.4:spitter?16.5:15;   // torso half-width / height per kind
   const zty=-6+bob*0.2;   // torso top y — computed early so behind-torso layers (spikes/ridge) can use it
   const night = timeOfDay!=='day';
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
@@ -4710,7 +4785,10 @@ function drawZombie(z){
                     : Math.sin(now*1.6+seed)*0.03);
   if(runner) ctx.rotate(flip*0.18);                          // runners hunch aggressively forward
   if(stalker) ctx.rotate(flip*0.09);
+  if(leaper) ctx.rotate(flip*0.14);
   if(spitter) ctx.rotate(flip*-0.04);
+  if(skitter) ctx.rotate(flip*0.08);
+  if(wraith && !flash) ctx.globalAlpha=.94;
   // attack lunge: snap toward the prey and swell up for a beat
   if(lunge>0){ ctx.translate(flip*lunge*6, -lunge*2); ctx.scale(1+lunge*0.12, 1+lunge*0.06); }
 
@@ -4721,41 +4799,71 @@ function drawZombie(z){
     zBlister(flip*-18,zty+1,3.4,eye,true); ctx.restore(); }
   if(bloater && !flash){ ctx.save(); ctx.globalAlpha=.82; ctx.fillStyle='rgba(198,255,74,.14)';
     ctx.beginPath(); ctx.ellipse(0,zty+10,tw+5,th*.72,0,0,TAU); ctx.fill(); ctx.restore(); }
+  if(howler && !flash){ ctx.save(); ctx.globalAlpha=.78; ctx.strokeStyle=eye; ctx.lineWidth=2;
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*4,zty-3); ctx.quadraticCurveTo(sx*10,zty-13,sx*15,zty-7); ctx.stroke(); }
+    ctx.restore(); }
+  if(venomspine && !flash){ ctx.save(); ctx.strokeStyle=INK; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(flip*-3,zty+6); ctx.quadraticCurveTo(flip*-18,zty+4,flip*-22,zty-8); ctx.stroke();
+    ctx.strokeStyle=eye; ctx.lineWidth=2.4; ctx.beginPath(); ctx.moveTo(flip*-3,zty+6); ctx.quadraticCurveTo(flip*-18,zty+4,flip*-22,zty-8); ctx.stroke();
+    for(let i=0;i<4;i++) zSpike(flip*(-5-i*4),zty-3-i*1.7,4.2,-Math.PI/2+flip*.2,eye,.55); ctx.restore(); }
+  if(wraith && !flash){ ctx.save(); ctx.globalAlpha=.34; ctx.fillStyle=eye;
+    ctx.beginPath(); ctx.ellipse(flip*-4,zty+10,tw+10,th*.8,0,0,TAU); ctx.fill(); ctx.restore(); }
+  if(colossus && !flash){ ctx.save(); ctx.fillStyle='#181d1b'; ctx.strokeStyle=INK; ctx.lineWidth=2.2;
+    roundRect(-tw*1.04,zty-4,tw*2.08,th*.7,3); ctx.fill(); ctx.stroke();
+    for(const sx of [-1,1]) zSpike(sx*(tw+2),zty-7,10,sx<0?-2.35:-0.8,'#e8dcc0',1.05);
+    ctx.restore(); }
   if(juggernaut && !flash){ ctx.fillStyle='#262c2a'; ctx.strokeStyle=INK; ctx.lineWidth=2;
     roundRect(-tw*0.95,zty-2,tw*1.9,th*.58,3); ctx.fill(); ctx.stroke(); }
 
   // ---- BACK dragging arm (behind the body) ----
   const drag=moving?Math.sin(z.walk*0.5+seed)*1.6:sway*0.6;
   const bex=flip*(-tw-1)+drag*flip, bey=(brute?10:12)+Math.abs(drag)*0.4;
-  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9.5:brute||bloater?8.5:runner||stalker?5:6.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
-  ctx.strokeStyle=SH; ctx.lineWidth=juggernaut?6.6:brute||bloater?6:runner||stalker?3.4:4.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
-  if(!flash) zClaw(bex,bey,-flip,skin,juggernaut?1.45:brute||bloater?1.35:runner||stalker?0.9:1);
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9.5:brute||bloater?8.5:runner||stalker||leaper?5:6.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
+  ctx.strokeStyle=SH; ctx.lineWidth=juggernaut?6.6:brute||bloater?6:runner||stalker||leaper?3.4:4.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
+  if(!flash) zClaw(bex,bey,-flip,skin,juggernaut?1.45:brute||bloater?1.35:runner||stalker||leaper?0.9:1);
 
   // ---- BRUTE shoulder bone-spikes (behind the torso) ----
   if(brute && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
     for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*8,-9); ctx.lineTo(sx*13.5,-16); ctx.lineTo(sx*10.5,-8.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+  if(crusher && !flash){ ctx.fillStyle='#667055'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
+    for(const sx of [-1,1]){ roundRect(sx>0?tw*.35:-tw*.98,zty+1,tw*.62,7,2); ctx.fill(); ctx.stroke(); }
+    zSpike(0,zty-5,7,-Math.PI/2,'#e7dfc8',.9); }
 
   // ---- STALKER spine ridge (behind the torso; a lean, quilled silhouette) ----
   if(stalker && !flash){ ctx.fillStyle=SH; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
     for(let i=0;i<5;i++){ const ry=zty-3+i*(th*0.31), fx=flip*(-tw-0.3);
       zSpike(fx,ry,4.4+i*.35,Math.PI+(flip*.12),SH,.78); } }
+  if(wraith && !flash){ ctx.strokeStyle=eye; ctx.lineWidth=1.1; ctx.globalAlpha=.75;
+    for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(flip*(-tw-3-i*2),zty+1+i*5); ctx.quadraticCurveTo(flip*(-tw-10),zty+5+i*5,flip*(-tw-7),zty+11+i*4); ctx.stroke(); }
+    ctx.globalAlpha=1; }
+  if(leaper && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK;
+    zSpike(flip*-tw*.6,zty-3,5.8,-Math.PI/2+flip*.18,'#e8e0c8',.72);
+    zSpike(flip*tw*.55,zty-2,4.8,-Math.PI/2-flip*.14,'#e8e0c8',.62); }
+  if(husk && !flash){ ctx.fillStyle='#d9c596'; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
+    for(const sx of [-1,1]) zSpike(sx*tw*.7,zty+1,5,sx<0?-2.55:-0.6,'#d9c596',.62); }
   if(runner && !flash){ ctx.strokeStyle='rgba(255,70,48,.42)'; ctx.lineWidth=1.3;
     for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(flip*(-10-i*2),zty+3+i*4); ctx.lineTo(flip*(-17-i*2),zty+1+i*4); ctx.stroke(); } }
+  if(skitter && !flash){ ctx.strokeStyle=INK; ctx.lineWidth=2.2;
+    for(const side of [-1,1]) for(let i=0;i<2;i++){ const yy=2+i*5; ctx.beginPath(); ctx.moveTo(side*tw*.55,yy); ctx.lineTo(side*(tw+7+i*2),yy+2+step*.25); ctx.stroke(); }
+    ctx.strokeStyle=SH; ctx.lineWidth=1.2;
+    for(const side of [-1,1]) for(let i=0;i<2;i++){ const yy=2+i*5; ctx.beginPath(); ctx.moveTo(side*tw*.55,yy); ctx.lineTo(side*(tw+7+i*2),yy+2+step*.25); ctx.stroke(); } }
 
   // ---- LEGS (wide, planted stance; brute stomps) ----
-  const lw=juggernaut?8.4:bloater?7.4:brute?7:runner?4.6:stalker?4.2:5.4;
-  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8:runner||stalker?5.2:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
-  ctx.strokeStyle=SH; ctx.lineWidth=juggernaut?6.2:brute||bloater?5.4:runner||stalker?3.4:4; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
+  const lw=juggernaut?8.4:bloater?7.4:brute?7:runner?4.6:stalker?4.2:leaper?7.8:5.4;
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8:runner||stalker||leaper?5.2:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
+  ctx.strokeStyle=SH; ctx.lineWidth=juggernaut?6.2:brute||bloater?5.4:runner||stalker||leaper?3.4:4; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
   ctx.fillStyle=juggernaut?'#222826':'#20301a'; ctx.beginPath(); ctx.ellipse(-lw-1,17.4+step,runner?4:3,runner?1.4:1.8,0,0,TAU); ctx.ellipse(lw+1,17.4-step,runner?4:3,runner?1.4:1.8,0,0,TAU); ctx.fill();  // rotted feet
 
   // ---- TORSO (tattered, exposed ribcage) ----
   ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=TO;
   if(bloater){ ctx.beginPath(); ctx.ellipse(0,zty+th*.52,tw,th*.66,0,0,TAU); ctx.fill(); ctx.stroke(); }
   else if(stalker){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty+1); ctx.lineTo(tw*.55,zty+th); ctx.lineTo(-tw*.6,zty+th-1); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if(leaper){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty); ctx.lineTo(tw*.8,zty+th*.7); ctx.lineTo(0,zty+th+2); ctx.lineTo(-tw*.75,zty+th*.72); ctx.closePath(); ctx.fill(); ctx.stroke(); }
   else roundRect(-tw,zty,tw*2,th,4), ctx.fill(), ctx.stroke();
   if(!flash){ ctx.save();
     if(bloater){ ctx.beginPath(); ctx.ellipse(0,zty+th*.52,tw,th*.66,0,0,TAU); ctx.clip(); }
     else if(stalker){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty+1); ctx.lineTo(tw*.55,zty+th); ctx.lineTo(-tw*.6,zty+th-1); ctx.closePath(); ctx.clip(); }
+    else if(leaper){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty); ctx.lineTo(tw*.8,zty+th*.7); ctx.lineTo(0,zty+th+2); ctx.lineTo(-tw*.75,zty+th*.72); ctx.closePath(); ctx.clip(); }
     else { roundRect(-tw,zty,tw*2,th,4); ctx.clip(); }
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(-tw,zty,tw*0.6,th+2);                 // dim sheen
     ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(tw*0.5,zty,tw*0.5,th+2);
@@ -4780,6 +4888,10 @@ function drawZombie(z){
       zSpike(flip*tw*.74,zty+2,5,flip>0?-1.05:-2.1,'#e8e0c8',.65); }
     if(spitter){ ctx.strokeStyle=eye; ctx.lineWidth=1.5; ctx.globalAlpha=.8;
       ctx.beginPath(); ctx.moveTo(flip*-tw*.7,zty+3); ctx.quadraticCurveTo(0,zty+9,flip*tw*.65,zty+5); ctx.stroke(); ctx.globalAlpha=1; }
+    if(venomspine){ for(const bp of [[-4,zty+3,1.8],[4,zty+6,1.5],[0,zty+11,2.1]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
+    if(rottank){ for(const bp of [[-9,zty+2,3.0],[8,zty+4,2.8],[-4,zty+12,3.5],[6,zty+15,2.6]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
+    if(howler){ ctx.fillStyle=eye; ctx.globalAlpha=.36+0.14*Math.sin(now*5+seed);
+      ctx.beginPath(); ctx.ellipse(0,zty+8.5,tw*.55,th*.28,0,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
     if(bloater){ for(const bp of [[-7,zty+4,2.6],[7,zty+6,2.2],[-2,zty+12,3.1],[5,zty+15,1.9]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
   }
 
@@ -4795,14 +4907,14 @@ function drawZombie(z){
   }
 
   // ---- FRONT reaching arm (claws forward, thrown out on a lunge) ----
-  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(juggernaut?13:brute||bloater?12:runner||stalker?16:spitter?14:13)+lunge*5;
-  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8.5:runner||stalker?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
-  ctx.strokeStyle=SK; ctx.lineWidth=juggernaut?6.2:brute||bloater?6:runner||stalker?3.8:4.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
-  if(!flash) zClaw(flip*(rx+1),-2.6+paw,flip,skin,juggernaut?1.55:brute||bloater?1.5:runner||stalker?1.08:1.1);
+  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(juggernaut?13:brute||bloater?12:runner||stalker||leaper?16:spitter?14:13)+lunge*5;
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8.5:runner||stalker||leaper?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  ctx.strokeStyle=SK; ctx.lineWidth=juggernaut?6.2:brute||bloater?6:runner||stalker||leaper?3.8:4.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  if(!flash) zClaw(flip*(rx+1),-2.6+paw,flip,skin,juggernaut?1.55:brute||bloater?1.5:runner||stalker||leaper?1.08:1.1);
   else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(flip*(rx+1),-2.6+paw,2.4,0,TAU); ctx.fill(); }
 
   // ---- HEAD (lolls as it shambles; sits low & sunken on the brute) ----
-  const hy=-15+bob+(juggernaut?4.4:brute?3.5:bloater?2.5:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=juggernaut?8.4:brute?7.6:runner?7.2:stalker?7.3:spitter?8.2:8.6;
+  const hy=-15+bob+(juggernaut?4.4:brute?3.5:bloater?2.5:howler?-1.2:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=juggernaut?8.4:brute?7.6:runner?7.2:stalker?7.3:leaper?7.5:howler?8.9:spitter?8.2:8.6;
   ctx.save(); ctx.translate(hx,0); ctx.rotate(Math.sin(z.walk*0.7+seed)*0.09 + (runner?flip*0.12:0));
   ctx.fillStyle=SK; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,hy,hr,0,TAU); ctx.fill(); ctx.stroke();
   if(!flash){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.arc(2.6,hy+1.8,hr*0.55,0,TAU); ctx.fill();
@@ -4816,8 +4928,11 @@ function drawZombie(z){
     // heavy angry brow
     ctx.strokeStyle=INK; ctx.lineWidth=1.7; ctx.beginPath(); ctx.moveTo(flip*-6,hy-4.4); ctx.lineTo(flip*-1,hy-2.6); ctx.moveTo(flip*1.6,hy-2.7); ctx.lineTo(flip*6,hy-4.2); ctx.stroke();
     if(runner){ ctx.strokeStyle='#ff4630'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(flip*-7,hy-7); ctx.lineTo(flip*-2,hy-9.2); ctx.moveTo(flip*1,hy-8.8); ctx.lineTo(flip*6.5,hy-6.7); ctx.stroke(); }
+    if(skitter){ ctx.strokeStyle=eye; ctx.lineWidth=1.1; ctx.beginPath(); ctx.moveTo(flip*-5,hy-8); ctx.lineTo(flip*-9,hy-12); ctx.moveTo(flip*5,hy-8); ctx.lineTo(flip*9,hy-12); ctx.stroke(); }
     if(stalker){ zSpike(flip*-1,hy-hr+1,5.5,-Math.PI/2,'#efe6cf',.72); zSpike(flip*4,hy-hr+3,4.6,-Math.PI/2+flip*.22,'#efe6cf',.62); }
+    if(leaper){ ctx.strokeStyle='#ffcf36'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(flip*-6.5,hy-6.5); ctx.lineTo(flip*-1.5,hy-8.8); ctx.moveTo(flip*1.5,hy-8.4); ctx.lineTo(flip*6,hy-6.2); ctx.stroke(); }
     if(spitter){ ctx.fillStyle=eye; ctx.globalAlpha=.48; ctx.beginPath(); ctx.ellipse(flip*.8,hy+6.4,4.8,3.5,0,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
+    if(howler){ ctx.fillStyle=eye; ctx.globalAlpha=.42+0.18*Math.sin(now*5+seed); ctx.beginPath(); ctx.arc(flip*.6,hy+6.9,3.8,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
     if(juggernaut){ ctx.fillStyle='#343a38'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(0,hy,hr+1.2,Math.PI*.98,Math.PI*2.02); ctx.lineTo(hr*.72,hy-1.5); ctx.quadraticCurveTo(0,hy+3.5,-hr*.72,hy-1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle=eye; ctx.globalAlpha=.85; ctx.fillRect(-3.9,hy-2.1,7.8,1.7); ctx.globalAlpha=1; }
@@ -4976,6 +5091,7 @@ function maybeDonateToast(){
 }
 function renderMenu(){
   const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
+  renderRoster();
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
   const xp=el('menuXp'); if(xp) xp.style.width=clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%';
   const co=el('menuCoins'); if(co) co.textContent=meta.coins;
@@ -4986,6 +5102,20 @@ function renderMenu(){
     dc.innerHTML='<span class="dic">'+(done?'✅':d.icon)+'</span><div class="dtx"><b>Daily Challenge</b>'
       +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+DAILY_COINS)+'</span>';
     dc.classList.toggle('done',done); }
+}
+function renderRoster(){
+  const rs=el('rosterStrip'); if(!rs) return; rs.innerHTML='';
+  AVATARS.forEach((av,i)=>{
+    const unlocked=avatarUnlocked(av), sel=i===meta.avatar;
+    const item=document.createElement('div'); item.className='rosterItem'+(sel?' sel':'')+(unlocked?'':' locked');
+    item.title=unlocked?av.name:av.name+' — unlocks at Lv '+av.unlock;
+    const rip=document.createElement('div'); rip.className='rip'; rip.appendChild(portraitChibi(av));
+    item.appendChild(rip);
+    item.insertAdjacentHTML('beforeend','<span class="rin">'+av.name+'</span>');
+    if(unlocked) item.addEventListener('click',()=>{ if(meta.avatar===i) return;
+      meta.avatar=i; saveMeta(); renderMenu(); });
+    rs.appendChild(item);
+  });
 }
 function goAvatar(){ audioInit();
   const v=el('nameInput').value.trim(); meta.name=v||'deegan'; saveMeta();
