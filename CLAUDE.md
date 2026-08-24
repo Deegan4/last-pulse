@@ -24,6 +24,13 @@ Make each step *specific and actionable*, and where useful name the concrete lev
 Aim for ~3–6 substantive steps. Keep each to a tight sentence or two — detailed, not padded.
 Omit the section only when the reply is itself purely a list of next steps.
 
+**This applies to every reply that ends a turn, including short status updates** (PR merged, PR
+check-in, notification triage) — not just replies that just shipped a feature. A one-line "merged,
+re-synced" confirmation still closes with 2-4 lines on what's worth building next, pulled from
+`ROADMAP.md`'s open items or the balance/tuning backlog, not from git/PR mechanics (that's process,
+not game development). Skip it only for a pure yes/no or a single fact with no natural next-step
+angle (e.g. "which model are you" or relaying a Vercel deploy comment verbatim).
+
 ## Repository
 
 A single-file HTML5 canvas game: **Last Pulse** (repo `Deegan4/last-pulse`), a portrait,
