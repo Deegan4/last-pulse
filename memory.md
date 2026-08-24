@@ -77,6 +77,17 @@ never goes stale like the 2026-08-13 version it replaces did (it sat frozen at v
     since it's untracked and doesn't show as a modification.
 
 ## Current state (done)
+- **v2.56.0 — mid-run perk picks + 3 new mutators.** User: "how can we make the game not so
+  boring and repetitive?" → offered a perk-pick system (bigger lever) vs. expanding mutators
+  (smaller); user said "implement all of that" — both. `PERKS` (`index.html`) is 6 entries with
+  an `apply(h)` writing directly onto the player instance (`h.magMul`, `h.perkSpeedMul`,
+  `h.perkDmgMul`, `h.perkDmgInMul`, `h.perkRegen`, `h.perkRevives`), read at the existing choke
+  points (`fire()`, `hurt()`, `updatePlayer`, a new `perkRegenTick()`) rather than a generic
+  buff list. `hordeUpdate()` now extracts `hordeSpawnWave(boss)` so every 3rd wave can pause on
+  `openPerkPick(boss)` — a forced 3-card `.achgrid` modal, no Close button (same convention as
+  Results) — before spawning resumes via `choosePerk()`. `MUTATORS` gained Glass Cannon
+  (±60% dmg out/in), Rich Vein (+70% scrap), Blood Moon (+50% XP/coins). Validated via
+  `scripts/validate.mjs` (parses clean, version/mode/horde-spawn gates all pass).
 - **v2.55.0 — 3 new enemy kinds + a real color pass on the roster.** Direct user request: "the
   enemies need to look different and add more types... the game is kinda boring and repetitive".
   Root-caused before building: `ZTYPES` (`index.html`) had 7 kinds but every one of them used a
