@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
-_Last updated: 2026-08-14. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v2.43.2). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+_Last updated: 2026-08-22. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
+v2.55.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -10,91 +10,71 @@ royale** — a from-scratch remake inspired by the StickyGames title _Don't Die_
 canvas-drawn; no original sprites). Everything lives in [`index.html`](index.html): the game
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
-## Session handoff — 2026-08-13
+## Session handoff — 2026-08-22
 _Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below.
 This section is a rolling "as of right now" summary — overwrite it (don't append) each session so it
-never goes stale like the 2026-07-17 version it replaced did (it sat frozen at v2.24.1 for ~10 shipped
-versions before anyone corrected it — see the git history if you want the old text)._
+never goes stale like the 2026-08-13 version it replaces did (it sat frozen at v2.39.2/PR #89 for
+~16 shipped versions and 12 merged PRs before anyone corrected it — see git history for the old text)._
 
-- **Where things stand:** production is **v2.39.2**, merged to `main`. Working branch
-  `claude/next-steps-v8p4vf` is one commit ahead of `main` with **PR #89 open (draft, not yet
-  merged)** — a deploy-config-only change (see below), no `GAME_VERSION` bump. Note: some of this
-  window's shipped versions (v2.38.0, v2.39.0–2.39.2) landed from a **second, concurrent Claude
-  session working the same branch** — PRs #87/#88 — not from this session; this doc reconciles
-  both sessions' work into one accurate snapshot.
-- **Shipped since last handoff:**
-  - **v2.38.0** — distinct visual silhouettes for `stalker` (spine ridge) and `juggernaut` (armor
-    plating) in `drawZombie()`, replacing plain recolors. Shipped by the concurrent session.
-  - **v2.39.0–2.39.2 — weapon art pass**, done across three rounds prompted by user-supplied
-    photorealistic weapon reference images. Each time, clarified via `AskUserQuestion` that the
-    ask was a *design cue* to reinterpret in the existing flat-canvas style, not a literal
-    photorealistic match (a fundamentally different rendering technique) — checked for a Meshy MCP
-    server first (not available: not connected, no `MESHY_API_KEY`) before falling back to flat
-    canvas. Result: Minigun got a belt + grille, Pistol a hammer, Rifle a wood-stock color/`wood`
-    flag, SMG a suppressor — all in `GUNK`/`drawGun()` with the file's established
-    BEHIND/MAIN/OVER-BODY layering.
-- **This session's actual work:**
-  1. **Investigated `separate()` perf per user request, shipped nothing.** Built a synthetic
-     Node benchmark suggesting a 2-3x regression in the existing spatial-hash grid under a tight
-     zombie dogpile, built a density-adaptive hybrid fix — then re-verified **in the real running
-     game** (Playwright, forced dogpile) before trusting it, and the fix measured *worse* in situ:
-     real zombies self-organize into a ring under continuous `separate()` pushback, unlike the
-     static random disc the synthetic benchmark assumed. Correctly declined to ship a fix that
-     only looked good against unrepresentative fixture data. At the real ~85-entity horde ceiling,
-     `separate()` costs <0.2ms/frame — not a meaningful chugging source either way. See
-     `expert-web-game-dev-workspace/iteration-1/eval-0-perf-collision/with_skill/report.md` in the
-     scratchpad for the full numbers if picked up again.
-  2. **Created a new Claude Skill: `expert-web-game-dev`** (`/root/.claude/skills/expert-web-game-dev/SKILL.md`),
-     generalizing this project's demonstrated engineering rigor (measure before claiming perf
-     wins, verify visual changes are actually visible not just error-free, audit state-ordering/
-     draw-layering bugs, close with a cited technical next-steps section) into a reusable skill
-     for any browser/JS game codebase. Vibe-tested with two isolated worktree-agent runs (collision
-     perf — see above — and a visual-detail task that added tattered streamers to the runner
-     zombie, verified via a real crop-comparison screenshot); both runs held up well. Test-run
-     artifacts (not committed) live under
-     `/tmp/.../scratchpad/expert-web-game-dev-workspace/iteration-1/`.
-  3. **PR #89 (open, draft): `vercel.json` Cache-Control headers.** `index.html` and non-`.glb`
-     assets (`loader.js`, `manifest.json`) stay `no-cache, must-revalidate`; `.glb` model files get
-     a year-long `immutable` cache since they're large and rarely change and aren't content-hashed.
-     Header-rule ordering matters — Vercel applies matching rules cumulatively with later rules
-     winning ties, so the general `/assets/(.*)` rule is listed *before* the more specific
-     `/assets/(.*).glb` rule, not after.
-- **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
-  `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
+- **Where things stand:** production (`main`) is **v2.54.0** (PR #100, merged). Working branch
+  `claude/pull-repo-k6uim2` is **one commit ahead with PR #101 open (draft, unreviewed)** —
+  v2.55.0, the 3-new-enemy-kinds work (see "Current state" for full detail). Everything in between
+  (v2.49.0 shop-in-pause through v2.54.0 gun-tip fix) shipped this window across PRs #98–#100, all
+  merged. One collision this window: another concurrent session pushed a commit (`v2.53.0`,
+  brighter tracers + invisible joysticks) directly onto this same branch mid-conversation — caught
+  via a stale scheduled PR check-in firing on an already-merged PR, not proactively. If picking up
+  parallel work on this branch, expect that to keep happening; there's still no CI gate to catch it
+  earlier (see `ROADMAP.md`/`CLAUDE.md` — this repo has none).
+- **Shipped this window** (all direct user requests/reports, not roadmap-driven): pause-menu Shop
+  button → nameplate banners + boss (Juggernaut) hp-banner/slam/guaranteed-loot → pause menu
+  decluttered behind a "More options" toggle → map escalation (new buildings on boss waves) →
+  bullets fixed to spawn from the drawn gun tip instead of a fixed hip radius → 3 new enemy kinds
+  (Howler/Carapace/Husk) with distinct color families, wave-gated at 9/11/13. The throughline: this
+  window was almost entirely reactive to specific user feedback ("too cluttered", "bullets fire
+  from the hip", "boring and repetitive") rather than working the `ROADMAP.md` backlog top-down —
+  each fix started with root-causing the actual complaint in the code before touching anything (see
+  the gun-tip and enemy-kinds entries below for what that looked like in practice).
 - **Open / parked:**
-  1. **Merge PR #89** once reviewed — deploy-config only, no code/version change, low risk.
-  2. **Playtest v2.36.0's bigger-map/mutator changes on-device** — still verified headless only,
-     carried over from two sessions ago.
-  3. **Profile `draw()` and the particle/floater pipeline, not `separate()`** — this session's
-     real finding is that `separate()` is a non-issue at current scale; if "chugging" reports
-     continue, `draw()`'s per-frame `drawables.sort()` (index.html:3137) and `particles[]`/
-     `floaters[]`/`splats[]` growth are the more plausible next place to measure, not the collision
-     grid.
-  4. **Balance backlog needs a fresh look** — `COMBO_WIN`, spawn distances, wave pacing were tuned
-     against the OLD 3000-unit arena and pre-mutator zombie counts; both changed materially since.
-  5. **Dried-blood aging** (`ROADMAP.md` v1.11) — low priority, needs numeric rgb storage instead
-     of the current `'rgba(r,g,b,'` prefix-string trick.
-  6. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
-     generated. Needs an explicit yes/no from the user (add the key, or drop the moonshot).
-  7. **Gamepad still NOT wired into menus** (avatar/weapon grids, settings, results are mouse/
-     touch-only DOM overlays) — carried over, unchanged this session.
-- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header
-  (unaffected by `vercel.json`, which validate.mjs doesn't check — verify deploy-config changes
-  with `node -e "JSON.parse(...)"` instead). Never commit `window.__hook` test hooks (`window.__game`
-  is the permanent shipped one — `grep -c "window.__" index.html` must stay 1). **iOS signing
-  safety:** do not push Apple account/signing secrets to GitHub. Keep Apple account emails, Team IDs
-  unless explicitly approved, App Store Connect API key IDs/issuer IDs, `.p8` keys, certificates,
-  provisioning profiles, `.ipa` files, `.xcarchive` bundles, and export/signing logs out of the
-  repo. Prefer local Xcode account settings or command-line `DEVELOPMENT_TEAM=...` overrides for
-  TestFlight builds; always inspect `git diff --cached` before pushing release work. **New this
-  session**: a benchmark that looks like a clear win against synthetic fixture data can still be a
-  net loss against the real system's actual state distribution (dogpile ring vs. random disc) —
-  always re-verify a promising isolated-benchmark result against the real running game before
-  shipping, not just against a bigger synthetic N. **From two sessions ago, still true**: (a)
-  string-concatenated Map keys (`cx+','+cy`) are measurably slower than packed-integer keys at this
-  codebase's scale; (b) a benchmark harness that re-`eval`/`new Function()`s the code-under-test
-  *inside* the timed loop, or that omits a field the real code filters on (like `.alive`), will
-  silently produce meaningless numbers.
+  1. **Merge PR #101** once reviewed (enemy kinds) — clean, validated, screenshotted.
+  2. **Real-device balance playtest is still the single highest-value pre-launch step** — every
+     tuning knob in `ROADMAP.md`'s "Balance & tuning backlog" table (`COMBO_WIN`, hitstop, door
+     width, coin rates, blood-decal cap, weapon power) has only ever been checked in headless
+     Chromium at software-rendered FPS, never on an actual phone. Nothing code-side blocks this.
+  3. **iOS TestFlight readiness is unverified from here** — recent iOS commits (SwiftData
+     persistence, App Store icon catalog, TestFlight metadata prep) show active work, but this
+     session can't see App Store Connect. **No privacy policy or LICENSE file exists in the repo**
+     — the privacy policy is a real blocker for the iOS App Store listing (Apple requires the URL
+     regardless of data collected), not just a nice-to-have.
+  4. **No CI workflow** — `scripts/validate.mjs` + the driver both run in seconds and already exist;
+     wiring them into a GitHub Actions gate on PRs would have caught this window's branch collision
+     before it happened. Explicit user call, not made yet.
+  5. **Audio loudness hasn't been re-audited this window** — no SFX layers were touched, so likely
+     fine, but `make-audit-copy.mjs` → `window.__audioAudit()` (see "How to run") is a 5-minute
+     check worth running before any store submission, not something to assume stays true forever.
+  6. **Gamepad-vs-new-UI check**: the pause menu's new "More options" toggle (`#sMoreToggle`) was
+     verified with gamepad-nav in mind (reuses the exact `.opt:not(.hidden)` hide/show pattern
+     `#sQuit` already used, specifically so `gpMenuTargets()` needed zero changes) but has not been
+     tested with a real controller — carried forward as a general gamepad caveat, not new risk.
+- **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'`
+  (owner's, near `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout
+  (no keys in the file).
+- **Gotchas learned this window** (durable ones also copied into "Gotchas / constraints" below):
+  - `index.html` has **four** bare `})();` lines across its two `<script>` tags (game IIFE + a
+    nested screen-fit-diagnostic IIFE + the 3D-loader module's own IIFE) — a naive hook-injection
+    script targeting "the last/first `})();`" can land in the wrong scope. Target the `})();`
+    **immediately followed by `</script>`**, and take the **first** such match, not the last.
+  - When forcing a boss-wave clear or similar state-machine transition via a test hook, remember
+    the surrounding `if(...)`/`for(...)` brace structure before editing nearby code — one edit this
+    window (adding `escalateMap()` inside the `if(boss){...}` block) initially over-closed a brace
+    and broke parsing; `node scripts/validate.mjs`'s parse-check caught it immediately, but count
+    braces by hand before trusting a "just add one line here" edit near dense control flow.
+  - `scripts/validate.mjs`'s horde-spawn-reachability gate (`gated` array, hardcoded) does NOT
+    auto-discover new `ZTYPES` entries — add any new Horde-only kind's identifier to that array or
+    the gate silently won't check it.
+  - A stray self-referential `assets/assets` symlink got created inside the real repo (not the
+    scratchpad) multiple times this window from `ln -sf` commands run with an ambiguous relative
+    target — always `rm` it and re-check `git status --short` before committing; it's easy to miss
+    since it's untracked and doesn't show as a modification.
 
 ## Current state (done)
 - **v2.55.0 — 3 new enemy kinds + a real color pass on the roster.** Direct user request: "the
@@ -1450,6 +1430,14 @@ versions before anyone corrected it — see the git history if you want the old 
   authorizes the MCP in an interactive session, then `node scripts/gen-meshy.mjs`.
 - The three.js CDN (unpkg) is blocked headless, so the 3D path can only be verified in a real
   browser over http(s) — the 2D fallback is the tested path.
+- **`index.html` has FOUR `})();`-only lines across its two `<script>` tags** (the game IIFE, plus
+  a small screen-fit-diagnostic IIFE nested inside it, plus the 3D-loader module's own IIFE) — a
+  naive "insert before the last/first bare `})();`" hook-injection script can land in the wrong
+  scope and throw `ReferenceError: obstacles is not defined` (or similar) with no indication why.
+  The correct target for game-state hooks (`window.__foo = () => …` reading `player`/`zombies`/
+  `hordeWave`/etc.) is the `})();` **immediately followed by `</script>`** — filter on that pair,
+  and take the **first** match, not the last (the 3D module's IIFE close matches the same bare-line
+  pattern too, further down the file, and a naive last-match search finds that one instead).
 
 ## Next enhancements
 **The forward plan now lives in [ROADMAP.md](ROADMAP.md)** — versioned feature bundles

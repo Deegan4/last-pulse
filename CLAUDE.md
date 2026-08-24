@@ -75,18 +75,30 @@ Pipeline (top-down in the file):
    `zone` is the shrinking "safe area" state machine (`zoneUpdate`/`outsideZone`/`safeText`);
    `PHASES` defines hold/shrink timing, radius, and out-of-zone damage.
 5. **Entities** — `makeHuman(isPlayer, avatar, weapon)` and `makeZombie(x,y,kind)`. `spawnMatch()`
-   builds the field (player + 14 bot humans + zombies) and decor. Zombies come in three kinds
-   (`ZTYPES`: `normal`/`runner`/`brute`) differing in hp, speed, damage, and size. Bots run
-   `updateBot`; the player runs `updatePlayer`; zombies run `updateZombie`. AI lives alongside
-   player logic. Most entities carry a per-instance radius `r` (default `R`) used by collisions
-   and `separate()`.
+   builds the field (player + 14 bot humans + zombies) and decor. Zombies come in ten kinds
+   (`ZTYPES`): the original `normal`/`runner`/`brute`, plus Horde-only additions gated into
+   `hordeKind(wave)`'s weighted table as waves climb — `spitter`/`bloater`/`stalker` (waves 4/5/7),
+   `juggernaut` (a `boss:true` mini-boss every 5th wave, with its own hp banner + telegraphed
+   `JUGGERNAUT_SLAM` ground-slam + guaranteed loot drop), and `howler`/`carapace`/`husk` (waves
+   9/11/13 — a haste-support caster, a flat-damage-reduction tank, and a weak-add spawner,
+   respectively). Each kind differs in hp/speed/damage/size plus a `drawZombie()` silhouette
+   flourish and often its own behavior flag (`ranged`, `boom`, `armored`, `howler`, `spawner`,
+   copied from `ZTYPES` onto the instance in `makeZombie`) — that's the pattern to follow when
+   adding another kind. Bots run `updateBot`; the player runs `updatePlayer`; zombies run
+   `updateZombie`. AI lives alongside player logic. Most entities carry a per-instance radius `r`
+   (default `R`) used by collisions and `separate()`.
 6. **Combat** — weapon-driven `fire()` (semi/auto/shotgun/sniper/flame modes, ammo `mag`, auto
-   `reload`, pistol crit, sniper pierce, burn DoT). `hurt`/`die` apply damage and award kills +
-   XP, push eliminations to `killFeed`, and feed per-match achievement stats (`matchStat`).
-   Power-ups: `castLightning` (chain-zap), `throwBomb`/`explode` (AoE), and `castGrapple` (`F` /
-   🪝 — spring-damper rope to a building that conserves swing momentum; tunables in `GRAPPLE`),
-   shown as cooldown buttons. Balance lives in the tunable consts near the top of the IIFE
-   (`MOVE`/speeds, `ZTYPES`, `PHASES`, `GRACE`, `GRAPPLE`) — tune there, not inline.
+   `reload`, pistol crit, sniper pierce, burn DoT). Every shot's spawn point comes from `gunTip(h)`
+   (muzzle) / `wristPos(h)` (hand, for ejected shells) — these mirror `drawHeroArm()`'s exact draw
+   transform (shoulder anchor → `CHAR_VISUAL_SCALE` → rotate to aim → `HERO_ARM_REACH` → barrel
+   length) so bullets/sparks/shells always leave from where the gun is actually drawn; don't
+   reintroduce a fixed-radius offset from `h.x,h.y` — that was a real bug (shots reading as fired
+   from the hip on long guns). `hurt`/`die` apply damage and award kills + XP, push eliminations to
+   `killFeed`, and feed per-match achievement stats (`matchStat`). Power-ups: `castLightning`
+   (chain-zap), `throwBomb`/`explode` (AoE), and `castGrapple` (`F` / 🪝 — spring-damper rope to a
+   building that conserves swing momentum; tunables in `GRAPPLE`), shown as cooldown buttons.
+   Balance lives in the tunable consts near the top of the IIFE (`MOVE`/speeds, `ZTYPES`, `PHASES`,
+   `GRACE`, `GRAPPLE`) — tune there, not inline.
 7. **Effects / Audio** — `spark` pushes into `particles[]`; `floaters[]` are damage numbers;
    `zaps[]` are lightning visuals. Audio is a lazy WebAudio synth (`audioInit` on first gesture);
    `tone`/`noise`/`sfx` are fire-and-forget; `startMusic`/`stopMusic` toggle a simple loop.
