@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.55.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.56.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -303,6 +303,28 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       `drawDayNight`), **Low Gravity** (`bombFuseMul`/`bombRadMul`, bombs hang longer and blast
       wider). No apply/revert step needed — `spawnMatch` already rebuilds the world from scratch
       each match, so every consumer just reads `activeMutator` directly at the point of use.
+- [x] **Mid-run perk picks** (shipped v2.56.0, direct user request: "how can we make the game not
+      so boring and repetitive?" → "implement all of that" for both perk-picks and more mutators)
+      — a `PERKS` table (`index.html`, "Perk picks" section) of 6 entries, each an `apply(h)` that
+      mutates the player instance directly: **Extended Clip** (`h.magMul` ×1.5, stacks with the
+      Extended Magazines shop upgrade), **Adrenaline** (`h.perkSpeedMul` ×1.15, read in
+      `updatePlayer`'s move-accel calc), **Heavy Rounds** (`h.perkDmgMul` ×1.2, read in `fire()`
+      alongside the Glass Cannon mutator's `dmgOutMul`), **Thick Skin** (`h.perkDmgInMul` ×0.8,
+      read in `hurt()`), **Regeneration** (`h.perkRegen` +1.5 hp/s, ticked by a new
+      `perkRegenTick()` alongside `campfireHeal`), and **Second Wind** (`h.perkRevives` +1, an
+      interception in `hurt()`'s death check that consumes one banked revive at 50% hp instead of
+      dying). `hordeUpdate()` was restructured to extract `hordeSpawnWave(boss)` so every 3rd wave
+      (3, 6, 9…) can pause on `openPerkPick(boss)` — a 3-card `.achgrid`/`.achcard` modal (reusing
+      the Shop/Achievements pattern, no Close button since the pick is forced) — and resume
+      spawning once `choosePerk()` applies the pick; boss waves (every 5th) simply coincide when
+      the two cycles overlap. Three new mutators shipped alongside: **Glass Cannon** (`dmgOutMul`/
+      `dmgInMul` 1.6×, high-risk/high-reward), **Rich Vein** (`scrapMul` 1.7×, read in `die()`'s
+      scrap-drop calc), and **Blood Moon** (`xpMul`/`coinMul` 1.5×, read in `showResults()`).
+- [ ] **Perk variety beyond 6** — the picker reuses the same 6 perks every 3rd wave for the whole
+      run; a longer run (wave 15+) can see repeats. Consider adding 3-4 more (e.g. a lifesteal
+      perk, a crit-chance perk, a dash-cooldown perk) once real playtests show which of the
+      current 6 get picked least (instrument via a `meta.perkPicks[id]++` counter, same pattern as
+      `matchStat`).
 
 ## Balance & tuning backlog (needs real-device playtests)
 

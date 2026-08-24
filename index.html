@@ -826,6 +826,12 @@
     <button class="close" id="shopClose">Close</button>
   </div>
 
+  <!-- ===== Perk pick (every 3rd Horde wave, forced choice — no close button) ===== -->
+  <div id="perkPick" class="modal hidden">
+    <h2 class="heading">Choose a Perk</h2>
+    <div class="achgrid" id="perkGrid"></div>
+  </div>
+
   <!-- ===== Donate / support (opens the creator's Stripe Payment Link in a new tab) ===== -->
   <div id="donate" class="modal hidden">
     <div class="wnburst">💜</div>
@@ -1178,8 +1184,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.55.0';
+const GAME_VERSION = '2.56.0';
 const CHANGELOG = [
+  { v:'2.56.0', items:[
+    ['🎴','Perk picks every 3rd wave','the run now pauses on a 3-card choice (Extended Clip, Adrenaline, Heavy Rounds, Thick Skin, Regeneration, Second Wind) before waves 3, 6, 9… spawn — a mid-run lever for build variety, stacking with repeated picks'],
+    ['🎲','3 new match mutators','Glass Cannon (+60% damage dealt and taken), Rich Vein (+70% scrap drops), and Blood Moon (+50% XP and coins) join the mutator pool announced at drop-in'],
+  ]},
   { v:'2.55.0', items:[
     ['👹','3 new late-game enemies','Howler (violet screamer that hastes nearby zombies — kill it first), Carapace (rust-armored tank that shrugs off chip damage), and Husk (pale bone husk that periodically drops weaker adds) unlock at waves 9/11/13, each with its own color family and silhouette so the horde keeps evolving deep into a run instead of just scaling numbers'],
   ]},
@@ -1711,9 +1721,48 @@ const MUTATORS = [
   {id:'horde2x',  icon:'🧟', name:'SWARM NIGHT',  desc:'Every wave spawns twice the zombies',        zMul:2},
   {id:'fogNight', icon:'🌙', name:'DEEP FOG',       desc:'Endless night — your light barely reaches',  fog:true},
   {id:'lowGrav',  icon:'🎈', name:'LOW GRAVITY',   desc:'Bombs hang longer and blast wider',          bombFuseMul:1.8, bombRadMul:1.4},
+  {id:'glassCannon', icon:'💎', name:'GLASS CANNON', desc:'You deal +60% damage but take +60% too',   dmgOutMul:1.6, dmgInMul:1.6},
+  {id:'richVein',    icon:'💰', name:'RICH VEIN',    desc:'Zombies drop 70% more scrap',              scrapMul:1.7},
+  {id:'bloodMoon',   icon:'🔴', name:'BLOOD MOON',   desc:'+50% XP and coins this run',                xpMul:1.5, coinMul:1.5},
 ];
 const MUTATOR_CHANCE = 0.35;    // "occasional" — most matches stay vanilla
 function pickMutator(){ return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
+
+// ===== Perk picks =====
+// Mid-run agency: every 3rd wave (3,6,9…) pauses on a 3-card choice before the next wave spawns.
+// Each perk's apply(h) mutates the player instance directly (h.perkDmgMul etc.) — read at the
+// existing single choke points in fire()/hurt()/die() rather than a generic buff-list, matching
+// how activeMutator's numeric fields are consumed.
+const PERKS = [
+  {id:'extClip',  icon:'🧰', name:'EXTENDED CLIP', desc:'+50% magazine size',            apply:h=>{ h.magMul=(h.magMul||1)*1.5; }},
+  {id:'adrenaline',icon:'⚡', name:'ADRENALINE',    desc:'+15% move speed',               apply:h=>{ h.perkSpeedMul=(h.perkSpeedMul||1)*1.15; }},
+  {id:'heavyRounds',icon:'🔨',name:'HEAVY ROUNDS',  desc:'+20% weapon damage',            apply:h=>{ h.perkDmgMul=(h.perkDmgMul||1)*1.2; }},
+  {id:'thickSkin',icon:'🛡️', name:'THICK SKIN',    desc:'-20% damage taken',             apply:h=>{ h.perkDmgInMul=(h.perkDmgInMul||1)*0.8; }},
+  {id:'regen',    icon:'💗', name:'REGENERATION',  desc:'Heal 1.5 hp/s passively',       apply:h=>{ h.perkRegen=(h.perkRegen||0)+1.5; }},
+  {id:'secondWind',icon:'💖',name:'SECOND WIND',    desc:'Survive one lethal hit at 50% hp',apply:h=>{ h.perkRevives=(h.perkRevives||0)+1; }},
+];
+let perkChoices=[], pendingWaveBoss=false;
+function openPerkPick(boss){
+  pendingWaveBoss = boss;
+  const pool = PERKS.slice(); perkChoices=[];
+  while(perkChoices.length<3 && pool.length) perkChoices.push(pool.splice(randi(0,pool.length-1),1)[0]);
+  const grid = el('perkGrid'); grid.innerHTML='';
+  for(const p of perkChoices){
+    const card = document.createElement('div'); card.className='achcard shopcard'; card.dataset.perk=p.id;
+    card.innerHTML = `<span class="aic">${p.icon}</span><div class="atxt"><b>${p.name}</b><span>${p.desc}</span></div>`;
+    grid.appendChild(card);
+  }
+  paused = true;
+  el('perkPick').classList.remove('hidden');
+}
+function choosePerk(id){
+  const p = perkChoices.find(x=>x.id===id); if(!p) return;
+  p.apply(player);
+  toast(p.icon+' '+p.name+' picked!'); sfx('level');
+  el('perkPick').classList.add('hidden');
+  paused = false;
+  hordeSpawnWave(pendingWaveBoss);
+}
 function dailyDoneToday(){ return meta.dailyDone===dayKey(); }
 // Called at match end (before results render). Returns true if the daily was just completed.
 function checkDaily(ctx){
@@ -2260,18 +2309,19 @@ function fire(h){
   if(h.mag<=0){ startReload(h); return; }
   const w=h.weapon; h.fireCd = w.fireCd * (h.isPlayer?1:h.fireMul);
   const range=w.range*RANGE_SCALE;
+  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
   if(w.mode==='flame'){
     const fspd=320, tip=gunTip(h);
     for(let i=0;i<3;i++){ const a=h.aim+rand(-0.34,0.34), sp=fspd*rand(.7,1.1);
       bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        life:range/fspd, owner:h, dmg:w.dmg, flame:true, hits:0, r:rand(4,8),
+        life:range/fspd, owner:h, dmg:w.dmg*dmgMul, flame:true, hits:0, r:rand(4,8),
         color: pick(['#ff9b3d','#ff6a2a','#ffd24a']) }); }
     h.mag--; sfx('flame'); if(h.mag<=0) startReload(h); return;
   }
   if(w.mode==='launcher'){
     const a=h.aim+(h.isPlayer?rand(-0.01,0.01):rand(-h.acc,h.acc)*0.5), rs=430, tip=gunTip(h);
     bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*rs, vy:Math.sin(a)*rs,
-      life:range/rs, owner:h, dmg:w.dmg, boom:true, rocket:true, hits:0,
+      life:range/rs, owner:h, dmg:w.dmg*dmgMul, boom:true, rocket:true, hits:0,
       color:'#ffcaa0', lw:5, tl:0.02, glow:9, tip:3, aim:a });
     h.mag--; h.muzzleT=0.09; h.muzzleR=12; h.recoil=2.4;
     for(let i=0;i<12;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
@@ -2288,7 +2338,7 @@ function fire(h){
     const spread = w.mode==='shotgun'? rand(-0.28,0.28) : (h.isPlayer?rand(-0.012,0.012):rand(-botAcc,botAcc));
     const a=h.aim+spread + (w.twin?(i===0?-0.02:0.02):0);
     const perp = w.twin?(i===0?-3:3):0;   // twin barrels fire from side-by-side muzzles
-    let dmg=w.dmg, crit=false;
+    let dmg=w.dmg*dmgMul, crit=false;
     if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
     bullets.push({ x:tip.x - Math.sin(h.aim)*perp, y:tip.y + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
       life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper'||w.arc, arc:w.arc, frost:w.frost, hits:0,
@@ -2329,6 +2379,10 @@ function spraySplatOnWall(x, y, dmg){
 }
 function hurt(e, dmg, src, isHumanTarget){
   if(!e.alive) return;
+  // Glass Cannon mutator — the player takes extra damage to match the extra damage they deal.
+  if(e.isPlayer && activeMutator?.dmgInMul) dmg*=activeMutator.dmgInMul;
+  // Thick Skin perk — flat incoming-damage reduction for the player.
+  if(e.isPlayer && e.perkDmgInMul) dmg*=e.perkDmgInMul;
   // Carapace: a flat carapace damage reduction (distinct from the numeric shield pickup below) —
   // rewards burst weapons over chip damage, the "low-profile armored tank" wrinkle.
   if(e.armored) dmg*=0.65;
@@ -2353,7 +2407,14 @@ function hurt(e, dmg, src, isHumanTarget){
   if(src && src.isPlayer && dmg>0){ hitmarks.push({x:e.x,y:e.y-6,t:0.22,kill:false}); sfx('tick',null,e); }
   if(e.isPlayer && src && src!==e){ dmgDirs.push({a:Math.atan2(src.y-e.y,src.x-e.x), t:1.0});
     if(e.gpIndex!=null) gpRumble(e.gpIndex, 110, clamp(dmg/70,0.15,0.55), clamp(dmg/45,0.1,0.5)); }   // rumbles THIS player's own pad, not always pad 0
-  if(e.hp<=0){ die(e, src, isHumanTarget); }
+  if(e.hp<=0){
+    // Second Wind perk: consume one banked revive instead of dying, once per pick.
+    if(e.isPlayer && e.perkRevives>0){ e.perkRevives--; e.hp=Math.round(e.maxhp*0.5); e.burn=0;
+      shake=Math.min(shake+12,18); toast('💗 SECOND WIND — back up!'); sfx('level');
+      for(let i=0;i<16;i++) spark(e.x,e.y,'#7bff8a',rand(80,220),rand(0,TAU),.7);
+      return; }
+    die(e, src, isHumanTarget);
+  }
 }
 function die(e, src, isHumanTarget){
   e.alive=false; e.hp=0; e.burn=0;
@@ -2392,13 +2453,14 @@ function die(e, src, isHumanTarget){
   if(!isHumanTarget){ // zombie death pop
     rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
+    const scrapMul = activeMutator?.scrapMul||1;   // Rich Vein mutator
     if(e.boss){   // guaranteed boss loot — no RNG gate, and a bigger scrap pile than any normal kill
-      scraps.push(makeScrap(e.x, e.y, randi(8,12)));
+      scraps.push(makeScrap(e.x, e.y, Math.round(randi(8,12)*scrapMul)));
       pickups.push(makePickup(e.x+rand(-14,14), e.y+rand(-14,14)));
       if(src && src.isPlayer) toast('☠ BOSS DOWN — guaranteed drop!');
     // scrap salvage — the building currency; bigger corpses yield more
     } else if(scraps.length<40 && Math.random()<0.62){ const big=(e.size||1)>=1.3, run=(e.size||1)<0.86;
-      scraps.push(makeScrap(e.x, e.y, big?randi(5,8):(run?randi(1,2):randi(2,4)))); } }
+      scraps.push(makeScrap(e.x, e.y, Math.round((big?randi(5,8):(run?randi(1,2):randi(2,4)))*scrapMul))); } }
   if(e.isPlayer){ shake=Math.min(shake+10,18); }
   if(isHumanTarget){
     // isPlayer2 checked FIRST: it's the more specific case, and must win over the plain isPlayer
@@ -2619,6 +2681,13 @@ function campfireHeal(h,dt){
     h.hp=Math.min(h.maxhp, h.hp+CAMPFIRE.heal*dt);
     if(h.isPlayer && Math.random()<dt*9) spark(h.x+rand(-9,9), h.y-rand(0,16), '#8fe36a', rand(18,60), -Math.PI/2, .55);
     return; } }
+}
+// Regeneration perk — a flat hp/s passive heal, independent of campfires. Stacks additively if
+// picked more than once (h.perkRegen accumulates in the perk's own apply()).
+function perkRegenTick(h,dt){
+  if(!h.perkRegen || h.hp>=h.maxhp || grace>0) return;
+  h.hp=Math.min(h.maxhp, h.hp+h.perkRegen*dt);
+  if(Math.random()<dt*6) spark(h.x+rand(-9,9), h.y-rand(0,16), '#ff8fd6', rand(18,55), -Math.PI/2, .5);
 }
 let toastT=0;
 function toast(msg){ const t=el('toast'); t.textContent=msg; t.style.opacity='1'; toastT=1.1; }
@@ -3051,7 +3120,7 @@ function updatePlayer(h,dt,gp,readShared){
   if(h.grap){ // rope physics owns velocity — input only steers (pumps the swing)
     if(m>0){ h.vx+=mx/m*520*dt; h.vy+=my/m*520*dt; } h.walk+=dt*10;
   }
-  else if(m>0){ h.vx+=(mx/m*h.speed-h.vx)*MOVE.accel; h.vy+=(my/m*h.speed-h.vy)*MOVE.accel; }
+  else if(m>0){ const spd=h.speed*(h.perkSpeedMul||1); h.vx+=(mx/m*spd-h.vx)*MOVE.accel; h.vy+=(my/m*spd-h.vy)*MOVE.accel; }
   else { h.vx*=MOVE.friction; h.vy*=MOVE.friction; }   // coast to a stop with a little skid
   // stride cadence tracks real speed: fast run = quick legs, a creep = a slow shuffle
   if(!h.grap){ const s01=clamp(Math.hypot(h.vx,h.vy)/(h.speed||1),0,1.25); h.walk+=dt*(2.5+9*s01); }
@@ -3092,7 +3161,7 @@ function updatePlayer(h,dt,gp,readShared){
   if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt; if(h.grapCd>0) h.grapCd-=dt;
   updateGrapple(h,dt);
   stepDust(h,dt);
-  campfireHeal(h,dt);
+  campfireHeal(h,dt); perkRegenTick(h,dt);
   // equipped cosmetic trail (shop) — player only
   const tr = meta.trail!=='none' && shopItem(meta.trail);
   if(tr && (h.vx*h.vx+h.vy*h.vy)>3600 && Math.random()<dt*14)
@@ -3255,6 +3324,7 @@ const GP_SIMPLE_MODALS = [
   {id:'donate',      closeId:'donateClose', targets:()=>[el('donateGo'), el('donateClose')]},
   {id:'a2hs',        closeId:'a2hsClose',   targets:()=>[el('a2hsClose')]},
   {id:'whatsnew',    closeId:'wnClose',     targets:()=>[el('wnClose')]},
+  {id:'perkPick',    closeId:null,          targets:()=>[...el('perkGrid').querySelectorAll('.shopcard')]},  // forced pick, no close
 ];
 function gpMenuTargets(){
   // Recomputed each call instead of cached: the grids rebuild whenever level/unlocks change
@@ -3530,6 +3600,12 @@ function hordeUpdate(dt){
   for(let i=zombies.length-1;i>=0;i--) if(!zombies[i].alive) zombies.splice(i,1);  // prune corpses
   hordeWave++; hordeStallT=0;
   const boss = hordeWave>=5 && hordeWave%5===0;                     // every 5th wave: armored elites
+  // Every 3rd wave: pause on a perk pick before the next wave spawns (hordeSpawnWave runs once the
+  // player chooses). Can coincide with a boss wave (e.g. 15) — that's fine, both just fire together.
+  if(hordeWave>=3 && hordeWave%3===0){ openPerkPick(boss); return; }
+  hordeSpawnWave(boss);
+}
+function hordeSpawnWave(boss){
   toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave+' — CLEARED, next wave!'); sfx('warn');
   const zMul=activeMutator?.zMul||1;
   const n=Math.min((8+hordeWave*3)*zMul, 42*zMul);                 // steeper ramp so it doesn't stay trivial
@@ -3569,6 +3645,7 @@ function showResults(win, place){
   screenState='results'; endSpectate(); gpFocusIdx=0;
   const horde = gameMode==='horde';
   let xpEarned = win?120:40; xpEarned += killsTotal*(horde?2:10); if(horde) xpEarned += hordeWave*15;
+  xpEarned = Math.round(xpEarned*(activeMutator?.xpMul||1));   // Blood Moon mutator
   const lv=grantXp(xpEarned);
   // career stats
   meta.matches++; meta.ckills += killsTotal;
@@ -3578,6 +3655,7 @@ function showResults(win, place){
   else if(meta.best===0 || place<meta.best) meta.best=place;
   // coins: per-kill + win / horde-wave bonuses (achievements & the daily pay on top)
   let coinsEarned = killsTotal*(horde?1:5) + (win?25:0) + (horde?hordeWave*6:0);
+  coinsEarned = Math.round(coinsEarned*(activeMutator?.coinMul||1));   // Blood Moon mutator
   meta.coins += coinsEarned;
   saveMeta();
   const mctxA = { win, place, horde, matchKills:killsTotal, wave:hordeWave, time:elapsed,
@@ -5434,6 +5512,8 @@ el('shopClose').addEventListener('click',closeShop);
 el('shopGrid').addEventListener('click',e=>{ const u=e.target.closest('[data-upg]'); if(u){ buyMag(); return; }
   const c=e.target.closest('[data-shop]'); if(c){ shopTap(c.dataset.shop); return; }
   const bn=e.target.closest('[data-banner]'); if(bn) bannerTap(bn.dataset.banner); });
+// perk pick (mid-run, every 3rd wave — see openPerkPick/choosePerk)
+el('perkGrid').addEventListener('click',e=>{ const p=e.target.closest('[data-perk]'); if(p) choosePerk(p.dataset.perk); });
 // donate / support
 el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
 el('donateGo').addEventListener('click',donateGo);
