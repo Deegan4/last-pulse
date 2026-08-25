@@ -3,10 +3,6 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<!-- Tints iOS Safari's URL bar AND bottom toolbar. It MUST match the colour the canvas paints
-       at the screen edges (~#446a30 top / #416730 bottom, measured) — a near-black value here is
-       what reads as "black bars at the top and bottom" in a Safari tab, framing a bright green game. -->
-  <meta name="theme-color" content="#436830" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Last Pulse" />
@@ -64,7 +60,7 @@
       radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.12), transparent 66%),
       radial-gradient(130% 95% at 50% 45%, #2a3b1c, #1a2610 92%);
     background-attachment:fixed;
-    user-select:none;-webkit-user-select:none;touch-action:none}
+    -webkit-user-select:none;user-select:none;touch-action:none}
   /* portrait stage, centered with letterbox on desktop. Size is computed in JS
      (resize()) for reliability — iOS Safari mis-evaluates min()/calc() viewport math
      and can collapse the stage to zero height. CSS here is just a full-screen fallback. */
@@ -208,6 +204,7 @@
   .btn.ghost{background:#445c2a;color:#fff;box-shadow:0 4px 0 #2f4420}
   .btnrow{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
   .footer{margin-top:auto;padding-top:12px;display:flex;justify-content:center}
+  .versionFooter{color:#cfe0b3;font-size:12px}
 
   .namebox{display:flex;flex-direction:column;align-items:center;gap:12px;margin:14px 0}
   .namebox input{font-size:20px;font-weight:800;text-align:center;padding:12px 16px;border-radius:12px;
@@ -220,6 +217,7 @@
   .statscard .st b{display:block;font-size:20px;font-weight:800;color:#fff;line-height:1.1}
   .statscard .st span{font-size:11px;font-weight:700;color:#cddcb6;text-transform:uppercase;letter-spacing:.5px}
   .career{color:#cddcb6;font-weight:700;font-size:13px;margin-top:2px;text-align:center}
+  .place-sub{color:#eaf6d6;font-weight:700}
   .career b{color:#fff}
   .modesel{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 14px}
   .modebtn{cursor:pointer;padding:9px 14px;border-radius:11px;border:2px solid var(--line);
@@ -271,7 +269,7 @@
   .ranknext{font-size:10.5px;font-weight:700;color:#a9c47f}
 
   .rosterStrip{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;width:min(84vw,340px);
-    margin:2px auto 4px;padding:2px 2px 6px;scrollbar-width:none}
+    margin:2px auto 4px;padding:2px 2px 6px}
   .rosterStrip::-webkit-scrollbar{display:none}
   .rosterItem{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;
     cursor:pointer;transition:transform .08s}
@@ -429,7 +427,7 @@
 
   /* ---------- Settings & results ---------- */
   .modal{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;
-    justify-content:safe center;gap:14px;padding:24px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    justify-content:safe center;gap:14px;padding:24px 20px;overflow-y:auto;
     background:rgba(20,28,12,.82)}
   /* keep the heading and Close button from being squeezed when the list is tall in portrait */
   .modal .heading{flex:0 0 auto}
@@ -590,13 +588,13 @@
      horde shambles behind every menu. Alpha tuned so text/buttons stay fully readable. */
   .screen{background:
     radial-gradient(135% 95% at 50% -8%, rgba(49,73,31,.62), rgba(34,51,26,.68) 52%, rgba(19,27,12,.84) 100%);
-    scrollbar-width:none}
+    }
   .screen::-webkit-scrollbar{display:none}
   .screen:not(.hidden){animation:scrIn .3s cubic-bezier(.2,.9,.3,1)}
   @keyframes scrIn{from{opacity:0;transform:translateY(12px) scale(.996)}to{opacity:1;transform:none}}
   /* modals: frosted backdrop + slide-up */
   .modal{background:rgba(12,18,7,.66);backdrop-filter:blur(12px) saturate(1.15);
-    -webkit-backdrop-filter:blur(12px) saturate(1.15)}
+    -webkit-backdrop-filter:blur(12px) saturate(1.15);backdrop-filter:blur(12px) saturate(1.15)}
   .modal:not(.hidden){animation:mdIn .27s cubic-bezier(.2,.9,.3,1)}
   @keyframes mdIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
   /* glass cards everywhere */
@@ -604,7 +602,7 @@
   .xpwrap,.rnext,.achcard.locked{
     background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015)) padding-box,var(--glass);
     border:1.5px solid var(--stroke);
-    backdrop-filter:blur(9px); -webkit-backdrop-filter:blur(9px)}
+    -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px)}
   .card{border-radius:var(--r-lg);box-shadow:var(--shadow-md)}
   .card.sel{border-color:var(--stroke2);
     box-shadow:0 0 0 3px rgba(214,255,110,.16), 0 0 26px rgba(198,245,86,.14), var(--shadow-md)}
@@ -626,21 +624,21 @@
     background:linear-gradient(105deg,transparent,rgba(255,255,255,.55),transparent);
     transform:skewX(-18deg);animation:sheen 3.4s ease-in-out infinite;pointer-events:none}
   @keyframes sheen{0%,68%{left:-70%}100%{left:135%}}
-  .achbtn{border:1.5px solid var(--stroke);border-radius:999px;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+  .achbtn{border:1.5px solid var(--stroke);border-radius:999px;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px)}
   /* HUD: frosted panels + notch safe-areas */
   #mmBody{background:rgba(14,22,9,.55);border:1.5px solid var(--stroke);border-radius:16px;
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
   #mmFab{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
   #gearHud{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
   #gearHud,#xpwrap{top:calc(10px + var(--sat))}
   #mmwrap{top:calc(10px + var(--sat));right:calc(10px + var(--sar))}
   #xpbar{box-shadow:inset 0 2px 5px rgba(0,0,0,.45)}
   #powers{bottom:calc(150px + var(--sab))}
   .power{border:2.5px solid rgba(255,255,255,.55);box-shadow:0 8px 20px rgba(0,0,0,.4)}
-  #specBar{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);background:rgba(14,22,9,.7)}
-  #toast{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);background:rgba(10,16,6,.72);
+  #specBar{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);background:rgba(14,22,9,.7)}
+  #toast{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);background:rgba(10,16,6,.72);
     border:1px solid var(--stroke);box-shadow:var(--shadow-md)}
   /* modal option rows & sliders: soft ivory, rounder, floatier */
   .modal .opt,.slider{border-radius:16px;box-shadow:0 6px 0 rgba(0,0,0,.28), 0 12px 24px rgba(0,0,0,.22)}
@@ -649,7 +647,7 @@
   /* grids breathe a little more */
   .grid{gap:12px}
   .namebox input{border-radius:14px;background:rgba(0,0,0,.32);
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 
   /* --- v2.0.1 layout fixes (must stay LAST so they win the cascade) --- */
   /* Menu: stop flex items from compressing/overlapping on iOS Safari — the column
@@ -679,6 +677,7 @@
     #powers #scrapHud{justify-self:center}
     .power{width:54px;height:54px;font-size:23px}
   }
+  .mut-row{display:none}
 </style>
 </head>
 <body>
@@ -696,7 +695,7 @@
           <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
           <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
           <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
-          <div class="srow" id="mutRow" style="display:none"><span class="si">🎲</span><b id="statMut">--</b></div>
+          <div class="srow mut-row" id="mutRow"><span class="si">🎲</span><b id="statMut">--</b></div>
           <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
         </div>
       </div>
@@ -755,7 +754,7 @@
     </div>
     <div class="menurow"><button class="btn ghost achbtn donatebtn" id="donateBtn">💜 Support the game</button></div>
     <button class="btn ghost achbtn a2hsbtn hidden" id="a2hsBtn">📲 Add to Home Screen</button>
-    <div class="footer" style="color:#cfe0b3;font-size:12px"><span id="verLink" class="verlink"></span></div>
+    <div class="footer versionFooter"><span id="verLink" class="verlink"></span></div>
   </div>
 
   <!-- ===== Mode select (picked after the main menu) ===== -->
@@ -792,9 +791,9 @@
           <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
       </div>
       <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
-        <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
+        <input type="range" id="sfxVol" min="0" max="100" step="5" title="SFX volume"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
-        <input type="range" id="aimSens" min="30" max="200" step="10"></div>
+        <input type="range" id="aimSens" min="30" max="200" step="10" title="Aim sensitivity"></div>
       <button class="opt" id="sExport"><span class="oic">💾</span>Copy Save Code</button>
       <button class="opt" id="sImport"><span class="oic">📥</span>Enter Save Code</button>
       <button class="opt" id="sFit"><span class="oic">📏</span>Screen Fit Check</button>
@@ -806,7 +805,7 @@
   <!-- ===== Results ===== -->
   <div id="results" class="modal hidden">
     <div class="placard" id="placard">#8</div>
-    <div id="placeSub" style="color:#eaf6d6;font-weight:700">Eliminated</div>
+    <div id="placeSub" class="place-sub">Eliminated</div>
     <div class="rstats" id="rStats"></div>
     <div class="runlocks" id="rUnlocks"></div>
     <div class="xpwrap"><div class="xprow"><span id="rXpLbl">+0 XP</span><span id="rLvl">Lv 1</span></div>

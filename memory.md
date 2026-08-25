@@ -10,6 +10,36 @@ royale** — a from-scratch remake inspired by the StickyGames title _Don't Die_
 canvas-drawn; no original sprites). Everything lives in [`index.html`](index.html): the game
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
+## Current state
+
+- **v2.52.0 — home-screen roster strip.** A Claude Design mockup (`Last Pulse iOS App.dc.html`,
+  a native-app-style redesign concept) proposed a horizontal "your roster" strip under the
+  fighter card for one-tap hero switching. Rather than the full native SwiftUI rewrite the
+  mockup implied (the iOS app is just a `WKWebView` wrapper around this same `index.html` — see
+  [LastPulseIOS/LastPulse/GameViewController.swift](LastPulseIOS/LastPulse/GameViewController.swift)),
+  ported just the new UI element into the existing web menu: `#rosterStrip` renders all 15
+  `AVATARS` as small `portraitChibi()` thumbnails (`renderRoster()`, called from `renderMenu()`),
+  locked heroes show 🔒 + greyscale via `avatarUnlocked()`, tapping an unlocked one sets
+  `meta.avatar` and re-renders immediately — no detour through the full avatar-select screen.
+  Everything else in the mockup (coin badge, level bar, rank badge, daily challenge card, stats
+  grid, achievements/shop buttons, donate button) already existed in the menu before this change.
+  Bumped `GAME_VERSION` to 2.52.0.
+- **v2.51.0 — improved enemy variant art.** Kept the new enemy-variant roster and made
+  `drawZombie()` family-aware via each zombie's `family` field so variants inherit the right
+  silhouette while gaining better unique details: Husk bone shards, Skitter extra legs/antennae,
+  Crusher armor plates, Venomspine acid tail/spines, Rottank larger glowing blisters, Wraith cyan
+  wisps, and Colossus heavy back armor/horns. `hordeKind()` now spawns the variants across waves
+  2-9, and boss waves can roll a Colossus from wave 15 onward. Bumped `GAME_VERSION` to 2.51.0,
+  prepended the CHANGELOG entry, expanded the horde-spawn validation gate, and synced
+  `ROADMAP.md`.
+
+- **v2.50.0 — new horde enemies.** Added `leaper` and `howler` entries to `ZTYPES` in
+  `index.html`: Leapers unlock at wave 6 and pounce from mid-range via `updateZombie()`, while
+  Howlers unlock at wave 9, hold standoff range, and call `zombieHowl()` to frenzy nearby zombies
+  for 3.2s. `drawZombie()` gives Leapers long pounce legs/yellow brow marks and Howlers a cyan
+  crest/throat pulse so both read at phone scale. Bumped `GAME_VERSION` to 2.50.0, prepended the
+  CHANGELOG entry, and synced `ROADMAP.md`'s gated version header.
+
 ## Session handoff — 2026-08-13
 _Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below.
 This section is a rolling "as of right now" summary — overwrite it (don't append) each session so it
