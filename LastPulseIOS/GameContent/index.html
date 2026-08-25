@@ -1098,7 +1098,7 @@ const WEAPONS = [
   {name:'Shotgun', icon:'💥', dmg:20,  mag:2,  reload:1.25, range:150, fireCd:0.62, mode:'shotgun', unlock:2,  special:'wide pellet spread',                   img:'weapon-shotgun'},
   {name:'SMG',     icon:'🧨', dmg:8,   mag:25, reload:1.6,  range:200, fireCd:0.07, mode:'auto',    unlock:3,  special:'blazing fire rate',                    img:'weapon-smg'},
   {name:'Magnum',  icon:'🔩', dmg:55,  mag:6,  reload:1.8,  range:340, fireCd:0.40, mode:'semi',    unlock:4,  special:'heavy-hitting revolver',               img:'weapon-magnum'},
-  {name:'Sniper',  icon:'🎯', dmg:250, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage',        img:'weapon-sniper'},
+  {name:'Sniper',  icon:'🎯', dmg:190, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage',        img:'weapon-sniper'},
   {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt',                 img:'weapon-crossbow'},
   {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire',                 img:'weapon-flame'},
   {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds',          img:'weapon-minigun'},
@@ -1191,8 +1191,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.53.0';
+const GAME_VERSION = '2.53.1';
 const CHANGELOG = [
+  { v:'2.53.1', items:[
+    ['🎯','Sniper rebalance','damage 250→190 — still drops almost anything in one shot, but no longer trivializes the ROADMAP-flagged burst-vs-DPS gap against the rest of the arsenal'],
+  ]},
   { v:'2.53.0', items:[
     ['☠️','Bosses fight back','Juggernauts and Colossi now telegraph a ground slam (dodge the red ring!), show a health-bar banner while they\'re up, and always drop guaranteed loot when they go down'],
   ]},

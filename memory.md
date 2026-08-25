@@ -12,6 +12,15 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state
 
+- **v2.53.1 — Sniper rebalance.** ROADMAP's balance table flagged "Sniper 250 dmg vs 96-DPS
+  shotgun" as an open question. The math actually shows Sniper's *sustained* DPS (~64, from
+  0.9s fireCd + 3s reload every single shot) is lower than Shotgun's — the "feels OP" complaint is
+  about burst, not DPS: one hit deletes anything under Crusher's 175hp with zero risk. Cut
+  `WEAPONS[5].dmg` 250→190 (`index.html`) — still a near-guaranteed one-shot on everything but
+  bosses/Crusher, but softens the "no skill required" burst feel. Combo window (`COMBO_WIN=3.0s`,
+  flagged as "too generous with Minigun") and the other balance-table knobs (hitstop, door width,
+  decal cap) were left untouched — no device to playtest feel on, so only this one (an objectively
+  arguable DPS-vs-burst mismatch, not a feel call) was worth touching blind.
 - **v2.53.0 — bosses fight back.** Closed the long-standing ROADMAP gap where Juggernaut/Colossus
   bosses were just reskinned regular zombies. Added `SLAM` tunables (`index.html`, near
   `COMBO_WIN`: 150px range/radius, 0.85s telegraph, 34 dmg, 3.4–4.8s cooldown), a `z.boss`-gated
