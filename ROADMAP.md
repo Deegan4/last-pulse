@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.52.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.53.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -235,24 +235,31 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 - [x] **More fighters** (v2.7.0) — roster now 7: **Bjorn** (Lv3), **Zane** (Lv6), **Wraith**
       (Lv10), **Ace** (Lv14), **Nova** (Lv18) joined Blaze/Rose. Each was one PNG + one `AVATARS`
       row — the pipeline held, no other code changes. Still trivially extensible for more.
-- [ ] **Gunless heroes + rotating gun** — _pending gunless art_. Current sprites have guns baked
-      in, so they only flip L/R (can't aim up/down/behind). Plan: when gunless PNGs arrive, anchor
-      the engine's `drawGun` at the hands and rotate it to `h.aim` for true 360° aiming (see the
-      drawn chibi's gun-arm at `index.html`). Full-body rotation was tested and looks broken
-      (front-facing sprite lies sideways) — the rotating-gun overlay is the approach.
+- [x] **Gunless heroes + rotating gun** (shipped in the "Roster rebuild" v2.7.0–v2.11.0 pass
+      above) — `AVATARS` is now 15 `armless:true` sprite heroes (`index.html:1079`+) with a live
+      360° gun-arm anchored at the hand and rotated to `h.aim`, per the plan below. Closes this
+      item; kept here only as the historical record of the approach that shipped.
 
 ## v1.13 — "Modes & Bosses"
 
 - [x] **Boss waves in Horde** (shipped v2.20.0–v2.21.1) — every 5th wave spawns armored
-      `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`, `index.html:1625`),
-      count scaling with wave (`1+floor(hordeWave/10)`, `index.html:2843`). _Not_ built: no
-      dedicated boss hp-bar banner, no ground-slam AoE attack, no guaranteed-loot-drop table —
-      juggernauts use the same contact-damage and drop logic as regular zombies, just scaled up.
-      If the original "huge brute with hp banner + AoE slam + guaranteed loot" vision is still
-      wanted, that's new work, not a bug fix — split into its own bullet if approved. _(v2.38.0:
-      juggernauts finally look armored — visible chest plate + shoulder guards in `drawZombie` —
-      closing a gap where the roadmap text called them "armored" for 8+ versions before the art
-      did.)_
+      `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`, `index.html:1919`),
+      count scaling with wave (`1+floor(hordeWave/10)`, `index.html:3467`). _(v2.38.0: juggernauts
+      finally look armored — visible chest plate + shoulder guards in `drawZombie` — closing a gap
+      where the roadmap text called them "armored" for 8+ versions before the art did.)_
+- [x] **Boss hp banner + ground-slam AoE + guaranteed loot** (shipped v2.53.0) — closes the gap
+      called out above. `SLAM` tunables (`index.html`, near `COMBO_WIN`) drive a telegraphed
+      (0.85s, red growing ring) 150px AoE slam for 34 dmg, on a 3.4–4.8s cooldown, added to
+      `updateZombie`'s melee branch (`z.boss` gate) — the boss roots in place through the
+      telegraph so it's dodgeable. `draw()` renders a left-anchored stacked hp-bar banner (up to 3
+      bosses, weakest-first) and the live telegraph ring. `die()` gives every `e.boss` kill a
+      guaranteed big scrap bundle + 2 always-good pickups (medkit/armor/weapon, never plain
+      health) plus a "BOSS DOWN" toast, instead of rolling the regular corpse's 62% scrap chance.
+      Verified via throwaway `window.__spawnBoss`/`__forceSlamOnBoss`/`__killBoss` hooks on a
+      hooked copy (see CLAUDE.md "Validation") — spawn, telegraph, AoE damage + knockback, hp
+      banner render, and guaranteed loot all confirmed headless. **Still open**: real-device
+      playtest for slam dodgeability feel and whether 34 dmg / 150px radius is fair — no
+      real-controller/touch input was exercised, only forced state.
 - [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
       v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
 - [x] **Mutators** (shipped v2.35.0) — a `MUTATORS` table (`index.html`, "Match mutators"

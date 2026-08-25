@@ -1191,8 +1191,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.52.0';
+const GAME_VERSION = '2.53.0';
 const CHANGELOG = [
+  { v:'2.53.0', items:[
+    ['☠️','Bosses fight back','Juggernauts and Colossi now telegraph a ground slam (dodge the red ring!), show a health-bar banner while they\'re up, and always drop guaranteed loot when they go down'],
+  ]},
   { v:'2.52.0', items:[
     ['🦸','Roster strip on the home screen','a horizontal row of every fighter now sits under your card — tap any unlocked hero to switch instantly, no need to open the full avatar picker'],
   ]},
@@ -1809,6 +1812,8 @@ let lastWin = false, victoryT = 0, nextDrop = 18;
 let streakMsg = '', streakT = 0;
 let combo = 0, comboT = 0;                  // kill-combo chain (xp multiplier)
 const COMBO_WIN = 3.0;                      // seconds to chain the next kill
+// Boss ground-slam: telegraph (red ring grows to `r`) then AoE damage to anyone still inside it.
+const SLAM = {range:150, telegraph:0.85, r:150, dmg:34, cd:[3.4,4.8]};
 let hitstop = 0;                            // kill slow-mo timer (wall-clock seconds)
 let zoneWarn = 0;
 let heartT = 0;                             // low-health heartbeat cadence
@@ -1926,7 +1931,8 @@ function makeZombie(x,y,kind){
   return { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
     seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom,
-    leaper:!!t.leaper, howl:!!t.howl, spitCd:rand(0.6,1.8), leapCd:rand(0.8,2.2), howlCd:rand(1.2,3.0), frenzyT:0 };
+    leaper:!!t.leaper, howl:!!t.howl, spitCd:rand(0.6,1.8), leapCd:rand(0.8,2.2), howlCd:rand(1.2,3.0), frenzyT:0,
+    boss:!!t.boss, slamCd:rand(SLAM.cd[0],SLAM.cd[1]), slamT:0 };
 }
 // ---- watchtower geometry: solid footprint, an inset walkable roof, and a south-facing ladder zone ----
 function towerRoof(t){ return {x:t.x+11, y:t.y+11, w:t.w-22, h:t.h-22}; }
@@ -2333,7 +2339,16 @@ function die(e, src, isHumanTarget){
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
     // scrap salvage — the building currency; bigger corpses yield more
     if(scraps.length<40 && Math.random()<0.62){ const big=(e.size||1)>=1.3, run=(e.size||1)<0.86;
-      scraps.push(makeScrap(e.x, e.y, big?randi(5,8):(run?randi(1,2):randi(2,4)))); } }
+      scraps.push(makeScrap(e.x, e.y, big?randi(5,8):(run?randi(1,2):randi(2,4)))); }
+    // boss loot table — guaranteed, unlike the regular corpse's 62% scrap roll: a big scrap
+    // bundle plus 2 always-good pickups (never plain health), so a boss kill always feels worth it
+    if(e.boss){
+      scraps.push(makeScrap(e.x, e.y, randi(10,14)));
+      const bossPool=['medkit','armor','weapon']; const angles=[0.9,-0.9];
+      angles.forEach((off,i)=>{ const a=ka+off, r=34+i*10;
+        pickups.push(makePickup(e.x+Math.cos(a)*r, e.y+Math.sin(a)*r, i===0?pick(bossPool):'weapon')); });
+      toast((e.kind==='colossus'?'☠ COLOSSUS':'☠ JUGGERNAUT')+' DOWN — loot dropped!'); sfx('loot');
+    } }
   if(e.isPlayer){ shake=Math.min(shake+10,18); }
   if(isHumanTarget){
     // isPlayer2 checked FIRST: it's the more specific case, and must win over the plain isPlayer
@@ -2883,6 +2898,19 @@ function updateZombie(z,dt){
   if(z.leapCd>0) z.leapCd-=dt;
   if(z.howlCd>0) z.howlCd-=dt;
   if(z.frenzyT>0) z.frenzyT-=dt;
+  if(z.slamCd>0) z.slamCd-=dt;
+  if(z.slamT>0){                              // mid-telegraph: rooted, then AoE on expiry
+    z.slamT-=dt;
+    if(z.slamT<=0){
+      rings.push({x:z.x, y:z.y, t:0, dur:0.35, r0:10, r1:SLAM.r, col:'255,120,40', lw:5});
+      sfx('boom',null,z);
+      for(const h of humans) if(h.alive && dist2(h.x,h.y,z.x,z.y) < SLAM.r*SLAM.r){
+        hurt(h, SLAM.dmg, z, true);
+        const a=Math.atan2(h.y-z.y,h.x-z.x); h.vx+=Math.cos(a)*220; h.vy+=Math.sin(a)*220;
+        if(h.isPlayer) shake=Math.min(shake+9,18);
+      }
+    }
+  }
   if(z.burn>0){ z.burn-=dt; z.hp-=9*dt;
     if(Math.random()<dt*12) spark(z.x+rand(-7,7), z.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2, .4);
     if(z.hp<=0){ die(z, z.burnSrc, false); return; } }
@@ -2920,7 +2948,12 @@ function updateZombie(z,dt){
         z.vx+=Math.cos(a)*280; z.vy+=Math.sin(a)*280;
         for(let i=0;i<8;i++) spark(z.x-rand(-5,5), z.y+14, '#c8b46a', rand(40,120), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.25,.45));
       }
-      if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0 && !tgt.onTower){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
+      // boss ground-slam: root in place through the telegraph, only landing contact damage after
+      if(z.boss && z.slamCd<=0 && z.slamT<=0 && grace<=0 && near.d<SLAM.range && !tgt.onTower){
+        z.slamT=SLAM.telegraph; z.slamCd=rand(SLAM.cd[0],SLAM.cd[1]); z.lunge=1;
+      }
+      if(z.slamT>0){ mvx=0; mvy=0; }
+      else if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0 && !tgt.onTower){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
         tgt.vx+=Math.cos(a)*120; tgt.vy+=Math.sin(a)*120; if(tgt.isPlayer) shake=Math.min(shake+4,10); }
     } }
   else { if(z.think<=0){ z.wanderA=rand(0,TAU); z.think=rand(1,2.4); } z.think-=dt;
@@ -3615,6 +3648,15 @@ function draw(){
   // build-mode ghost: a snapped preview of the piece you're about to drop (green ok / red blocked)
   if(player && player.alive && player.buildSel>=0){ drawBuildGhost(player); }
 
+  // boss slam telegraph — a filling red ring that grows to the real blast radius as the windup
+  // ends, so it doubles as a countdown a player can actually dodge
+  for(const z of zombies){ if(!z.alive || !z.boss || z.slamT<=0 || !inView(z.x,z.y,SLAM.r+40)) continue;
+    const p=1-clamp(z.slamT/SLAM.telegraph,0,1), r=SLAM.r*p;
+    ctx.save(); ctx.globalAlpha=0.35+0.35*Math.sin(gtime*22);
+    ctx.strokeStyle='#ff3a1a'; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(z.x,z.y,r,0,TAU); ctx.stroke();
+    ctx.globalAlpha=0.12; ctx.fillStyle='#ff3a1a'; ctx.beginPath(); ctx.arc(z.x,z.y,r,0,TAU); ctx.fill();
+    ctx.restore(); }
+
   // bombs
   for(const b of bombs){ ctx.fillStyle='#15181f'; ctx.beginPath(); ctx.arc(b.x,b.y-6,7,0,TAU); ctx.fill();
     ctx.fillStyle = (Math.floor(b.t*12)%2)?'#ff3a2a':'#ffd24a'; ctx.beginPath(); ctx.arc(b.x+3,b.y-12,2.5,0,TAU); ctx.fill(); }
@@ -3718,6 +3760,19 @@ function draw(){
     if(zoneWarn>0 && grace<=0){ ctx.globalAlpha=clamp(zoneWarn/2.8,0,1);
       ctx.fillStyle='#ffe27a'; ctx.textAlign='center'; ctx.font='800 italic 18px Trebuchet MS, sans-serif';
       ctx.fillText('⚠ THE SAFE AREA IS SHRINKING', W/2, H*0.30); ctx.globalAlpha=1; }
+    // boss hp banner — every alive boss gets a stacked bar, weakest (closest to death) on top,
+    // so a multi-boss wave (2 @w10-15, 3 @w20+) still reads as an ordered priority list
+    // left-anchored, narrow — the top-right is the minimap's territory (collapsible, but default open)
+    { const bosses=zombies.filter(z=>z.alive&&z.boss).sort((a,b)=>(a.hp/a.maxhp)-(b.hp/b.maxhp));
+      if(bosses.length){ ctx.save(); ctx.textAlign='left';
+        const bx=14, bw=Math.min(190,W*0.46);
+        bosses.slice(0,3).forEach((z,i)=>{ const by=98+i*30, frac=clamp(z.hp/z.maxhp,0,1);
+          ctx.font='800 12px Trebuchet MS, sans-serif'; ctx.fillStyle='#ffcf9a';
+          ctx.fillText((z.kind==='colossus'?'☠ COLOSSUS':'☠ JUGGERNAUT'), bx, by-6);
+          ctx.fillStyle='rgba(0,0,0,.55)'; roundRect(bx-2,by-2,bw+4,12+4,5,ctx); ctx.fill();
+          ctx.fillStyle='#241814'; roundRect(bx,by,bw,12,4,ctx); ctx.fill();
+          ctx.fillStyle=frac>0.3?'#e6503a':'#ff2e2e'; roundRect(bx,by,bw*frac,12,4,ctx); ctx.fill(); });
+        ctx.restore(); } }
     // damage-direction indicators (red arc toward the attacker)
     for(const d of dmgDirs){ ctx.save(); ctx.globalAlpha=clamp(d.t,0,1)*0.85; ctx.translate(W/2,H/2); ctx.rotate(d.a);
       ctx.strokeStyle='#ff3a3a'; ctx.lineWidth=5; const R0=Math.min(W,H)*0.34;

@@ -12,6 +12,24 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state
 
+- **v2.53.0 — bosses fight back.** Closed the long-standing ROADMAP gap where Juggernaut/Colossus
+  bosses were just reskinned regular zombies. Added `SLAM` tunables (`index.html`, near
+  `COMBO_WIN`: 150px range/radius, 0.85s telegraph, 34 dmg, 3.4–4.8s cooldown), a `z.boss`-gated
+  branch in `updateZombie`'s melee path that roots the boss through a red-ring telegraph then AoE
+  damages + knocks back every human still inside when it lands, a left-anchored stacked hp-bar
+  banner in `draw()` (up to 3 bosses, weakest-first — deliberately NOT centered/top-right, since
+  that's the minimap's territory and a first pass collided with it), and a guaranteed boss loot
+  table in `die()` (big scrap bundle + 2 always-good pickups, never plain health, plus a toast) in
+  place of the regular corpse's 62%-chance scrap roll. Verified headless via throwaway
+  `window.__spawnBoss`/`__forceSlamOnBoss`/`__killBoss`/`__bossState`/`__lootState` hooks on a
+  `.test-boss.html` hooked copy (deleted after) — confirmed the telegraph ring renders, the AoE
+  actually damages the player, the hp banner draws without overlapping the minimap, and boss death
+  drops the guaranteed loot. **Gotcha for next time**: the driver's own hook-injection comment
+  says to split on `'\n})();\n</script>'` (first occurrence) rather than the last `})();` in the
+  file — this file has a *second* `<script type="module">` (the 3D layer) that also ends in
+  `})();`, and a naive last-match insert lands there instead of the game IIFE, silently putting
+  every hook out of scope (`ReferenceError: player is not defined` even though the hook "looks"
+  correctly placed).
 - **v2.52.0 — home-screen roster strip.** A Claude Design mockup (`Last Pulse iOS App.dc.html`,
   a native-app-style redesign concept) proposed a horizontal "your roster" strip under the
   fighter card for one-tap hero switching. Rather than the full native SwiftUI rewrite the
