@@ -12,6 +12,31 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state
 
+- **Code-review sweep — 6 real bugs fixed (no version bump, no player-visible feature).**
+  A `/code-review high` pass over the branch's full diff vs `origin/main` surfaced: (1) the
+  `#mutRow` mutator HUD indicator was toggled via `el('mutRow').style.display=''`, which only
+  clears the inline override — the `.srow.is-hidden{display:none}` class it also carries kept
+  winning the cascade, so the indicator could never actually show; fixed by toggling the
+  `is-hidden` class instead of inline style, verified by forcing `MUTATOR_CHANCE=1` on a
+  throwaway copy and reading `getComputedStyle` (now `display:flex`, was `none`). (2) the
+  viewport meta tag was missing `maximum-scale=1.0, user-scalable=no`, letting pinch/double-tap
+  zoom break the fixed-layout touch stage — restored. (3) footstep dust in `updateZombie` keyed
+  off exact `z.kind` instead of `z.family`, so husk/skitter/crusher (new v2.50-2.51 variants)
+  never kicked up dirt despite belonging to normal/runner/brute families — switched to `zfam`.
+  (4)-(5) `drawZombie` had two family/kind-double-fire bugs from the v2.51 variant-art pass:
+  skitter (family:'runner') got both the generic runner lean rotation AND its own, compounding to
+  ~2x the intended tilt; crusher/colossus (family:'brute'/'juggernaut') got both the generic
+  family ornament block (bone spikes / back armor) AND their own kind-specific one, double-drawn
+  in the same spot. Fixed by excluding the variant kind from its generic family block (`brute &&
+  !crusher`, `juggernaut && !colossus`, `runner && !skitter`) — the pattern to watch for whenever
+  a new `family:`-tagged variant is added: check every generic-family draw/behavior block for
+  whether the new kind should join it or fully replace it. (6) `.footer-ver` class had no CSS
+  rule, so the menu footer version link rendered at browser-default size instead of 12px — added
+  the rule. Also restored `-webkit-overflow-scrolling:touch` on `.modal` (lower-confidence, cheap
+  to keep) and fixed a stale comment claiming juggernaut r:26 was the biggest entity for
+  `SEP_CELL` sizing (colossus r:29 actually is — margin is 6px, not 12, still safe under 64).
+  **Not fixed**: `renderRoster()` does a full DOM/canvas rebuild on every roster click instead of
+  toggling `.sel` like `buildAvatarGrid()` does — real inefficiency, low severity, deferred.
 - **v2.53.1 — Sniper rebalance.** ROADMAP's balance table flagged "Sniper 250 dmg vs 96-DPS
   shotgun" as an open question. The math actually shows Sniper's *sustained* DPS (~64, from
   0.9s fireCd + 3s reload every single shot) is lower than Shotgun's — the "feels OP" complaint is

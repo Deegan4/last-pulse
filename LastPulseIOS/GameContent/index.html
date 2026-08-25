@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <!-- iOS Safari's status bar is handled via the app-specific meta tag below; we intentionally do not
      use theme-color here because Firefox/Opera do not support it and this page does not depend on
      it for its gameplay visuals. The surrounding page/background remains tuned to the canvas edge tone. -->
@@ -208,6 +208,7 @@
   .btn.ghost{background:#445c2a;color:#fff;box-shadow:0 4px 0 #2f4420}
   .btnrow{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
   .footer{margin-top:auto;padding-top:12px;display:flex;justify-content:center}
+  .footer-ver{font-size:12px}
 
   .namebox{display:flex;flex-direction:column;align-items:center;gap:12px;margin:14px 0}
   .namebox input{font-size:20px;font-weight:800;text-align:center;padding:12px 16px;border-radius:12px;
@@ -429,7 +430,7 @@
 
   /* ---------- Settings & results ---------- */
   .modal{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;
-    justify-content:safe center;gap:14px;padding:24px 20px;overflow-y:auto;
+    justify-content:safe center;gap:14px;padding:24px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;
     background:rgba(20,28,12,.82)}
   /* keep the heading and Close button from being squeezed when the list is tall in portrait */
   .modal .heading{flex:0 0 auto}
@@ -2135,8 +2136,8 @@ function spawnMatch(){
       if(activeMutator.fog) timeOfDay='night';
       toast(activeMutator.icon+' '+activeMutator.name+' — '+activeMutator.desc);
       el('statMut').textContent = activeMutator.icon+' '+activeMutator.name;
-      el('mutRow').style.display = '';
-    } else el('mutRow').style.display = 'none';
+      el('mutRow').classList.remove('is-hidden');
+    } else el('mutRow').classList.add('is-hidden');
     // two 2-story watchtowers to climb and shoot down from (Horde only)
     for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
       while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
@@ -2974,13 +2975,13 @@ function updateZombie(z,dt){
   else { z.vx*=0.85; z.vy*=0.85; }
   // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
   // stomp-clods on each footfall, normals scuff the odd puff
-  const zs=z.vx*z.vx+z.vy*z.vy;
+  const zs=z.vx*z.vx+z.vy*z.vy, zfam=z.family||z.kind;
   if(zs>2500 && inView(z.x,z.y,40)){
-    if(z.kind==='runner' && zs>8000 && Math.random()<dt*9)
+    if(zfam==='runner' && zs>8000 && Math.random()<dt*9)
       spark(z.x+rand(-5,5), z.y+14, 'rgba(120,100,70,.6)', rand(15,45), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.2,.35));
-    else if(z.kind==='brute' && Math.sin(z.walk)>0.92 && Math.random()<dt*22)
+    else if(zfam==='brute' && Math.sin(z.walk)>0.92 && Math.random()<dt*22)
       for(let i=0;i<3;i++) spark(z.x+rand(-9,9), z.y+16, 'rgba(105,88,60,.65)', rand(10,35), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.3,.5));
-    else if(z.kind==='normal' && Math.random()<dt*4)
+    else if(zfam==='normal' && Math.random()<dt*4)
       spark(z.x+rand(-6,6), z.y+15, 'rgba(140,118,80,.5)', rand(6,20), rand(-Math.PI*0.85,-Math.PI*0.15), rand(.3,.5));
   }
   z.x=clamp(z.x+z.vx*dt,R,ARENA-R); z.y=clamp(z.y+z.vy*dt,R,ARENA-R);
@@ -3283,8 +3284,8 @@ function integrate(h,dt){
   if(h.slowT>0) h.slowT-=dt;
 }
 // Uniform spatial hash: any colliding pair (dist < r_a+r_b) is guaranteed to land in the same or
-// an adjacent cell as long as SEP_CELL >= the largest possible r_a+r_b (juggernaut r:26 is the
-// biggest entity, so 2*26=52 is the worst case — 64 leaves margin). Bucketing + a 3x3 neighbor
+// an adjacent cell as long as SEP_CELL >= the largest possible r_a+r_b (colossus r:29 is the
+// biggest entity, so 2*29=58 is the worst case — 64 leaves a slim 6px margin). Bucketing + a 3x3 neighbor
 // scan turns the old O(n^2) all-pairs pass into ~O(n) candidate checks — with two hard-learned
 // caveats from actually measuring it (scratchpad benchmark, not committed; function compiled ONCE
 // outside the timed loop, matching real per-frame cost, not re-`eval`'d per call):
@@ -4844,11 +4845,11 @@ function drawZombie(z){
   // lurch lean: pitched into the shamble with an uneven stagger (shadow stays flat)
   ctx.rotate(moving ? clamp(z.vx/1400,-0.1,0.1) + flip*0.05 + Math.sin(z.walk*0.5+seed)*0.055 + Math.sin(z.walk)*0.03
                     : Math.sin(now*1.6+seed)*0.03);
-  if(runner) ctx.rotate(flip*0.18);                          // runners hunch aggressively forward
+  if(runner && !skitter) ctx.rotate(flip*0.18);              // runners hunch aggressively forward
   if(stalker) ctx.rotate(flip*0.09);
   if(leaper) ctx.rotate(flip*0.14);
   if(spitter) ctx.rotate(flip*-0.04);
-  if(skitter) ctx.rotate(flip*0.08);
+  if(skitter) ctx.rotate(flip*0.08);                          // skitter's own lean replaces the generic runner one
   if(wraith && !flash) ctx.globalAlpha=.94;
   // attack lunge: snap toward the prey and swell up for a beat
   if(lunge>0){ ctx.translate(flip*lunge*6, -lunge*2); ctx.scale(1+lunge*0.12, 1+lunge*0.06); }
@@ -4873,7 +4874,7 @@ function drawZombie(z){
     roundRect(-tw*1.04,zty-4,tw*2.08,th*.7,3); ctx.fill(); ctx.stroke();
     for(const sx of [-1,1]) zSpike(sx*(tw+2),zty-7,10,sx<0?-2.35:-0.8,'#e8dcc0',1.05);
     ctx.restore(); }
-  if(juggernaut && !flash){ ctx.fillStyle='#262c2a'; ctx.strokeStyle=INK; ctx.lineWidth=2;
+  if(juggernaut && !colossus && !flash){ ctx.fillStyle='#262c2a'; ctx.strokeStyle=INK; ctx.lineWidth=2;   // colossus's own back armor (above) replaces this
     roundRect(-tw*0.95,zty-2,tw*1.9,th*.58,3); ctx.fill(); ctx.stroke(); }
 
   // ---- BACK dragging arm (behind the body) ----
@@ -4884,9 +4885,9 @@ function drawZombie(z){
   if(!flash) zClaw(bex,bey,-flip,skin,juggernaut?1.45:brute||bloater?1.35:runner||stalker||leaper?0.9:1);
 
   // ---- BRUTE shoulder bone-spikes (behind the torso) ----
-  if(brute && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
+  if(brute && !crusher && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
     for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*8,-9); ctx.lineTo(sx*13.5,-16); ctx.lineTo(sx*10.5,-8.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
-  if(crusher && !flash){ ctx.fillStyle='#667055'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
+  if(crusher && !flash){ ctx.fillStyle='#667055'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;   // crusher's own armor replaces the generic brute spikes
     for(const sx of [-1,1]){ roundRect(sx>0?tw*.35:-tw*.98,zty+1,tw*.62,7,2); ctx.fill(); ctx.stroke(); }
     zSpike(0,zty-5,7,-Math.PI/2,'#e7dfc8',.9); }
 
