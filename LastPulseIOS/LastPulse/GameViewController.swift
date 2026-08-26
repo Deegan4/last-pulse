@@ -14,6 +14,9 @@ private final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
 
 final class GameViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
     private static let nativeSaveHandlerName = "nativeSave"
+    private static let nativePurchaseHandlerName = "nativePurchase"
+    private static let nativeRestoreHandlerName = "nativeRestore"
+    private static let handlerNames = [nativeSaveHandlerName, nativePurchaseHandlerName, nativeRestoreHandlerName]
 
     private let webView: WKWebView
 
@@ -24,16 +27,17 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
         configuration.websiteDataStore = .nonPersistent()
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init(nibName: nil, bundle: nil)
-        configuration.userContentController.add(
-            WeakScriptMessageHandler(delegate: self),
-            name: Self.nativeSaveHandlerName
-        )
+        for name in Self.handlerNames {
+            configuration.userContentController.add(WeakScriptMessageHandler(delegate: self), name: name)
+        }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     deinit {
-        webView.configuration.userContentController.removeScriptMessageHandler(forName: Self.nativeSaveHandlerName)
+        for name in Self.handlerNames {
+            webView.configuration.userContentController.removeScriptMessageHandler(forName: name)
+        }
     }
 
     override func viewDidLoad() {
@@ -91,9 +95,53 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
     // rendered its (empty) defaults.
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == Self.nativeSaveHandlerName, let code = message.body as? String else { return }
+        switch message.name {
+        case Self.nativeSaveHandlerName:
+            guard let code = message.body as? String else { return }
+            Task { @MainActor in GameSaveStore.shared.saveCode(code) }
+        case Self.nativePurchaseHandlerName:
+            guard let productID = message.body as? String else { return }
+            Task { @MainActor in
+                let bought = await StoreManager.shared.purchase(productID)
+                if bought { pushEntitlement(productID: productID) }
+            }
+        case Self.nativeRestoreHandlerName:
+            Task { @MainActor in
+                await StoreManager.shared.restore()
+                pushEntitlement(productID: StoreManager.unlockAllProductID)
+            }
+        default:
+            break
+        }
+    }
+
+    // MARK: - StoreKit bridge (see StoreManager.swift + index.html's "Native (iOS wrapper) IAP
+    // bridge" section for the full round trip: JS nativePurchase()/nativeRestore() → the message
+    // handlers above → StoreManager → back into window.__nativeSetEntitlement / ...SetProductPrice)
+
+    private func pushEntitlement(productID: String) {
+        let owned = StoreManager.shared.ownsUnlockAll
+        let js = "window.__nativeSetEntitlement && window.__nativeSetEntitlement(\(jsString(productID)), \(owned));"
+        webView.evaluateJavaScript(js)
+    }
+
+    private func pushPrice(productID: String) {
+        guard let price = StoreManager.shared.localizedPrice(for: productID) else { return }
+        let js = "window.__nativeSetProductPrice && window.__nativeSetProductPrice(\(jsString(productID)), \(jsString(price)));"
+        webView.evaluateJavaScript(js)
+    }
+
+    /// JSON-encodes a Swift string into a safe single-quoted JS string literal.
+    private func jsString(_ s: String) -> String {
+        (try? String(data: JSONEncoder().encode(s), encoding: .utf8)) ?? "\"\""
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         Task { @MainActor in
-            GameSaveStore.shared.saveCode(code)
+            await StoreManager.shared.loadProducts()
+            await StoreManager.shared.refreshEntitlements()
+            pushPrice(productID: StoreManager.unlockAllProductID)
+            pushEntitlement(productID: StoreManager.unlockAllProductID)
         }
     }
 }

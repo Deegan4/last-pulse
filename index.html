@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<!-- Tints iOS Safari's URL bar AND bottom toolbar. It MUST match the colour the canvas paints
-       at the screen edges (~#446a30 top / #416730 bottom, measured) — a near-black value here is
-       what reads as "black bars at the top and bottom" in a Safari tab, framing a bright green game. -->
-  <meta name="theme-color" content="#436830" />
+<!-- iOS Safari's status bar is handled via the app-specific meta tag below; we intentionally do not
+     use theme-color here because Firefox/Opera do not support it and this page does not depend on
+     it for its gameplay visuals. The surrounding page/background remains tuned to the canvas edge tone. -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Last Pulse" />
@@ -64,7 +63,7 @@
       radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.12), transparent 66%),
       radial-gradient(130% 95% at 50% 45%, #2a3b1c, #1a2610 92%);
     background-attachment:fixed;
-    user-select:none;-webkit-user-select:none;touch-action:none}
+    -webkit-user-select:none;user-select:none;touch-action:none}
   /* portrait stage, centered with letterbox on desktop. Size is computed in JS
      (resize()) for reliability — iOS Safari mis-evaluates min()/calc() viewport math
      and can collapse the stage to zero height. CSS here is just a full-screen fallback. */
@@ -77,6 +76,7 @@
   #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 
   .hidden{display:none!important}
+  .srow.is-hidden{display:none}
   .heading{font-weight:800;letter-spacing:1px;font-style:italic;
     text-shadow:2px 2px 0 rgba(0,0,0,.35);font-size:clamp(26px,8vw,42px);
     text-transform:uppercase;color:#fff;line-height:1}
@@ -208,6 +208,7 @@
   .btn.ghost{background:#445c2a;color:#fff;box-shadow:0 4px 0 #2f4420}
   .btnrow{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
   .footer{margin-top:auto;padding-top:12px;display:flex;justify-content:center}
+  .footer-ver{font-size:12px}
 
   .namebox{display:flex;flex-direction:column;align-items:center;gap:12px;margin:14px 0}
   .namebox input{font-size:20px;font-weight:800;text-align:center;padding:12px 16px;border-radius:12px;
@@ -269,6 +270,24 @@
     border:1px solid rgba(255,214,110,.5);color:#ffe6a8;font-weight:800;font-size:11px;
     padding:2px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.3px}
   .ranknext{font-size:10.5px;font-weight:700;color:#a9c47f}
+
+  .rosterStrip{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;width:min(84vw,340px);
+    margin:2px auto 4px;padding:2px 2px 6px}
+  .rosterStrip::-webkit-scrollbar{display:none}
+  .rosterItem{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;
+    cursor:pointer;transition:transform .08s}
+  .rosterItem:active{transform:scale(.93)}
+  .rosterItem .rip{width:44px;height:52px;border-radius:12px;background:rgba(0,0,0,.22);
+    display:flex;align-items:flex-end;justify-content:center;border:2px solid rgba(255,255,255,.14);
+    position:relative;overflow:hidden}
+  .rosterItem .rip canvas{transform:scale(.62);transform-origin:bottom}
+  .rosterItem.sel .rip{border-color:#a6e22e;box-shadow:0 0 10px rgba(166,226,46,.5)}
+  .rosterItem.locked .rip{filter:grayscale(1) brightness(.6)}
+  .rosterItem.locked .rip::after{content:'🔒';position:absolute;inset:0;display:flex;
+    align-items:center;justify-content:center;font-size:14px}
+  .rosterItem .rin{font-size:10px;font-weight:700;color:#cddcb6;max-width:48px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rosterItem.sel .rin{color:#d6ff6e}
 
   .modes{display:flex;flex-direction:column;gap:9px;width:min(84vw,340px);margin:8px auto 2px}
   .modecard{cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;
@@ -577,13 +596,16 @@
      horde shambles behind every menu. Alpha tuned so text/buttons stay fully readable. */
   .screen{background:
     radial-gradient(135% 95% at 50% -8%, rgba(49,73,31,.62), rgba(34,51,26,.68) 52%, rgba(19,27,12,.84) 100%);
-    scrollbar-width:none}
+    -ms-overflow-style:none}
   .screen::-webkit-scrollbar{display:none}
+  @supports (scrollbar-width: none){
+    .screen{scrollbar-width:none}
+  }
   .screen:not(.hidden){animation:scrIn .3s cubic-bezier(.2,.9,.3,1)}
   @keyframes scrIn{from{opacity:0;transform:translateY(12px) scale(.996)}to{opacity:1;transform:none}}
   /* modals: frosted backdrop + slide-up */
-  .modal{background:rgba(12,18,7,.66);backdrop-filter:blur(12px) saturate(1.15);
-    -webkit-backdrop-filter:blur(12px) saturate(1.15)}
+  .modal{background:rgba(12,18,7,.66);-webkit-backdrop-filter:blur(12px) saturate(1.15);
+    backdrop-filter:blur(12px) saturate(1.15)}
   .modal:not(.hidden){animation:mdIn .27s cubic-bezier(.2,.9,.3,1)}
   @keyframes mdIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
   /* glass cards everywhere */
@@ -591,7 +613,7 @@
   .xpwrap,.rnext,.achcard.locked{
     background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015)) padding-box,var(--glass);
     border:1.5px solid var(--stroke);
-    backdrop-filter:blur(9px); -webkit-backdrop-filter:blur(9px)}
+    -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px)}
   .card{border-radius:var(--r-lg);box-shadow:var(--shadow-md)}
   .card.sel{border-color:var(--stroke2);
     box-shadow:0 0 0 3px rgba(214,255,110,.16), 0 0 26px rgba(198,245,86,.14), var(--shadow-md)}
@@ -613,21 +635,21 @@
     background:linear-gradient(105deg,transparent,rgba(255,255,255,.55),transparent);
     transform:skewX(-18deg);animation:sheen 3.4s ease-in-out infinite;pointer-events:none}
   @keyframes sheen{0%,68%{left:-70%}100%{left:135%}}
-  .achbtn{border:1.5px solid var(--stroke);border-radius:999px;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+  .achbtn{border:1.5px solid var(--stroke);border-radius:999px;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px)}
   /* HUD: frosted panels + notch safe-areas */
   #mmBody{background:rgba(14,22,9,.55);border:1.5px solid var(--stroke);border-radius:16px;
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
   #mmFab{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
   #gearHud{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
   #gearHud,#xpwrap{top:calc(10px + var(--sat))}
   #mmwrap{top:calc(10px + var(--sat));right:calc(10px + var(--sar))}
   #xpbar{box-shadow:inset 0 2px 5px rgba(0,0,0,.45)}
   #powers{bottom:calc(150px + var(--sab))}
   .power{border:2.5px solid rgba(255,255,255,.55);box-shadow:0 8px 20px rgba(0,0,0,.4)}
-  #specBar{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);background:rgba(14,22,9,.7)}
-  #toast{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);background:rgba(10,16,6,.72);
+  #specBar{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);background:rgba(14,22,9,.7)}
+  #toast{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);background:rgba(10,16,6,.72);
     border:1px solid var(--stroke);box-shadow:var(--shadow-md)}
   /* modal option rows & sliders: soft ivory, rounder, floatier */
   .modal .opt,.slider{border-radius:16px;box-shadow:0 6px 0 rgba(0,0,0,.28), 0 12px 24px rgba(0,0,0,.22)}
@@ -636,7 +658,7 @@
   /* grids breathe a little more */
   .grid{gap:12px}
   .namebox input{border-radius:14px;background:rgba(0,0,0,.32);
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 
   /* --- v2.0.1 layout fixes (must stay LAST so they win the cascade) --- */
   /* Menu: stop flex items from compressing/overlapping on iOS Safari — the column
@@ -683,7 +705,7 @@
           <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
           <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
           <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
-          <div class="srow" id="mutRow" style="display:none"><span class="si">🎲</span><b id="statMut">--</b></div>
+          <div class="srow is-hidden" id="mutRow"><span class="si">🎲</span><b id="statMut">--</b></div>
           <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
         </div>
       </div>
@@ -731,6 +753,8 @@
       </div>
     </div>
 
+    <div class="rosterStrip" id="rosterStrip"></div>
+
     <button class="btn play" id="toModeBtn"><span id="playLabel">▶ PLAY</span></button>
     <div id="dailyCard" class="dailycard"></div>
     <div id="statsCard" class="statscard"></div>
@@ -740,7 +764,7 @@
     </div>
     <div class="menurow"><button class="btn ghost achbtn donatebtn" id="donateBtn">💜 Support the game</button></div>
     <button class="btn ghost achbtn a2hsbtn hidden" id="a2hsBtn">📲 Add to Home Screen</button>
-    <div class="footer" style="color:#cfe0b3;font-size:12px"><span id="verLink" class="verlink"></span></div>
+    <div class="footer footer-ver"><span id="verLink" class="verlink"></span></div>
   </div>
 
   <!-- ===== Mode select (picked after the main menu) ===== -->
@@ -796,7 +820,7 @@
   <!-- ===== Results ===== -->
   <div id="results" class="modal hidden">
     <div class="placard" id="placard">#8</div>
-    <div id="placeSub" style="color:#eaf6d6;font-weight:700">Eliminated</div>
+    <div id="placeSub">Eliminated</div>
     <div class="rstats" id="rStats"></div>
     <div class="runlocks" id="rUnlocks"></div>
     <div class="xpwrap"><div class="xprow"><span id="rXpLbl">+0 XP</span><span id="rLvl">Lv 1</span></div>
@@ -832,13 +856,19 @@
     <div class="achgrid" id="perkGrid"></div>
   </div>
 
-  <!-- ===== Donate / support (opens the creator's Stripe Payment Link in a new tab) ===== -->
+  <!-- ===== Support / IAP =====
+       Two mutually-exclusive paths, toggled in openDonate() via inNativeWrapper(): the web build
+       opens the creator's Stripe Payment Link (external payment, fine outside the App Store);
+       the iOS wrapper build offers a real StoreKit2 purchase instead — Apple 3.1.1 forbids an
+       external payment link for digital content inside a native app. -->
   <div id="donate" class="modal hidden">
     <div class="wnburst">💜</div>
     <h2 class="heading">Support Last Pulse</h2>
-    <div class="donateBlurb">Last Pulse is free and made by one person. If you’re having fun, a small tip keeps new modes, weapons &amp; fixes coming. Thank you!</div>
+    <div class="donateBlurb" id="donateBlurb">Last Pulse is free and made by one person. If you’re having fun, a small tip keeps new modes, weapons &amp; fixes coming. Thank you!</div>
     <button class="btn blue donateCta" id="donateGo">❤ Donate via Stripe →</button>
     <div class="donateSecure" id="donateSecure">🔒 You choose your amount securely on Stripe’s own page — the game never sees your card details.</div>
+    <button class="btn blue donateCta" id="iapUnlockBtn" hidden>🔓 Unlock Everything — $4.99</button>
+    <button class="btn ghost donateCta" id="iapRestoreBtn" hidden>Restore Purchases</button>
     <div id="donateNote" class="donateNote" hidden></div>
     <button class="close" id="donateClose">Close</button>
   </div>
@@ -1091,7 +1121,7 @@ const WEAPONS = [
   {name:'Shotgun', icon:'💥', dmg:20,  mag:2,  reload:1.25, range:150, fireCd:0.62, mode:'shotgun', unlock:2,  special:'wide pellet spread',                   img:'weapon-shotgun'},
   {name:'SMG',     icon:'🧨', dmg:8,   mag:25, reload:1.6,  range:200, fireCd:0.07, mode:'auto',    unlock:3,  special:'blazing fire rate',                    img:'weapon-smg'},
   {name:'Magnum',  icon:'🔩', dmg:55,  mag:6,  reload:1.8,  range:340, fireCd:0.40, mode:'semi',    unlock:4,  special:'heavy-hitting revolver',               img:'weapon-magnum'},
-  {name:'Sniper',  icon:'🎯', dmg:250, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage',        img:'weapon-sniper'},
+  {name:'Sniper',  icon:'🎯', dmg:190, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage',        img:'weapon-sniper'},
   {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt',                 img:'weapon-crossbow'},
   {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire',                 img:'weapon-flame'},
   {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds',          img:'weapon-minigun'},
@@ -1184,8 +1214,15 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.56.0';
+const GAME_VERSION = '2.57.0';
 const CHANGELOG = [
+  { v:'2.57.0', items:[
+    ['🔓','Unlock Everything (iOS)','the app version now offers a real in-app purchase to unlock every fighter and weapon instantly, replacing the external donate link Apple doesn\'t allow inside native apps'],
+    ['🎯','Sniper rebalance','damage 250→190 — still drops almost anything in one shot, but no longer trivializes the burst-vs-DPS gap against the rest of the arsenal'],
+    ['🦸','Roster strip on the home screen','a horizontal row of every fighter now sits under your card — tap any unlocked hero to switch instantly, no need to open the full avatar picker'],
+    ['🧟','More enemy variants','every existing horde family now has a new sibling threat: Grunt, Skitter, Crusher, Venomspine, Rottank, Wraith, Shaman, and Colossus join the wave mix'],
+    ['👹','Enemy visual upgrade','every zombie type now has a stronger in-game silhouette: runners are leaner and red-streaked, spitters carry glowing acid sacs, bloaters pulse with blisters, stalkers bristle with quills, brutes show bone spikes, and juggernauts wear heavier armor'],
+  ]},
   { v:'2.56.0', items:[
     ['🎴','Perk picks every 3rd wave','the run now pauses on a 3-card choice (Extended Clip, Adrenaline, Heavy Rounds, Thick Skin, Regeneration, Second Wind) before waves 3, 6, 9… spawn — a mid-run lever for build variety, stacking with repeated picks'],
     ['🎲','3 new match mutators','Glass Cannon (+60% damage dealt and taken), Rich Vein (+70% scrap drops), and Blood Moon (+50% XP and coins) join the mutator pool announced at drop-in'],
@@ -1570,6 +1607,7 @@ const meta = {
   magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
+  iapUnlockAll: safeGet('dd2_iap_unlockall','0')==='1',              // real-money IAP: bypass avatar/weapon level-gates
 };
 // iOS wrapper bridge: GameViewController injects window.__nativeBootCode (see
 // "Native (iOS wrapper) save bridge" below) at document-start, before this script runs —
@@ -1605,6 +1643,7 @@ function saveMeta(){
   safeSet('dd2_banner',meta.banner);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
+  safeSet('dd2_iap_unlockall', meta.iapUnlockAll ? '1' : '0');
   nativeSaveDebounced();
 }
 // ===== Native (iOS wrapper) save bridge =====
@@ -1627,6 +1666,33 @@ function nativeSaveDebounced(){
   clearTimeout(__nativeSaveTimer);
   __nativeSaveTimer=setTimeout(nativeSaveNow, 400);
 }
+// ===== Native (iOS wrapper) IAP bridge =====
+// Apple rejects/pulls apps that point to an external payment link for digital content (the
+// Stripe donate button below), so the native wrapper offers a real StoreKit2 purchase instead.
+// nativePurchase()/nativeRestore() post a request to StoreManager (LastPulseIOS/LastPulse/
+// StoreManager.swift + the "nativePurchase"/"nativeRestore" message handlers in
+// GameViewController.swift); the native side calls back into window.__nativeSetEntitlement
+// once StoreKit confirms the transaction, which flips meta.iapUnlockAll and re-renders.
+function nativePurchase(productId){
+  try{ window.webkit.messageHandlers.nativePurchase.postMessage(productId); }catch(e){}
+}
+function nativeRestore(){
+  try{ window.webkit.messageHandlers.nativeRestore.postMessage('restore'); }catch(e){}
+}
+const IAP_UNLOCKALL_ID = 'com.lastpulse.game.unlockall';
+window.__nativeSetProductPrice = function(productId, localizedPrice){
+  if(productId===IAP_UNLOCKALL_ID && localizedPrice) el('iapUnlockBtn').textContent = '🔓 Unlock Everything — '+localizedPrice;
+};
+window.__nativeSetEntitlement = function(productId, owned){
+  if(productId===IAP_UNLOCKALL_ID){
+    meta.iapUnlockAll = !!owned;
+    saveMeta();
+    if(owned) toast('🔓 Everything unlocked — thank you!');
+    if(el('avatarGrid').children.length) buildAvatarGrid();
+    if(el('weaponGrid').children.length) buildWeaponGrid();
+    renderMenu();
+  }
+};
 // ===== Save health & transfer =====
 // Some browsers can't persist localStorage at all (private tabs, TikTok/Instagram in-app
 // webviews) — progress silently vanishes between sessions. Detect that up front and WARN,
@@ -1800,7 +1866,7 @@ const MAG_COST=[250, 500, 900];          // coin cost for tier 1 / 2 / 3
 function magMulMeta(){ return 1 + Math.min(meta.magLvl||0, MAG_MAX)*MAG_STEP; }
 function magInfo(){ const lvl=Math.min(meta.magLvl||0, MAG_MAX), maxed=lvl>=MAG_MAX;
   return { lvl, bonus:Math.round(lvl*MAG_STEP*100), maxed, nextCost:maxed?null:MAG_COST[lvl] }; }
-function weaponUnlocked(w){ return meta.level >= (w.unlock||1); }
+function weaponUnlocked(w){ return meta.iapUnlockAll || meta.level >= (w.unlock||1); }
 // nearest still-locked avatar/weapon — the "one more run" carrot on the results screen
 function nextUnlock(){
   let best=null;
@@ -1815,7 +1881,7 @@ function grantXp(n){
   const rk=rankFor(meta.level); lastRankUp = (rk.name!==rank0) ? rk : null;
   saveMeta(); return leveled;
 }
-function avatarUnlocked(a){ return meta.level >= a.unlock; }
+function avatarUnlocked(a){ return meta.iapUnlockAll || meta.level >= a.unlock; }
 
 // ============================================================
 //  World
@@ -1973,10 +2039,19 @@ const ZTYPES = {
   runner:{ hp:30,  dmg:8,  sp:[120,150],r:12, skin:'#a7c86a', torso:'#6b4a2e', shade:'#5c7a3e', eye:'#ff4630', size:0.82, w:0.30 },
   brute: { hp:130, dmg:20, sp:[44,62],  r:20, skin:'#5a9a42', torso:'#3c5226', shade:'#3d6e2a', eye:'#ffd23a', size:1.35, w:0.12 },
   // Horde-only (w:0 → never in the default random mix; spawned by hordeKind/boss waves):
+  grunt:{ hp:78, dmg:13, sp:[54,76], r:16, skin:'#9aa36a', torso:'#4f4a32', shade:'#5b5a36', eye:'#ffe66a', size:1.05, w:0, family:'normal' },        // tougher baseline shambler
+  skitter:{ hp:24, dmg:7, sp:[150,184], r:10, skin:'#c1d96a', torso:'#493b2a', shade:'#637a36', eye:'#ff8a3d', size:0.74, w:0, family:'runner' },    // tiny, very fast runner
+  crusher:{ hp:175, dmg:24, sp:[34,48], r:22, skin:'#66884d', torso:'#303f24', shade:'#314f28', eye:'#ffb347', size:1.48, w:0, family:'brute' },      // slow heavy bruiser
   spitter:{ hp:42, dmg:9,  sp:[46,66],  r:14, skin:'#9ed86a', torso:'#4a6b3a', shade:'#5c8a3e', eye:'#c6ff2e', size:0.95, w:0, ranged:true },  // ranged acid lobber
+  venomspine:{ hp:36, dmg:11, sp:[58,78], r:13, skin:'#7edb8b', torso:'#305b3a', shade:'#34844c', eye:'#5cff89', size:0.88, w:0, family:'spitter', ranged:true }, // quicker acid lobber
   bloater:{ hp:95, dmg:16, sp:[36,52],  r:19, skin:'#8fb36a', torso:'#5a6b38', shade:'#4c7a32', eye:'#b6ff5a', size:1.28, w:0, boom:true },     // bursts into acid on death
+  rottank:{ hp:140, dmg:18, sp:[26,40], r:22, skin:'#a38f5b', torso:'#62502f', shade:'#5f5a33', eye:'#d6ff58', size:1.42, w:0, family:'bloater', boom:true }, // tanky acid rupturer
   stalker:{ hp:26, dmg:11, sp:[132,168],r:11, skin:'#b7d86a', torso:'#3a4a2e', shade:'#7a3a86', eye:'#ff2ea0', size:0.80, w:0 },                 // fast, fragile swarm rusher (mid-game)
+  wraith:{ hp:34, dmg:13, sp:[116,146], r:12, skin:'#8fd0c8', torso:'#253c45', shade:'#4a5e8e', eye:'#8fe8ff', size:0.86, w:0, family:'stalker' }, // evasive quilled hunter
+  leaper:{ hp:48, dmg:14, sp:[92,118],  r:13, skin:'#b4d65c', torso:'#4d5b2d', shade:'#6b7332', eye:'#ffcf36', size:0.92, w:0, leaper:true },    // pounces from mid-range
+  shaman:{ hp:74, dmg:10, sp:[54,72],   r:16, skin:'#78b8a5', torso:'#315050', shade:'#2f6a64', eye:'#61f7ff', size:1.08, w:0, buff:true },       // buffs nearby undead
   juggernaut:{ hp:420,dmg:30,sp:[30,44], r:26, skin:'#4c6a3a', torso:'#28331f', shade:'#28401e', eye:'#ff7a1a', size:1.70, w:0, boss:true },      // armored mini-boss (milestone waves)
+  colossus:{ hp:560,dmg:36,sp:[24,36], r:29, skin:'#526646', torso:'#20271f', shade:'#24371f', eye:'#ff4f1a', size:1.92, w:0, family:'juggernaut', boss:true }, // rarer boss variant
   // Late-game additions (w:0, unlocked well past stalker@7 so the roster keeps growing instead of
   // just scaling numbers forever) — each breaks from the shared green-olive palette onto its own
   // hue family so it reads as a distinct threat at a glance, not a recolored normal/brute/stalker.
@@ -1991,9 +2066,10 @@ const TOWER_W=88, TOWER_H=72, TOWER_ELEV=46;   // 2-story watchtower: footprint 
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
 function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
-  return { x,y, vx:0,vy:0, aim:0, kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
+  return { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
     seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8),
+    leaper:!!t.leaper, buff:!!t.buff, leapCd:rand(0.8,2.2), buffCd:rand(1.2,3.0), frenzyT:0,
     boss:!!t.boss, slamCd:t.boss?rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax):0, slamWind:0,
     howler:!!t.howler, howlCd:t.howler?rand(2,4):0, howlFlash:0, hasteT:0,
     armored:!!t.armored,
@@ -2221,8 +2297,8 @@ function spawnMatch(){
       if(activeMutator.fog) timeOfDay='night';
       toast(activeMutator.icon+' '+activeMutator.name+' — '+activeMutator.desc);
       el('statMut').textContent = activeMutator.icon+' '+activeMutator.name;
-      el('mutRow').style.display = '';
-    } else el('mutRow').style.display = 'none';
+      el('mutRow').classList.remove('is-hidden');
+    } else el('mutRow').classList.add('is-hidden');
     // two 2-story watchtowers to climb and shoot down from (Horde only)
     for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
       while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
@@ -2454,10 +2530,14 @@ function die(e, src, isHumanTarget){
     rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
     const scrapMul = activeMutator?.scrapMul||1;   // Rich Vein mutator
-    if(e.boss){   // guaranteed boss loot — no RNG gate, and a bigger scrap pile than any normal kill
-      scraps.push(makeScrap(e.x, e.y, Math.round(randi(8,12)*scrapMul)));
-      pickups.push(makePickup(e.x+rand(-14,14), e.y+rand(-14,14)));
-      if(src && src.isPlayer) toast('☠ BOSS DOWN — guaranteed drop!');
+    // boss loot table — guaranteed, unlike the regular corpse's 62% scrap roll: a big scrap
+    // bundle plus 2 always-good pickups (never plain health), so a boss kill always feels worth it
+    if(e.boss){
+      scraps.push(makeScrap(e.x, e.y, Math.round(randi(10,14)*scrapMul)));
+      const bossPool=['medkit','armor','weapon']; const angles=[0.9,-0.9];
+      angles.forEach((off,i)=>{ const a=ka+off, r=34+i*10;
+        pickups.push(makePickup(e.x+Math.cos(a)*r, e.y+Math.sin(a)*r, i===0?pick(bossPool):'weapon')); });
+      toast((e.kind==='colossus'?'☠ COLOSSUS':'☠ JUGGERNAUT')+' DOWN — loot dropped!'); sfx('loot');
     // scrap salvage — the building currency; bigger corpses yield more
     } else if(scraps.length<40 && Math.random()<0.62){ const big=(e.size||1)>=1.3, run=(e.size||1)<0.86;
       scraps.push(makeScrap(e.x, e.y, Math.round((big?randi(5,8):(run?randi(1,2):randi(2,4)))*scrapMul))); } }
@@ -2647,6 +2727,17 @@ function zombieBurst(e){
   for(const o of humans){ if(!o.alive) continue; const d2=dist2(e.x,e.y,o.x,o.y);
     if(d2<RAD2){ const dd=e.dmg*1.7*(1-Math.sqrt(d2)/RAD); if(dd>0){ hurt(o, Math.max(8,dd), null, true); if(o.isPlayer) shake=Math.min(shake+3,15); } } }
   sfx('boom',null,e);
+}
+// Shaman support pulse — nearby zombies get a short movement frenzy, forcing the player to
+// decide whether to burn down the support unit or kite the sped-up pack.
+function zombieBuff(z){
+  const RAD=245, RAD2=RAD*RAD;
+  rings.push({x:z.x, y:z.y, t:0, dur:0.55, r0:12, r1:RAD, col:'96,247,255', lw:3});
+  floaters.push({x:z.x, y:z.y-34, vy:-30, t:0.75, txt:'FRENZY', col:'#61f7ff'});
+  for(let i=0;i<16;i++) spark(z.x,z.y-14, i%2?'#61f7ff':'#b9ffff', rand(70,210), rand(0,TAU), .55);
+  for(const o of zombies){ if(!o.alive || o===z) continue;
+    if(dist2(z.x,z.y,o.x,o.y)<RAD2) o.frenzyT=Math.max(o.frenzyT||0,3.2); }
+  sfx('warn',null,z);
 }
 function explode(b){
   const RAD=130*(activeMutator?.bombRadMul||1), RAD2=RAD*RAD;
@@ -3003,6 +3094,9 @@ function updateBot(h,dt){
 function updateZombie(z,dt){
   if(z.hitFlash>0) z.hitFlash-=dt;
   if(z.attackCd>0) z.attackCd-=dt;
+  if(z.leapCd>0) z.leapCd-=dt;
+  if(z.buffCd>0) z.buffCd-=dt;
+  if(z.frenzyT>0) z.frenzyT-=dt;
   if(z.burn>0){ z.burn-=dt; z.hp-=9*dt;
     if(Math.random()<dt*12) spark(z.x+rand(-7,7), z.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2, .4);
     if(z.hp<=0){ die(z, z.burnSrc, false); return; } }
@@ -3010,7 +3104,7 @@ function updateZombie(z,dt){
   if(z.hasteT>0) z.hasteT-=dt;
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
-  if(tgt && near.d<(z.ranged?540:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
+  if(tgt && near.d<(z.ranged?540:z.buff?560:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
     if(z.ranged){                                            // Spitter: hold a standoff distance & lob acid
       const ideal=290;
       if(near.d<ideal-70){ mvx=-Math.cos(z.aim); mvy=-Math.sin(z.aim); }      // too close → back off
@@ -3018,6 +3112,12 @@ function updateZombie(z,dt){
       else { const s=(z.seed|0)%2?1:-1; mvx=Math.cos(z.aim+Math.PI/2)*0.5*s; mvy=Math.sin(z.aim+Math.PI/2)*0.5*s; }  // strafe
       z.spitCd-=dt;
       if(z.spitCd<=0 && grace<=0 && near.d<500){ z.spitCd=rand(1.7,2.6); z.lunge=1; spitAcid(z,tgt); }
+    } else if(z.buff){                                       // Shaman: standoff support that frenzies nearby undead
+      const ideal=330;
+      if(near.d<ideal-80){ mvx=-Math.cos(z.aim); mvy=-Math.sin(z.aim); }
+      else if(near.d>ideal+90){ mvx=Math.cos(z.aim); mvy=Math.sin(z.aim); }
+      else { const s=(z.seed|0)%2?1:-1; mvx=Math.cos(z.aim+Math.PI/2)*0.45*s; mvy=Math.sin(z.aim+Math.PI/2)*0.45*s; }
+      if(z.buffCd<=0 && grace<=0 && near.d<540){ z.buffCd=rand(4.2,5.8); z.lunge=1; zombieBuff(z); }
     } else {
       // if the prey is holed up in a building we aren't in, route to a door gap (around the
       // walls via the nearer corner when we're on the wrong side) instead of grinding the wall
@@ -3030,6 +3130,11 @@ function updateZombie(z,dt){
         else { gx=(z.x<cx)?b.x-28:b.x+b.w+28; gy=outside; }    // skirt the nearer corner to reach it
       }
       const a=Math.atan2(gy-z.y,gx-z.x); mvx=Math.cos(a); mvy=Math.sin(a);
+      if(z.leaper && z.leapCd<=0 && grace<=0 && near.d>80 && near.d<340){
+        z.leapCd=rand(2.4,3.4); z.lunge=1.25;
+        z.vx+=Math.cos(a)*280; z.vy+=Math.sin(a)*280;
+        for(let i=0;i<8;i++) spark(z.x-rand(-5,5), z.y+14, '#c8b46a', rand(40,120), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.25,.45));
+      }
       if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0 && !tgt.onTower){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
         tgt.vx+=Math.cos(a)*120; tgt.vy+=Math.sin(a)*120; if(tgt.isPlayer) shake=Math.min(shake+4,10); }
     } }
@@ -3080,17 +3185,17 @@ function updateZombie(z,dt){
   }
   if(z.lunge>0) z.lunge-=dt*3.2;
   const m=len(mvx,mvy);
-  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1)*(z.hasteT>0?1.35:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6; if(mvx) z.faceX=mvx<0?-1:1; }
+  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1)*(z.frenzyT>0?1.24:1)*(z.hasteT>0?1.35:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6*(z.frenzyT>0?1.2:1); if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
   // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
   // stomp-clods on each footfall, normals scuff the odd puff
-  const zs=z.vx*z.vx+z.vy*z.vy;
+  const zs=z.vx*z.vx+z.vy*z.vy, zfam=z.family||z.kind;
   if(zs>2500 && inView(z.x,z.y,40)){
-    if(z.kind==='runner' && zs>8000 && Math.random()<dt*9)
+    if(zfam==='runner' && zs>8000 && Math.random()<dt*9)
       spark(z.x+rand(-5,5), z.y+14, 'rgba(120,100,70,.6)', rand(15,45), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.2,.35));
-    else if(z.kind==='brute' && Math.sin(z.walk)>0.92 && Math.random()<dt*22)
+    else if(zfam==='brute' && Math.sin(z.walk)>0.92 && Math.random()<dt*22)
       for(let i=0;i<3;i++) spark(z.x+rand(-9,9), z.y+16, 'rgba(105,88,60,.65)', rand(10,35), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.3,.5));
-    else if(z.kind==='normal' && Math.random()<dt*4)
+    else if(zfam==='normal' && Math.random()<dt*4)
       spark(z.x+rand(-6,6), z.y+15, 'rgba(140,118,80,.5)', rand(6,20), rand(-Math.PI*0.85,-Math.PI*0.15), rand(.3,.5));
   }
   z.x=clamp(z.x+z.vx*dt,R,ARENA-R); z.y=clamp(z.y+z.vy*dt,R,ARENA-R);
@@ -3394,8 +3499,8 @@ function integrate(h,dt){
   if(h.slowT>0) h.slowT-=dt;
 }
 // Uniform spatial hash: any colliding pair (dist < r_a+r_b) is guaranteed to land in the same or
-// an adjacent cell as long as SEP_CELL >= the largest possible r_a+r_b (juggernaut r:26 is the
-// biggest entity, so 2*26=52 is the worst case — 64 leaves margin). Bucketing + a 3x3 neighbor
+// an adjacent cell as long as SEP_CELL >= the largest possible r_a+r_b (colossus r:29 is the
+// biggest entity, so 2*29=58 is the worst case — 64 leaves a slim 6px margin). Bucketing + a 3x3 neighbor
 // scan turns the old O(n^2) all-pairs pass into ~O(n) candidate checks — with two hard-learned
 // caveats from actually measuring it (scratchpad benchmark, not committed; function compiled ONCE
 // outside the timed loop, matching real per-frame cost, not re-`eval`'d per call):
@@ -3546,10 +3651,18 @@ function hordeKind(wave){
     ['normal',  Math.max(0.10, 0.62 - wave*0.030)],
     ['runner',  Math.min(0.20 + wave*0.010, 0.40)],
   ];
+  if(wave>=2) t.push(['grunt',    Math.min(0.05 + (wave-2)*0.008, 0.16)]);  // tougher shambler variant
   if(wave>=3) t.push(['brute',   Math.min(0.10 + wave*0.012, 0.30)]);
+  if(wave>=4) t.push(['skitter', Math.min(0.04 + (wave-4)*0.008, 0.15)]);  // tiny speed variant
   if(wave>=4) t.push(['spitter', Math.min(0.05 + (wave-4)*0.010, 0.18)]);  // ranged pressure
   if(wave>=5) t.push(['bloater', Math.min(0.05 + (wave-5)*0.008, 0.16)]);  // area denial on death
+  if(wave>=5) t.push(['crusher', Math.min(0.04 + (wave-5)*0.007, 0.14)]);  // heavy bruiser variant
+  if(wave>=6) t.push(['leaper',  Math.min(0.05 + (wave-6)*0.011, 0.17)]);  // mid-range pounce pressure
+  if(wave>=6) t.push(['venomspine', Math.min(0.035 + (wave-6)*0.007, 0.12)]); // fast acid variant
+  if(wave>=7) t.push(['rottank', Math.min(0.035 + (wave-7)*0.006, 0.11)]); // tanky rupture variant
   if(wave>=7) t.push(['stalker', Math.min(0.06 + (wave-7)*0.012, 0.24)]);  // swarm rush
+  if(wave>=8) t.push(['wraith',  Math.min(0.04 + (wave-8)*0.007, 0.13)]);  // ghostly stalker variant
+  if(wave>=9) t.push(['shaman',  Math.min(0.04 + (wave-9)*0.007, 0.13)]);  // support aura priority target
   if(wave>=9)  t.push(['howler',   Math.min(0.05 + (wave-9)*0.008, 0.14)]);   // haste support — priority kill target
   if(wave>=11) t.push(['carapace', Math.min(0.05 + (wave-11)*0.008, 0.16)]);  // armored tank — rewards burst over chip damage
   if(wave>=13) t.push(['husk',     Math.min(0.04 + (wave-13)*0.008, 0.14)]);  // spawner — sustained pressure, not just bigger numbers
@@ -3615,7 +3728,8 @@ function hordeSpawnWave(boss){
   if(boss){ const nb=1+Math.floor(hordeWave/10);                    // 1 juggernaut @w5, 2 @w10-15, 3 @w20…
     for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
       while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
-      const z=makeZombie(s.x,s.y,'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
+      const bigBoss=hordeWave>=15 && Math.random()<0.35;
+      const z=makeZombie(s.x,s.y,bigBoss?'colossus':'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
   if(boss) escalateMap();   // same milestone as boss waves — the map gets meaner right when the fight does
 }
 function enemiesLeft(){ let n=0; for(const h of humans) if(h.alive && h.team!==player.team) n++; return n; }
@@ -3845,19 +3959,6 @@ function draw(){
     // controller-detected indicator — quiet confirmation once a gamepad has sent input
     if(gpSeen){ ctx.globalAlpha=0.85; ctx.font='14px Trebuchet MS, sans-serif'; ctx.textAlign='right';
       ctx.fillText('🎮', W-10, 26); ctx.globalAlpha=1; ctx.textAlign='left'; }
-    // boss hp banner — combined hp/maxhp across every alive juggernaut this wave, so multiple
-    // bosses (higher waves spawn more) still show one readable bar instead of stacking N of them
-    if(grace<=0){ let bhp=0,bmax=0,bn=0;
-      for(const z of zombies) if(z.alive && z.boss){ bhp+=z.hp; bmax+=z.maxhp; bn++; }
-      if(bn){ ctx.save(); ctx.textAlign='center';
-        const bw=Math.min(260,W*0.62), bx=W/2-bw/2, by=46;
-        ctx.font='800 12px Trebuchet MS, sans-serif'; ctx.fillStyle='#ffb37a';
-        ctx.fillText('☠ JUGGERNAUT'+(bn>1?' ×'+bn:''), W/2, by-4);
-        ctx.fillStyle='rgba(0,0,0,.5)'; roundRect(bx,by,bw,8,4); ctx.fill();
-        const frac=clamp(bhp/bmax,0,1);
-        ctx.fillStyle= frac>0.5?'#ff7a3a':frac>0.25?'#ff9b3d':'#ff4a3a'; roundRect(bx,by,bw*frac,8,4); ctx.fill();
-        ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1.5; roundRect(bx,by,bw,8,4); ctx.stroke();
-        ctx.restore(); } }
     // out-of-zone red vignette + warning
     if(zoneActive()&&player&&player.alive&&grace<=0&&outsideZone(player)){
       const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.30,W/2,H/2,Math.max(W,H)*0.72);
@@ -3882,6 +3983,19 @@ function draw(){
     if(zoneWarn>0 && grace<=0){ ctx.globalAlpha=clamp(zoneWarn/2.8,0,1);
       ctx.fillStyle='#ffe27a'; ctx.textAlign='center'; ctx.font='800 italic 18px Trebuchet MS, sans-serif';
       ctx.fillText('⚠ THE SAFE AREA IS SHRINKING', W/2, H*0.30); ctx.globalAlpha=1; }
+    // boss hp banner — every alive boss gets a stacked bar, weakest (closest to death) on top,
+    // so a multi-boss wave (2 @w10-15, 3 @w20+) still reads as an ordered priority list
+    // left-anchored, narrow — the top-right is the minimap's territory (collapsible, but default open)
+    { const bosses=zombies.filter(z=>z.alive&&z.boss).sort((a,b)=>(a.hp/a.maxhp)-(b.hp/b.maxhp));
+      if(bosses.length){ ctx.save(); ctx.textAlign='left';
+        const bx=14, bw=Math.min(190,W*0.46);
+        bosses.slice(0,3).forEach((z,i)=>{ const by=98+i*30, frac=clamp(z.hp/z.maxhp,0,1);
+          ctx.font='800 12px Trebuchet MS, sans-serif'; ctx.fillStyle='#ffcf9a';
+          ctx.fillText((z.kind==='colossus'?'☠ COLOSSUS':'☠ JUGGERNAUT'), bx, by-6);
+          ctx.fillStyle='rgba(0,0,0,.55)'; roundRect(bx-2,by-2,bw+4,12+4,5,ctx); ctx.fill();
+          ctx.fillStyle='#241814'; roundRect(bx,by,bw,12,4,ctx); ctx.fill();
+          ctx.fillStyle=frac>0.3?'#e6503a':'#ff2e2e'; roundRect(bx,by,bw*frac,12,4,ctx); ctx.fill(); });
+        ctx.restore(); } }
     // damage-direction indicators (red arc toward the attacker)
     for(const d of dmgDirs){ ctx.save(); ctx.globalAlpha=clamp(d.t,0,1)*0.85; ctx.translate(W/2,H/2); ctx.rotate(d.a);
       ctx.strokeStyle='#ff3a3a'; ctx.lineWidth=5; const R0=Math.min(W,H)*0.34;
@@ -4914,6 +5028,19 @@ function zClaw(x,y,dir,fill,sc){ sc=sc||1;
   for(const a of [-0.55,0,0.55]){ ctx.beginPath(); ctx.moveTo(x,y);
     ctx.lineTo(x+dir*Math.cos(a)*4.6*sc, y+Math.sin(a)*4.6*sc-0.4); ctx.stroke(); }
 }
+function zSpike(x,y,len,ang,fill,sc){ sc=sc||1;
+  const ca=Math.cos(ang), sa=Math.sin(ang), bx=2.2*sc, px=-sa*bx, py=ca*bx;
+  ctx.fillStyle=fill; ctx.strokeStyle=INK; ctx.lineWidth=1.35*sc;
+  ctx.beginPath(); ctx.moveTo(x+px,y+py); ctx.lineTo(x+ca*len*sc,y+sa*len*sc); ctx.lineTo(x-px,y-py); ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+function zBlister(x,y,r,fill,glow){
+  ctx.save();
+  if(glow){ ctx.shadowColor=fill; ctx.shadowBlur=5; }
+  ctx.fillStyle=fill; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
+  ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.38)'; ctx.beginPath(); ctx.arc(x-r*.32,y-r*.38,Math.max(.6,r*.28),0,TAU); ctx.fill();
+  ctx.restore();
+}
 function drawZombie(z){
   // 2D monsters only — the old 3D billboard is disabled so these always render.
   const t=ZTYPES[z.kind]||ZTYPES.normal;
@@ -4921,8 +5048,11 @@ function drawZombie(z){
   const now=performance.now()/1000, seed=z.seed||0;
   const moving=(z.vx*z.vx+z.vy*z.vy)>200;
   const lunge=Math.max(0,z.lunge||0);
-  const runner=z.kind==='runner', brute=z.kind==='brute';
-  const stalker=z.kind==='stalker', juggernaut=z.kind==='juggernaut';
+  const fam=z.family||z.kind;
+  const runner=fam==='runner', brute=fam==='brute', spitter=fam==='spitter', bloater=fam==='bloater';
+  const stalker=fam==='stalker', leaper=fam==='leaper', shaman=fam==='shaman', juggernaut=fam==='juggernaut', normal=fam==='normal';
+  const grunt=z.kind==='grunt', skitter=z.kind==='skitter', crusher=z.kind==='crusher', venomspine=z.kind==='venomspine';
+  const rottank=z.kind==='rottank', wraith=z.kind==='wraith', colossus=z.kind==='colossus';
   const howler=z.kind==='howler', carapace=z.kind==='carapace', husk=z.kind==='husk';
   // boss slam telegraph — a growing warning ring in WORLD space (not the local scaled transform
   // below), so its radius matches the real JUGGERNAUT_SLAM.r hit area regardless of sprite size
@@ -4932,8 +5062,9 @@ function drawZombie(z){
   const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
   const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
-  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute?2.4:3.4):0;
-  const tw=brute?11.5:runner?6.4:stalker?5.5:8, th=brute?16:runner?13.5:stalker?12.5:15;   // torso half-width / height per kind
+  const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute||juggernaut?2.4:runner||stalker||leaper?4.1:3.4):0;
+  const tw=colossus?14.8:crusher?12.8:rottank?14.5:carapace?12.5:grunt?9.4:husk?8.9:juggernaut?13.5:bloater?12.8:brute?11.5:skitter?5.4:runner?6.1:wraith?5.7:stalker?5.2:leaper?6.8:shaman?9.4:howler?8:venomspine?6.7:spitter?7.2:8;
+  const th=colossus?20.5:crusher?17.5:rottank?19.5:carapace?17.8:grunt?16.5:husk?15.4:juggernaut?18:bloater?18.2:brute?16:skitter?12:runner?13.5:wraith?13.8:stalker?12.5:leaper?14.2:shaman?17.2:howler?15:venomspine?15.4:spitter?16.5:15;   // torso half-width / height per kind
   const zty=-6+bob*0.2;   // torso top y — computed early so behind-torso layers (spikes/ridge) can use it
   const night = timeOfDay!=='day';
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
@@ -4944,25 +5075,70 @@ function drawZombie(z){
   // lurch lean: pitched into the shamble with an uneven stagger (shadow stays flat)
   ctx.rotate(moving ? clamp(z.vx/1400,-0.1,0.1) + flip*0.05 + Math.sin(z.walk*0.5+seed)*0.055 + Math.sin(z.walk)*0.03
                     : Math.sin(now*1.6+seed)*0.03);
-  if(runner) ctx.rotate(flip*0.16);                          // runners hunch aggressively forward
+  if(runner && !skitter) ctx.rotate(flip*0.18);              // runners hunch aggressively forward
+  if(stalker) ctx.rotate(flip*0.09);
+  if(leaper) ctx.rotate(flip*0.14);
+  if(spitter) ctx.rotate(flip*-0.04);
+  if(skitter) ctx.rotate(flip*0.08);                          // skitter's own lean replaces the generic runner one
+  if(wraith && !flash) ctx.globalAlpha=.94;
   // attack lunge: snap toward the prey and swell up for a beat
   if(lunge>0){ ctx.translate(flip*lunge*6, -lunge*2); ctx.scale(1+lunge*0.12, 1+lunge*0.06); }
+
+  // ---- BACK silhouette gear: tails, tanks, armor backs ----
+  if(spitter && !flash){ ctx.save(); ctx.globalAlpha=.95; ctx.strokeStyle=INK; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(flip*-4,zty+8); ctx.quadraticCurveTo(flip*-17,zty+13,flip*-20,zty+3); ctx.stroke();
+    ctx.strokeStyle='#8ecf45'; ctx.lineWidth=3.1; ctx.beginPath(); ctx.moveTo(flip*-4,zty+8); ctx.quadraticCurveTo(flip*-17,zty+13,flip*-20,zty+3); ctx.stroke();
+    zBlister(flip*-18,zty+1,3.4,eye,true); ctx.restore(); }
+  if(bloater && !flash){ ctx.save(); ctx.globalAlpha=.82; ctx.fillStyle='rgba(198,255,74,.14)';
+    ctx.beginPath(); ctx.ellipse(0,zty+10,tw+5,th*.72,0,0,TAU); ctx.fill(); ctx.restore(); }
+  if(shaman && !flash){ ctx.save(); ctx.globalAlpha=.78; ctx.strokeStyle=eye; ctx.lineWidth=2;
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*4,zty-3); ctx.quadraticCurveTo(sx*10,zty-13,sx*15,zty-7); ctx.stroke(); }
+    ctx.restore(); }
+  if(venomspine && !flash){ ctx.save(); ctx.strokeStyle=INK; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(flip*-3,zty+6); ctx.quadraticCurveTo(flip*-18,zty+4,flip*-22,zty-8); ctx.stroke();
+    ctx.strokeStyle=eye; ctx.lineWidth=2.4; ctx.beginPath(); ctx.moveTo(flip*-3,zty+6); ctx.quadraticCurveTo(flip*-18,zty+4,flip*-22,zty-8); ctx.stroke();
+    for(let i=0;i<4;i++) zSpike(flip*(-5-i*4),zty-3-i*1.7,4.2,-Math.PI/2+flip*.2,eye,.55); ctx.restore(); }
+  if(wraith && !flash){ ctx.save(); ctx.globalAlpha=.34; ctx.fillStyle=eye;
+    ctx.beginPath(); ctx.ellipse(flip*-4,zty+10,tw+10,th*.8,0,0,TAU); ctx.fill(); ctx.restore(); }
+  if(colossus && !flash){ ctx.save(); ctx.fillStyle='#181d1b'; ctx.strokeStyle=INK; ctx.lineWidth=2.2;
+    roundRect(-tw*1.04,zty-4,tw*2.08,th*.7,3); ctx.fill(); ctx.stroke();
+    for(const sx of [-1,1]) zSpike(sx*(tw+2),zty-7,10,sx<0?-2.35:-0.8,'#e8dcc0',1.05);
+    ctx.restore(); }
+  if(juggernaut && !colossus && !flash){ ctx.fillStyle='#262c2a'; ctx.strokeStyle=INK; ctx.lineWidth=2;   // colossus's own back armor (above) replaces this
+    roundRect(-tw*0.95,zty-2,tw*1.9,th*.58,3); ctx.fill(); ctx.stroke(); }
 
   // ---- BACK dragging arm (behind the body) ----
   const drag=moving?Math.sin(z.walk*0.5+seed)*1.6:sway*0.6;
   const bex=flip*(-tw-1)+drag*flip, bey=(brute?10:12)+Math.abs(drag)*0.4;
-  ctx.strokeStyle=INK; ctx.lineWidth=brute?8.5:runner?5:6.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
-  ctx.strokeStyle=SH; ctx.lineWidth=brute?6:runner?3.4:4.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
-  if(!flash) zClaw(bex,bey,-flip,skin,brute?1.35:runner?0.9:1);
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9.5:brute||bloater?8.5:runner||stalker||leaper?5:6.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
+  ctx.strokeStyle=SH; ctx.lineWidth=juggernaut?6.6:brute||bloater?6:runner||stalker||leaper?3.4:4.2; ctx.beginPath(); ctx.moveTo(flip*-3,-1); ctx.lineTo(bex,bey); ctx.stroke();
+  if(!flash) zClaw(bex,bey,-flip,skin,juggernaut?1.45:brute||bloater?1.35:runner||stalker||leaper?0.9:1);
 
   // ---- BRUTE shoulder bone-spikes (behind the torso) ----
-  if(brute && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
+  if(brute && !crusher && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1.6;
     for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*8,-9); ctx.lineTo(sx*13.5,-16); ctx.lineTo(sx*10.5,-8.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+  if(crusher && !flash){ ctx.fillStyle='#667055'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;   // crusher's own armor replaces the generic brute spikes
+    for(const sx of [-1,1]){ roundRect(sx>0?tw*.35:-tw*.98,zty+1,tw*.62,7,2); ctx.fill(); ctx.stroke(); }
+    zSpike(0,zty-5,7,-Math.PI/2,'#e7dfc8',.9); }
 
   // ---- STALKER spine ridge (behind the torso; a lean, quilled silhouette) ----
   if(stalker && !flash){ ctx.fillStyle=SH; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
-    for(let i=0;i<3;i++){ const ry=zty+2+i*(th*0.42), fx=flip*(-tw-0.5);
-      ctx.beginPath(); ctx.moveTo(fx,ry-1.5); ctx.lineTo(fx-flip*3.6,ry); ctx.lineTo(fx,ry+1.5); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+    for(let i=0;i<5;i++){ const ry=zty-3+i*(th*0.31), fx=flip*(-tw-0.3);
+      zSpike(fx,ry,4.4+i*.35,Math.PI+(flip*.12),SH,.78); } }
+  if(wraith && !flash){ ctx.strokeStyle=eye; ctx.lineWidth=1.1; ctx.globalAlpha=.75;
+    for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(flip*(-tw-3-i*2),zty+1+i*5); ctx.quadraticCurveTo(flip*(-tw-10),zty+5+i*5,flip*(-tw-7),zty+11+i*4); ctx.stroke(); }
+    ctx.globalAlpha=1; }
+  if(leaper && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK;
+    zSpike(flip*-tw*.6,zty-3,5.8,-Math.PI/2+flip*.18,'#e8e0c8',.72);
+    zSpike(flip*tw*.55,zty-2,4.8,-Math.PI/2-flip*.14,'#e8e0c8',.62); }
+  if(grunt && !flash){ ctx.fillStyle='#d9c596'; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
+    for(const sx of [-1,1]) zSpike(sx*tw*.7,zty+1,5,sx<0?-2.55:-0.6,'#d9c596',.62); }
+  if(runner && !flash){ ctx.strokeStyle='rgba(255,70,48,.42)'; ctx.lineWidth=1.3;
+    for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(flip*(-10-i*2),zty+3+i*4); ctx.lineTo(flip*(-17-i*2),zty+1+i*4); ctx.stroke(); } }
+  if(skitter && !flash){ ctx.strokeStyle=INK; ctx.lineWidth=2.2;
+    for(const side of [-1,1]) for(let i=0;i<2;i++){ const yy=2+i*5; ctx.beginPath(); ctx.moveTo(side*tw*.55,yy); ctx.lineTo(side*(tw+7+i*2),yy+2+step*.25); ctx.stroke(); }
+    ctx.strokeStyle=SH; ctx.lineWidth=1.2;
+    for(const side of [-1,1]) for(let i=0;i<2;i++){ const yy=2+i*5; ctx.beginPath(); ctx.moveTo(side*tw*.55,yy); ctx.lineTo(side*(tw+7+i*2),yy+2+step*.25); ctx.stroke(); } }
 
   // ---- CARAPACE domed shell (behind the torso; a hunched, low-profile silhouette) ----
   if(carapace && !flash){ ctx.fillStyle='#8a5a34'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;
@@ -4971,19 +5147,33 @@ function drawZombie(z){
     for(const sx of [-tw*0.5,0,tw*0.5]){ ctx.beginPath(); ctx.moveTo(sx,zty-th*0.1); ctx.lineTo(sx,zty+th*0.5); ctx.stroke(); } }
 
   // ---- LEGS (wide, planted stance; brute stomps) ----
-  const lw=brute?7:runner?4.6:5.4;
-  ctx.strokeStyle=INK; ctx.lineWidth=brute?8:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
-  ctx.strokeStyle=SH; ctx.lineWidth=brute?5.4:runner?3.4:4; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
-  ctx.fillStyle='#20301a'; ctx.beginPath(); ctx.ellipse(-lw-1,17.4+step,3,1.8,0,0,TAU); ctx.ellipse(lw+1,17.4-step,3,1.8,0,0,TAU); ctx.fill();  // rotted feet
+  const lw=juggernaut?8.4:bloater?7.4:brute?7:runner?4.6:stalker?4.2:leaper?7.8:5.4;
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8:runner||stalker||leaper?5.2:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
+  ctx.strokeStyle=SH; ctx.lineWidth=juggernaut?6.2:brute||bloater?5.4:runner||stalker||leaper?3.4:4; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
+  ctx.fillStyle=juggernaut?'#222826':'#20301a'; ctx.beginPath(); ctx.ellipse(-lw-1,17.4+step,runner?4:3,runner?1.4:1.8,0,0,TAU); ctx.ellipse(lw+1,17.4-step,runner?4:3,runner?1.4:1.8,0,0,TAU); ctx.fill();  // rotted feet
 
   // ---- TORSO (tattered, exposed ribcage) ----
-  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=TO; roundRect(-tw,zty,tw*2,th,4); ctx.fill(); ctx.stroke();
-  if(!flash){ ctx.save(); roundRect(-tw,zty,tw*2,th,4); ctx.clip();
+  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.fillStyle=TO;
+  if(bloater){ ctx.beginPath(); ctx.ellipse(0,zty+th*.52,tw,th*.66,0,0,TAU); ctx.fill(); ctx.stroke(); }
+  else if(stalker){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty+1); ctx.lineTo(tw*.55,zty+th); ctx.lineTo(-tw*.6,zty+th-1); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if(leaper){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty); ctx.lineTo(tw*.8,zty+th*.7); ctx.lineTo(0,zty+th+2); ctx.lineTo(-tw*.75,zty+th*.72); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else roundRect(-tw,zty,tw*2,th,4), ctx.fill(), ctx.stroke();
+  if(!flash){ ctx.save();
+    if(bloater){ ctx.beginPath(); ctx.ellipse(0,zty+th*.52,tw,th*.66,0,0,TAU); ctx.clip(); }
+    else if(stalker){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty+1); ctx.lineTo(tw*.55,zty+th); ctx.lineTo(-tw*.6,zty+th-1); ctx.closePath(); ctx.clip(); }
+    else if(leaper){ ctx.beginPath(); ctx.moveTo(-tw,zty+2); ctx.lineTo(tw,zty); ctx.lineTo(tw*.8,zty+th*.7); ctx.lineTo(0,zty+th+2); ctx.lineTo(-tw*.75,zty+th*.72); ctx.closePath(); ctx.clip(); }
+    else { roundRect(-tw,zty,tw*2,th,4); ctx.clip(); }
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(-tw,zty,tw*0.6,th+2);                 // dim sheen
     ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(tw*0.5,zty,tw*0.5,th+2);
     // exposed ribs (bone) — a sickly belly wound; brutes show muscle striations instead
-    if(brute){ ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.lineWidth=1.4;
+    if(juggernaut){ ctx.fillStyle='rgba(0,0,0,.24)'; ctx.fillRect(-tw,zty+th*.62,tw*2,th*.18);
+      ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1.2;
+      for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(-tw+2,zty+4+i*4); ctx.lineTo(tw-2,zty+3+i*4); ctx.stroke(); } }
+    else if(brute){ ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.lineWidth=1.4;
       for(let i=0;i<3;i++){ const yy=zty+4+i*4; ctx.beginPath(); ctx.moveTo(-tw+2,yy); ctx.quadraticCurveTo(0,yy+2.4,tw-2,yy); ctx.stroke(); } }
+    else if(bloater){ ctx.fillStyle='rgba(65,90,20,.48)'; ctx.beginPath(); ctx.ellipse(flip*1,zty+th*.52,tw*.5,th*.36,0,0,TAU); ctx.fill();
+      ctx.strokeStyle='rgba(198,255,74,.7)'; ctx.lineWidth=1.4;
+      for(let i=0;i<4;i++){ const yy=zty+4+i*3.4; ctx.beginPath(); ctx.moveTo(-tw*.45,yy); ctx.quadraticCurveTo(0,yy+2.8,tw*.42,yy+.5); ctx.stroke(); } }
     else { ctx.fillStyle='rgba(20,10,8,.5)'; ctx.beginPath(); ctx.ellipse(flip*2.5,zty+7,4.4,5.2,0,0,TAU); ctx.fill();  // dark gut cavity
       ctx.strokeStyle='#e6e0cc'; ctx.lineWidth=1.5;
       for(let i=0;i<3;i++){ const yy=zty+3.5+i*3.2; ctx.beginPath(); ctx.moveTo(-tw+1.5,yy); ctx.quadraticCurveTo(-1,yy+1.8,tw-1.5,yy-0.6); ctx.stroke(); }
@@ -4991,15 +5181,26 @@ function drawZombie(z){
     ctx.restore();
     // torn hem
     ctx.fillStyle=torso; for(let k=-1;k<=1;k++){ const kx=k*tw*0.62; ctx.beginPath(); ctx.moveTo(kx-2.4,zty+th); ctx.lineTo(kx,zty+th+3.4); ctx.lineTo(kx+2.4,zty+th); ctx.closePath(); ctx.fill(); }
-    ctx.strokeStyle='rgba(120,20,16,.6)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-tw*0.4,zty+2); ctx.lineTo(-tw*0.15,zty+6); ctx.stroke(); }  // blood streak
+    ctx.strokeStyle='rgba(120,20,16,.6)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-tw*0.4,zty+2); ctx.lineTo(-tw*0.15,zty+6); ctx.stroke();
+    if(normal){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK; ctx.lineWidth=1;
+      zSpike(flip*tw*.74,zty+2,5,flip>0?-1.05:-2.1,'#e8e0c8',.65); }
+    if(spitter){ ctx.strokeStyle=eye; ctx.lineWidth=1.5; ctx.globalAlpha=.8;
+      ctx.beginPath(); ctx.moveTo(flip*-tw*.7,zty+3); ctx.quadraticCurveTo(0,zty+9,flip*tw*.65,zty+5); ctx.stroke(); ctx.globalAlpha=1; }
+    if(venomspine){ for(const bp of [[-4,zty+3,1.8],[4,zty+6,1.5],[0,zty+11,2.1]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
+    if(rottank){ for(const bp of [[-9,zty+2,3.0],[8,zty+4,2.8],[-4,zty+12,3.5],[6,zty+15,2.6]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
+    if(shaman){ ctx.fillStyle=eye; ctx.globalAlpha=.36+0.14*Math.sin(now*5+seed);
+      ctx.beginPath(); ctx.ellipse(0,zty+8.5,tw*.55,th*.28,0,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
+    if(bloater){ for(const bp of [[-7,zty+4,2.6],[7,zty+6,2.2],[-2,zty+12,3.1],[5,zty+15,1.9]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
+  }
 
   // ---- JUGGERNAUT armor plating (over the torso — chest plate + shoulder guards) ----
   if(juggernaut && !flash){
     ctx.fillStyle='#3a3f3e'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;
-    roundRect(-tw*0.82,zty+1.5,tw*1.64,th*0.6,2); ctx.fill(); ctx.stroke();
-    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*(tw+1),zty-1); ctx.lineTo(sx*(tw+7),zty+2); ctx.lineTo(sx*(tw+1),zty+7); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-    ctx.fillStyle=eye; ctx.globalAlpha=0.85;
-    for(const rx2 of [-tw*0.4,0,tw*0.4]){ ctx.beginPath(); ctx.arc(rx2,zty+th*0.32,1,0,TAU); ctx.fill(); }
+    roundRect(-tw*0.9,zty+1.5,tw*1.8,th*0.64,2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#545b58'; roundRect(-tw*.48,zty+3,tw*.96,th*.42,2); ctx.fill(); ctx.stroke();
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*(tw+1),zty-2); ctx.lineTo(sx*(tw+8),zty+2); ctx.lineTo(sx*(tw+2),zty+8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle=eye; ctx.globalAlpha=0.88;
+    for(const rx2 of [-tw*0.48,0,tw*0.48]){ ctx.beginPath(); ctx.arc(rx2,zty+th*0.34,1.15,0,TAU); ctx.fill(); }
     ctx.globalAlpha=1;
   }
 
@@ -5010,14 +5211,14 @@ function drawZombie(z){
       ctx.fillStyle=eye; ctx.globalAlpha=0.5+0.2*Math.sin(now*3+seed+i); ctx.beginPath(); ctx.arc(bx,by,0.9,0,TAU); ctx.fill(); ctx.globalAlpha=1; } }
 
   // ---- FRONT reaching arm (claws forward, thrown out on a lunge) ----
-  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(brute?12:runner?15:13)+lunge*5;
-  ctx.strokeStyle=INK; ctx.lineWidth=brute?8.5:runner?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
-  ctx.strokeStyle=SK; ctx.lineWidth=brute?6:runner?3.8:4.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
-  if(!flash) zClaw(flip*(rx+1),-2.6+paw,flip,skin,brute?1.5:runner?1.05:1.1);
+  const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(juggernaut?13:brute||bloater?12:runner||stalker||leaper?16:spitter?14:13)+lunge*5;
+  ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8.5:runner||stalker||leaper?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  ctx.strokeStyle=SK; ctx.lineWidth=juggernaut?6.2:brute||bloater?6:runner||stalker||leaper?3.8:4.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
+  if(!flash) zClaw(flip*(rx+1),-2.6+paw,flip,skin,juggernaut?1.55:brute||bloater?1.5:runner||stalker||leaper?1.08:1.1);
   else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(flip*(rx+1),-2.6+paw,2.4,0,TAU); ctx.fill(); }
 
   // ---- HEAD (lolls as it shambles; sits low & sunken on the brute) ----
-  const hy=-15+bob+(brute?3.5:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=brute?7.6:runner?7.4:8.6;
+  const hy=-15+bob+(juggernaut?4.4:brute?3.5:bloater?2.5:shaman?-1.2:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=juggernaut?8.4:brute?7.6:runner?7.2:stalker?7.3:leaper?7.5:shaman?8.9:spitter?8.2:8.6;
   ctx.save(); ctx.translate(hx,0); ctx.rotate(Math.sin(z.walk*0.7+seed)*0.09 + (runner?flip*0.12:0));
   ctx.fillStyle=SK; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,hy,hr,0,TAU); ctx.fill(); ctx.stroke();
   if(!flash){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.arc(2.6,hy+1.8,hr*0.55,0,TAU); ctx.fill();
@@ -5030,6 +5231,15 @@ function drawZombie(z){
     ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(eox-0.5,eoy-0.6,0.7,0,TAU); ctx.arc(ex2-0.5,ey2-0.6,0.6,0,TAU); ctx.fill();
     // heavy angry brow
     ctx.strokeStyle=INK; ctx.lineWidth=1.7; ctx.beginPath(); ctx.moveTo(flip*-6,hy-4.4); ctx.lineTo(flip*-1,hy-2.6); ctx.moveTo(flip*1.6,hy-2.7); ctx.lineTo(flip*6,hy-4.2); ctx.stroke();
+    if(runner){ ctx.strokeStyle='#ff4630'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(flip*-7,hy-7); ctx.lineTo(flip*-2,hy-9.2); ctx.moveTo(flip*1,hy-8.8); ctx.lineTo(flip*6.5,hy-6.7); ctx.stroke(); }
+    if(skitter){ ctx.strokeStyle=eye; ctx.lineWidth=1.1; ctx.beginPath(); ctx.moveTo(flip*-5,hy-8); ctx.lineTo(flip*-9,hy-12); ctx.moveTo(flip*5,hy-8); ctx.lineTo(flip*9,hy-12); ctx.stroke(); }
+    if(stalker){ zSpike(flip*-1,hy-hr+1,5.5,-Math.PI/2,'#efe6cf',.72); zSpike(flip*4,hy-hr+3,4.6,-Math.PI/2+flip*.22,'#efe6cf',.62); }
+    if(leaper){ ctx.strokeStyle='#ffcf36'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(flip*-6.5,hy-6.5); ctx.lineTo(flip*-1.5,hy-8.8); ctx.moveTo(flip*1.5,hy-8.4); ctx.lineTo(flip*6,hy-6.2); ctx.stroke(); }
+    if(spitter){ ctx.fillStyle=eye; ctx.globalAlpha=.48; ctx.beginPath(); ctx.ellipse(flip*.8,hy+6.4,4.8,3.5,0,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
+    if(shaman){ ctx.fillStyle=eye; ctx.globalAlpha=.42+0.18*Math.sin(now*5+seed); ctx.beginPath(); ctx.arc(flip*.6,hy+6.9,3.8,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
+    if(juggernaut){ ctx.fillStyle='#343a38'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(0,hy,hr+1.2,Math.PI*.98,Math.PI*2.02); ctx.lineTo(hr*.72,hy-1.5); ctx.quadraticCurveTo(0,hy+3.5,-hr*.72,hy-1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=eye; ctx.globalAlpha=.85; ctx.fillRect(-3.9,hy-2.1,7.8,1.7); ctx.globalAlpha=1; }
   } else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(flip*-3.2,hy-1.6,2,0,TAU); ctx.arc(flip*3.4,hy-1,1.8,0,TAU); ctx.fill(); }
   // gaping maw with jagged fangs — snaps wide open on a lunge
   const open=1.2+lunge*3.4;
@@ -5038,7 +5248,8 @@ function drawZombie(z){
     for(let i=-2;i<=2;i++){ const fx=flip*0.5+i*1.5; ctx.beginPath(); ctx.moveTo(fx-0.8,hy+4.6-open); ctx.lineTo(fx,hy+4.6-open+1.7); ctx.lineTo(fx+0.8,hy+4.6-open); ctx.closePath(); ctx.fill(); }
     for(let i=-1;i<=1;i++){ const fx=flip*0.5+i*1.7; ctx.beginPath(); ctx.moveTo(fx-0.7,hy+4.6+open); ctx.lineTo(fx,hy+4.6+open-1.5); ctx.lineTo(fx+0.7,hy+4.6+open); ctx.closePath(); ctx.fill(); } }
   if(!flash && z.ranged){ ctx.save(); ctx.globalAlpha=0.55+0.25*Math.sin(now*5+seed);   // Spitter: glowing acid throat sac
-    ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(flip*0.5,hy+7.6,3.2,0,TAU); ctx.fill(); ctx.restore(); }
+    ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(flip*0.5,hy+7.6,3.2,0,TAU); ctx.fill();
+    ctx.strokeStyle=eye; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(flip*.5,hy+10); ctx.quadraticCurveTo(flip*1.5,hy+13.5,flip*.2,hy+15.5); ctx.stroke(); ctx.restore(); }
   if(!flash && z.boom){ ctx.fillStyle=eye; ctx.globalAlpha=0.45+0.2*Math.sin(now*4+seed);  // Bloater: pulsing acid blisters
     for(const bp of [[-6.5,-1.5],[6.5,-0.5],[-4,4.5],[5,4.5]]){ ctx.beginPath(); ctx.arc(bp[0],hy+bp[1],1.9,0,TAU); ctx.fill(); } ctx.globalAlpha=1; }
   if(!flash && howler){ const flare=z.howlFlash>0?1:0;   // Howler: a frilled head-crest that flares wide on the screech
@@ -5190,6 +5401,7 @@ function maybeDonateToast(){
 }
 function renderMenu(){
   const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
+  renderRoster();
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
   const xp=el('menuXp'); if(xp) xp.style.width=clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%';
   const co=el('menuCoins'); if(co) co.textContent=meta.coins;
@@ -5200,6 +5412,20 @@ function renderMenu(){
     dc.innerHTML='<span class="dic">'+(done?'✅':d.icon)+'</span><div class="dtx"><b>Daily Challenge</b>'
       +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+DAILY_COINS)+'</span>';
     dc.classList.toggle('done',done); }
+}
+function renderRoster(){
+  const rs=el('rosterStrip'); if(!rs) return; rs.innerHTML='';
+  AVATARS.forEach((av,i)=>{
+    const unlocked=avatarUnlocked(av), sel=i===meta.avatar;
+    const item=document.createElement('div'); item.className='rosterItem'+(sel?' sel':'')+(unlocked?'':' locked');
+    item.title=unlocked?av.name:av.name+' — unlocks at Lv '+av.unlock;
+    const rip=document.createElement('div'); rip.className='rip'; rip.appendChild(portraitChibi(av));
+    item.appendChild(rip);
+    item.insertAdjacentHTML('beforeend','<span class="rin">'+av.name+'</span>');
+    if(unlocked) item.addEventListener('click',()=>{ if(meta.avatar===i) return;
+      meta.avatar=i; saveMeta(); renderMenu(); });
+    rs.appendChild(item);
+  });
 }
 function goAvatar(){ audioInit();
   const v=el('nameInput').value.trim(); meta.name=v||'deegan'; saveMeta();
@@ -5287,9 +5513,22 @@ function closeShop(){ el('shop').classList.add('hidden');
 function donateConfigured(){ return /^https:\/\/(buy\.stripe\.com|[a-z0-9-]+\.stripe\.com)\//i.test(STRIPE_DONATE_URL); }
 function openDonate(){
   const note=el('donateNote'), go=el('donateGo'), sec=el('donateSecure');
-  if(donateConfigured()){ note.hidden=true; go.style.display=''; sec.style.display=''; }
-  else {                                   // not set up yet — explain instead of opening a dead link
+  const iapGo=el('iapUnlockBtn'), iapRestore=el('iapRestoreBtn'), blurb=el('donateBlurb');
+  if(inNativeWrapper()){
+    // Native build: real StoreKit purchase, no external payment link (App Store 3.1.1).
+    go.style.display='none'; sec.style.display='none'; note.hidden=true;
+    blurb.textContent = meta.iapUnlockAll
+      ? 'You already own everything — thanks for the support!'
+      : 'Skip the grind: unlock every fighter and weapon right now, no waiting on levels.';
+    iapGo.hidden = meta.iapUnlockAll;
+    iapRestore.hidden = false;
+    nativeRestore();   // silent re-check on open, in case a prior purchase never confirmed
+  } else if(donateConfigured()){
+    note.hidden=true; go.style.display=''; sec.style.display='';
+    iapGo.hidden=true; iapRestore.hidden=true;
+  } else {                                   // not set up yet — explain instead of opening a dead link
     go.style.display='none'; sec.style.display='none'; note.hidden=false;
+    iapGo.hidden=true; iapRestore.hidden=true;
     note.textContent='Donations aren’t set up yet. The game owner can enable this by pasting a Stripe Payment Link into STRIPE_DONATE_URL in index.html.';
   }
   el('donate').classList.remove('hidden');
@@ -5518,6 +5757,8 @@ el('perkGrid').addEventListener('click',e=>{ const p=e.target.closest('[data-per
 el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
 el('donateGo').addEventListener('click',donateGo);
 el('donateClose').addEventListener('click',closeDonate);
+el('iapUnlockBtn').addEventListener('click',()=>{ audioInit(); nativePurchase(IAP_UNLOCKALL_ID); });
+el('iapRestoreBtn').addEventListener('click',()=>{ audioInit(); nativeRestore(); toast('Checking for past purchases…'); });
 // add to home screen (iOS)
 el('a2hsBtn').addEventListener('click',openA2HS);
 el('a2hsClose').addEventListener('click',closeA2HS);

@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.56.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.57.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -10,6 +10,30 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 > and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
 > bumps the version. **When it disagrees with the code, the code wins** — verify against
 > `index.html` before trusting any bullet below.
+
+## v2.54 — "Real IAP for the App Store" (shipped)
+
+- [x] **StoreKit2 "Unlock Everything" IAP** (`LastPulseIOS/LastPulse/StoreManager.swift`) —
+      replaces the Stripe donate link inside the native wrapper (an external payment link for
+      digital content risks App Store Guideline 3.1.1 rejection); a single non-consumable
+      product bypasses every avatar/weapon level-gate (`avatarUnlocked`/`weaponUnlocked` in
+      index.html now check `meta.iapUnlockAll`).
+- [x] **JS ↔ native purchase bridge** — `nativePurchase()`/`nativeRestore()` in index.html post
+      to new `nativePurchase`/`nativeRestore` WKScriptMessageHandlers in GameViewController.swift;
+      results flow back via `window.__nativeSetEntitlement`/`window.__nativeSetProductPrice`.
+      Web builds are untouched — `inNativeWrapper()` still gates the Stripe path there.
+- [ ] **You must create `com.lastpulse.game.unlockall` as a real non-consumable product in App
+      Store Connect** before this can load a price or complete a real purchase — until then the
+      button silently never appears (`products` loads empty), which is safe but means the
+      feature is inert. This is the one step no tool here can do for you.
+- [ ] **IAP #2: consumable coin pack** (decided 2026-08-25) — a real-money purchase of `meta.coins`
+      (`index.html:1565`), the existing shop currency. Reuses `WEAPONS`/`AVATARS` unlock plumbing
+      pattern from `StoreManager.swift`: add a second Product ID (e.g.
+      `com.lastpulse.game.coins500`), StoreKit `.consumable` type (finishes the transaction
+      immediately, unlike `unlockall`'s non-consumable), and a JS bridge call that adds coins to
+      `meta.coins` + `saveMeta()` instead of setting a flag. Blocked on the same App Store Connect
+      step as `unlockall`, plus deciding the coin amount/price tiers. Do this **after** PR #97 is
+      merged — building it now would only add more surface to an already-diverged branch.
 
 ## Shipped since this plan was last synced (v2.7.0 → v2.34.0)
 
@@ -238,27 +262,30 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 - [x] **More fighters** (v2.7.0) — roster now 7: **Bjorn** (Lv3), **Zane** (Lv6), **Wraith**
       (Lv10), **Ace** (Lv14), **Nova** (Lv18) joined Blaze/Rose. Each was one PNG + one `AVATARS`
       row — the pipeline held, no other code changes. Still trivially extensible for more.
-- [ ] **Gunless heroes + rotating gun** — _pending gunless art_. Current sprites have guns baked
-      in, so they only flip L/R (can't aim up/down/behind). Plan: when gunless PNGs arrive, anchor
-      the engine's `drawGun` at the hands and rotate it to `h.aim` for true 360° aiming (see the
-      drawn chibi's gun-arm at `index.html`). Full-body rotation was tested and looks broken
-      (front-facing sprite lies sideways) — the rotating-gun overlay is the approach.
+- [x] **Gunless heroes + rotating gun** (shipped in the "Roster rebuild" v2.7.0–v2.11.0 pass
+      above) — `AVATARS` is now 15 `armless:true` sprite heroes (`index.html:1079`+) with a live
+      360° gun-arm anchored at the hand and rotated to `h.aim`, per the plan below. Closes this
+      item; kept here only as the historical record of the approach that shipped.
 
 ## v1.13 — "Modes & Bosses"
 
 - [x] **Boss waves in Horde** (shipped v2.20.0–v2.21.1) — every 5th wave spawns armored
-      `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`, `index.html:1625`),
-      count scaling with wave (`1+floor(hordeWave/10)`, `index.html:2843`). _(v2.38.0: juggernauts
-      finally look armored — visible chest plate + shoulder guards in `drawZombie` — closing a gap
-      where the roadmap text called them "armored" for 8+ versions before the art did.)_
-- [x] **Boss polish** (shipped v2.50.0) — closes the "huge brute with hp banner + AoE slam +
-      guaranteed loot" gap called out above. A combined hp banner (`☠ JUGGERNAUT`, summed
-      hp/maxhp across every alive boss so multiple juggernauts on higher waves still show one
-      bar) draws at the top of the screen while any are alive; a telegraphed **ground-slam AoE**
-      (`JUGGERNAUT_SLAM`: 95px radius, 45 dmg, 0.6s windup ring, 4.5–6.5s cooldown) fires
-      independently of their normal contact damage, giving players a dodge window; and death now
-      guarantees a bonus scrap pile (8–12, vs. a normal kill's 62%-chance 5–8) plus a pickup
-      spawn, instead of reusing the plain per-size drop chance every other zombie uses.
+      `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`), count scaling
+      with wave (`1+floor(hordeWave/10)`). _(v2.38.0: juggernauts finally look armored — visible
+      chest plate + shoulder guards in `drawZombie` — closing a gap where the roadmap text called
+      them "armored" for 8+ versions before the art did.)_
+- [x] **Boss polish: hp banner + ground-slam AoE + guaranteed loot** (shipped v2.50.0, then
+      extended at the v2.57.0 merge) — a left-anchored stacked hp banner (up to 3 bosses,
+      weakest-first, correctly labels Colossus vs. Juggernaut) draws while any boss is alive; a
+      telegraphed **ground-slam AoE** (`JUGGERNAUT_SLAM`: 95px radius, 45 dmg + knockback, 0.6s
+      windup ring, 4.5–6.5s cooldown) fires independently of normal contact damage; and every
+      boss kill (`die()`, `e.boss` gate) guarantees a big scrap bundle + 2 always-good pickups
+      (medkit/armor/weapon, never plain health) plus a kind-aware "BOSS DOWN" toast, instead of
+      rolling the regular corpse's 62% scrap chance. _(v2.57.0 note: this branch had independently
+      built a second, incompatible slam/banner/loot implementation in parallel — it was removed
+      in favor of this one during the merge, keeping its richer 2-pickup loot table and
+      Colossus-aware banner label layered on top.)_ **Still open**: real-device playtest for slam
+      dodgeability feel and whether the damage/radius numbers are fair.
 - [x] **Map escalation** (shipped v2.52.0, direct user request) — the arena wasn't getting any
       harder to move through as Horde waves climbed, only more crowded with zombies. `escalateMap()`
       (`index.html`, right after `buildDecor()`) now runs on every boss wave (same 5th/10th/15th…

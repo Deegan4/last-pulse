@@ -10,13 +10,109 @@ royale** — a from-scratch remake inspired by the StickyGames title _Don't Die_
 canvas-drawn; no original sprites). Everything lives in [`index.html`](index.html): the game
 IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
+## Current state
+
+- **Code-review sweep — 6 real bugs fixed (no version bump, no player-visible feature).**
+  A `/code-review high` pass over the branch's full diff vs `origin/main` surfaced: (1) the
+  `#mutRow` mutator HUD indicator was toggled via `el('mutRow').style.display=''`, which only
+  clears the inline override — the `.srow.is-hidden{display:none}` class it also carries kept
+  winning the cascade, so the indicator could never actually show; fixed by toggling the
+  `is-hidden` class instead of inline style, verified by forcing `MUTATOR_CHANCE=1` on a
+  throwaway copy and reading `getComputedStyle` (now `display:flex`, was `none`). (2) the
+  viewport meta tag was missing `maximum-scale=1.0, user-scalable=no`, letting pinch/double-tap
+  zoom break the fixed-layout touch stage — restored. (3) footstep dust in `updateZombie` keyed
+  off exact `z.kind` instead of `z.family`, so husk/skitter/crusher (new v2.50-2.51 variants)
+  never kicked up dirt despite belonging to normal/runner/brute families — switched to `zfam`.
+  (4)-(5) `drawZombie` had two family/kind-double-fire bugs from the v2.51 variant-art pass:
+  skitter (family:'runner') got both the generic runner lean rotation AND its own, compounding to
+  ~2x the intended tilt; crusher/colossus (family:'brute'/'juggernaut') got both the generic
+  family ornament block (bone spikes / back armor) AND their own kind-specific one, double-drawn
+  in the same spot. Fixed by excluding the variant kind from its generic family block (`brute &&
+  !crusher`, `juggernaut && !colossus`, `runner && !skitter`) — the pattern to watch for whenever
+  a new `family:`-tagged variant is added: check every generic-family draw/behavior block for
+  whether the new kind should join it or fully replace it. (6) `.footer-ver` class had no CSS
+  rule, so the menu footer version link rendered at browser-default size instead of 12px — added
+  the rule. Also restored `-webkit-overflow-scrolling:touch` on `.modal` (lower-confidence, cheap
+  to keep) and fixed a stale comment claiming juggernaut r:26 was the biggest entity for
+  `SEP_CELL` sizing (colossus r:29 actually is — margin is 6px, not 12, still safe under 64).
+  **Not fixed**: `renderRoster()` does a full DOM/canvas rebuild on every roster click instead of
+  toggling `.sel` like `buildAvatarGrid()` does — real inefficiency, low severity, deferred.
+- **v2.53.1 — Sniper rebalance.** ROADMAP's balance table flagged "Sniper 250 dmg vs 96-DPS
+  shotgun" as an open question. The math actually shows Sniper's *sustained* DPS (~64, from
+  0.9s fireCd + 3s reload every single shot) is lower than Shotgun's — the "feels OP" complaint is
+  about burst, not DPS: one hit deletes anything under Crusher's 175hp with zero risk. Cut
+  `WEAPONS[5].dmg` 250→190 (`index.html`) — still a near-guaranteed one-shot on everything but
+  bosses/Crusher, but softens the "no skill required" burst feel. Combo window (`COMBO_WIN=3.0s`,
+  flagged as "too generous with Minigun") and the other balance-table knobs (hitstop, door width,
+  decal cap) were left untouched — no device to playtest feel on, so only this one (an objectively
+  arguable DPS-vs-burst mismatch, not a feel call) was worth touching blind.
+- **v2.53.0 — bosses fight back.** Closed the long-standing ROADMAP gap where Juggernaut/Colossus
+  bosses were just reskinned regular zombies. Added `SLAM` tunables (`index.html`, near
+  `COMBO_WIN`: 150px range/radius, 0.85s telegraph, 34 dmg, 3.4–4.8s cooldown), a `z.boss`-gated
+  branch in `updateZombie`'s melee path that roots the boss through a red-ring telegraph then AoE
+  damages + knocks back every human still inside when it lands, a left-anchored stacked hp-bar
+  banner in `draw()` (up to 3 bosses, weakest-first — deliberately NOT centered/top-right, since
+  that's the minimap's territory and a first pass collided with it), and a guaranteed boss loot
+  table in `die()` (big scrap bundle + 2 always-good pickups, never plain health, plus a toast) in
+  place of the regular corpse's 62%-chance scrap roll. Verified headless via throwaway
+  `window.__spawnBoss`/`__forceSlamOnBoss`/`__killBoss`/`__bossState`/`__lootState` hooks on a
+  `.test-boss.html` hooked copy (deleted after) — confirmed the telegraph ring renders, the AoE
+  actually damages the player, the hp banner draws without overlapping the minimap, and boss death
+  drops the guaranteed loot. **Gotcha for next time**: the driver's own hook-injection comment
+  says to split on `'\n})();\n</script>'` (first occurrence) rather than the last `})();` in the
+  file — this file has a *second* `<script type="module">` (the 3D layer) that also ends in
+  `})();`, and a naive last-match insert lands there instead of the game IIFE, silently putting
+  every hook out of scope (`ReferenceError: player is not defined` even though the hook "looks"
+  correctly placed).
+- **v2.52.0 — home-screen roster strip.** A Claude Design mockup (`Last Pulse iOS App.dc.html`,
+  a native-app-style redesign concept) proposed a horizontal "your roster" strip under the
+  fighter card for one-tap hero switching. Rather than the full native SwiftUI rewrite the
+  mockup implied (the iOS app is just a `WKWebView` wrapper around this same `index.html` — see
+  [LastPulseIOS/LastPulse/GameViewController.swift](LastPulseIOS/LastPulse/GameViewController.swift)),
+  ported just the new UI element into the existing web menu: `#rosterStrip` renders all 15
+  `AVATARS` as small `portraitChibi()` thumbnails (`renderRoster()`, called from `renderMenu()`),
+  locked heroes show 🔒 + greyscale via `avatarUnlocked()`, tapping an unlocked one sets
+  `meta.avatar` and re-renders immediately — no detour through the full avatar-select screen.
+  Everything else in the mockup (coin badge, level bar, rank badge, daily challenge card, stats
+  grid, achievements/shop buttons, donate button) already existed in the menu before this change.
+  Bumped `GAME_VERSION` to 2.52.0.
+- **v2.51.0 — improved enemy variant art.** Kept the new enemy-variant roster and made
+  `drawZombie()` family-aware via each zombie's `family` field so variants inherit the right
+  silhouette while gaining better unique details: Grunt (originally named Husk — renamed at the
+  v2.57.0 merge with `main`, which had independently shipped an unrelated `husk` spawner enemy)
+  bone shards, Skitter extra legs/antennae,
+  Crusher armor plates, Venomspine acid tail/spines, Rottank larger glowing blisters, Wraith cyan
+  wisps, and Colossus heavy back armor/horns. `hordeKind()` now spawns the variants across waves
+  2-9, and boss waves can roll a Colossus from wave 15 onward. Bumped `GAME_VERSION` to 2.51.0,
+  prepended the CHANGELOG entry, expanded the horde-spawn validation gate, and synced
+  `ROADMAP.md`.
+
+- **v2.50.0 — new horde enemies.** Added `leaper` and `howler` entries to `ZTYPES` in
+  `index.html`: Leapers unlock at wave 6 and pounce from mid-range via `updateZombie()`, while
+  Howlers unlock at wave 9, hold standoff range, and call `zombieHowl()` to frenzy nearby zombies
+  for 3.2s. `drawZombie()` gives Leapers long pounce legs/yellow brow marks and Howlers a cyan
+  crest/throat pulse so both read at phone scale. Bumped `GAME_VERSION` to 2.50.0, prepended the
+  CHANGELOG entry, and synced `ROADMAP.md`'s gated version header. _(Renamed to Shaman /
+  `zombieBuff()` at the v2.57.0 merge with `main` — `main` had independently shipped its own,
+  differently-designed `howler` — flags/fields are now `buff`/`buffCd` to avoid any confusion
+  with main's `howler`/`howlCd`.)_
+
 ## Session handoff — 2026-08-22
 _Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below.
 This section is a rolling "as of right now" summary — overwrite it (don't append) each session so it
 never goes stale like the 2026-08-13 version it replaces did (it sat frozen at v2.39.2/PR #89 for
 ~16 shipped versions and 12 merged PRs before anyone corrected it — see git history for the old text)._
 
-- **Where things stand:** production (`main`) is **v2.54.0** (PR #100, merged). Working branch
+- **2026-08-25 update (supersedes the paragraph below):** merged `codex/enemy-visual-upgrade`
+  (enemy visuals, more variants, boss AoE/loot, sniper rebalance, roster strip, IAP scaffold)
+  into `origin/main` (mid-run perk picks, 3 mutators, 3 late-game enemies, gun-tip fix) as
+  **v2.57.0**. Both branches had independently built a boss slam/hp-banner/guaranteed-loot system
+  and a `howler`/`husk` enemy pair — see ROADMAP.md's "v1.13" section and the `Grunt`/`Shaman`
+  rename notes above for how the collisions were resolved (main's slam/banner system kept as
+  canonical with this branch's richer loot table layered on; this branch's `howler`/`husk` renamed
+  to `shaman`/`grunt` since main's shipped first). Still blocked: `com.lastpulse.game.unlockall`
+  needs to exist as a real App Store Connect product before the IAP does anything.
+- **Where things stand (as of 2026-08-22, before the merge above):** production (`main`) was **v2.54.0** (PR #100, merged). Working branch
   `claude/pull-repo-k6uim2` is **one commit ahead with PR #101 open (draft, unreviewed)** —
   v2.55.0, the 3-new-enemy-kinds work (see "Current state" for full detail). Everything in between
   (v2.49.0 shop-in-pause through v2.54.0 gun-tip fix) shipped this window across PRs #98–#100, all
@@ -77,6 +173,14 @@ never goes stale like the 2026-08-13 version it replaces did (it sat frozen at v
     since it's untracked and doesn't show as a modification.
 
 ## Current state (done)
+- **v2.49.0 — upgraded all in-game enemy visuals.** Redrew the shared `drawZombie(z)` path so
+  every enemy kind has a stronger read in live combat without touching balance numbers in
+  `ZTYPES`: normals gained torn shoulder/bone damage, runners are narrower with red speed streaks
+  and sharper long limbs, spitters now carry a glowing acid tube/sac plus drool, bloaters have a
+  swollen pulsing belly with acid blisters, stalkers have a taller quilled spine/cranial spikes,
+  brutes retain the heavy bone-spike silhouette, and juggernauts now stack a dark back plate,
+  chest armor, shoulder guards, rivets and a helmet slit. Bumped `GAME_VERSION` 2.48.0 -> 2.49.0,
+  prepended the CHANGELOG entry, and synced `ROADMAP.md`'s gated version header.
 - **v2.56.0 — mid-run perk picks + 3 new mutators.** User: "how can we make the game not so
   boring and repetitive?" → offered a perk-pick system (bigger lever) vs. expanding mutators
   (smaller); user said "implement all of that" — both. `PERKS` (`index.html`) is 6 entries with
@@ -1471,6 +1575,15 @@ already landed.
   logo, added metal bolt accents to cards/headers, deepened button press shadows, rethemed the
   new props with wood/stone/gold/red-banner details, and marked the village battlefield polish
   bundle shipped in ROADMAP.md.
+
+- v2.54.0: Added the first real App Store monetization path — a StoreKit2 non-consumable
+  "Unlock Everything" IAP (`StoreManager.swift`) that bypasses avatar/weapon level-gates, wired
+  through a JS↔native message-handler bridge. Replaces the Stripe donate link inside the native
+  wrapper only (web build keeps Stripe) because an external payment link for digital content
+  inside a native app risks Guideline 3.1.1 rejection. The App Store Connect product itself
+  (`com.lastpulse.game.unlockall`) still needs to be created by the account holder before this
+  does anything real — verified in-browser that the JS side (button visibility, price/entitlement
+  callbacks, unlock-all bypassing every roster lock) works correctly with a mocked native bridge.
 
 ## Open questions for the user
 _(Superseded the old v1.8.0-era list here — those were answered or overtaken long ago; current
