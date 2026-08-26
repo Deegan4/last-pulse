@@ -151,8 +151,8 @@ try {
   const huStart = html.indexOf('function hordeUpdate');
   const huBody = huStart >= 0 ? html.slice(huStart, html.indexOf('\nfunction enemiesLeft', huStart + 1)) : '';
   const inMix   = k => new RegExp(`['"]${k}['"]`).test(hkBody);
-  const spawned = k => new RegExp(`['"]${k}['"]`).test(huBody);
-  const gated = ['grunt', 'skitter', 'crusher', 'spitter', 'venomspine', 'bloater', 'rottank', 'stalker', 'wraith', 'leaper', 'shaman', 'juggernaut', 'colossus'];
+  const spawned = k => new RegExp(`makeZombie\\([^)]*['"]${k}['"]`).test(html);
+  const gated = ['grunt', 'skitter', 'crusher', 'spitter', 'venomspine', 'bloater', 'rottank', 'stalker', 'wraith', 'leaper', 'shaman', 'juggernaut', 'colossus', 'howler', 'carapace', 'husk'];
   const dead = gated.filter(k => new RegExp(`\\b${k}\\s*:\\s*\\{`).test(html) && !inMix(k) && !spawned(k));
   if (dead.length) { console.error('✗ horde-spawn gate: defined but never spawned →', dead.join(', ')); process.exit(1); }
   console.log(`✓ horde-spawn reachable: ${gated.join(', ')} all have a spawn path`);

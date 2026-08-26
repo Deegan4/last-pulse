@@ -345,11 +345,13 @@
     transform:translate(-50%,-50%) scale(.55);opacity:0;transition:opacity .12s,transform .12s;
     display:flex;align-items:center;justify-content:center}
   .stickbase::before{content:'';position:absolute;width:86px;height:86px;border-radius:50%;border:1px dashed rgba(255,255,255,.20)}
-  .stickbase.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  /* v2.53.0: sticks are invisible — zones still take touch input, but no base/knob/hint
+     graphics render, so the play area stays uncluttered. */
+  .stickbase.on{opacity:0!important;transform:translate(-50%,-50%) scale(1)}
   .stickknob{position:absolute;width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.92);
     transform:translate(-50%,-50%);opacity:0;transition:opacity .12s;
     box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 7px 11px rgba(255,255,255,.4), inset 0 -9px 13px rgba(0,0,0,.28)}
-  .stickknob.on{opacity:1}
+  .stickknob.on{opacity:0!important}
   #moveKnob{background:radial-gradient(circle at 38% 30%, #d6ecff, #6aa6ff 54%, #3f78d6)}
   #aimKnob{background:radial-gradient(circle at 38% 30%, #ffd6ba, #ff8a5b 52%, #ed5638)}
   /* resting hints in the corners (touch only) */
@@ -358,7 +360,7 @@
     border:2px solid rgba(255,255,255,.38);box-shadow:0 0 0 5px rgba(255,255,255,.045), inset 0 0 18px rgba(0,0,0,.26);
     display:flex;align-items:center;justify-content:center;transition:opacity .12s}
   #moveHint{left:26px} #aimHint{right:26px}
-  #moveHint.hide,#aimHint.hide{opacity:0}
+  #moveHint,#aimHint,#moveHint.hide,#aimHint.hide{opacity:0!important}
   /* CSS glyphs: move = plus, aim = crosshair ring */
   .gly{position:relative;width:40px;height:40px;opacity:.62}
   .gly.move::before,.gly.move::after{content:'';position:absolute;background:#fff;border-radius:2px}
@@ -505,6 +507,9 @@
     background:rgba(0,0,0,.3);border-radius:999px;padding:4px 10px}
   .dailycard.done .drw{color:#9de07a}
   .shopcard{cursor:pointer}
+  .shopHdr{font-size:12px;font-weight:800;color:#cddcb6;text-transform:uppercase;letter-spacing:.04em;
+    margin:8px 2px 0;opacity:.85}
+  .shopHdr:first-child{margin-top:0}
   .upgcard{background:linear-gradient(180deg,#fff3d8,#ffe6b0)}   /* upgrades stand apart from cosmetic trails */
   .upgcard .aic{filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
   .shopcard.equipped{outline:2px solid #7bbf2e}
@@ -788,20 +793,25 @@
   <div id="settings" class="modal hidden">
     <h2 class="heading">Settings</h2>
     <div class="stack">
-      <button class="opt" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
-      <button class="opt" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
-      <button class="opt" id="sName"><span class="oic">✏️</span>Change Name</button>
+      <button class="opt" id="sShop"><span class="oic">🛒</span>Shop</button>
+      <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
+        <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
+      <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
+        <input type="range" id="aimSens" min="30" max="200" step="10"></div>
       <div class="opt ctrlrow" id="sCtrlRow"><span class="oic">🎮</span>
         <div class="ctrltxt"><b id="sCtrlStatus">⚪ No controller connected</b>
           <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
       </div>
-      <div class="slider"><label for="sfxVol">🔉 SFX volume <span id="sfxVal">80%</span></label>
-        <input type="range" id="sfxVol" min="0" max="100" step="5" title="SFX volume" aria-label="SFX volume"></div>
-      <div class="slider"><label for="aimSens">🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
-        <input type="range" id="aimSens" min="30" max="200" step="10" title="Aim sensitivity" aria-label="Aim sensitivity"></div>
-      <button class="opt" id="sExport"><span class="oic">💾</span>Copy Save Code</button>
-      <button class="opt" id="sImport"><span class="oic">📥</span>Enter Save Code</button>
-      <button class="opt" id="sFit"><span class="oic">📏</span>Screen Fit Check</button>
+      <!-- mid-match (pause) starts these collapsed behind sMoreToggle — profile/save/diagnostic
+           options aren't what you reach for while a horde is bearing down. Pre-match (reached via
+           the avatar/weapon screen gear icons) shows everything, same as before this change. -->
+      <button class="opt" id="sMoreToggle"><span class="oic">⋯</span>More options</button>
+      <button class="opt sMoreItem" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
+      <button class="opt sMoreItem" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
+      <button class="opt sMoreItem" id="sName"><span class="oic">✏️</span>Change Name</button>
+      <button class="opt sMoreItem" id="sExport"><span class="oic">💾</span>Copy Save Code</button>
+      <button class="opt sMoreItem" id="sImport"><span class="oic">📥</span>Enter Save Code</button>
+      <button class="opt sMoreItem" id="sFit"><span class="oic">📏</span>Screen Fit Check</button>
       <button class="opt danger hidden" id="sQuit"><span class="oic">🏳️</span>Quit to Main Menu</button>
     </div>
     <button class="close" id="sClose">Close</button>
@@ -838,6 +848,12 @@
     <div id="shopCoins" class="career"></div>
     <div class="achgrid" id="shopGrid"></div>
     <button class="close" id="shopClose">Close</button>
+  </div>
+
+  <!-- ===== Perk pick (every 3rd Horde wave, forced choice — no close button) ===== -->
+  <div id="perkPick" class="modal hidden">
+    <h2 class="heading">Choose a Perk</h2>
+    <div class="achgrid" id="perkGrid"></div>
   </div>
 
   <!-- ===== Support / IAP =====
@@ -1198,28 +1214,41 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.54.0';
+const GAME_VERSION = '2.57.0';
 const CHANGELOG = [
-  { v:'2.54.0', items:[
+  { v:'2.57.0', items:[
     ['🔓','Unlock Everything (iOS)','the app version now offers a real in-app purchase to unlock every fighter and weapon instantly, replacing the external donate link Apple doesn\'t allow inside native apps'],
+    ['🎯','Sniper rebalance','damage 250→190 — still drops almost anything in one shot, but no longer trivializes the burst-vs-DPS gap against the rest of the arsenal'],
+    ['🦸','Roster strip on the home screen','a horizontal row of every fighter now sits under your card — tap any unlocked hero to switch instantly, no need to open the full avatar picker'],
+    ['🧟','More enemy variants','every existing horde family now has a new sibling threat: Grunt, Skitter, Crusher, Venomspine, Rottank, Wraith, Shaman, and Colossus join the wave mix'],
+    ['👹','Enemy visual upgrade','every zombie type now has a stronger in-game silhouette: runners are leaner and red-streaked, spitters carry glowing acid sacs, bloaters pulse with blisters, stalkers bristle with quills, brutes show bone spikes, and juggernauts wear heavier armor'],
   ]},
-  { v:'2.53.1', items:[
-    ['🎯','Sniper rebalance','damage 250→190 — still drops almost anything in one shot, but no longer trivializes the ROADMAP-flagged burst-vs-DPS gap against the rest of the arsenal'],
+  { v:'2.56.0', items:[
+    ['🎴','Perk picks every 3rd wave','the run now pauses on a 3-card choice (Extended Clip, Adrenaline, Heavy Rounds, Thick Skin, Regeneration, Second Wind) before waves 3, 6, 9… spawn — a mid-run lever for build variety, stacking with repeated picks'],
+    ['🎲','3 new match mutators','Glass Cannon (+60% damage dealt and taken), Rich Vein (+70% scrap drops), and Blood Moon (+50% XP and coins) join the mutator pool announced at drop-in'],
+  ]},
+  { v:'2.55.0', items:[
+    ['👹','3 new late-game enemies','Howler (violet screamer that hastes nearby zombies — kill it first), Carapace (rust-armored tank that shrugs off chip damage), and Husk (pale bone husk that periodically drops weaker adds) unlock at waves 9/11/13, each with its own color family and silhouette so the horde keeps evolving deep into a run instead of just scaling numbers'],
+  ]},
+  { v:'2.54.0', items:[
+    ['🎯','Shots fire from the gun, not the hip','bullets, muzzle sparks and ejected shells now spawn from the actual drawn gun tip/hand — previously they left from a fixed radius around the character’s centre regardless of weapon length, so long guns like the Rifle and Sniper visibly fired from the hip'],
   ]},
   { v:'2.53.0', items:[
-    ['☠️','Bosses fight back','Juggernauts and Colossi now telegraph a ground slam (dodge the red ring!), show a health-bar banner while they\'re up, and always drop guaranteed loot when they go down'],
+    ['👻','Invisible joysticks','the on-screen move/aim sticks no longer draw a visible base, knob, or resting hint — the touch zones still work exactly the same, just with nothing cluttering the view'],
+    ['🔫','Brighter tracers','Pistol/Rifle bullets got a thicker, glowing tracer so shots read clearly against the grass instead of a barely-visible dash'],
   ]},
   { v:'2.52.0', items:[
-    ['🦸','Roster strip on the home screen','a horizontal row of every fighter now sits under your card — tap any unlocked hero to switch instantly, no need to open the full avatar picker'],
+    ['🧱','The map gets meaner as waves climb','every boss wave (5th, 10th, 15th…) also drops 2 new buildings onto the arena — more cover, more chokepoints — on top of the elites, up to 6 times per match'],
   ]},
   { v:'2.51.0', items:[
-    ['🧟','More enemy variants','every existing horde family now has a new sibling threat: Grunt, Skitter, Crusher, Venomspine, Rottank, Wraith, and Colossus join the wave mix'],
+    ['🧹','Decluttered pause menu','the pause Settings screen now leads with Shop, audio/aim sliders, and controller status — profile editing, save codes, and the screen-fit check collapse behind a new "More options" toggle so pausing mid-fight is a quick glance, not a scroll'],
   ]},
   { v:'2.50.0', items:[
-    ['🧟','New horde enemies','Leapers now pounce from mid-range and Shamans buff nearby zombies, adding pressure and priority targets to later waves'],
+    ['🎗️','Nameplate banners','4 new colored banners (crimson, azure, gold, violet) join the trail shop — a cosmetic pill behind your name in-match, buy & equip from Shop → Nameplate Banner'],
+    ['☠️','Boss polish','Juggernauts now have a visible hp banner while alive, a telegraphed ground-slam AoE attack on top of their normal contact damage, and a guaranteed loot drop (bonus scrap + a pickup) on death'],
   ]},
   { v:'2.49.0', items:[
-    ['👹','Enemy visual upgrade','every zombie type now has a stronger in-game silhouette: runners are leaner and red-streaked, spitters carry glowing acid sacs, bloaters pulse with blisters, stalkers bristle with quills, brutes show bone spikes, and juggernauts wear heavier armor'],
+    ['🛒','Shop while paused','the pause menu now has a Shop button so you can spend coins on trails and Extended Magazines mid-match, without quitting to the main menu'],
   ]},
   { v:'2.48.0', items:[
     ['🌙','Back to the midnight-forest look','removed the wood/parchment "village" reskin (v2.46-2.47) — dated, cluttered, and off-palette per feedback. Menus and cards are frosted glass again: dark layered gradients, blurred panels, soft green/gold glow accents'],
@@ -1574,6 +1603,7 @@ const meta = {
   coins: parseInt(safeGet('dd2_coins','0'),10) || 0,
   owned: (safeGet('dd2_owned','')||'').split(',').filter(Boolean),   // purchased shop item ids
   trail: safeGet('dd2_trail','none'),                                // equipped trail id
+  banner: safeGet('dd2_banner','none'),                              // equipped nameplate banner id
   magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
@@ -1610,6 +1640,7 @@ function saveMeta(){
   safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_sens',meta.aimSens);
   safeSet('dd2_ach', meta.achieved.join(','));
   safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
+  safeSet('dd2_banner',meta.banner);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
   safeSet('dd2_iap_unlockall', meta.iapUnlockAll ? '1' : '0');
@@ -1756,9 +1787,48 @@ const MUTATORS = [
   {id:'horde2x',  icon:'🧟', name:'SWARM NIGHT',  desc:'Every wave spawns twice the zombies',        zMul:2},
   {id:'fogNight', icon:'🌙', name:'DEEP FOG',       desc:'Endless night — your light barely reaches',  fog:true},
   {id:'lowGrav',  icon:'🎈', name:'LOW GRAVITY',   desc:'Bombs hang longer and blast wider',          bombFuseMul:1.8, bombRadMul:1.4},
+  {id:'glassCannon', icon:'💎', name:'GLASS CANNON', desc:'You deal +60% damage but take +60% too',   dmgOutMul:1.6, dmgInMul:1.6},
+  {id:'richVein',    icon:'💰', name:'RICH VEIN',    desc:'Zombies drop 70% more scrap',              scrapMul:1.7},
+  {id:'bloodMoon',   icon:'🔴', name:'BLOOD MOON',   desc:'+50% XP and coins this run',                xpMul:1.5, coinMul:1.5},
 ];
 const MUTATOR_CHANCE = 0.35;    // "occasional" — most matches stay vanilla
 function pickMutator(){ return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
+
+// ===== Perk picks =====
+// Mid-run agency: every 3rd wave (3,6,9…) pauses on a 3-card choice before the next wave spawns.
+// Each perk's apply(h) mutates the player instance directly (h.perkDmgMul etc.) — read at the
+// existing single choke points in fire()/hurt()/die() rather than a generic buff-list, matching
+// how activeMutator's numeric fields are consumed.
+const PERKS = [
+  {id:'extClip',  icon:'🧰', name:'EXTENDED CLIP', desc:'+50% magazine size',            apply:h=>{ h.magMul=(h.magMul||1)*1.5; }},
+  {id:'adrenaline',icon:'⚡', name:'ADRENALINE',    desc:'+15% move speed',               apply:h=>{ h.perkSpeedMul=(h.perkSpeedMul||1)*1.15; }},
+  {id:'heavyRounds',icon:'🔨',name:'HEAVY ROUNDS',  desc:'+20% weapon damage',            apply:h=>{ h.perkDmgMul=(h.perkDmgMul||1)*1.2; }},
+  {id:'thickSkin',icon:'🛡️', name:'THICK SKIN',    desc:'-20% damage taken',             apply:h=>{ h.perkDmgInMul=(h.perkDmgInMul||1)*0.8; }},
+  {id:'regen',    icon:'💗', name:'REGENERATION',  desc:'Heal 1.5 hp/s passively',       apply:h=>{ h.perkRegen=(h.perkRegen||0)+1.5; }},
+  {id:'secondWind',icon:'💖',name:'SECOND WIND',    desc:'Survive one lethal hit at 50% hp',apply:h=>{ h.perkRevives=(h.perkRevives||0)+1; }},
+];
+let perkChoices=[], pendingWaveBoss=false;
+function openPerkPick(boss){
+  pendingWaveBoss = boss;
+  const pool = PERKS.slice(); perkChoices=[];
+  while(perkChoices.length<3 && pool.length) perkChoices.push(pool.splice(randi(0,pool.length-1),1)[0]);
+  const grid = el('perkGrid'); grid.innerHTML='';
+  for(const p of perkChoices){
+    const card = document.createElement('div'); card.className='achcard shopcard'; card.dataset.perk=p.id;
+    card.innerHTML = `<span class="aic">${p.icon}</span><div class="atxt"><b>${p.name}</b><span>${p.desc}</span></div>`;
+    grid.appendChild(card);
+  }
+  paused = true;
+  el('perkPick').classList.remove('hidden');
+}
+function choosePerk(id){
+  const p = perkChoices.find(x=>x.id===id); if(!p) return;
+  p.apply(player);
+  toast(p.icon+' '+p.name+' picked!'); sfx('level');
+  el('perkPick').classList.add('hidden');
+  paused = false;
+  hordeSpawnWave(pendingWaveBoss);
+}
 function dailyDoneToday(){ return meta.dailyDone===dayKey(); }
 // Called at match end (before results render). Returns true if the daily was just completed.
 function checkDaily(ctx){
@@ -1780,6 +1850,15 @@ const SHOP_ITEMS = [
   {id:'royal',  icon:'👑', name:'Royal Trail',   desc:'Gold & violet — walk like a king',cost:500, colors:['#ffd166','#c08bff']},
 ];
 function shopItem(id){ return SHOP_ITEMS.find(s=>s.id===id); }
+// Nameplate banners — a colored bar drawn under the player's name in drawNameplate(), purely
+// cosmetic like trails (own inventory/equip slot, doesn't touch stats).
+const BANNERS = [
+  {id:'crimson', icon:'🔴', name:'Crimson Banner', desc:'Bold red name banner',       cost:150, color:'#e2452f'},
+  {id:'azure',   icon:'🔵', name:'Azure Banner',   desc:'Cool blue name banner',      cost:150, color:'#5fa8ff'},
+  {id:'gold',    icon:'🟡', name:'Gold Banner',    desc:'Champion gold name banner',  cost:250, color:'#ffd166'},
+  {id:'violet',  icon:'🟣', name:'Violet Banner',  desc:'Royal violet name banner',   cost:250, color:'#c08bff'},
+];
+function bannerItem(id){ return BANNERS.find(b=>b.id===id); }
 // Extended Magazines — a permanent, coin-bought upgrade (meta.magLvl) that widens every weapon's
 // magazine. Tunables: capacity bonus per level and the coin cost of each tier.
 const MAG_MAX=3, MAG_STEP=0.20;          // up to +60% magazine capacity across all guns
@@ -1824,6 +1903,13 @@ let gameMode = MODES[0];  // Endless Horde is the only mode (BR & Squads retired
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
 let activeMutator = null;                   // this match's MUTATORS entry, or null — see spawnMatch
 let hordeWave = 0;
+// Map escalation — every boss wave (5th, 10th, 15th…) also drops MAP_ESCALATE_PER new buildings
+// onto the arena, additively, so later waves fight over a more cut-up, chokepoint-heavy map
+// instead of just "the same map with more zombies". Capped so a very long run doesn't clutter the
+// arena into a maze; MAP_ESCALATE_MAX * MAP_ESCALATE_PER = 12, roughly matching buildDecor's own
+// max building count (22) added on top of a starting count as low as 13.
+const MAP_ESCALATE_MAX = 6, MAP_ESCALATE_PER = 2;
+let mapEscalations = 0;                     // escalateMap() call count this match, capped at MAP_ESCALATE_MAX
 let hordeStallT = 0, hordeLastAlive = 0;    // wave-clear stall watchdog (unsticks stranded stragglers)
 let aimWX = 0, aimWY = 0, aimShow = false;  // reticle world target
 let spectating = false, specTarget = null, deathPlace = 0, spectateT = 0;
@@ -1854,8 +1940,6 @@ let lastWin = false, victoryT = 0, nextDrop = 18;
 let streakMsg = '', streakT = 0;
 let combo = 0, comboT = 0;                  // kill-combo chain (xp multiplier)
 const COMBO_WIN = 3.0;                      // seconds to chain the next kill
-// Boss ground-slam: telegraph (red ring grows to `r`) then AoE damage to anyone still inside it.
-const SLAM = {range:150, telegraph:0.85, r:150, dmg:34, cd:[3.4,4.8]};
 let hitstop = 0;                            // kill slow-mo timer (wall-clock seconds)
 let zoneWarn = 0;
 let heartT = 0;                             // low-health heartbeat cadence
@@ -1878,6 +1962,9 @@ const CHAR_VISUAL_SCALE = 1.18;       // drawn chibi scale only; collisions stay
 const HERO_H = 70;                    // on-field hero sprite height (px) — nameplate offset tracks this
 const HERO_ARM_ANCHOR_X = 0;           // live weapon-arm pivot on PNG heroes, in sprite-local pixels
 const HERO_ARM_ANCHOR_Y = -15;         // chest-height anchor; avoids belly-mounted arms on v2 sprites
+const HERO_ARM_REACH = 12;             // shoulder-to-wrist length in drawHeroArm's local (pre-scale)
+                                        // space — shared with gunTip()/wristPos() below so bullets
+                                        // spawn from the same point the arm is actually drawn at
 const WEAPON_HAND_SCALE = 1.06;       // procedural in-hand fallback scale
 const WEAPON_PNG_HAND_SCALE = 1.30;   // real PNG in-hand art scale
 let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
@@ -1965,16 +2052,28 @@ const ZTYPES = {
   shaman:{ hp:74, dmg:10, sp:[54,72],   r:16, skin:'#78b8a5', torso:'#315050', shade:'#2f6a64', eye:'#61f7ff', size:1.08, w:0, buff:true },       // buffs nearby undead
   juggernaut:{ hp:420,dmg:30,sp:[30,44], r:26, skin:'#4c6a3a', torso:'#28331f', shade:'#28401e', eye:'#ff7a1a', size:1.70, w:0, boss:true },      // armored mini-boss (milestone waves)
   colossus:{ hp:560,dmg:36,sp:[24,36], r:29, skin:'#526646', torso:'#20271f', shade:'#24371f', eye:'#ff4f1a', size:1.92, w:0, family:'juggernaut', boss:true }, // rarer boss variant
+  // Late-game additions (w:0, unlocked well past stalker@7 so the roster keeps growing instead of
+  // just scaling numbers forever) — each breaks from the shared green-olive palette onto its own
+  // hue family so it reads as a distinct threat at a glance, not a recolored normal/brute/stalker.
+  howler: { hp:48, dmg:10, sp:[70,100], r:14, skin:'#8a6a9a', torso:'#4a3560', shade:'#3a2850', eye:'#b46bff', size:1.0,  w:0, howler:true },     // violet support caster — screech hastes nearby zombies
+  carapace:{ hp:170,dmg:17, sp:[34,48],  r:19, skin:'#a8724a', torso:'#6b3a20', shade:'#4a2814', eye:'#4ad6ff', size:1.25, w:0, armored:true },     // rust carapace tank — flat damage reduction, slow
+  husk:   { hp:80, dmg:10, sp:[40,58],  r:17, skin:'#c8cfc0', torso:'#5a5850', shade:'#3a3830', eye:'#9fd8ff', size:1.15, w:0, spawner:true },     // pale bone husk — periodically drops weaker adds
 };
+// Boss ground-slam AoE — a telegraphed heavy hit distinct from a juggernaut's normal contact
+// damage, on its own cooldown. `wind` is the visible windup (growing warning ring) before impact.
+const JUGGERNAUT_SLAM = { r:95, dmg:45, range:150, wind:0.6, cdMin:4.5, cdMax:6.5, knock:220 };
 const TOWER_W=88, TOWER_H=72, TOWER_ELEV=46;   // 2-story watchtower: footprint + rooftop rise (climb to shoot down)
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
 function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
   return { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
-    seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom,
-    leaper:!!t.leaper, buff:!!t.buff, spitCd:rand(0.6,1.8), leapCd:rand(0.8,2.2), buffCd:rand(1.2,3.0), frenzyT:0,
-    boss:!!t.boss, slamCd:rand(SLAM.cd[0],SLAM.cd[1]), slamT:0 };
+    seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8),
+    leaper:!!t.leaper, buff:!!t.buff, leapCd:rand(0.8,2.2), buffCd:rand(1.2,3.0), frenzyT:0,
+    boss:!!t.boss, slamCd:t.boss?rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax):0, slamWind:0,
+    howler:!!t.howler, howlCd:t.howler?rand(2,4):0, howlFlash:0, hasteT:0,
+    armored:!!t.armored,
+    spawner:!!t.spawner, spawnCd:t.spawner?rand(3,5):0, spawnsLeft:t.spawner?3:0 };
 }
 // ---- watchtower geometry: solid footprint, an inset walkable roof, and a south-facing ladder zone ----
 function towerRoof(t){ return {x:t.x+11, y:t.y+11, w:t.w-22, h:t.h-22}; }
@@ -2053,6 +2152,30 @@ function buildDecor(){
   if(lvl>=20) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
   campfires = decor.filter(d=>d.type==='campfire');   // cache for the heal-aura check
+}
+// Additive map escalation (Horde only) — called on boss waves from the wave-clear block. NEVER
+// clears or repositions existing decor/obstacles (that would strand zombies/the player inside
+// new solid geometry mid-fight); it only appends new buildings using the exact same
+// placement-and-retry rules buildDecor() uses for its own buildings, plus a clearance check
+// against every living human (buildDecor doesn't need that — it runs before anyone spawns).
+// Safe to call mid-match: it's only ever invoked at the "wave cleared" point, where the horde
+// loop has already confirmed zero zombies are alive, so there's nothing else to avoid placing on.
+function escalateMap(){
+  if(mapEscalations>=MAP_ESCALATE_MAX) return;
+  let added=0;
+  for(let i=0;i<MAP_ESCALATE_PER;i++){ let b, ok=false, tries=0;
+    do{ const w=rand(110,210), h=rand(90,170);
+      const kind = w>BIG_HOUSE ? (Math.random()<0.6?'barn':pick(['shop','house'])) : pick(['house','house','shop','cabin']);
+      b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, kind, roof:pick(BKINDS[kind].roof)}; ok=true;
+      if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
+      for(const o of obstacles) if(b.x<o.x+o.w+90 && b.x+b.w+90>o.x && b.y<o.y+o.h+90 && b.y+b.h+90>o.y) ok=false;
+      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+60, ph=wd.s*0.64+60;
+        if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
+      for(const h of humans){ if(!h.alive) continue;   // never drop a wall on a living player
+        if(h.x>b.x-70 && h.x<b.x+b.w+70 && h.y>b.y-70 && h.y<b.y+b.h+70){ ok=false; break; } }
+      tries++; } while(!ok && tries<40);
+    if(ok){ obstacles.push(b); decor.push(b); added++; } }   // drawables.sort() in draw() handles y-order — no decor re-sort needed
+  if(added){ mapEscalations++; toast('🧱 New buildings have appeared on the map'); }
 }
 // Buildings are hollow — 4 solid walls with a door gap at the bottom-centre, so entities
 // can walk inside through the door and bullets fly through the doorway but not the walls.
@@ -2147,7 +2270,7 @@ function spawnMatch(){
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   builds.length=0; scraps.length=0;
-  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; zReinforce=rand(10,14); activeMutator=null;
+  killsTotal=0; nextDrop=18; streakT=0; victoryT=0; hordeWave=0; mapEscalations=0; zReinforce=rand(10,14); activeMutator=null;
   hordeStallT=0; hordeLastAlive=0;
   combo=0; comboT=0; hitstop=0;
   menuAmbient=false;                                     // real match takes over the canvas
@@ -2243,53 +2366,66 @@ function bulletFx(w){
     case 'Frost Blaster': return {col:'#c9f7ff',lw:3.0,tl:0.02, glow:9, tip:1.7, mz:7.5,kick:.95,sparks:6, spread:.55, push:22, shake:1};
     case 'Minigun':  return {col:'#fff0b0',lw:2.4,tl:0.016,glow:3, tip:1.3, mz:7,  kick:.7,  sparks:3, spread:.5, push:16, shake:0};
     case 'Tommy':    return {col:'#ffe7b0',lw:2.8,tl:0.014,glow:0, tip:1.4, mz:6.5,kick:.9,  sparks:4, spread:.5, push:20, shake:0};
-    default:         return {col:'#fff3c0',lw:3,  tl:0.013,glow:0, tip:1.5, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
+    default:         return {col:'#fff3c0',lw:3.6,tl:0.022,glow:6, tip:2.2, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
   }
 }
+// True hand/muzzle world positions — mirror the exact transform chain drawHeroArm() uses to draw
+// the gun (shoulder anchor at HERO_ARM_ANCHOR_X/Y -> CHAR_VISUAL_SCALE -> rotate to h.aim -> arm
+// reach [-> barrel length]), so shots/sparks/shells leave from where the gun is actually drawn
+// instead of a fixed 16px radius from the character's centre regardless of weapon or art scale
+// (that mismatch was most visible on long guns like Rifle/Sniper — bullets read as firing from the
+// hip). Recoil is deliberately excluded: it's a post-shot kickback animation, not part of where the
+// muzzle sits at the instant a shot leaves.
+function wristPos(h){ const d=HERO_ARM_REACH*CHAR_VISUAL_SCALE;
+  return { x:h.x+Math.cos(h.aim)*d, y:h.y+HERO_ARM_ANCHOR_Y+Math.sin(h.aim)*d }; }
+function gunTip(h){ const d=(HERO_ARM_REACH+heldWeaponLen(h.weapon)+1)*CHAR_VISUAL_SCALE;
+  return { x:h.x+Math.cos(h.aim)*d, y:h.y+HERO_ARM_ANCHOR_Y+Math.sin(h.aim)*d }; }
 function fire(h){
   if(!h.alive || grace>0 || h.fireCd>0 || h.reloading>0) return;
   if(h.mag<=0){ startReload(h); return; }
   const w=h.weapon; h.fireCd = w.fireCd * (h.isPlayer?1:h.fireMul);
   const range=w.range*RANGE_SCALE;
+  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
   if(w.mode==='flame'){
-    const fspd=320;
+    const fspd=320, tip=gunTip(h);
     for(let i=0;i<3;i++){ const a=h.aim+rand(-0.34,0.34), sp=fspd*rand(.7,1.1);
-      bullets.push({ x:h.x+Math.cos(a)*14, y:h.y+Math.sin(a)*14, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        life:range/fspd, owner:h, dmg:w.dmg, flame:true, hits:0, r:rand(4,8),
+      bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+        life:range/fspd, owner:h, dmg:w.dmg*dmgMul, flame:true, hits:0, r:rand(4,8),
         color: pick(['#ff9b3d','#ff6a2a','#ffd24a']) }); }
     h.mag--; sfx('flame'); if(h.mag<=0) startReload(h); return;
   }
   if(w.mode==='launcher'){
-    const a=h.aim+(h.isPlayer?rand(-0.01,0.01):rand(-h.acc,h.acc)*0.5), rs=430;
-    bullets.push({ x:h.x+Math.cos(a)*18, y:h.y+Math.sin(a)*18, vx:Math.cos(a)*rs, vy:Math.sin(a)*rs,
-      life:range/rs, owner:h, dmg:w.dmg, boom:true, rocket:true, hits:0,
+    const a=h.aim+(h.isPlayer?rand(-0.01,0.01):rand(-h.acc,h.acc)*0.5), rs=430, tip=gunTip(h);
+    bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*rs, vy:Math.sin(a)*rs,
+      life:range/rs, owner:h, dmg:w.dmg*dmgMul, boom:true, rocket:true, hits:0,
       color:'#ffcaa0', lw:5, tl:0.02, glow:9, tip:3, aim:a });
     h.mag--; h.muzzleT=0.09; h.muzzleR=12; h.recoil=2.4;
-    for(let i=0;i<12;i++) spark(h.x+Math.cos(a)*16, h.y+Math.sin(a)*16, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
+    for(let i=0;i<12;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
     h.vx-=Math.cos(a)*48; h.vy-=Math.sin(a)*48; if(h.isPlayer) shake=Math.min(shake+6,14);
     sfx('shoot',w); if(h.mag<=0) startReload(h); return;
   }
   const spd = w.mode==='sniper'?1040 : w.mode==='shotgun'?560 : 780;
   const shots = w.mode==='shotgun'?6 : w.twin?2 : 1;
   const fx = bulletFx(w);
+  const tip = gunTip(h);
   // bots shoot wilder during the early-match warmup (see updateBot) — softens a fresh BR drop
   const botAcc = h.isPlayer ? 0 : h.acc * (1 + 1.6*(1-clamp(elapsed/18,0,1)));
   for(let i=0;i<shots;i++){
     const spread = w.mode==='shotgun'? rand(-0.28,0.28) : (h.isPlayer?rand(-0.012,0.012):rand(-botAcc,botAcc));
     const a=h.aim+spread + (w.twin?(i===0?-0.02:0.02):0);
     const perp = w.twin?(i===0?-3:3):0;   // twin barrels fire from side-by-side muzzles
-    let dmg=w.dmg, crit=false;
+    let dmg=w.dmg*dmgMul, crit=false;
     if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
-    bullets.push({ x:h.x+Math.cos(a)*16 - Math.sin(h.aim)*perp, y:h.y+Math.sin(a)*16 + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+    bullets.push({ x:tip.x - Math.sin(h.aim)*perp, y:tip.y + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
       life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper'||w.arc, arc:w.arc, frost:w.frost, hits:0,
       color: crit?'#ffd24a':fx.col, lw: crit?4.2:fx.lw, tl: fx.tl, glow: crit?10:fx.glow, tip: crit?2.2:fx.tip });
   }
   h.mag--;
   // muzzle flash + recoil scale with the gun
   h.muzzleT=0.06; h.muzzleR=fx.mz; h.recoil=fx.kick;
-  for(let i=0;i<fx.sparks;i++) spark(h.x+Math.cos(h.aim)*16, h.y+Math.sin(h.aim)*16, pick(['#ffd06a','#ffae3a','#fff1bf']), rand(50,150+fx.mz*8), h.aim+rand(-1,1)*fx.spread);
-  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2;  // ejected shell (red for shotgun)
-    spark(h.x+Math.cos(h.aim)*7, h.y+Math.sin(h.aim)*7-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
+  for(let i=0;i<fx.sparks;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#fff1bf']), rand(50,150+fx.mz*8), h.aim+rand(-1,1)*fx.spread);
+  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2, wrist=wristPos(h);  // ejected shell (red for shotgun), from the ejection port near the hand
+    spark(wrist.x, wrist.y-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
   h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
   if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
   sfx('shoot', w);
@@ -2319,6 +2455,13 @@ function spraySplatOnWall(x, y, dmg){
 }
 function hurt(e, dmg, src, isHumanTarget){
   if(!e.alive) return;
+  // Glass Cannon mutator — the player takes extra damage to match the extra damage they deal.
+  if(e.isPlayer && activeMutator?.dmgInMul) dmg*=activeMutator.dmgInMul;
+  // Thick Skin perk — flat incoming-damage reduction for the player.
+  if(e.isPlayer && e.perkDmgInMul) dmg*=e.perkDmgInMul;
+  // Carapace: a flat carapace damage reduction (distinct from the numeric shield pickup below) —
+  // rewards burst weapons over chip damage, the "low-profile armored tank" wrinkle.
+  if(e.armored) dmg*=0.65;
   // armor soaks damage first
   if(e.shield>0){ const a=Math.min(e.shield,dmg); e.shield-=a; dmg-=a;
     for(let i=0;i<3;i++) spark(e.x,e.y-6,'#7fc8ff',rand(40,120),rand(0,TAU),.3); }
@@ -2340,7 +2483,14 @@ function hurt(e, dmg, src, isHumanTarget){
   if(src && src.isPlayer && dmg>0){ hitmarks.push({x:e.x,y:e.y-6,t:0.22,kill:false}); sfx('tick',null,e); }
   if(e.isPlayer && src && src!==e){ dmgDirs.push({a:Math.atan2(src.y-e.y,src.x-e.x), t:1.0});
     if(e.gpIndex!=null) gpRumble(e.gpIndex, 110, clamp(dmg/70,0.15,0.55), clamp(dmg/45,0.1,0.5)); }   // rumbles THIS player's own pad, not always pad 0
-  if(e.hp<=0){ die(e, src, isHumanTarget); }
+  if(e.hp<=0){
+    // Second Wind perk: consume one banked revive instead of dying, once per pick.
+    if(e.isPlayer && e.perkRevives>0){ e.perkRevives--; e.hp=Math.round(e.maxhp*0.5); e.burn=0;
+      shake=Math.min(shake+12,18); toast('💗 SECOND WIND — back up!'); sfx('level');
+      for(let i=0;i<16;i++) spark(e.x,e.y,'#7bff8a',rand(80,220),rand(0,TAU),.7);
+      return; }
+    die(e, src, isHumanTarget);
+  }
 }
 function die(e, src, isHumanTarget){
   e.alive=false; e.hp=0; e.burn=0;
@@ -2379,18 +2529,18 @@ function die(e, src, isHumanTarget){
   if(!isHumanTarget){ // zombie death pop
     rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
-    // scrap salvage — the building currency; bigger corpses yield more
-    if(scraps.length<40 && Math.random()<0.62){ const big=(e.size||1)>=1.3, run=(e.size||1)<0.86;
-      scraps.push(makeScrap(e.x, e.y, big?randi(5,8):(run?randi(1,2):randi(2,4)))); }
+    const scrapMul = activeMutator?.scrapMul||1;   // Rich Vein mutator
     // boss loot table — guaranteed, unlike the regular corpse's 62% scrap roll: a big scrap
     // bundle plus 2 always-good pickups (never plain health), so a boss kill always feels worth it
     if(e.boss){
-      scraps.push(makeScrap(e.x, e.y, randi(10,14)));
+      scraps.push(makeScrap(e.x, e.y, Math.round(randi(10,14)*scrapMul)));
       const bossPool=['medkit','armor','weapon']; const angles=[0.9,-0.9];
       angles.forEach((off,i)=>{ const a=ka+off, r=34+i*10;
         pickups.push(makePickup(e.x+Math.cos(a)*r, e.y+Math.sin(a)*r, i===0?pick(bossPool):'weapon')); });
       toast((e.kind==='colossus'?'☠ COLOSSUS':'☠ JUGGERNAUT')+' DOWN — loot dropped!'); sfx('loot');
-    } }
+    // scrap salvage — the building currency; bigger corpses yield more
+    } else if(scraps.length<40 && Math.random()<0.62){ const big=(e.size||1)>=1.3, run=(e.size||1)<0.86;
+      scraps.push(makeScrap(e.x, e.y, Math.round((big?randi(5,8):(run?randi(1,2):randi(2,4)))*scrapMul))); } }
   if(e.isPlayer){ shake=Math.min(shake+10,18); }
   if(isHumanTarget){
     // isPlayer2 checked FIRST: it's the more specific case, and must win over the plain isPlayer
@@ -2622,6 +2772,13 @@ function campfireHeal(h,dt){
     h.hp=Math.min(h.maxhp, h.hp+CAMPFIRE.heal*dt);
     if(h.isPlayer && Math.random()<dt*9) spark(h.x+rand(-9,9), h.y-rand(0,16), '#8fe36a', rand(18,60), -Math.PI/2, .55);
     return; } }
+}
+// Regeneration perk — a flat hp/s passive heal, independent of campfires. Stacks additively if
+// picked more than once (h.perkRegen accumulates in the perk's own apply()).
+function perkRegenTick(h,dt){
+  if(!h.perkRegen || h.hp>=h.maxhp || grace>0) return;
+  h.hp=Math.min(h.maxhp, h.hp+h.perkRegen*dt);
+  if(Math.random()<dt*6) spark(h.x+rand(-9,9), h.y-rand(0,16), '#ff8fd6', rand(18,55), -Math.PI/2, .5);
 }
 let toastT=0;
 function toast(msg){ const t=el('toast'); t.textContent=msg; t.style.opacity='1'; toastT=1.1; }
@@ -2940,23 +3097,11 @@ function updateZombie(z,dt){
   if(z.leapCd>0) z.leapCd-=dt;
   if(z.buffCd>0) z.buffCd-=dt;
   if(z.frenzyT>0) z.frenzyT-=dt;
-  if(z.slamCd>0) z.slamCd-=dt;
-  if(z.slamT>0){                              // mid-telegraph: rooted, then AoE on expiry
-    z.slamT-=dt;
-    if(z.slamT<=0){
-      rings.push({x:z.x, y:z.y, t:0, dur:0.35, r0:10, r1:SLAM.r, col:'255,120,40', lw:5});
-      sfx('boom',null,z);
-      for(const h of humans) if(h.alive && dist2(h.x,h.y,z.x,z.y) < SLAM.r*SLAM.r){
-        hurt(h, SLAM.dmg, z, true);
-        const a=Math.atan2(h.y-z.y,h.x-z.x); h.vx+=Math.cos(a)*220; h.vy+=Math.sin(a)*220;
-        if(h.isPlayer) shake=Math.min(shake+9,18);
-      }
-    }
-  }
   if(z.burn>0){ z.burn-=dt; z.hp-=9*dt;
     if(Math.random()<dt*12) spark(z.x+rand(-7,7), z.y-rand(2,16), pick(['#ff9b3d','#ff6a2a']), rand(20,70), -Math.PI/2, .4);
     if(z.hp<=0){ die(z, z.burnSrc, false); return; } }
   if(z.slowT>0) z.slowT-=dt;
+  if(z.hasteT>0) z.hasteT-=dt;
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
   if(tgt && near.d<(z.ranged?540:z.buff?560:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
@@ -2990,16 +3135,47 @@ function updateZombie(z,dt){
         z.vx+=Math.cos(a)*280; z.vy+=Math.sin(a)*280;
         for(let i=0;i<8;i++) spark(z.x-rand(-5,5), z.y+14, '#c8b46a', rand(40,120), rand(-Math.PI*0.9,-Math.PI*0.1), rand(.25,.45));
       }
-      // boss ground-slam: root in place through the telegraph, only landing contact damage after
-      if(z.boss && z.slamCd<=0 && z.slamT<=0 && grace<=0 && near.d<SLAM.range && !tgt.onTower){
-        z.slamT=SLAM.telegraph; z.slamCd=rand(SLAM.cd[0],SLAM.cd[1]); z.lunge=1;
-      }
-      if(z.slamT>0){ mvx=0; mvy=0; }
-      else if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0 && !tgt.onTower){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
+      if(near.d<z.r+R+2 && z.attackCd<=0 && grace<=0 && !tgt.onTower){ z.attackCd=0.85; z.lunge=1; hurt(tgt, z.dmg, z, true);
         tgt.vx+=Math.cos(a)*120; tgt.vy+=Math.sin(a)*120; if(tgt.isPlayer) shake=Math.min(shake+4,10); }
     } }
   else { if(z.think<=0){ z.wanderA=rand(0,TAU); z.think=rand(1,2.4); } z.think-=dt;
     mvx=Math.cos(z.wanderA)*0.5; mvy=Math.sin(z.wanderA)*0.5; }
+  // ---- BOSS ground-slam AoE: a telegraphed heavy hit, separate from normal contact damage ----
+  if(z.boss){
+    if(z.slamWind>0){ z.slamWind-=dt;
+      if(z.slamWind<=0){                                          // windup finished → the slam lands
+        for(const hh of humans){ if(!hh.alive) continue;
+          if(dist2(hh.x,hh.y,z.x,z.y) < JUGGERNAUT_SLAM.r*JUGGERNAUT_SLAM.r){
+            hurt(hh, JUGGERNAUT_SLAM.dmg, z, true);
+            const ka=Math.atan2(hh.y-z.y,hh.x-z.x); hh.vx+=Math.cos(ka)*JUGGERNAUT_SLAM.knock; hh.vy+=Math.sin(ka)*JUGGERNAUT_SLAM.knock;
+            if(hh.isPlayer) shake=Math.min(shake+8,18); } }
+        rings.push({x:z.x,y:z.y,t:0,dur:0.4,r0:10,r1:JUGGERNAUT_SLAM.r,col:'255,140,40',lw:4});
+        for(let i=0;i<14;i++) spark(z.x,z.y,'#caa46a',rand(80,220),rand(0,TAU),.5);
+        z.slamCd=rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax); }
+    } else if(z.slamCd>0){ z.slamCd-=dt; }
+    else if(tgt && near.d<JUGGERNAUT_SLAM.range && grace<=0){ z.slamWind=JUGGERNAUT_SLAM.wind; z.attackCd=Math.max(z.attackCd,1.2); }
+  }
+  // ---- HOWLER screech: periodic haste pulse to nearby zombies — a "kill this one first"
+  // priority target below boss tier, giving the horde a support role it didn't have before ----
+  if(z.howler){
+    if(z.howlCd>0) z.howlCd-=dt;
+    else if(grace<=0){ z.howlCd=rand(5,7); z.howlFlash=0.35;
+      for(const z2 of zombies){ if(z2.alive && z2!==z && dist2(z2.x,z2.y,z.x,z.y)<190*190) z2.hasteT=3.5; }
+      rings.push({x:z.x,y:z.y,t:0,dur:0.35,r0:6,r1:190,col:'180,107,255',lw:3});
+      for(let i=0;i<10;i++) spark(z.x,z.y,'#b46bff',rand(60,150),rand(0,TAU),.4);
+    }
+  }
+  if(z.howlFlash>0) z.howlFlash-=dt;
+  // ---- HUSK spawner: periodically drops a weaker add — sustained pressure that isn't just
+  // hordeScale()'s "bigger numbers", capped per-husk so it can't runaway-breed ----
+  if(z.spawner && z.spawnsLeft>0){
+    if(z.spawnCd>0) z.spawnCd-=dt;
+    else if(grace<=0){ z.spawnCd=rand(6,9); z.spawnsLeft--;
+      const a=rand(0,TAU), sx=z.x+Math.cos(a)*24, sy=z.y+Math.sin(a)*24;
+      const add=makeZombie(sx,sy,'runner'); hordeScale(add,hordeWave); zombies.push(add);
+      for(let i=0;i<8;i++) spark(z.x,z.y,'#c8cfc0',rand(40,110),rand(0,TAU),.35);
+    }
+  }
   // chew through any solid player-built barricade we're pressed against (walls & turrets)
   if(z.attackCd<=0 && grace<=0 && builds.length){
     for(const b of builds){ if(!b.solid) continue;
@@ -3009,7 +3185,7 @@ function updateZombie(z,dt){
   }
   if(z.lunge>0) z.lunge-=dt*3.2;
   const m=len(mvx,mvy);
-  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1)*(z.frenzyT>0?1.24:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6*(z.frenzyT>0?1.2:1); if(mvx) z.faceX=mvx<0?-1:1; }
+  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1)*(z.frenzyT>0?1.24:1)*(z.hasteT>0?1.35:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6*(z.frenzyT>0?1.2:1); if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
   // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
   // stomp-clods on each footfall, normals scuff the odd puff
@@ -3049,7 +3225,7 @@ function updatePlayer(h,dt,gp,readShared){
   if(h.grap){ // rope physics owns velocity — input only steers (pumps the swing)
     if(m>0){ h.vx+=mx/m*520*dt; h.vy+=my/m*520*dt; } h.walk+=dt*10;
   }
-  else if(m>0){ h.vx+=(mx/m*h.speed-h.vx)*MOVE.accel; h.vy+=(my/m*h.speed-h.vy)*MOVE.accel; }
+  else if(m>0){ const spd=h.speed*(h.perkSpeedMul||1); h.vx+=(mx/m*spd-h.vx)*MOVE.accel; h.vy+=(my/m*spd-h.vy)*MOVE.accel; }
   else { h.vx*=MOVE.friction; h.vy*=MOVE.friction; }   // coast to a stop with a little skid
   // stride cadence tracks real speed: fast run = quick legs, a creep = a slow shuffle
   if(!h.grap){ const s01=clamp(Math.hypot(h.vx,h.vy)/(h.speed||1),0,1.25); h.walk+=dt*(2.5+9*s01); }
@@ -3090,7 +3266,7 @@ function updatePlayer(h,dt,gp,readShared){
   if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt; if(h.grapCd>0) h.grapCd-=dt;
   updateGrapple(h,dt);
   stepDust(h,dt);
-  campfireHeal(h,dt);
+  campfireHeal(h,dt); perkRegenTick(h,dt);
   // equipped cosmetic trail (shop) — player only
   const tr = meta.trail!=='none' && shopItem(meta.trail);
   if(tr && (h.vx*h.vx+h.vy*h.vy)>3600 && Math.random()<dt*14)
@@ -3253,6 +3429,7 @@ const GP_SIMPLE_MODALS = [
   {id:'donate',      closeId:'donateClose', targets:()=>[el('donateGo'), el('donateClose')]},
   {id:'a2hs',        closeId:'a2hsClose',   targets:()=>[el('a2hsClose')]},
   {id:'whatsnew',    closeId:'wnClose',     targets:()=>[el('wnClose')]},
+  {id:'perkPick',    closeId:null,          targets:()=>[...el('perkGrid').querySelectorAll('.shopcard')]},  // forced pick, no close
 ];
 function gpMenuTargets(){
   // Recomputed each call instead of cached: the grids rebuild whenever level/unlocks change
@@ -3486,6 +3663,9 @@ function hordeKind(wave){
   if(wave>=7) t.push(['stalker', Math.min(0.06 + (wave-7)*0.012, 0.24)]);  // swarm rush
   if(wave>=8) t.push(['wraith',  Math.min(0.04 + (wave-8)*0.007, 0.13)]);  // ghostly stalker variant
   if(wave>=9) t.push(['shaman',  Math.min(0.04 + (wave-9)*0.007, 0.13)]);  // support aura priority target
+  if(wave>=9)  t.push(['howler',   Math.min(0.05 + (wave-9)*0.008, 0.14)]);   // haste support — priority kill target
+  if(wave>=11) t.push(['carapace', Math.min(0.05 + (wave-11)*0.008, 0.16)]);  // armored tank — rewards burst over chip damage
+  if(wave>=13) t.push(['husk',     Math.min(0.04 + (wave-13)*0.008, 0.14)]);  // spawner — sustained pressure, not just bigger numbers
   let sum=0; for(const e of t) sum+=e[1];
   let r=Math.random()*sum;
   for(const e of t){ r-=e[1]; if(r<=0) return e[0]; }
@@ -3533,6 +3713,12 @@ function hordeUpdate(dt){
   for(let i=zombies.length-1;i>=0;i--) if(!zombies[i].alive) zombies.splice(i,1);  // prune corpses
   hordeWave++; hordeStallT=0;
   const boss = hordeWave>=5 && hordeWave%5===0;                     // every 5th wave: armored elites
+  // Every 3rd wave: pause on a perk pick before the next wave spawns (hordeSpawnWave runs once the
+  // player chooses). Can coincide with a boss wave (e.g. 15) — that's fine, both just fire together.
+  if(hordeWave>=3 && hordeWave%3===0){ openPerkPick(boss); return; }
+  hordeSpawnWave(boss);
+}
+function hordeSpawnWave(boss){
   toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave+' — CLEARED, next wave!'); sfx('warn');
   const zMul=activeMutator?.zMul||1;
   const n=Math.min((8+hordeWave*3)*zMul, 42*zMul);                 // steeper ramp so it doesn't stay trivial
@@ -3542,7 +3728,9 @@ function hordeUpdate(dt){
   if(boss){ const nb=1+Math.floor(hordeWave/10);                    // 1 juggernaut @w5, 2 @w10-15, 3 @w20…
     for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
       while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
-      const z=makeZombie(s.x,s.y,(hordeWave>=15 && Math.random()<0.35)?'colossus':'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
+      const bigBoss=hordeWave>=15 && Math.random()<0.35;
+      const z=makeZombie(s.x,s.y,bigBoss?'colossus':'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
+  if(boss) escalateMap();   // same milestone as boss waves — the map gets meaner right when the fight does
 }
 function enemiesLeft(){ let n=0; for(const h of humans) if(h.alive && h.team!==player.team) n++; return n; }
 function checkEnd(){
@@ -3571,6 +3759,7 @@ function showResults(win, place){
   screenState='results'; endSpectate(); gpFocusIdx=0;
   const horde = gameMode==='horde';
   let xpEarned = win?120:40; xpEarned += killsTotal*(horde?2:10); if(horde) xpEarned += hordeWave*15;
+  xpEarned = Math.round(xpEarned*(activeMutator?.xpMul||1));   // Blood Moon mutator
   const lv=grantXp(xpEarned);
   // career stats
   meta.matches++; meta.ckills += killsTotal;
@@ -3580,6 +3769,7 @@ function showResults(win, place){
   else if(meta.best===0 || place<meta.best) meta.best=place;
   // coins: per-kill + win / horde-wave bonuses (achievements & the daily pay on top)
   let coinsEarned = killsTotal*(horde?1:5) + (win?25:0) + (horde?hordeWave*6:0);
+  coinsEarned = Math.round(coinsEarned*(activeMutator?.coinMul||1));   // Blood Moon mutator
   meta.coins += coinsEarned;
   saveMeta();
   const mctxA = { win, place, horde, matchKills:killsTotal, wave:hordeWave, time:elapsed,
@@ -3689,15 +3879,6 @@ function draw(){
   for(const d of drawables) d.fn();
   // build-mode ghost: a snapped preview of the piece you're about to drop (green ok / red blocked)
   if(player && player.alive && player.buildSel>=0){ drawBuildGhost(player); }
-
-  // boss slam telegraph — a filling red ring that grows to the real blast radius as the windup
-  // ends, so it doubles as a countdown a player can actually dodge
-  for(const z of zombies){ if(!z.alive || !z.boss || z.slamT<=0 || !inView(z.x,z.y,SLAM.r+40)) continue;
-    const p=1-clamp(z.slamT/SLAM.telegraph,0,1), r=SLAM.r*p;
-    ctx.save(); ctx.globalAlpha=0.35+0.35*Math.sin(gtime*22);
-    ctx.strokeStyle='#ff3a1a'; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(z.x,z.y,r,0,TAU); ctx.stroke();
-    ctx.globalAlpha=0.12; ctx.fillStyle='#ff3a1a'; ctx.beginPath(); ctx.arc(z.x,z.y,r,0,TAU); ctx.fill();
-    ctx.restore(); }
 
   // bombs
   for(const b of bombs){ ctx.fillStyle='#15181f'; ctx.beginPath(); ctx.arc(b.x,b.y-6,7,0,TAU); ctx.fill();
@@ -4744,7 +4925,7 @@ function drawHeroArm(h, bob){
   const ga = h.aim, gname = h.weapon ? h.weapon.name : 'Pistol';
   const gl = heldWeaponLen(h.weapon);
   const oneHand = h.weapon && (h.weapon.name==='Pistol' || h.weapon.name==='Magnum');
-  const reach = 12 - (h.recoil>0 ? h.recoil*3 : 0);        // recoil kicks the gun back
+  const reach = HERO_ARM_REACH - (h.recoil>0 ? h.recoil*3 : 0);        // recoil kicks the gun back
   const sleeve = L.outfit || '#556', skin = L.skin || '#f0c8a0';
   ctx.save(); ctx.translate(HERO_ARM_ANCHOR_X, HERO_ARM_ANCHOR_Y + bob*0.6); ctx.scale(CHAR_VISUAL_SCALE, CHAR_VISUAL_SCALE); ctx.rotate(ga);   // shoulder pivot at the chest, bobbing with the body
   ctx.lineJoin='round'; ctx.lineCap='round';
@@ -4809,6 +4990,11 @@ function drawHair(L,hy,flip){
 function drawNameplate(h){
   const x=h.x, y=h.y+18-HERO_H;   // sit just above the sprite's head (feet at +20, top at +20-HERO_H)
   ctx.textAlign='center'; ctx.font='800 11px Trebuchet MS, sans-serif';
+  // equipped nameplate banner — a colored pill behind the player's own name (purely cosmetic)
+  if(h.isPlayer && meta.banner!=='none'){ const bn=bannerItem(meta.banner);
+    if(bn){ const bw=ctx.measureText(h.name).width+14;
+      ctx.fillStyle=bn.color; ctx.globalAlpha=0.32; roundRect(x-bw/2,y-19,bw,15,7); ctx.fill(); ctx.globalAlpha=1;
+      ctx.strokeStyle=bn.color; ctx.lineWidth=1.2; roundRect(x-bw/2,y-19,bw,15,7); ctx.stroke(); } }
   ctx.fillStyle = h.isPlayer?'#9bff6e' : (!h.isPlayer && h.team===player.team)?'#8fd6ff' : '#ffffff'; ctx.fillText(h.name, x, y-9);
   // rarity accent under the player's name — ties the weapon-select rarity color into gameplay
   if(h.isPlayer){ const tw=Math.min(ctx.measureText(h.name).width+8,34);
@@ -4867,12 +5053,18 @@ function drawZombie(z){
   const stalker=fam==='stalker', leaper=fam==='leaper', shaman=fam==='shaman', juggernaut=fam==='juggernaut', normal=fam==='normal';
   const grunt=z.kind==='grunt', skitter=z.kind==='skitter', crusher=z.kind==='crusher', venomspine=z.kind==='venomspine';
   const rottank=z.kind==='rottank', wraith=z.kind==='wraith', colossus=z.kind==='colossus';
+  const howler=z.kind==='howler', carapace=z.kind==='carapace', husk=z.kind==='husk';
+  // boss slam telegraph — a growing warning ring in WORLD space (not the local scaled transform
+  // below), so its radius matches the real JUGGERNAUT_SLAM.r hit area regardless of sprite size
+  if(z.boss && z.slamWind>0){ const k=1-clamp(z.slamWind/JUGGERNAUT_SLAM.wind,0,1);
+    ctx.save(); ctx.globalAlpha=0.22+0.4*k; ctx.strokeStyle='#ff6a2a'; ctx.lineWidth=3+2*k;
+    ctx.beginPath(); ctx.arc(z.x,z.y,JUGGERNAUT_SLAM.r*Math.min(1,k+0.15),0,TAU); ctx.stroke(); ctx.restore(); }
   const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
   const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
   const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute||juggernaut?2.4:runner||stalker||leaper?4.1:3.4):0;
-  const tw=colossus?14.8:crusher?12.8:rottank?14.5:grunt?9.4:juggernaut?13.5:bloater?12.8:brute?11.5:skitter?5.4:runner?6.1:wraith?5.7:stalker?5.2:leaper?6.8:shaman?9.4:venomspine?6.7:spitter?7.2:8;
-  const th=colossus?20.5:crusher?17.5:rottank?19.5:grunt?16.5:juggernaut?18:bloater?18.2:brute?16:skitter?12:runner?13.5:wraith?13.8:stalker?12.5:leaper?14.2:shaman?17.2:venomspine?15.4:spitter?16.5:15;   // torso half-width / height per kind
+  const tw=colossus?14.8:crusher?12.8:rottank?14.5:carapace?12.5:grunt?9.4:husk?8.9:juggernaut?13.5:bloater?12.8:brute?11.5:skitter?5.4:runner?6.1:wraith?5.7:stalker?5.2:leaper?6.8:shaman?9.4:howler?8:venomspine?6.7:spitter?7.2:8;
+  const th=colossus?20.5:crusher?17.5:rottank?19.5:carapace?17.8:grunt?16.5:husk?15.4:juggernaut?18:bloater?18.2:brute?16:skitter?12:runner?13.5:wraith?13.8:stalker?12.5:leaper?14.2:shaman?17.2:howler?15:venomspine?15.4:spitter?16.5:15;   // torso half-width / height per kind
   const zty=-6+bob*0.2;   // torso top y — computed early so behind-torso layers (spikes/ridge) can use it
   const night = timeOfDay!=='day';
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
@@ -4948,6 +5140,12 @@ function drawZombie(z){
     ctx.strokeStyle=SH; ctx.lineWidth=1.2;
     for(const side of [-1,1]) for(let i=0;i<2;i++){ const yy=2+i*5; ctx.beginPath(); ctx.moveTo(side*tw*.55,yy); ctx.lineTo(side*(tw+7+i*2),yy+2+step*.25); ctx.stroke(); } }
 
+  // ---- CARAPACE domed shell (behind the torso; a hunched, low-profile silhouette) ----
+  if(carapace && !flash){ ctx.fillStyle='#8a5a34'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;
+    ctx.beginPath(); ctx.ellipse(-1,zty+th*0.28,tw*1.15,th*0.62,0,Math.PI*0.92,Math.PI*2.08); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1;
+    for(const sx of [-tw*0.5,0,tw*0.5]){ ctx.beginPath(); ctx.moveTo(sx,zty-th*0.1); ctx.lineTo(sx,zty+th*0.5); ctx.stroke(); } }
+
   // ---- LEGS (wide, planted stance; brute stomps) ----
   const lw=juggernaut?8.4:bloater?7.4:brute?7:runner?4.6:stalker?4.2:leaper?7.8:5.4;
   ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8:runner||stalker||leaper?5.2:6; ctx.beginPath(); ctx.moveTo(-lw,8); ctx.lineTo(-lw-1,16+step); ctx.moveTo(lw,8); ctx.lineTo(lw+1,16-step); ctx.stroke();
@@ -5006,6 +5204,12 @@ function drawZombie(z){
     ctx.globalAlpha=1;
   }
 
+  // ---- HUSK grub bumps (over the torso — the brood it periodically releases) ----
+  if(husk && !flash){ ctx.strokeStyle=INK; ctx.lineWidth=1.3;
+    for(let i=0;i<z.spawnsLeft;i++){ const bx=(-1+i)*(tw*0.6), by=zty+th*0.3;
+      ctx.fillStyle=skin; ctx.beginPath(); ctx.ellipse(bx,by,2.6,3.2,0,0,TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=eye; ctx.globalAlpha=0.5+0.2*Math.sin(now*3+seed+i); ctx.beginPath(); ctx.arc(bx,by,0.9,0,TAU); ctx.fill(); ctx.globalAlpha=1; } }
+
   // ---- FRONT reaching arm (claws forward, thrown out on a lunge) ----
   const paw=moving?Math.sin(z.walk+seed)*2.2:Math.sin(now*2.1+seed)*0.8, rx=(juggernaut?13:brute||bloater?12:runner||stalker||leaper?16:spitter?14:13)+lunge*5;
   ctx.strokeStyle=INK; ctx.lineWidth=juggernaut?9:brute||bloater?8.5:runner||stalker||leaper?5.5:6.6; ctx.beginPath(); ctx.moveTo(flip*2,-2); ctx.lineTo(flip*rx,-3+paw); ctx.stroke();
@@ -5048,6 +5252,12 @@ function drawZombie(z){
     ctx.strokeStyle=eye; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(flip*.5,hy+10); ctx.quadraticCurveTo(flip*1.5,hy+13.5,flip*.2,hy+15.5); ctx.stroke(); ctx.restore(); }
   if(!flash && z.boom){ ctx.fillStyle=eye; ctx.globalAlpha=0.45+0.2*Math.sin(now*4+seed);  // Bloater: pulsing acid blisters
     for(const bp of [[-6.5,-1.5],[6.5,-0.5],[-4,4.5],[5,4.5]]){ ctx.beginPath(); ctx.arc(bp[0],hy+bp[1],1.9,0,TAU); ctx.fill(); } ctx.globalAlpha=1; }
+  if(!flash && howler){ const flare=z.howlFlash>0?1:0;   // Howler: a frilled head-crest that flares wide on the screech
+    ctx.fillStyle=SH; ctx.strokeStyle=INK; ctx.lineWidth=1;
+    for(let i=-2;i<=2;i++){ const fa=i*0.42, fr=hr*(1.15+flare*0.5);
+      ctx.beginPath(); ctx.moveTo(Math.sin(fa)*hr*0.7,hy-Math.cos(fa)*hr*0.7);
+      ctx.lineTo(Math.sin(fa)*fr,hy-Math.cos(fa)*fr); ctx.lineTo(Math.sin(fa+0.15)*hr*0.7,hy-Math.cos(fa+0.15)*hr*0.7);
+      ctx.closePath(); ctx.fill(); ctx.stroke(); } }
   ctx.restore();
   ctx.restore();
   // tiny hp bar
@@ -5252,6 +5462,7 @@ function renderShop(){
     +(m.maxed?' · MAX':' · Lv '+m.lvl+'/'+MAG_MAX)+'</span></div>'
     +'<button class="shopbtn'+(m.maxed?' on':'')+'">'+(m.maxed?'MAXED':('🪙 '+m.nextCost))+'</button></div>';
   el('shopGrid').innerHTML = magCard
+    + '<div class="shopHdr">Trails</div>'
     + '<div class="achcard shopcard'+(meta.trail==='none'?' equipped':'')+'" data-shop="none"><span class="aic">🚫</span>'
     +'<div class="atxt"><b>No Trail</b><span>Plain footsteps</span></div>'
     +'<button class="shopbtn'+(meta.trail==='none'?' on':'')+'">'+(meta.trail==='none'?'EQUIPPED':'EQUIP')+'</button></div>'
@@ -5259,6 +5470,15 @@ function renderShop(){
       const btn = eq?'EQUIPPED' : owned?'EQUIP' : '🪙 '+s.cost;
       return '<div class="achcard shopcard'+(eq?' equipped':'')+(!owned&&meta.coins<s.cost?' poor':'')+'" data-shop="'+s.id+'">'
         +'<span class="aic">'+s.icon+'</span><div class="atxt"><b>'+s.name+'</b><span>'+s.desc+'</span></div>'
+        +'<button class="shopbtn'+(eq?' on':'')+'">'+btn+'</button></div>'; }).join('')
+    + '<div class="shopHdr">Nameplate Banner</div>'
+    + '<div class="achcard shopcard'+(meta.banner==='none'?' equipped':'')+'" data-banner="none"><span class="aic">🚫</span>'
+    +'<div class="atxt"><b>No Banner</b><span>Plain nameplate</span></div>'
+    +'<button class="shopbtn'+(meta.banner==='none'?' on':'')+'">'+(meta.banner==='none'?'EQUIPPED':'EQUIP')+'</button></div>'
+    + BANNERS.map(b=>{ const owned=meta.owned.includes(b.id), eq=meta.banner===b.id;
+      const btn = eq?'EQUIPPED' : owned?'EQUIP' : '🪙 '+b.cost;
+      return '<div class="achcard shopcard'+(eq?' equipped':'')+(!owned&&meta.coins<b.cost?' poor':'')+'" data-banner="'+b.id+'">'
+        +'<span class="aic">'+b.icon+'</span><div class="atxt"><b>'+b.name+'</b><span>'+b.desc+'</span></div>'
         +'<button class="shopbtn'+(eq?' on':'')+'">'+btn+'</button></div>'; }).join('');
 }
 function buyMag(){ const m=magInfo();
@@ -5277,8 +5497,18 @@ function shopTap(id){
   } else { meta.trail=id; saveMeta(); }
   renderShop(); renderMenu();
 }
+function bannerTap(id){
+  if(id!=='none' && !meta.owned.includes(id)){ const b=bannerItem(id); if(!b) return;
+    if(meta.coins<b.cost){ toast('Not enough coins — earn more in matches!'); return; }
+    meta.coins-=b.cost; meta.owned.push(b.id); meta.banner=b.id; saveMeta();
+    toast(b.icon+' '+b.name+' purchased & equipped!'); sfx('level');
+  } else { meta.banner=id; saveMeta(); }
+  renderShop(); renderMenu();
+}
+let shopFromSettings=false;   // true when Shop was opened via the in-match Settings menu (pause), so Close returns to it
 function openShop(){ renderShop(); el('shop').classList.remove('hidden'); }
-function closeShop(){ el('shop').classList.add('hidden'); }
+function closeShop(){ el('shop').classList.add('hidden');
+  if(shopFromSettings){ shopFromSettings=false; el('settings').classList.remove('hidden'); gpFocusIdx=0; } }
 // ----- donate / support (opens the owner's Stripe Payment Link) -----
 function donateConfigured(){ return /^https:\/\/(buy\.stripe\.com|[a-z0-9-]+\.stripe\.com)\//i.test(STRIPE_DONATE_URL); }
 function openDonate(){
@@ -5519,7 +5749,10 @@ el('achClose').addEventListener('click',closeAchievements);
 el('shopBtn').addEventListener('click',()=>{ audioInit(); openShop(); });
 el('shopClose').addEventListener('click',closeShop);
 el('shopGrid').addEventListener('click',e=>{ const u=e.target.closest('[data-upg]'); if(u){ buyMag(); return; }
-  const c=e.target.closest('[data-shop]'); if(c) shopTap(c.dataset.shop); });
+  const c=e.target.closest('[data-shop]'); if(c){ shopTap(c.dataset.shop); return; }
+  const bn=e.target.closest('[data-banner]'); if(bn) bannerTap(bn.dataset.banner); });
+// perk pick (mid-run, every 3rd wave — see openPerkPick/choosePerk)
+el('perkGrid').addEventListener('click',e=>{ const p=e.target.closest('[data-perk]'); if(p) choosePerk(p.dataset.perk); });
 // donate / support
 el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
 el('donateGo').addEventListener('click',donateGo);
@@ -5555,8 +5788,20 @@ el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100
 el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings
+function syncMoreOptions(open){
+  // mid-match (screenState==='playing', i.e. reached via the pause gear icon) hides the toggle
+  // is unnecessary — profile/save/diagnostic items collapse by default there since they're not
+  // what a player needs while fighting; every other context (pre-match avatar/weapon screens)
+  // shows everything, same as before this button existed.
+  const midMatch = screenState==='playing';
+  el('sMoreToggle').classList.toggle('hidden', !midMatch);
+  const show = !midMatch || open;
+  document.querySelectorAll('.sMoreItem').forEach(b=>b.classList.toggle('hidden', !show));
+  el('sMoreToggle').innerHTML = '<span class="oic">'+(show?'▾':'⋯')+'</span>'+(show?'Fewer options':'More options');
+}
 function openSettings(){ paused=true; el('settings').classList.remove('hidden');
   el('sQuit').classList.toggle('hidden', screenState!=='playing');   // only offer "quit to menu" mid-match
+  syncMoreOptions(false);   // always starts collapsed on a fresh open
   syncSliders(); syncControllerStatus(); gpFocusIdx=0; }
 function closeSettings(){ el('settings').classList.add('hidden'); if(screenState==='playing') paused=false; gpFocusIdx=0; }
 // abandon the current match and return to the main menu (state is overwritten on the next Play)
@@ -5657,10 +5902,12 @@ if(!storageOk()){
 el('avatarGear').addEventListener('click',openSettings);
 el('weaponGear').addEventListener('click',openSettings);
 el('sClose').addEventListener('click',closeSettings);
+el('sMoreToggle').addEventListener('click',()=>{ syncMoreOptions(el('sAvatar').classList.contains('hidden')); gpFocusIdx=0; });
 el('sAvatar').addEventListener('click',()=>{ closeSettings(); buildAvatarGrid(); screenState='avatar'; show('avatarScreen');
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); });
 el('sWeapon').addEventListener('click',()=>{ closeSettings(); buildWeaponGrid(); screenState='weapon'; show('weaponScreen');
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); });
+el('sShop').addEventListener('click',()=>{ audioInit(); shopFromSettings=true; el('settings').classList.add('hidden'); openShop(); gpFocusIdx=0; });
 el('sName').addEventListener('click',()=>{ closeSettings(); screenState='start'; show('startScreen');
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden'); el('nameInput').focus(); });
 

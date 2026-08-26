@@ -1,7 +1,7 @@
 # memory.md — project handoff & running notes
 
-_Last updated: 2026-08-14. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
-v2.43.2). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
+_Last updated: 2026-08-22. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
+v2.55.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._
 
 ## What this is
@@ -97,91 +97,80 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   differently-designed `howler` — flags/fields are now `buff`/`buffCd` to avoid any confusion
   with main's `howler`/`howlCd`.)_
 
-## Session handoff — 2026-08-13
+## Session handoff — 2026-08-22
 _Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below.
 This section is a rolling "as of right now" summary — overwrite it (don't append) each session so it
-never goes stale like the 2026-07-17 version it replaced did (it sat frozen at v2.24.1 for ~10 shipped
-versions before anyone corrected it — see the git history if you want the old text)._
+never goes stale like the 2026-08-13 version it replaces did (it sat frozen at v2.39.2/PR #89 for
+~16 shipped versions and 12 merged PRs before anyone corrected it — see git history for the old text)._
 
-- **Where things stand:** production is **v2.39.2**, merged to `main`. Working branch
-  `claude/next-steps-v8p4vf` is one commit ahead of `main` with **PR #89 open (draft, not yet
-  merged)** — a deploy-config-only change (see below), no `GAME_VERSION` bump. Note: some of this
-  window's shipped versions (v2.38.0, v2.39.0–2.39.2) landed from a **second, concurrent Claude
-  session working the same branch** — PRs #87/#88 — not from this session; this doc reconciles
-  both sessions' work into one accurate snapshot.
-- **Shipped since last handoff:**
-  - **v2.38.0** — distinct visual silhouettes for `stalker` (spine ridge) and `juggernaut` (armor
-    plating) in `drawZombie()`, replacing plain recolors. Shipped by the concurrent session.
-  - **v2.39.0–2.39.2 — weapon art pass**, done across three rounds prompted by user-supplied
-    photorealistic weapon reference images. Each time, clarified via `AskUserQuestion` that the
-    ask was a *design cue* to reinterpret in the existing flat-canvas style, not a literal
-    photorealistic match (a fundamentally different rendering technique) — checked for a Meshy MCP
-    server first (not available: not connected, no `MESHY_API_KEY`) before falling back to flat
-    canvas. Result: Minigun got a belt + grille, Pistol a hammer, Rifle a wood-stock color/`wood`
-    flag, SMG a suppressor — all in `GUNK`/`drawGun()` with the file's established
-    BEHIND/MAIN/OVER-BODY layering.
-- **This session's actual work:**
-  1. **Investigated `separate()` perf per user request, shipped nothing.** Built a synthetic
-     Node benchmark suggesting a 2-3x regression in the existing spatial-hash grid under a tight
-     zombie dogpile, built a density-adaptive hybrid fix — then re-verified **in the real running
-     game** (Playwright, forced dogpile) before trusting it, and the fix measured *worse* in situ:
-     real zombies self-organize into a ring under continuous `separate()` pushback, unlike the
-     static random disc the synthetic benchmark assumed. Correctly declined to ship a fix that
-     only looked good against unrepresentative fixture data. At the real ~85-entity horde ceiling,
-     `separate()` costs <0.2ms/frame — not a meaningful chugging source either way. See
-     `expert-web-game-dev-workspace/iteration-1/eval-0-perf-collision/with_skill/report.md` in the
-     scratchpad for the full numbers if picked up again.
-  2. **Created a new Claude Skill: `expert-web-game-dev`** (`/root/.claude/skills/expert-web-game-dev/SKILL.md`),
-     generalizing this project's demonstrated engineering rigor (measure before claiming perf
-     wins, verify visual changes are actually visible not just error-free, audit state-ordering/
-     draw-layering bugs, close with a cited technical next-steps section) into a reusable skill
-     for any browser/JS game codebase. Vibe-tested with two isolated worktree-agent runs (collision
-     perf — see above — and a visual-detail task that added tattered streamers to the runner
-     zombie, verified via a real crop-comparison screenshot); both runs held up well. Test-run
-     artifacts (not committed) live under
-     `/tmp/.../scratchpad/expert-web-game-dev-workspace/iteration-1/`.
-  3. **PR #89 (open, draft): `vercel.json` Cache-Control headers.** `index.html` and non-`.glb`
-     assets (`loader.js`, `manifest.json`) stay `no-cache, must-revalidate`; `.glb` model files get
-     a year-long `immutable` cache since they're large and rarely change and aren't content-hashed.
-     Header-rule ordering matters — Vercel applies matching rules cumulatively with later rules
-     winning ties, so the general `/assets/(.*)` rule is listed *before* the more specific
-     `/assets/(.*).glb` rule, not after.
-- **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'` (owner's, near
-  `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout (no keys in the file).
+- **2026-08-25 update (supersedes the paragraph below):** merged `codex/enemy-visual-upgrade`
+  (enemy visuals, more variants, boss AoE/loot, sniper rebalance, roster strip, IAP scaffold)
+  into `origin/main` (mid-run perk picks, 3 mutators, 3 late-game enemies, gun-tip fix) as
+  **v2.57.0**. Both branches had independently built a boss slam/hp-banner/guaranteed-loot system
+  and a `howler`/`husk` enemy pair — see ROADMAP.md's "v1.13" section and the `Grunt`/`Shaman`
+  rename notes above for how the collisions were resolved (main's slam/banner system kept as
+  canonical with this branch's richer loot table layered on; this branch's `howler`/`husk` renamed
+  to `shaman`/`grunt` since main's shipped first). Still blocked: `com.lastpulse.game.unlockall`
+  needs to exist as a real App Store Connect product before the IAP does anything.
+- **Where things stand (as of 2026-08-22, before the merge above):** production (`main`) was **v2.54.0** (PR #100, merged). Working branch
+  `claude/pull-repo-k6uim2` is **one commit ahead with PR #101 open (draft, unreviewed)** —
+  v2.55.0, the 3-new-enemy-kinds work (see "Current state" for full detail). Everything in between
+  (v2.49.0 shop-in-pause through v2.54.0 gun-tip fix) shipped this window across PRs #98–#100, all
+  merged. One collision this window: another concurrent session pushed a commit (`v2.53.0`,
+  brighter tracers + invisible joysticks) directly onto this same branch mid-conversation — caught
+  via a stale scheduled PR check-in firing on an already-merged PR, not proactively. If picking up
+  parallel work on this branch, expect that to keep happening; there's still no CI gate to catch it
+  earlier (see `ROADMAP.md`/`CLAUDE.md` — this repo has none).
+- **Shipped this window** (all direct user requests/reports, not roadmap-driven): pause-menu Shop
+  button → nameplate banners + boss (Juggernaut) hp-banner/slam/guaranteed-loot → pause menu
+  decluttered behind a "More options" toggle → map escalation (new buildings on boss waves) →
+  bullets fixed to spawn from the drawn gun tip instead of a fixed hip radius → 3 new enemy kinds
+  (Howler/Carapace/Husk) with distinct color families, wave-gated at 9/11/13. The throughline: this
+  window was almost entirely reactive to specific user feedback ("too cluttered", "bullets fire
+  from the hip", "boring and repetitive") rather than working the `ROADMAP.md` backlog top-down —
+  each fix started with root-causing the actual complaint in the code before touching anything (see
+  the gun-tip and enemy-kinds entries below for what that looked like in practice).
 - **Open / parked:**
-  1. **Merge PR #89** once reviewed — deploy-config only, no code/version change, low risk.
-  2. **Playtest v2.36.0's bigger-map/mutator changes on-device** — still verified headless only,
-     carried over from two sessions ago.
-  3. **Profile `draw()` and the particle/floater pipeline, not `separate()`** — this session's
-     real finding is that `separate()` is a non-issue at current scale; if "chugging" reports
-     continue, `draw()`'s per-frame `drawables.sort()` (index.html:3137) and `particles[]`/
-     `floaters[]`/`splats[]` growth are the more plausible next place to measure, not the collision
-     grid.
-  4. **Balance backlog needs a fresh look** — `COMBO_WIN`, spawn distances, wave pacing were tuned
-     against the OLD 3000-unit arena and pre-mutator zombie counts; both changed materially since.
-  5. **Dried-blood aging** (`ROADMAP.md` v1.11) — low priority, needs numeric rgb storage instead
-     of the current `'rgba(r,g,b,'` prefix-string trick.
-  6. **Meshy 3D generation still blocked** — no `MESHY_API_KEY` in this environment; 3/28 assets
-     generated. Needs an explicit yes/no from the user (add the key, or drop the moonshot).
-  7. **Gamepad still NOT wired into menus** (avatar/weapon grids, settings, results are mouse/
-     touch-only DOM overlays) — carried over, unchanged this session.
-- **Gotchas:** `node scripts/validate.mjs` gates `GAME_VERSION==CHANGELOG[0].v==ROADMAP.md` header
-  (unaffected by `vercel.json`, which validate.mjs doesn't check — verify deploy-config changes
-  with `node -e "JSON.parse(...)"` instead). Never commit `window.__hook` test hooks (`window.__game`
-  is the permanent shipped one — `grep -c "window.__" index.html` must stay 1). **iOS signing
-  safety:** do not push Apple account/signing secrets to GitHub. Keep Apple account emails, Team IDs
-  unless explicitly approved, App Store Connect API key IDs/issuer IDs, `.p8` keys, certificates,
-  provisioning profiles, `.ipa` files, `.xcarchive` bundles, and export/signing logs out of the
-  repo. Prefer local Xcode account settings or command-line `DEVELOPMENT_TEAM=...` overrides for
-  TestFlight builds; always inspect `git diff --cached` before pushing release work. **New this
-  session**: a benchmark that looks like a clear win against synthetic fixture data can still be a
-  net loss against the real system's actual state distribution (dogpile ring vs. random disc) —
-  always re-verify a promising isolated-benchmark result against the real running game before
-  shipping, not just against a bigger synthetic N. **From two sessions ago, still true**: (a)
-  string-concatenated Map keys (`cx+','+cy`) are measurably slower than packed-integer keys at this
-  codebase's scale; (b) a benchmark harness that re-`eval`/`new Function()`s the code-under-test
-  *inside* the timed loop, or that omits a field the real code filters on (like `.alive`), will
-  silently produce meaningless numbers.
+  1. **Merge PR #101** once reviewed (enemy kinds) — clean, validated, screenshotted.
+  2. **Real-device balance playtest is still the single highest-value pre-launch step** — every
+     tuning knob in `ROADMAP.md`'s "Balance & tuning backlog" table (`COMBO_WIN`, hitstop, door
+     width, coin rates, blood-decal cap, weapon power) has only ever been checked in headless
+     Chromium at software-rendered FPS, never on an actual phone. Nothing code-side blocks this.
+  3. **iOS TestFlight readiness is unverified from here** — recent iOS commits (SwiftData
+     persistence, App Store icon catalog, TestFlight metadata prep) show active work, but this
+     session can't see App Store Connect. **No privacy policy or LICENSE file exists in the repo**
+     — the privacy policy is a real blocker for the iOS App Store listing (Apple requires the URL
+     regardless of data collected), not just a nice-to-have.
+  4. **No CI workflow** — `scripts/validate.mjs` + the driver both run in seconds and already exist;
+     wiring them into a GitHub Actions gate on PRs would have caught this window's branch collision
+     before it happened. Explicit user call, not made yet.
+  5. **Audio loudness hasn't been re-audited this window** — no SFX layers were touched, so likely
+     fine, but `make-audit-copy.mjs` → `window.__audioAudit()` (see "How to run") is a 5-minute
+     check worth running before any store submission, not something to assume stays true forever.
+  6. **Gamepad-vs-new-UI check**: the pause menu's new "More options" toggle (`#sMoreToggle`) was
+     verified with gamepad-nav in mind (reuses the exact `.opt:not(.hidden)` hide/show pattern
+     `#sQuit` already used, specifically so `gpMenuTargets()` needed zero changes) but has not been
+     tested with a real controller — carried forward as a general gamepad caveat, not new risk.
+- **Live Stripe link:** `STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08'`
+  (owner's, near `GAME_VERSION`). The 💜 "Support the game" button opens it; Stripe hosts checkout
+  (no keys in the file).
+- **Gotchas learned this window** (durable ones also copied into "Gotchas / constraints" below):
+  - `index.html` has **four** bare `})();` lines across its two `<script>` tags (game IIFE + a
+    nested screen-fit-diagnostic IIFE + the 3D-loader module's own IIFE) — a naive hook-injection
+    script targeting "the last/first `})();`" can land in the wrong scope. Target the `})();`
+    **immediately followed by `</script>`**, and take the **first** such match, not the last.
+  - When forcing a boss-wave clear or similar state-machine transition via a test hook, remember
+    the surrounding `if(...)`/`for(...)` brace structure before editing nearby code — one edit this
+    window (adding `escalateMap()` inside the `if(boss){...}` block) initially over-closed a brace
+    and broke parsing; `node scripts/validate.mjs`'s parse-check caught it immediately, but count
+    braces by hand before trusting a "just add one line here" edit near dense control flow.
+  - `scripts/validate.mjs`'s horde-spawn-reachability gate (`gated` array, hardcoded) does NOT
+    auto-discover new `ZTYPES` entries — add any new Horde-only kind's identifier to that array or
+    the gate silently won't check it.
+  - A stray self-referential `assets/assets` symlink got created inside the real repo (not the
+    scratchpad) multiple times this window from `ln -sf` commands run with an ambiguous relative
+    target — always `rm` it and re-check `git status --short` before committing; it's easy to miss
+    since it's untracked and doesn't show as a modification.
 
 ## Current state (done)
 - **v2.49.0 — upgraded all in-game enemy visuals.** Redrew the shared `drawZombie(z)` path so
@@ -192,6 +181,200 @@ versions before anyone corrected it — see the git history if you want the old 
   brutes retain the heavy bone-spike silhouette, and juggernauts now stack a dark back plate,
   chest armor, shoulder guards, rivets and a helmet slit. Bumped `GAME_VERSION` 2.48.0 -> 2.49.0,
   prepended the CHANGELOG entry, and synced `ROADMAP.md`'s gated version header.
+- **v2.56.0 — mid-run perk picks + 3 new mutators.** User: "how can we make the game not so
+  boring and repetitive?" → offered a perk-pick system (bigger lever) vs. expanding mutators
+  (smaller); user said "implement all of that" — both. `PERKS` (`index.html`) is 6 entries with
+  an `apply(h)` writing directly onto the player instance (`h.magMul`, `h.perkSpeedMul`,
+  `h.perkDmgMul`, `h.perkDmgInMul`, `h.perkRegen`, `h.perkRevives`), read at the existing choke
+  points (`fire()`, `hurt()`, `updatePlayer`, a new `perkRegenTick()`) rather than a generic
+  buff list. `hordeUpdate()` now extracts `hordeSpawnWave(boss)` so every 3rd wave can pause on
+  `openPerkPick(boss)` — a forced 3-card `.achgrid` modal, no Close button (same convention as
+  Results) — before spawning resumes via `choosePerk()`. `MUTATORS` gained Glass Cannon
+  (±60% dmg out/in), Rich Vein (+70% scrap), Blood Moon (+50% XP/coins). Validated via
+  `scripts/validate.mjs` (parses clean, version/mode/horde-spawn gates all pass).
+- **v2.55.0 — 3 new enemy kinds + a real color pass on the roster.** Direct user request: "the
+  enemies need to look different and add more types... the game is kinda boring and repetitive".
+  Root-caused before building: `ZTYPES` (`index.html`) had 7 kinds but every one of them used a
+  green-olive skin/torso/shade family (normal `#86c85a`, runner `#a7c86a`, bloater `#8fb36a`,
+  stalker `#b7d86a`, etc.) — they only differed by size and one signature silhouette detail, so in
+  motion they read as "the same zombie, different size" rather than distinct threats. Separately,
+  `hordeKind()`'s wave-gated unlocks stopped at stalker@7 — nothing new ever appeared again for the
+  rest of an endless run, just `hordeScale()`'s numbers climbing. Both were real, separate causes
+  of "repetitive," and both got fixed:
+  - **Howler** (`index.html`, `ZTYPES.howler`, violet `#8a6a9a`/`#4a3560` family, unlocks wave 9) —
+    a support caster. Every 5-7s (`z.howlCd`) it screeches: every alive zombie within 190px gets
+    `z.hasteT=3.5`, and the movement-speed calc in `updateZombie()` picked up a `*(z.hasteT>0?1.35:
+    1)` multiplier (alongside the existing `slowT` slow multiplier). Visual: a `rings.push()`
+    shockwave + a head-frill (drawn in the existing head-decoration block, alongside the spitter
+    throat-sac/bloater-blister pattern) that flares wide for 0.35s (`z.howlFlash`) right when it
+    fires — NOT keyed off `howlCd` itself, since that resets to 5-7 in the same tick it fires and
+    would never read "just fired" if checked directly; that's the kind of one-frame timing bug this
+    pattern is worth flagging for the next kind added the same way.
+  - **Carapace** (`ZTYPES.carapace`, rust `#a8724a`/`#6b3a20`, unlocks wave 11) — an armored tank.
+    `hurt()` (`index.html`) gained one line, `if(e.armored) dmg*=0.65;`, applied before the existing
+    numeric-shield soak — a flat, unconditional reduction (a directional front/back weak-point
+    mechanic was considered and deliberately dropped: this is a top-down chibi game with only L/R
+    sprite-flip, no real facing concept, so a "shoot it from behind" mechanic would've been
+    confusing to telegraph and not worth the complexity for a first pass). Visual: a domed shell
+    drawn behind the torso (same layer/pattern as the existing brute-spikes/stalker-ridge blocks).
+  - **Husk** (`ZTYPES.husk`, pale bone `#c8cfc0`/`#5a5850`, unlocks wave 13) — a spawner. Every 6-9s,
+    up to 3 times per husk (`z.spawnsLeft`, decremented so it can't runaway-breed), it drops a
+    `hordeScale()`'d `runner` add nearby. Visual: small grub bumps drawn over the torso (same layer
+    as the juggernaut-armor block) that visibly shrink in count as `z.spawnsLeft` drops — the art
+    tracks the mechanic instead of needing a separate state indicator.
+  - All three wave-gated into `hordeKind()`'s existing weighted-table pattern at 9/11/13 (past the
+    old stalker@7 ceiling), and `makeZombie()` picked up the new flag copies (`howler`/`armored`/
+    `spawner`) plus their timers, following the exact pattern `boss`/`slamCd` already established
+    for the juggernaut. `scripts/validate.mjs`'s horde-spawn-reachability gate (`gated` array) was
+    extended to include all 3 — it's a hardcoded list, not auto-discovered, so a future kind needs
+    the same manual addition or the gate silently won't check it.
+  - Deliberately did NOT recolor the existing 7 kinds — they already have eye-glow variety (lime/
+    red/amber/pink/orange) plus their own signature silhouette flourish, and repainting established
+    kinds risked a large, high-regression-risk diff for a complaint that (once root-caused) was
+    really about the new-kind gap and the shared base-color monotony, not the existing 7 specifically.
+  - Verified via a throwaway `window.__spawnKinds()`/`window.__forceHowl()` hook lining up all 10
+    kinds together and forcing a screech: screenshot confirms howler/carapace/husk read as
+    genuinely distinct species at a glance (violet vs. rust vs. pale-bone vs. the green cluster),
+    hp scaled correctly per kind at a forced wave 13, and the screech ring + frill flare fire
+    correctly. `node scripts/validate.mjs` and the standard `--play --shoot` driver run both passed
+    clean. Zero console/page errors throughout.
+- **v2.54.0 — Bullets now spawn from the drawn gun tip, not the hip.** Direct user report: "the
+  bullets don't fire from the guns they fire from the character's hip". `fire()` (`index.html`)
+  spawned every bullet/spark/shell at a flat, hardcoded 16px (14px flame, 18px launcher) radius
+  from `h.x,h.y` regardless of aim geometry, weapon, or the actual gun-arm rig — while the live
+  360° gun-arm rig (`drawHeroArm()`, all 15 roster avatars are `armless:true` and use it) draws the
+  gun through a real transform chain: shoulder anchor (`HERO_ARM_ANCHOR_X/Y`) → `CHAR_VISUAL_SCALE`
+  (1.18) → rotate to `h.aim` → arm reach → per-weapon barrel length (`heldWeaponLen()`, driven by
+  `GUNK[name].l`, 14–26px across the roster). The two never agreed, and the gap grew with barrel
+  length — most visible on the Rifle/Sniper/Arc Rifle, where the drawn muzzle sat well past the
+  fixed 16px spawn point, making shots visibly leave from the hip instead of the gun. Added
+  `gunTip(h)`/`wristPos(h)` (`index.html`, right before `fire()`) that mirror `drawHeroArm`'s exact
+  transform math to compute the true muzzle-tip and hand world positions; extracted the shared
+  `12` (shoulder-to-wrist reach) into a new `HERO_ARM_REACH` const so `drawHeroArm`'s draw geometry
+  and `gunTip`/`wristPos`'s spawn geometry can never drift apart again. Recoil is deliberately
+  excluded from the calc — it's a post-shot kickback animation, not part of where the muzzle sits
+  at the instant a shot leaves. Rewired every spawn point in `fire()`: standard/twin-barrel bullets
+  and their per-shot spread now originate from one `gunTip(h)` computed once per shot (previously
+  each pellet's spawn point was independently offset by its own spread-perturbed angle, which also
+  wasn't how a real muzzle works — one exit point, many trajectories), flame particles, the
+  launcher's rocket, muzzle sparks, and ejected shells (from `wristPos(h)`, the hand, not the
+  muzzle — shells eject near the ejection port). Verified via a throwaway `window.__gunTest(aimDeg)`
+  hook comparing a freshly-fired bullet's spawn point against `gunTip()`'s own math at 4 aim
+  angles (0°/90°/180°/-45°): exact match (delta 0.00,0.00) every time, and the correct asymmetric
+  distances fell out naturally from `HERO_ARM_ANCHOR_Y`'s shoulder offset (35.5px at aim 0°/180°,
+  17.2px aiming straight down, 44.1px aiming up-right) — confirming it's not just "always 16" with
+  extra steps. Screenshot of 5 rapid pistol shots shows tracers leaving cleanly from the held gun.
+  Zero console/page errors.
+- **v2.53.0 — Invisible joysticks + brighter default tracers.** Direct user report: "bullets don't
+  fire" + "make the joysticks invisible". Firing itself checked out fine in headless testing (mouse
+  drive and a synthetic touch drag both fired and depleted the mag normally) — the real problem is
+  visibility: the default Pistol/Rifle `bulletFx()` entry (`index.html`) had `tl:0.013` (a ~10px
+  trail), `tip:1.5`, `glow:0` — against the busy grass background that reads as nothing happening,
+  not as a bullet. Bumped to `tl:0.022, tip:2.2, glow:6, lw:3.6` so shots are unambiguous; other
+  weapons' `bulletFx` entries are untouched (Sniper/Arc Rifle/etc. already had glow). Separately,
+  made the on-screen move/aim sticks fully invisible: `.stickbase`/`.stickknob` (and their `.on`
+  states) and `#moveHint`/`#aimHint` now force `opacity:0!important` — CSS-only, `stick()`'s DOM
+  positioning and `.on`-class toggling in the JS are untouched, so the touch zones (`#moveZone`/
+  `#aimZone`, `pointer-events:auto`) still work identically, just with nothing drawn under the
+  thumb.
+- **v2.52.0 — Map escalation on boss waves.** Direct user request: "add more maps as the horde
+  waves get harder". The codebase has no map-switching primitive — `buildDecor()` builds the
+  entire arena ONCE at `spawnMatch()` and scales with `meta.level`, not `hordeWave` — so a literal
+  "new map per milestone" would mean either rebuilding the world mid-match (risks stranding
+  zombies/the player inside new solid geometry) or maintaining N pre-authored layouts (real scope
+  creep for a single-file game with no map assets). Landed on **additive escalation** instead:
+  `escalateMap()` (`index.html`, right after `buildDecor()`) is called from the existing boss-wave
+  branch in `hordeUpdate()`'s wave-clear block (same 5th/10th/15th… milestone elites already use)
+  and appends `MAP_ESCALATE_PER` (2) new buildings to the LIVE `obstacles`/`decor` arrays, capped
+  at `MAP_ESCALATE_MAX` (6) calls per match (12 buildings total, roughly matching `buildDecor`'s
+  own max of 22). It reuses `buildDecor`'s own building-placement retry loop verbatim (clear of
+  other obstacles, ponds, arena centre/edges) plus one new check `buildDecor` doesn't need —
+  clearance against every living human — since `escalateMap()` can run with the player already
+  in the world. It's safe to call mid-match specifically because the wave-clear block only reaches
+  this point after confirming `aliveZ===0`, so zombies never need to be avoided. New buildings get
+  full wall/door/collision/zombie-pathing support for free — `wallRects()`/`insideBuilding()`/the
+  door-routing in `updateZombie()` all key off `obstacles[].type==='building'` shape, not when the
+  entry was created — so no new collision code was needed, only new array entries. `mapEscalations`
+  resets in `spawnMatch()` alongside the other horde-state resets. Rendering needed no changes:
+  the per-frame `draw()` loop already y-sorts a fresh `drawables[]` from scratch every frame
+  (`drawables.sort((a,b)=>a.y-b.y)`), so newly-appended decor/obstacles slot into the correct
+  y-order automatically — `buildDecor`'s own one-time `decor.sort()` call turned out to be
+  unrelated to that per-frame path and didn't need mirroring. Verified with a throwaway
+  `window.__esc()`/`window.__forceBossClear(wave)` hook pair (awk/python-inserted before the
+  correct IIFE close — the file has 4 separate `})();` closes across 2 `<script>` blocks, and the
+  first attempt at this hook landed in the wrong one, throwing `obstacles is not defined`; fixed by
+  matching specifically the `})();` immediately followed by `</script>` that is the FIRST such
+  pair, not the last, since the 3D-loader module's IIFE close matches the same bare-line pattern):
+  forced 8 boss-wave clears and confirmed `obstacles` 15→27 (exactly `MAX×PER`=12), `mapEscalations`
+  capped at exactly 6, and zero console/page errors. Also re-ran `scripts/validate.mjs` (horde-spawn
+  reachability gate still passes) and the `--waves 15` balance harness (no regressions, though the
+  kiting bot itself rarely reaches a boss wave in 90s — the hook test is what actually exercises
+  this feature, not the harness).
+- **v2.51.0 — Decluttered the pause menu.** Direct user feedback: the in-match Settings modal
+  (opened via `#gearHud`, only reachable mid-match since `#gearHud` lives inside `#hud`) had grown
+  to 12 rows (Avatar/Weapon/Name/Shop/controller status/2 sliders/Export/Import/Screen Fit/Quit) —
+  a wall of buttons when all a paused player usually wants is Shop, volume, sensitivity, or Quit.
+  Reordered so Shop → sliders → controller status → Quit lead, and moved the profile-editing +
+  save-code + diagnostic items (Change Avatar/Weapon/Name, Copy/Enter Save Code, Screen Fit Check)
+  behind a new `#sMoreToggle` ("More options" / "Fewer options") that starts collapsed. Collapsing
+  is **context-aware**, not global: `syncMoreOptions()` checks `screenState==='playing'` — the
+  pause case (only way to reach `#gearHud`) starts collapsed (6 visible rows vs. 12 before), while
+  Settings reached from the pre-match avatar/weapon screens (`#avatarGear`/`#weaponGear` gear
+  icons) still shows everything with the toggle itself hidden, since that context is deliberately
+  about profile editing — zero regression there (verified: 10 rows visible, toggle hidden).
+  Implementation reuses the exact hide/show pattern `#sQuit` already used (`.classList.toggle
+  ('hidden', …)` on each `.sMoreItem` button individually, not a wrapper `<div>`) specifically so
+  the existing gamepad-nav query `.opt:not(.hidden)` in `gpMenuTargets()` keeps working with zero
+  changes — a wrapper div would have made the buttons still match that selector even while
+  invisible, silently breaking controller navigation into hidden rows. Verified with a throwaway
+  Playwright script driving the real served page: pause → 6 rows → click More options → 12 rows
+  screenshot-confirmed correct → pre-match avatar-screen Settings still shows all 10 rows with the
+  toggle hidden. Zero console/page errors in either path.
+- **v2.50.0 — Nameplate banners + boss polish.** Two independent features shipped together:
+  - **Nameplate banners** (`BANNERS` table, `index.html`, next to `SHOP_ITEMS`): 4 colored
+    cosmetics (crimson/azure/gold/violet, 150-250 🪙) bought/equipped from a new "Nameplate
+    Banner" section in the Shop modal (mirrors the existing trail section — `bannerTap()` is a
+    straight copy of `shopTap()`'s pattern, `meta.banner`/`dd2_banner` persist the same way
+    `meta.trail`/`dd2_trail` do). Equipped banner draws as a colored pill behind the player's own
+    name in `drawNameplate()`. This closes the ROADMAP's "Trail shop wave 2" item — the trail
+    half of that item had already shipped earlier (6 trails exist: ember/frost/toxic/shadow/
+    star/royal) under the roadmap's stale "not yet" marker; only the banner slot was actually
+    missing. `SHOP_ITEMS`'s existing `.shopcard` class and the shop's generic `[data-shop],
+    [data-banner]` click delegation meant gamepad menu nav picked up the new cards with zero
+    `gpMenuTargets()`/`GP_SIMPLE_MODALS` changes.
+  - **Boss polish** (juggernauts, `index.html`): the `boss:true` flag on `ZTYPES.juggernaut` had
+    existed since the mini-boss was added but was never read anywhere — `makeZombie()` now
+    copies it onto the instance (`z.boss`) so the rest of the pass can key off it. Added (1) a
+    combined hp banner (`☠ JUGGERNAUT`, sums hp/maxhp across every alive boss so multiple
+    juggernauts on higher waves — `1+floor(hordeWave/10)` — show one bar, not N stacked ones) at
+    the screen top while any are alive; (2) a telegraphed ground-slam AoE (`JUGGERNAUT_SLAM`
+    tunable: 95px radius, 45 dmg, 0.6s windup with a growing warning ring drawn in world space in
+    `drawZombie()`, 4.5-6.5s cooldown, 220 knockback) that fires independently of the juggernaut's
+    normal contact-damage cadence — `z.slamCd`/`z.slamWind` state machine in `updateZombie()`, a
+    separate code path from the existing melee-range contact hit so both can coexist without
+    double-dipping in the same frame; (3) guaranteed loot on death (8-12 scrap + a pickup spawn,
+    replacing the normal 62%-chance/size-scaled drop that every other zombie still uses) plus a
+    "BOSS DOWN — guaranteed drop!" toast. Verified end-to-end with a throwaway `window.__boss`
+    hook (spawn a juggernaut, force the windup, confirm player hp actually drops on the forced
+    slam tick, then `die()` it and confirm scrap/pickup counts increment) since the wave-15
+    balance harness's kiting bot flees more than it kills and never reliably reaches a boss wave
+    in a bounded test run — screenshots confirm the hp banner, telegraph ring, and toast all
+    render correctly together.
+- **v2.49.0 — Shop reachable from the pause menu.** Added a "🛒 Shop" button to the Settings
+  modal (`index.html`, `#sShop`, next to `#sName`), so players can spend coins on trails and
+  Extended Magazines mid-match without quitting to the main menu. Clicking it hides `#settings`
+  and calls the existing `openShop()` (unchanged — no new shop logic needed); a module-level
+  `shopFromSettings` flag makes `closeShop()` re-show `#settings` instead of leaving both modals
+  closed, so the flow is a clean "Settings → Shop → back to Settings → Close resumes the match"
+  loop. `screenState`/`paused` are untouched by this path (unlike `#sAvatar`/`#sWeapon`, which
+  intentionally leave Settings for a full-screen picker) — the match stays paused the whole time
+  since `openSettings()` already set `paused=true`, and `closeSettings()`'s existing
+  `if(screenState==='playing') paused=false` resumes it on final Close. No gamepad-nav code
+  changes needed: `gpMenuTargets()` already falls through to `GP_SIMPLE_MODALS`'s existing
+  `shop` entry once `#settings` is hidden, and the new `.opt` button is picked up automatically
+  by Settings' `.opt:not(.hidden)` selector. Verified with a throwaway Playwright script driving
+  the real served page (not just validate.mjs): pause → Shop opens with populated cards → Close
+  returns to Settings → Close resumes, zero console/page errors.
 - **v2.48.0 — reverted the "village" theme back to the v2 midnight-forest glass look.**
   Per direct user feedback on the iOS wrapper screenshots: the v2.46.0-2.47.0 "fantasy village"
   reskin (thick wood/parchment borders, per-card corner bolts, heavy drop shadows) read as
@@ -1362,6 +1545,14 @@ versions before anyone corrected it — see the git history if you want the old 
   authorizes the MCP in an interactive session, then `node scripts/gen-meshy.mjs`.
 - The three.js CDN (unpkg) is blocked headless, so the 3D path can only be verified in a real
   browser over http(s) — the 2D fallback is the tested path.
+- **`index.html` has FOUR `})();`-only lines across its two `<script>` tags** (the game IIFE, plus
+  a small screen-fit-diagnostic IIFE nested inside it, plus the 3D-loader module's own IIFE) — a
+  naive "insert before the last/first bare `})();`" hook-injection script can land in the wrong
+  scope and throw `ReferenceError: obstacles is not defined` (or similar) with no indication why.
+  The correct target for game-state hooks (`window.__foo = () => …` reading `player`/`zombies`/
+  `hordeWave`/etc.) is the `})();` **immediately followed by `</script>`** — filter on that pair,
+  and take the **first** match, not the last (the 3D module's IIFE close matches the same bare-line
+  pattern too, further down the file, and a naive last-match search finds that one instead).
 
 ## Next enhancements
 **The forward plan now lives in [ROADMAP.md](ROADMAP.md)** — versioned feature bundles

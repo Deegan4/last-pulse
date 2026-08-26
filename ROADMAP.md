@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.54.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.57.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -241,8 +241,11 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       SMG: `twin:true` fires 2 side-by-side bullets; `twin` GUNK art).
 - [x] **2 new avatars** — **Seraph** (Lv28, `halo` style) and **Diablo** (Lv32, `horns` style);
       both styles added to `drawHair` AND `portraitChibi`.
-- [ ] **Trail shop wave 2** — 4 more cosmetic trails (fire, frost, confetti, shadow) + a
-      **banner color** cosmetic slot on the nameplate. _(not yet)_
+- [x] **Trail shop wave 2** (shipped v2.50.0) — the trail roster had already grown to 6 (ember,
+      frost, toxic, shadow, star, royal) in earlier passes; this closes the remaining half of the
+      item, a **banner color** cosmetic slot on the nameplate: 4 colors (crimson, azure, gold,
+      violet), bought/equipped from Shop → Nameplate Banner, drawn as a colored pill behind the
+      player's own name in `drawNameplate`.
 - [ ] **Weekly challenge** — a harder 7-day cousin of the daily (worth 200 🪙), same
       deterministic day-hash pattern. _(not yet)_
 
@@ -267,23 +270,56 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 ## v1.13 — "Modes & Bosses"
 
 - [x] **Boss waves in Horde** (shipped v2.20.0–v2.21.1) — every 5th wave spawns armored
-      `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`, `index.html:1919`),
-      count scaling with wave (`1+floor(hordeWave/10)`, `index.html:3467`). _(v2.38.0: juggernauts
-      finally look armored — visible chest plate + shoulder guards in `drawZombie` — closing a gap
-      where the roadmap text called them "armored" for 8+ versions before the art did.)_
-- [x] **Boss hp banner + ground-slam AoE + guaranteed loot** (shipped v2.53.0) — closes the gap
-      called out above. `SLAM` tunables (`index.html`, near `COMBO_WIN`) drive a telegraphed
-      (0.85s, red growing ring) 150px AoE slam for 34 dmg, on a 3.4–4.8s cooldown, added to
-      `updateZombie`'s melee branch (`z.boss` gate) — the boss roots in place through the
-      telegraph so it's dodgeable. `draw()` renders a left-anchored stacked hp-bar banner (up to 3
-      bosses, weakest-first) and the live telegraph ring. `die()` gives every `e.boss` kill a
-      guaranteed big scrap bundle + 2 always-good pickups (medkit/armor/weapon, never plain
-      health) plus a "BOSS DOWN" toast, instead of rolling the regular corpse's 62% scrap chance.
-      Verified via throwaway `window.__spawnBoss`/`__forceSlamOnBoss`/`__killBoss` hooks on a
-      hooked copy (see CLAUDE.md "Validation") — spawn, telegraph, AoE damage + knockback, hp
-      banner render, and guaranteed loot all confirmed headless. **Still open**: real-device
-      playtest for slam dodgeability feel and whether 34 dmg / 150px radius is fair — no
-      real-controller/touch input was exercised, only forced state.
+      `juggernaut` mini-bosses (`ZTYPES.juggernaut`: 420 hp, 30 dmg, `boss:true`), count scaling
+      with wave (`1+floor(hordeWave/10)`). _(v2.38.0: juggernauts finally look armored — visible
+      chest plate + shoulder guards in `drawZombie` — closing a gap where the roadmap text called
+      them "armored" for 8+ versions before the art did.)_
+- [x] **Boss polish: hp banner + ground-slam AoE + guaranteed loot** (shipped v2.50.0, then
+      extended at the v2.57.0 merge) — a left-anchored stacked hp banner (up to 3 bosses,
+      weakest-first, correctly labels Colossus vs. Juggernaut) draws while any boss is alive; a
+      telegraphed **ground-slam AoE** (`JUGGERNAUT_SLAM`: 95px radius, 45 dmg + knockback, 0.6s
+      windup ring, 4.5–6.5s cooldown) fires independently of normal contact damage; and every
+      boss kill (`die()`, `e.boss` gate) guarantees a big scrap bundle + 2 always-good pickups
+      (medkit/armor/weapon, never plain health) plus a kind-aware "BOSS DOWN" toast, instead of
+      rolling the regular corpse's 62% scrap chance. _(v2.57.0 note: this branch had independently
+      built a second, incompatible slam/banner/loot implementation in parallel — it was removed
+      in favor of this one during the merge, keeping its richer 2-pickup loot table and
+      Colossus-aware banner label layered on top.)_ **Still open**: real-device playtest for slam
+      dodgeability feel and whether the damage/radius numbers are fair.
+- [x] **Map escalation** (shipped v2.52.0, direct user request) — the arena wasn't getting any
+      harder to move through as Horde waves climbed, only more crowded with zombies. `escalateMap()`
+      (`index.html`, right after `buildDecor()`) now runs on every boss wave (same 5th/10th/15th…
+      milestone `hordeUpdate()` already uses for elites) and additively drops `MAP_ESCALATE_PER`
+      (2) new buildings onto the live arena, capped at `MAP_ESCALATE_MAX` (6) escalations per
+      match. Deliberately additive-only — it reuses `buildDecor()`'s own building-placement retry
+      loop (clear of other obstacles/water/ARENA edges) plus a new clearance check against every
+      living human, and never clears or repositions existing decor/obstacles, since the horde loop
+      only calls it at the instant it has confirmed zero zombies are alive (nothing else to avoid).
+      New buildings get full existing wall/door/pathing support for free (`wallRects`/
+      `insideBuilding`/zombie door-routing all key off `obstacles[].type==='building'` shape, not
+      spawn time) — no new collision code needed. Verified via a throwaway `window.__esc()` hook
+      forcing 8 boss-wave clears: obstacles 15→27 (exactly `MAX×PER`=12), `mapEscalations` capped
+      at 6, zero page errors.
+- [x] **3 new late-game enemy kinds** (shipped v2.55.0, direct user request: "the enemies need to
+      look different and add more types... the game is kinda boring and repetitive") — `ZTYPES`
+      (`index.html`) gained **Howler** (violet/purple, screech pulse hastes nearby zombies for
+      3.5s — a support role with no prior equivalent below boss tier), **Carapace** (rust-orange,
+      flat 0.65× damage-reduction passive checked in `hurt()` — rewards burst over chip damage),
+      and **Husk** (pale bone, periodically spawns up to 3 weakened `runner` adds via a new
+      `spawner`/`spawnsLeft` flag — sustained pressure that isn't just `hordeScale()`'s bigger
+      numbers). Wave-gated into `hordeKind()` at 9/11/13 — deliberately past the existing
+      stalker@7 unlock, since nothing new had unlocked after wave 7 before this, which was a real
+      contributor to the "repetitive" complaint on long runs. Each got its own silhouette element
+      following the established behind/over-torso pattern (howler: flaring head-frill; carapace:
+      domed shell; husk: visible grub bumps that shrink as it spawns) and a hue family clearly off
+      the shared green-olive palette every other kind uses — verified visually via a throwaway
+      `window.__spawnKinds()` hook lining up all 10 kinds together (screenshot confirms howler/
+      carapace/husk read as distinct species at a glance, not recolors) and `window.__forceHowl()`
+      confirming the screech ring + frill flare fire correctly. `scripts/validate.mjs`'s
+      horde-spawn-reachability gate was extended to cover all 3 new kinds. Existing 7 kinds' colors
+      were deliberately left untouched — judged already distinct enough via eye-glow + their own
+      signature silhouette detail, and touching them risked unnecessary diff/regression for the
+      part of the complaint that wasn't actually about them.
 - [ ] **Payload-style event in BR** — _dormant, not applicable_: Battle Royale was retired in
       v2.33.0 (`MODES=['horde']`); this item is parked with BR itself unless BR is revived.
 - [x] **Mutators** (shipped v2.35.0) — a `MUTATORS` table (`index.html`, "Match mutators"
@@ -294,6 +330,28 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       `drawDayNight`), **Low Gravity** (`bombFuseMul`/`bombRadMul`, bombs hang longer and blast
       wider). No apply/revert step needed — `spawnMatch` already rebuilds the world from scratch
       each match, so every consumer just reads `activeMutator` directly at the point of use.
+- [x] **Mid-run perk picks** (shipped v2.56.0, direct user request: "how can we make the game not
+      so boring and repetitive?" → "implement all of that" for both perk-picks and more mutators)
+      — a `PERKS` table (`index.html`, "Perk picks" section) of 6 entries, each an `apply(h)` that
+      mutates the player instance directly: **Extended Clip** (`h.magMul` ×1.5, stacks with the
+      Extended Magazines shop upgrade), **Adrenaline** (`h.perkSpeedMul` ×1.15, read in
+      `updatePlayer`'s move-accel calc), **Heavy Rounds** (`h.perkDmgMul` ×1.2, read in `fire()`
+      alongside the Glass Cannon mutator's `dmgOutMul`), **Thick Skin** (`h.perkDmgInMul` ×0.8,
+      read in `hurt()`), **Regeneration** (`h.perkRegen` +1.5 hp/s, ticked by a new
+      `perkRegenTick()` alongside `campfireHeal`), and **Second Wind** (`h.perkRevives` +1, an
+      interception in `hurt()`'s death check that consumes one banked revive at 50% hp instead of
+      dying). `hordeUpdate()` was restructured to extract `hordeSpawnWave(boss)` so every 3rd wave
+      (3, 6, 9…) can pause on `openPerkPick(boss)` — a 3-card `.achgrid`/`.achcard` modal (reusing
+      the Shop/Achievements pattern, no Close button since the pick is forced) — and resume
+      spawning once `choosePerk()` applies the pick; boss waves (every 5th) simply coincide when
+      the two cycles overlap. Three new mutators shipped alongside: **Glass Cannon** (`dmgOutMul`/
+      `dmgInMul` 1.6×, high-risk/high-reward), **Rich Vein** (`scrapMul` 1.7×, read in `die()`'s
+      scrap-drop calc), and **Blood Moon** (`xpMul`/`coinMul` 1.5×, read in `showResults()`).
+- [ ] **Perk variety beyond 6** — the picker reuses the same 6 perks every 3rd wave for the whole
+      run; a longer run (wave 15+) can see repeats. Consider adding 3-4 more (e.g. a lifesteal
+      perk, a crit-chance perk, a dash-cooldown perk) once real playtests show which of the
+      current 6 get picked least (instrument via a `meta.perkPicks[id]++` counter, same pattern as
+      `matchStat`).
 
 ## Balance & tuning backlog (needs real-device playtests)
 
