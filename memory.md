@@ -78,7 +78,9 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   Bumped `GAME_VERSION` to 2.52.0.
 - **v2.51.0 — improved enemy variant art.** Kept the new enemy-variant roster and made
   `drawZombie()` family-aware via each zombie's `family` field so variants inherit the right
-  silhouette while gaining better unique details: Husk bone shards, Skitter extra legs/antennae,
+  silhouette while gaining better unique details: Grunt (originally named Husk — renamed at the
+  v2.57.0 merge with `main`, which had independently shipped an unrelated `husk` spawner enemy)
+  bone shards, Skitter extra legs/antennae,
   Crusher armor plates, Venomspine acid tail/spines, Rottank larger glowing blisters, Wraith cyan
   wisps, and Colossus heavy back armor/horns. `hordeKind()` now spawns the variants across waves
   2-9, and boss waves can roll a Colossus from wave 15 onward. Bumped `GAME_VERSION` to 2.51.0,
@@ -90,7 +92,10 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
   Howlers unlock at wave 9, hold standoff range, and call `zombieHowl()` to frenzy nearby zombies
   for 3.2s. `drawZombie()` gives Leapers long pounce legs/yellow brow marks and Howlers a cyan
   crest/throat pulse so both read at phone scale. Bumped `GAME_VERSION` to 2.50.0, prepended the
-  CHANGELOG entry, and synced `ROADMAP.md`'s gated version header.
+  CHANGELOG entry, and synced `ROADMAP.md`'s gated version header. _(Renamed to Shaman /
+  `zombieBuff()` at the v2.57.0 merge with `main` — `main` had independently shipped its own,
+  differently-designed `howler` — flags/fields are now `buff`/`buffCd` to avoid any confusion
+  with main's `howler`/`howlCd`.)_
 
 ## Session handoff — 2026-08-13
 _Snapshot for whoever picks this up next. Details for each shipped item are in "Current state" below.

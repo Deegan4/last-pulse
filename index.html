@@ -1213,10 +1213,10 @@ const CHANGELOG = [
     ['🦸','Roster strip on the home screen','a horizontal row of every fighter now sits under your card — tap any unlocked hero to switch instantly, no need to open the full avatar picker'],
   ]},
   { v:'2.51.0', items:[
-    ['🧟','More enemy variants','every existing horde family now has a new sibling threat: Husk, Skitter, Crusher, Venomspine, Rottank, Wraith, and Colossus join the wave mix'],
+    ['🧟','More enemy variants','every existing horde family now has a new sibling threat: Grunt, Skitter, Crusher, Venomspine, Rottank, Wraith, and Colossus join the wave mix'],
   ]},
   { v:'2.50.0', items:[
-    ['🧟','New horde enemies','Leapers now pounce from mid-range and Howlers buff nearby zombies, adding pressure and priority targets to later waves'],
+    ['🧟','New horde enemies','Leapers now pounce from mid-range and Shamans buff nearby zombies, adding pressure and priority targets to later waves'],
   ]},
   { v:'2.49.0', items:[
     ['👹','Enemy visual upgrade','every zombie type now has a stronger in-game silhouette: runners are leaner and red-streaked, spitters carry glowing acid sacs, bloaters pulse with blisters, stalkers bristle with quills, brutes show bone spikes, and juggernauts wear heavier armor'],
@@ -1952,7 +1952,7 @@ const ZTYPES = {
   runner:{ hp:30,  dmg:8,  sp:[120,150],r:12, skin:'#a7c86a', torso:'#6b4a2e', shade:'#5c7a3e', eye:'#ff4630', size:0.82, w:0.30 },
   brute: { hp:130, dmg:20, sp:[44,62],  r:20, skin:'#5a9a42', torso:'#3c5226', shade:'#3d6e2a', eye:'#ffd23a', size:1.35, w:0.12 },
   // Horde-only (w:0 → never in the default random mix; spawned by hordeKind/boss waves):
-  husk:{ hp:78, dmg:13, sp:[54,76], r:16, skin:'#9aa36a', torso:'#4f4a32', shade:'#5b5a36', eye:'#ffe66a', size:1.05, w:0, family:'normal' },        // tougher baseline shambler
+  grunt:{ hp:78, dmg:13, sp:[54,76], r:16, skin:'#9aa36a', torso:'#4f4a32', shade:'#5b5a36', eye:'#ffe66a', size:1.05, w:0, family:'normal' },        // tougher baseline shambler
   skitter:{ hp:24, dmg:7, sp:[150,184], r:10, skin:'#c1d96a', torso:'#493b2a', shade:'#637a36', eye:'#ff8a3d', size:0.74, w:0, family:'runner' },    // tiny, very fast runner
   crusher:{ hp:175, dmg:24, sp:[34,48], r:22, skin:'#66884d', torso:'#303f24', shade:'#314f28', eye:'#ffb347', size:1.48, w:0, family:'brute' },      // slow heavy bruiser
   spitter:{ hp:42, dmg:9,  sp:[46,66],  r:14, skin:'#9ed86a', torso:'#4a6b3a', shade:'#5c8a3e', eye:'#c6ff2e', size:0.95, w:0, ranged:true },  // ranged acid lobber
@@ -1962,7 +1962,7 @@ const ZTYPES = {
   stalker:{ hp:26, dmg:11, sp:[132,168],r:11, skin:'#b7d86a', torso:'#3a4a2e', shade:'#7a3a86', eye:'#ff2ea0', size:0.80, w:0 },                 // fast, fragile swarm rusher (mid-game)
   wraith:{ hp:34, dmg:13, sp:[116,146], r:12, skin:'#8fd0c8', torso:'#253c45', shade:'#4a5e8e', eye:'#8fe8ff', size:0.86, w:0, family:'stalker' }, // evasive quilled hunter
   leaper:{ hp:48, dmg:14, sp:[92,118],  r:13, skin:'#b4d65c', torso:'#4d5b2d', shade:'#6b7332', eye:'#ffcf36', size:0.92, w:0, leaper:true },    // pounces from mid-range
-  howler:{ hp:74, dmg:10, sp:[54,72],   r:16, skin:'#78b8a5', torso:'#315050', shade:'#2f6a64', eye:'#61f7ff', size:1.08, w:0, howl:true },       // buffs nearby undead
+  shaman:{ hp:74, dmg:10, sp:[54,72],   r:16, skin:'#78b8a5', torso:'#315050', shade:'#2f6a64', eye:'#61f7ff', size:1.08, w:0, buff:true },       // buffs nearby undead
   juggernaut:{ hp:420,dmg:30,sp:[30,44], r:26, skin:'#4c6a3a', torso:'#28331f', shade:'#28401e', eye:'#ff7a1a', size:1.70, w:0, boss:true },      // armored mini-boss (milestone waves)
   colossus:{ hp:560,dmg:36,sp:[24,36], r:29, skin:'#526646', torso:'#20271f', shade:'#24371f', eye:'#ff4f1a', size:1.92, w:0, family:'juggernaut', boss:true }, // rarer boss variant
 };
@@ -1973,7 +1973,7 @@ function makeZombie(x,y,kind){
   return { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
     seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom,
-    leaper:!!t.leaper, howl:!!t.howl, spitCd:rand(0.6,1.8), leapCd:rand(0.8,2.2), howlCd:rand(1.2,3.0), frenzyT:0,
+    leaper:!!t.leaper, buff:!!t.buff, spitCd:rand(0.6,1.8), leapCd:rand(0.8,2.2), buffCd:rand(1.2,3.0), frenzyT:0,
     boss:!!t.boss, slamCd:rand(SLAM.cd[0],SLAM.cd[1]), slamT:0 };
 }
 // ---- watchtower geometry: solid footprint, an inset walkable roof, and a south-facing ladder zone ----
@@ -2578,12 +2578,12 @@ function zombieBurst(e){
     if(d2<RAD2){ const dd=e.dmg*1.7*(1-Math.sqrt(d2)/RAD); if(dd>0){ hurt(o, Math.max(8,dd), null, true); if(o.isPlayer) shake=Math.min(shake+3,15); } } }
   sfx('boom',null,e);
 }
-// Howler support pulse — nearby zombies get a short movement frenzy, forcing the player to
+// Shaman support pulse — nearby zombies get a short movement frenzy, forcing the player to
 // decide whether to burn down the support unit or kite the sped-up pack.
-function zombieHowl(z){
+function zombieBuff(z){
   const RAD=245, RAD2=RAD*RAD;
   rings.push({x:z.x, y:z.y, t:0, dur:0.55, r0:12, r1:RAD, col:'96,247,255', lw:3});
-  floaters.push({x:z.x, y:z.y-34, vy:-30, t:0.75, txt:'HOWL', col:'#61f7ff'});
+  floaters.push({x:z.x, y:z.y-34, vy:-30, t:0.75, txt:'FRENZY', col:'#61f7ff'});
   for(let i=0;i<16;i++) spark(z.x,z.y-14, i%2?'#61f7ff':'#b9ffff', rand(70,210), rand(0,TAU), .55);
   for(const o of zombies){ if(!o.alive || o===z) continue;
     if(dist2(z.x,z.y,o.x,o.y)<RAD2) o.frenzyT=Math.max(o.frenzyT||0,3.2); }
@@ -2938,7 +2938,7 @@ function updateZombie(z,dt){
   if(z.hitFlash>0) z.hitFlash-=dt;
   if(z.attackCd>0) z.attackCd-=dt;
   if(z.leapCd>0) z.leapCd-=dt;
-  if(z.howlCd>0) z.howlCd-=dt;
+  if(z.buffCd>0) z.buffCd-=dt;
   if(z.frenzyT>0) z.frenzyT-=dt;
   if(z.slamCd>0) z.slamCd-=dt;
   if(z.slamT>0){                              // mid-telegraph: rooted, then AoE on expiry
@@ -2959,7 +2959,7 @@ function updateZombie(z,dt){
   if(z.slowT>0) z.slowT-=dt;
   const near=nearestHuman(z,true); const tgt=near.o;
   let mvx=0,mvy=0;
-  if(tgt && near.d<(z.ranged?540:z.howl?560:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
+  if(tgt && near.d<(z.ranged?540:z.buff?560:460)){ z.aim=Math.atan2(tgt.y-z.y,tgt.x-z.x);
     if(z.ranged){                                            // Spitter: hold a standoff distance & lob acid
       const ideal=290;
       if(near.d<ideal-70){ mvx=-Math.cos(z.aim); mvy=-Math.sin(z.aim); }      // too close → back off
@@ -2967,12 +2967,12 @@ function updateZombie(z,dt){
       else { const s=(z.seed|0)%2?1:-1; mvx=Math.cos(z.aim+Math.PI/2)*0.5*s; mvy=Math.sin(z.aim+Math.PI/2)*0.5*s; }  // strafe
       z.spitCd-=dt;
       if(z.spitCd<=0 && grace<=0 && near.d<500){ z.spitCd=rand(1.7,2.6); z.lunge=1; spitAcid(z,tgt); }
-    } else if(z.howl){                                       // Howler: standoff support that frenzies nearby undead
+    } else if(z.buff){                                       // Shaman: standoff support that frenzies nearby undead
       const ideal=330;
       if(near.d<ideal-80){ mvx=-Math.cos(z.aim); mvy=-Math.sin(z.aim); }
       else if(near.d>ideal+90){ mvx=Math.cos(z.aim); mvy=Math.sin(z.aim); }
       else { const s=(z.seed|0)%2?1:-1; mvx=Math.cos(z.aim+Math.PI/2)*0.45*s; mvy=Math.sin(z.aim+Math.PI/2)*0.45*s; }
-      if(z.howlCd<=0 && grace<=0 && near.d<540){ z.howlCd=rand(4.2,5.8); z.lunge=1; zombieHowl(z); }
+      if(z.buffCd<=0 && grace<=0 && near.d<540){ z.buffCd=rand(4.2,5.8); z.lunge=1; zombieBuff(z); }
     } else {
       // if the prey is holed up in a building we aren't in, route to a door gap (around the
       // walls via the nearer corner when we're on the wrong side) instead of grinding the wall
@@ -3474,7 +3474,7 @@ function hordeKind(wave){
     ['normal',  Math.max(0.10, 0.62 - wave*0.030)],
     ['runner',  Math.min(0.20 + wave*0.010, 0.40)],
   ];
-  if(wave>=2) t.push(['husk',    Math.min(0.05 + (wave-2)*0.008, 0.16)]);  // tougher shambler variant
+  if(wave>=2) t.push(['grunt',    Math.min(0.05 + (wave-2)*0.008, 0.16)]);  // tougher shambler variant
   if(wave>=3) t.push(['brute',   Math.min(0.10 + wave*0.012, 0.30)]);
   if(wave>=4) t.push(['skitter', Math.min(0.04 + (wave-4)*0.008, 0.15)]);  // tiny speed variant
   if(wave>=4) t.push(['spitter', Math.min(0.05 + (wave-4)*0.010, 0.18)]);  // ranged pressure
@@ -3485,7 +3485,7 @@ function hordeKind(wave){
   if(wave>=7) t.push(['rottank', Math.min(0.035 + (wave-7)*0.006, 0.11)]); // tanky rupture variant
   if(wave>=7) t.push(['stalker', Math.min(0.06 + (wave-7)*0.012, 0.24)]);  // swarm rush
   if(wave>=8) t.push(['wraith',  Math.min(0.04 + (wave-8)*0.007, 0.13)]);  // ghostly stalker variant
-  if(wave>=9) t.push(['howler',  Math.min(0.04 + (wave-9)*0.007, 0.13)]);  // support aura priority target
+  if(wave>=9) t.push(['shaman',  Math.min(0.04 + (wave-9)*0.007, 0.13)]);  // support aura priority target
   let sum=0; for(const e of t) sum+=e[1];
   let r=Math.random()*sum;
   for(const e of t){ r-=e[1]; if(r<=0) return e[0]; }
@@ -4864,15 +4864,15 @@ function drawZombie(z){
   const lunge=Math.max(0,z.lunge||0);
   const fam=z.family||z.kind;
   const runner=fam==='runner', brute=fam==='brute', spitter=fam==='spitter', bloater=fam==='bloater';
-  const stalker=fam==='stalker', leaper=fam==='leaper', howler=fam==='howler', juggernaut=fam==='juggernaut', normal=fam==='normal';
-  const husk=z.kind==='husk', skitter=z.kind==='skitter', crusher=z.kind==='crusher', venomspine=z.kind==='venomspine';
+  const stalker=fam==='stalker', leaper=fam==='leaper', shaman=fam==='shaman', juggernaut=fam==='juggernaut', normal=fam==='normal';
+  const grunt=z.kind==='grunt', skitter=z.kind==='skitter', crusher=z.kind==='crusher', venomspine=z.kind==='venomspine';
   const rottank=z.kind==='rottank', wraith=z.kind==='wraith', colossus=z.kind==='colossus';
   const skin=z.skin, torso=z.torso, shade=t.shade, eye=t.eye;
   const SK=flash?'#fff':skin, TO=flash?'#fff':torso, SH=flash?'#fff':shade;
   const sway=moving?0:Math.sin(now*1.6+seed)*1.1;             // idle undead sway
   const bob=Math.sin(z.walk)*2+sway, step=moving?Math.sin(z.walk)*(brute||juggernaut?2.4:runner||stalker||leaper?4.1:3.4):0;
-  const tw=colossus?14.8:crusher?12.8:rottank?14.5:husk?9.4:juggernaut?13.5:bloater?12.8:brute?11.5:skitter?5.4:runner?6.1:wraith?5.7:stalker?5.2:leaper?6.8:howler?9.4:venomspine?6.7:spitter?7.2:8;
-  const th=colossus?20.5:crusher?17.5:rottank?19.5:husk?16.5:juggernaut?18:bloater?18.2:brute?16:skitter?12:runner?13.5:wraith?13.8:stalker?12.5:leaper?14.2:howler?17.2:venomspine?15.4:spitter?16.5:15;   // torso half-width / height per kind
+  const tw=colossus?14.8:crusher?12.8:rottank?14.5:grunt?9.4:juggernaut?13.5:bloater?12.8:brute?11.5:skitter?5.4:runner?6.1:wraith?5.7:stalker?5.2:leaper?6.8:shaman?9.4:venomspine?6.7:spitter?7.2:8;
+  const th=colossus?20.5:crusher?17.5:rottank?19.5:grunt?16.5:juggernaut?18:bloater?18.2:brute?16:skitter?12:runner?13.5:wraith?13.8:stalker?12.5:leaper?14.2:shaman?17.2:venomspine?15.4:spitter?16.5:15;   // torso half-width / height per kind
   const zty=-6+bob*0.2;   // torso top y — computed early so behind-torso layers (spikes/ridge) can use it
   const night = timeOfDay!=='day';
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
@@ -4899,7 +4899,7 @@ function drawZombie(z){
     zBlister(flip*-18,zty+1,3.4,eye,true); ctx.restore(); }
   if(bloater && !flash){ ctx.save(); ctx.globalAlpha=.82; ctx.fillStyle='rgba(198,255,74,.14)';
     ctx.beginPath(); ctx.ellipse(0,zty+10,tw+5,th*.72,0,0,TAU); ctx.fill(); ctx.restore(); }
-  if(howler && !flash){ ctx.save(); ctx.globalAlpha=.78; ctx.strokeStyle=eye; ctx.lineWidth=2;
+  if(shaman && !flash){ ctx.save(); ctx.globalAlpha=.78; ctx.strokeStyle=eye; ctx.lineWidth=2;
     for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*4,zty-3); ctx.quadraticCurveTo(sx*10,zty-13,sx*15,zty-7); ctx.stroke(); }
     ctx.restore(); }
   if(venomspine && !flash){ ctx.save(); ctx.strokeStyle=INK; ctx.lineWidth=4;
@@ -4939,7 +4939,7 @@ function drawZombie(z){
   if(leaper && !flash){ ctx.fillStyle='#e8e0c8'; ctx.strokeStyle=INK;
     zSpike(flip*-tw*.6,zty-3,5.8,-Math.PI/2+flip*.18,'#e8e0c8',.72);
     zSpike(flip*tw*.55,zty-2,4.8,-Math.PI/2-flip*.14,'#e8e0c8',.62); }
-  if(husk && !flash){ ctx.fillStyle='#d9c596'; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
+  if(grunt && !flash){ ctx.fillStyle='#d9c596'; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
     for(const sx of [-1,1]) zSpike(sx*tw*.7,zty+1,5,sx<0?-2.55:-0.6,'#d9c596',.62); }
   if(runner && !flash){ ctx.strokeStyle='rgba(255,70,48,.42)'; ctx.lineWidth=1.3;
     for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(flip*(-10-i*2),zty+3+i*4); ctx.lineTo(flip*(-17-i*2),zty+1+i*4); ctx.stroke(); } }
@@ -4990,7 +4990,7 @@ function drawZombie(z){
       ctx.beginPath(); ctx.moveTo(flip*-tw*.7,zty+3); ctx.quadraticCurveTo(0,zty+9,flip*tw*.65,zty+5); ctx.stroke(); ctx.globalAlpha=1; }
     if(venomspine){ for(const bp of [[-4,zty+3,1.8],[4,zty+6,1.5],[0,zty+11,2.1]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
     if(rottank){ for(const bp of [[-9,zty+2,3.0],[8,zty+4,2.8],[-4,zty+12,3.5],[6,zty+15,2.6]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
-    if(howler){ ctx.fillStyle=eye; ctx.globalAlpha=.36+0.14*Math.sin(now*5+seed);
+    if(shaman){ ctx.fillStyle=eye; ctx.globalAlpha=.36+0.14*Math.sin(now*5+seed);
       ctx.beginPath(); ctx.ellipse(0,zty+8.5,tw*.55,th*.28,0,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
     if(bloater){ for(const bp of [[-7,zty+4,2.6],[7,zty+6,2.2],[-2,zty+12,3.1],[5,zty+15,1.9]]) zBlister(bp[0],bp[1],bp[2],eye,true); }
   }
@@ -5014,7 +5014,7 @@ function drawZombie(z){
   else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(flip*(rx+1),-2.6+paw,2.4,0,TAU); ctx.fill(); }
 
   // ---- HEAD (lolls as it shambles; sits low & sunken on the brute) ----
-  const hy=-15+bob+(juggernaut?4.4:brute?3.5:bloater?2.5:howler?-1.2:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=juggernaut?8.4:brute?7.6:runner?7.2:stalker?7.3:leaper?7.5:howler?8.9:spitter?8.2:8.6;
+  const hy=-15+bob+(juggernaut?4.4:brute?3.5:bloater?2.5:shaman?-1.2:0)+(runner?1:0), hx=Math.sin(z.walk*0.7+seed)*1.6, hr=juggernaut?8.4:brute?7.6:runner?7.2:stalker?7.3:leaper?7.5:shaman?8.9:spitter?8.2:8.6;
   ctx.save(); ctx.translate(hx,0); ctx.rotate(Math.sin(z.walk*0.7+seed)*0.09 + (runner?flip*0.12:0));
   ctx.fillStyle=SK; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,hy,hr,0,TAU); ctx.fill(); ctx.stroke();
   if(!flash){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.arc(2.6,hy+1.8,hr*0.55,0,TAU); ctx.fill();
@@ -5032,7 +5032,7 @@ function drawZombie(z){
     if(stalker){ zSpike(flip*-1,hy-hr+1,5.5,-Math.PI/2,'#efe6cf',.72); zSpike(flip*4,hy-hr+3,4.6,-Math.PI/2+flip*.22,'#efe6cf',.62); }
     if(leaper){ ctx.strokeStyle='#ffcf36'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(flip*-6.5,hy-6.5); ctx.lineTo(flip*-1.5,hy-8.8); ctx.moveTo(flip*1.5,hy-8.4); ctx.lineTo(flip*6,hy-6.2); ctx.stroke(); }
     if(spitter){ ctx.fillStyle=eye; ctx.globalAlpha=.48; ctx.beginPath(); ctx.ellipse(flip*.8,hy+6.4,4.8,3.5,0,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
-    if(howler){ ctx.fillStyle=eye; ctx.globalAlpha=.42+0.18*Math.sin(now*5+seed); ctx.beginPath(); ctx.arc(flip*.6,hy+6.9,3.8,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
+    if(shaman){ ctx.fillStyle=eye; ctx.globalAlpha=.42+0.18*Math.sin(now*5+seed); ctx.beginPath(); ctx.arc(flip*.6,hy+6.9,3.8,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
     if(juggernaut){ ctx.fillStyle='#343a38'; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(0,hy,hr+1.2,Math.PI*.98,Math.PI*2.02); ctx.lineTo(hr*.72,hy-1.5); ctx.quadraticCurveTo(0,hy+3.5,-hr*.72,hy-1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle=eye; ctx.globalAlpha=.85; ctx.fillRect(-3.9,hy-2.1,7.8,1.7); ctx.globalAlpha=1; }
