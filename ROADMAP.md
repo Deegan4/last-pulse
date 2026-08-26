@@ -26,10 +26,14 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
       Store Connect** before this can load a price or complete a real purchase — until then the
       button silently never appears (`products` loads empty), which is safe but means the
       feature is inert. This is the one step no tool here can do for you.
-- [ ] **Follow-on monetization** — this ships one IAP as proof-of-concept; a real revenue plan
-      still wants either more cosmetic non-consumables (skins/weapon finishes — needs new art) or
-      a consumable currency / season-pass subscription. Revisit once the first product's
-      conversion rate is known.
+- [ ] **IAP #2: consumable coin pack** (decided 2026-08-25) — a real-money purchase of `meta.coins`
+      (`index.html:1565`), the existing shop currency. Reuses `WEAPONS`/`AVATARS` unlock plumbing
+      pattern from `StoreManager.swift`: add a second Product ID (e.g.
+      `com.lastpulse.game.coins500`), StoreKit `.consumable` type (finishes the transaction
+      immediately, unlike `unlockall`'s non-consumable), and a JS bridge call that adds coins to
+      `meta.coins` + `saveMeta()` instead of setting a flag. Blocked on the same App Store Connect
+      step as `unlockall`, plus deciding the coin amount/price tiers. Do this **after** PR #97 is
+      merged — building it now would only add more surface to an already-diverged branch.
 
 ## Shipped since this plan was last synced (v2.7.0 → v2.34.0)
 
