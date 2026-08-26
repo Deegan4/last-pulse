@@ -1380,6 +1380,15 @@ already landed.
   new props with wood/stone/gold/red-banner details, and marked the village battlefield polish
   bundle shipped in ROADMAP.md.
 
+- v2.54.0: Added the first real App Store monetization path — a StoreKit2 non-consumable
+  "Unlock Everything" IAP (`StoreManager.swift`) that bypasses avatar/weapon level-gates, wired
+  through a JS↔native message-handler bridge. Replaces the Stripe donate link inside the native
+  wrapper only (web build keeps Stripe) because an external payment link for digital content
+  inside a native app risks Guideline 3.1.1 rejection. The App Store Connect product itself
+  (`com.lastpulse.game.unlockall`) still needs to be created by the account holder before this
+  does anything real — verified in-browser that the JS side (button visibility, price/entitlement
+  callbacks, unlock-all bypassing every roster lock) works correctly with a mocked native bridge.
+
 ## Open questions for the user
 _(Superseded the old v1.8.0-era list here — those were answered or overtaken long ago; current
 open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_

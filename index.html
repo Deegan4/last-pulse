@@ -840,13 +840,19 @@
     <button class="close" id="shopClose">Close</button>
   </div>
 
-  <!-- ===== Donate / support (opens the creator's Stripe Payment Link in a new tab) ===== -->
+  <!-- ===== Support / IAP =====
+       Two mutually-exclusive paths, toggled in openDonate() via inNativeWrapper(): the web build
+       opens the creator's Stripe Payment Link (external payment, fine outside the App Store);
+       the iOS wrapper build offers a real StoreKit2 purchase instead — Apple 3.1.1 forbids an
+       external payment link for digital content inside a native app. -->
   <div id="donate" class="modal hidden">
     <div class="wnburst">💜</div>
     <h2 class="heading">Support Last Pulse</h2>
-    <div class="donateBlurb">Last Pulse is free and made by one person. If you’re having fun, a small tip keeps new modes, weapons &amp; fixes coming. Thank you!</div>
+    <div class="donateBlurb" id="donateBlurb">Last Pulse is free and made by one person. If you’re having fun, a small tip keeps new modes, weapons &amp; fixes coming. Thank you!</div>
     <button class="btn blue donateCta" id="donateGo">❤ Donate via Stripe →</button>
     <div class="donateSecure" id="donateSecure">🔒 You choose your amount securely on Stripe’s own page — the game never sees your card details.</div>
+    <button class="btn blue donateCta" id="iapUnlockBtn" hidden>🔓 Unlock Everything — $4.99</button>
+    <button class="btn ghost donateCta" id="iapRestoreBtn" hidden>Restore Purchases</button>
     <div id="donateNote" class="donateNote" hidden></div>
     <button class="close" id="donateClose">Close</button>
   </div>
@@ -1192,8 +1198,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.53.1';
+const GAME_VERSION = '2.54.0';
 const CHANGELOG = [
+  { v:'2.54.0', items:[
+    ['🔓','Unlock Everything (iOS)','the app version now offers a real in-app purchase to unlock every fighter and weapon instantly, replacing the external donate link Apple doesn\'t allow inside native apps'],
+  ]},
   { v:'2.53.1', items:[
     ['🎯','Sniper rebalance','damage 250→190 — still drops almost anything in one shot, but no longer trivializes the ROADMAP-flagged burst-vs-DPS gap against the rest of the arsenal'],
   ]},
@@ -1568,6 +1577,7 @@ const meta = {
   magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
+  iapUnlockAll: safeGet('dd2_iap_unlockall','0')==='1',              // real-money IAP: bypass avatar/weapon level-gates
 };
 // iOS wrapper bridge: GameViewController injects window.__nativeBootCode (see
 // "Native (iOS wrapper) save bridge" below) at document-start, before this script runs —
@@ -1602,6 +1612,7 @@ function saveMeta(){
   safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
+  safeSet('dd2_iap_unlockall', meta.iapUnlockAll ? '1' : '0');
   nativeSaveDebounced();
 }
 // ===== Native (iOS wrapper) save bridge =====
@@ -1624,6 +1635,33 @@ function nativeSaveDebounced(){
   clearTimeout(__nativeSaveTimer);
   __nativeSaveTimer=setTimeout(nativeSaveNow, 400);
 }
+// ===== Native (iOS wrapper) IAP bridge =====
+// Apple rejects/pulls apps that point to an external payment link for digital content (the
+// Stripe donate button below), so the native wrapper offers a real StoreKit2 purchase instead.
+// nativePurchase()/nativeRestore() post a request to StoreManager (LastPulseIOS/LastPulse/
+// StoreManager.swift + the "nativePurchase"/"nativeRestore" message handlers in
+// GameViewController.swift); the native side calls back into window.__nativeSetEntitlement
+// once StoreKit confirms the transaction, which flips meta.iapUnlockAll and re-renders.
+function nativePurchase(productId){
+  try{ window.webkit.messageHandlers.nativePurchase.postMessage(productId); }catch(e){}
+}
+function nativeRestore(){
+  try{ window.webkit.messageHandlers.nativeRestore.postMessage('restore'); }catch(e){}
+}
+const IAP_UNLOCKALL_ID = 'com.lastpulse.game.unlockall';
+window.__nativeSetProductPrice = function(productId, localizedPrice){
+  if(productId===IAP_UNLOCKALL_ID && localizedPrice) el('iapUnlockBtn').textContent = '🔓 Unlock Everything — '+localizedPrice;
+};
+window.__nativeSetEntitlement = function(productId, owned){
+  if(productId===IAP_UNLOCKALL_ID){
+    meta.iapUnlockAll = !!owned;
+    saveMeta();
+    if(owned) toast('🔓 Everything unlocked — thank you!');
+    if(el('avatarGrid').children.length) buildAvatarGrid();
+    if(el('weaponGrid').children.length) buildWeaponGrid();
+    renderMenu();
+  }
+};
 // ===== Save health & transfer =====
 // Some browsers can't persist localStorage at all (private tabs, TikTok/Instagram in-app
 // webviews) — progress silently vanishes between sessions. Detect that up front and WARN,
@@ -1749,7 +1787,7 @@ const MAG_COST=[250, 500, 900];          // coin cost for tier 1 / 2 / 3
 function magMulMeta(){ return 1 + Math.min(meta.magLvl||0, MAG_MAX)*MAG_STEP; }
 function magInfo(){ const lvl=Math.min(meta.magLvl||0, MAG_MAX), maxed=lvl>=MAG_MAX;
   return { lvl, bonus:Math.round(lvl*MAG_STEP*100), maxed, nextCost:maxed?null:MAG_COST[lvl] }; }
-function weaponUnlocked(w){ return meta.level >= (w.unlock||1); }
+function weaponUnlocked(w){ return meta.iapUnlockAll || meta.level >= (w.unlock||1); }
 // nearest still-locked avatar/weapon — the "one more run" carrot on the results screen
 function nextUnlock(){
   let best=null;
@@ -1764,7 +1802,7 @@ function grantXp(n){
   const rk=rankFor(meta.level); lastRankUp = (rk.name!==rank0) ? rk : null;
   saveMeta(); return leveled;
 }
-function avatarUnlocked(a){ return meta.level >= a.unlock; }
+function avatarUnlocked(a){ return meta.iapUnlockAll || meta.level >= a.unlock; }
 
 // ============================================================
 //  World
@@ -5245,9 +5283,22 @@ function closeShop(){ el('shop').classList.add('hidden'); }
 function donateConfigured(){ return /^https:\/\/(buy\.stripe\.com|[a-z0-9-]+\.stripe\.com)\//i.test(STRIPE_DONATE_URL); }
 function openDonate(){
   const note=el('donateNote'), go=el('donateGo'), sec=el('donateSecure');
-  if(donateConfigured()){ note.hidden=true; go.style.display=''; sec.style.display=''; }
-  else {                                   // not set up yet — explain instead of opening a dead link
+  const iapGo=el('iapUnlockBtn'), iapRestore=el('iapRestoreBtn'), blurb=el('donateBlurb');
+  if(inNativeWrapper()){
+    // Native build: real StoreKit purchase, no external payment link (App Store 3.1.1).
+    go.style.display='none'; sec.style.display='none'; note.hidden=true;
+    blurb.textContent = meta.iapUnlockAll
+      ? 'You already own everything — thanks for the support!'
+      : 'Skip the grind: unlock every fighter and weapon right now, no waiting on levels.';
+    iapGo.hidden = meta.iapUnlockAll;
+    iapRestore.hidden = false;
+    nativeRestore();   // silent re-check on open, in case a prior purchase never confirmed
+  } else if(donateConfigured()){
+    note.hidden=true; go.style.display=''; sec.style.display='';
+    iapGo.hidden=true; iapRestore.hidden=true;
+  } else {                                   // not set up yet — explain instead of opening a dead link
     go.style.display='none'; sec.style.display='none'; note.hidden=false;
+    iapGo.hidden=true; iapRestore.hidden=true;
     note.textContent='Donations aren’t set up yet. The game owner can enable this by pasting a Stripe Payment Link into STRIPE_DONATE_URL in index.html.';
   }
   el('donate').classList.remove('hidden');
@@ -5473,6 +5524,8 @@ el('shopGrid').addEventListener('click',e=>{ const u=e.target.closest('[data-upg
 el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
 el('donateGo').addEventListener('click',donateGo);
 el('donateClose').addEventListener('click',closeDonate);
+el('iapUnlockBtn').addEventListener('click',()=>{ audioInit(); nativePurchase(IAP_UNLOCKALL_ID); });
+el('iapRestoreBtn').addEventListener('click',()=>{ audioInit(); nativeRestore(); toast('Checking for past purchases…'); });
 // add to home screen (iOS)
 el('a2hsBtn').addEventListener('click',openA2HS);
 el('a2hsClose').addEventListener('click',closeA2HS);

@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.53.1). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.54.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -10,6 +10,26 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 > and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
 > bumps the version. **When it disagrees with the code, the code wins** — verify against
 > `index.html` before trusting any bullet below.
+
+## v2.54 — "Real IAP for the App Store" (shipped)
+
+- [x] **StoreKit2 "Unlock Everything" IAP** (`LastPulseIOS/LastPulse/StoreManager.swift`) —
+      replaces the Stripe donate link inside the native wrapper (an external payment link for
+      digital content risks App Store Guideline 3.1.1 rejection); a single non-consumable
+      product bypasses every avatar/weapon level-gate (`avatarUnlocked`/`weaponUnlocked` in
+      index.html now check `meta.iapUnlockAll`).
+- [x] **JS ↔ native purchase bridge** — `nativePurchase()`/`nativeRestore()` in index.html post
+      to new `nativePurchase`/`nativeRestore` WKScriptMessageHandlers in GameViewController.swift;
+      results flow back via `window.__nativeSetEntitlement`/`window.__nativeSetProductPrice`.
+      Web builds are untouched — `inNativeWrapper()` still gates the Stripe path there.
+- [ ] **You must create `com.lastpulse.game.unlockall` as a real non-consumable product in App
+      Store Connect** before this can load a price or complete a real purchase — until then the
+      button silently never appears (`products` loads empty), which is safe but means the
+      feature is inert. This is the one step no tool here can do for you.
+- [ ] **Follow-on monetization** — this ships one IAP as proof-of-concept; a real revenue plan
+      still wants either more cosmetic non-consumables (skins/weapon finishes — needs new art) or
+      a consumable currency / season-pass subscription. Revisit once the first product's
+      conversion rate is known.
 
 ## Shipped since this plan was last synced (v2.7.0 → v2.34.0)
 
