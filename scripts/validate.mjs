@@ -51,6 +51,9 @@ if (existsSync(join(root, 'assets', 'meshy', 'manifest.json'))) {
     const block = (html.match(/const FALLBACK_FILES\s*=\s*\{([\s\S]*?)\}/) || [])[1] || '';
     files.push(...[...block.matchAll(/['"]([^'"]+\.glb)['"]/g)].map(x => x[1]));
   }
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const buildingBlock = (html.match(/const BUILDING_FILES\s*=\s*\{([\s\S]*?)\}/) || [])[1] || '';
+  files.push(...[...buildingBlock.matchAll(/['"]([^'"]+\.glb)['"]/g)].map(x => x[1]));
   const triCount = (file) => {
     const buf = readFileSync(file);
     if (buf.readUInt32LE(0) !== 0x46546c67) return null;         // 'glTF' magic

@@ -12,6 +12,33 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state
 
+- **v2.60.0 — realistic biome ground scenes.** Replaced the placeholder/recolored grass variant
+  attempt with five distinct top-down scene textures generated from a realistic bitmap atlas:
+  desert sand, snow/ice, volcanic ash with lava fissures, stone ruins, and swamp mud/puddles.
+  The files live at `assets/img/ground-desert.png`, `ground-snow.png`, `ground-ash.png`,
+  `ground-stone.png`, and `ground-swamp.png` and are mirrored into `LastPulseIOS/GameContent`.
+  `GROUND_SKINS` now picks from those scene keys per `timeOfDay`, and `groundPattern()` caches
+  by `timeOfDay + groundSkin` so each arena can actually change theme without stale tiles.
+- **v2.59.0 — 3D building assets.** Added real local 3D building assets without depending on
+  Meshy: `scripts/gen-building-glbs.mjs` generates four tiny low-poly GLBs
+  (`building-house/shop/barn/cabin.glb`) under `assets/buildings/`, matching the existing
+  `BKINDS` table. The progressive Three.js layer now loads those files via `BUILDING_FILES` and
+  exposes `Models3D.drawBuilding(ctx,d)`, called from `drawBuilding()` before the 2D fallback; it
+  respects the existing `d.fade` interior visibility and leaves all collision/pathing/loot logic
+  untouched. `scripts/validate.mjs` includes the building GLBs in the mobile billboard
+  size/triangle budget gate.
+- **IAP #2: consumable coin pack (v2.58.0)** — `com.lastpulse.game.coins500` added alongside
+  `unlockall` in `StoreManager.swift`, returning a typed `PurchaseResult` (`.unlockAll`/
+  `.coins(Int)`/`.failed`) so `GameViewController` credits `meta.coins` via a new
+  `window.__nativeCoinsGranted(amount)` bridge instead of setting an entitlement flag. Shows as
+  a native-only "Get Coins" card at the top of the Shop. Also: `AppIcon.appiconset` switched from
+  the old per-size PNG list (which was missing iPhone/iPad Settings/Spotlight/Notification sizes)
+  to the modern single 1024×1024 "universal" format — Xcode 15+/iOS 17+ auto-generates every
+  needed size at build time, verified via a real `xcodebuild` simulator build (icon sizes
+  emplaced correctly, app launches clean, save restored). **App Store Connect still needs both
+  `com.lastpulse.game.unlockall` (non-consumable) and `com.lastpulse.game.coins500` (consumable,
+  $-priced) created as real IAP products before either button appears/works for real users** —
+  no tool here can do that step.
 - **Code-review sweep — 6 real bugs fixed (no version bump, no player-visible feature).**
   A `/code-review high` pass over the branch's full diff vs `origin/main` surfaced: (1) the
   `#mutRow` mutator HUD indicator was toggled via `el('mutRow').style.display=''`, which only
@@ -1594,3 +1621,5 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
   none have real playtest answers yet.
 - Provide `MESHY_API_KEY` via environment config to unblock 3D character generation (25/28 assets
   still ungenerated), or explicitly drop the moonshot?
+# 2.62.0 — Character expression studio
+- Added a persistent modular player look with outfit palettes, hair silhouettes, accessories, and facial traits; the avatar screen now exposes the controls and the selected accents render in menu portraits and live gameplay.

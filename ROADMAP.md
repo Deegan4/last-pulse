@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.57.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.62.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -26,14 +26,19 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
       Store Connect** before this can load a price or complete a real purchase — until then the
       button silently never appears (`products` loads empty), which is safe but means the
       feature is inert. This is the one step no tool here can do for you.
-- [ ] **IAP #2: consumable coin pack** (decided 2026-08-25) — a real-money purchase of `meta.coins`
-      (`index.html:1565`), the existing shop currency. Reuses `WEAPONS`/`AVATARS` unlock plumbing
-      pattern from `StoreManager.swift`: add a second Product ID (e.g.
-      `com.lastpulse.game.coins500`), StoreKit `.consumable` type (finishes the transaction
-      immediately, unlike `unlockall`'s non-consumable), and a JS bridge call that adds coins to
-      `meta.coins` + `saveMeta()` instead of setting a flag. Blocked on the same App Store Connect
-      step as `unlockall`, plus deciding the coin amount/price tiers. Do this **after** PR #97 is
-      merged — building it now would only add more surface to an already-diverged branch.
+- [x] **IAP #2: consumable coin pack** (shipped v2.58.0) — `com.lastpulse.game.coins500`, a
+      second product in `StoreManager.purchase()` returning a typed `PurchaseResult` (`.unlockAll`
+      / `.coins(Int)` / `.failed`) so GameViewController knows whether to flip the entitlement or
+      call the new `window.__nativeCoinsGranted(amount)` bridge, which adds to `meta.coins` +
+      `saveMeta()`. Deliberately routed only through the direct `purchase()` result path, not the
+      `Transaction.updates`/`currentEntitlements` listeners used for `unlockall` restore — those
+      exclude consumables anyway, but keeping coin-crediting on a single path rules out a double
+      grant. Surfaced as a "Get Coins" card at the top of the Shop, native-only
+      (`inNativeWrapper()`). **Still blocked on creating `com.lastpulse.game.coins500` as a real
+      consumable product in App Store Connect** — same one manual step as `unlockall` below.
+- [ ] **Price tiers beyond the single 500-coin pack** — once real sales data shows whether players
+      want a cheaper/larger option, add 2-3 more consumable tiers (e.g. 150/1200 coins) following
+      the same `coinAmounts` dictionary pattern in `StoreManager.swift`.
 
 ## Shipped since this plan was last synced (v2.7.0 → v2.34.0)
 
