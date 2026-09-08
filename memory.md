@@ -12,6 +12,33 @@ IIFE + a fail-safe 3D model layer (`assets/meshy/`). No build step, no deps.
 
 ## Current state
 
+- **v2.60.0 — realistic biome ground scenes.** Replaced the placeholder/recolored grass variant
+  attempt with five distinct top-down scene textures generated from a realistic bitmap atlas:
+  desert sand, snow/ice, volcanic ash with lava fissures, stone ruins, and swamp mud/puddles.
+  The files live at `assets/img/ground-desert.png`, `ground-snow.png`, `ground-ash.png`,
+  `ground-stone.png`, and `ground-swamp.png` and are mirrored into `LastPulseIOS/GameContent`.
+  `GROUND_SKINS` now picks from those scene keys per `timeOfDay`, and `groundPattern()` caches
+  by `timeOfDay + groundSkin` so each arena can actually change theme without stale tiles.
+- **v2.59.0 — 3D building assets.** Added real local 3D building assets without depending on
+  Meshy: `scripts/gen-building-glbs.mjs` generates four tiny low-poly GLBs
+  (`building-house/shop/barn/cabin.glb`) under `assets/buildings/`, matching the existing
+  `BKINDS` table. The progressive Three.js layer now loads those files via `BUILDING_FILES` and
+  exposes `Models3D.drawBuilding(ctx,d)`, called from `drawBuilding()` before the 2D fallback; it
+  respects the existing `d.fade` interior visibility and leaves all collision/pathing/loot logic
+  untouched. `scripts/validate.mjs` includes the building GLBs in the mobile billboard
+  size/triangle budget gate.
+- **IAP #2: consumable coin pack (v2.58.0)** — `com.lastpulse.game.coins500` added alongside
+  `unlockall` in `StoreManager.swift`, returning a typed `PurchaseResult` (`.unlockAll`/
+  `.coins(Int)`/`.failed`) so `GameViewController` credits `meta.coins` via a new
+  `window.__nativeCoinsGranted(amount)` bridge instead of setting an entitlement flag. Shows as
+  a native-only "Get Coins" card at the top of the Shop. Also: `AppIcon.appiconset` switched from
+  the old per-size PNG list (which was missing iPhone/iPad Settings/Spotlight/Notification sizes)
+  to the modern single 1024×1024 "universal" format — Xcode 15+/iOS 17+ auto-generates every
+  needed size at build time, verified via a real `xcodebuild` simulator build (icon sizes
+  emplaced correctly, app launches clean, save restored). **App Store Connect still needs both
+  `com.lastpulse.game.unlockall` (non-consumable) and `com.lastpulse.game.coins500` (consumable,
+  $-priced) created as real IAP products before either button appears/works for real users** —
+  no tool here can do that step.
 - **Code-review sweep — 6 real bugs fixed (no version bump, no player-visible feature).**
   A `/code-review high` pass over the branch's full diff vs `origin/main` surfaced: (1) the
   `#mutRow` mutator HUD indicator was toggled via `el('mutRow').style.display=''`, which only
@@ -1594,3 +1621,14 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
   none have real playtest answers yet.
 - Provide `MESHY_API_KEY` via environment config to unblock 3D character generation (25/28 assets
   still ungenerated), or explicitly drop the moonshot?
+# 2.62.0 — Character expression studio
+- Added a persistent modular player look with outfit palettes, hair silhouettes, accessories, and facial traits; the avatar screen now exposes the controls and the selected accents render in menu portraits and live gameplay.
+
+# 2.63.0 — Build-changing perks
+- Expanded the picker from 6 to 10 perks with one secondary ricochet hit per bullet (50%, excludes flames/rockets), a completed-reload blast (40 damage, 110 radius, 6s cooldown), every-fourth-kill lightning (3 targets, 35 damage, no recursive charging), and grapple contact damage (55, once per enemy per swing). All perk attacks exclude allies.
+- Added visible ranks, three-rank limits for original perks and one-rank limits for new perks; exhausted pools heal 25% and continue the wave. Cleared choices after selection to prevent repeated activation; fresh players reset all run perks.
+- Validation: `node scripts/validate.mjs` passed; normal Horde combat ran in installed Chrome with no page errors; `scripts/test-perks.mjs` passed 90 assertions including forced progression through wave 15, boss overlaps, proc limits, reload completion/cooldown, rank exhaustion, and fresh-run reset. Portrait picker screenshot inspected. Real-device balance remains unmeasured.
+
+# 2.64.0 — The horde reborn
+- Replaced the shared round-head/ribcage enemy art with 19 cel-shaded monster designs: villagers and guards, scarfed hunters, insect skitters, horned ogres, plated crushers, acid throats, cobra hoods, swollen bellies, quilled stalkers, masked wraiths, frog leapers, antler shamans, frilled howlers, beetle armor, brood husks, knights and crowned colossi. Visual descriptors live in ENEMY_ART; gameplay values remain in ZTYPES.
+- Validation: both script blocks and release gates pass. `scripts/render-enemies.mjs` captures the before/after roster, exercises 19 enemies in four states (76 renders), and runs a 57-enemy night crowd with live boss telegraphs; no page errors. Normal Horde shooting also passes. Screenshots inspected; phone performance and visual preference remain playtest items.

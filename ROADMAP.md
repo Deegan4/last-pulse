@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.57.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.64.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -26,14 +26,19 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
       Store Connect** before this can load a price or complete a real purchase — until then the
       button silently never appears (`products` loads empty), which is safe but means the
       feature is inert. This is the one step no tool here can do for you.
-- [ ] **IAP #2: consumable coin pack** (decided 2026-08-25) — a real-money purchase of `meta.coins`
-      (`index.html:1565`), the existing shop currency. Reuses `WEAPONS`/`AVATARS` unlock plumbing
-      pattern from `StoreManager.swift`: add a second Product ID (e.g.
-      `com.lastpulse.game.coins500`), StoreKit `.consumable` type (finishes the transaction
-      immediately, unlike `unlockall`'s non-consumable), and a JS bridge call that adds coins to
-      `meta.coins` + `saveMeta()` instead of setting a flag. Blocked on the same App Store Connect
-      step as `unlockall`, plus deciding the coin amount/price tiers. Do this **after** PR #97 is
-      merged — building it now would only add more surface to an already-diverged branch.
+- [x] **IAP #2: consumable coin pack** (shipped v2.58.0) — `com.lastpulse.game.coins500`, a
+      second product in `StoreManager.purchase()` returning a typed `PurchaseResult` (`.unlockAll`
+      / `.coins(Int)` / `.failed`) so GameViewController knows whether to flip the entitlement or
+      call the new `window.__nativeCoinsGranted(amount)` bridge, which adds to `meta.coins` +
+      `saveMeta()`. Deliberately routed only through the direct `purchase()` result path, not the
+      `Transaction.updates`/`currentEntitlements` listeners used for `unlockall` restore — those
+      exclude consumables anyway, but keeping coin-crediting on a single path rules out a double
+      grant. Surfaced as a "Get Coins" card at the top of the Shop, native-only
+      (`inNativeWrapper()`). **Still blocked on creating `com.lastpulse.game.coins500` as a real
+      consumable product in App Store Connect** — same one manual step as `unlockall` below.
+- [ ] **Price tiers beyond the single 500-coin pack** — once real sales data shows whether players
+      want a cheaper/larger option, add 2-3 more consumable tiers (e.g. 150/1200 coins) following
+      the same `coinAmounts` dictionary pattern in `StoreManager.swift`.
 
 ## Shipped since this plan was last synced (v2.7.0 → v2.34.0)
 
@@ -347,11 +352,11 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       the two cycles overlap. Three new mutators shipped alongside: **Glass Cannon** (`dmgOutMul`/
       `dmgInMul` 1.6×, high-risk/high-reward), **Rich Vein** (`scrapMul` 1.7×, read in `die()`'s
       scrap-drop calc), and **Blood Moon** (`xpMul`/`coinMul` 1.5×, read in `showResults()`).
-- [ ] **Perk variety beyond 6** — the picker reuses the same 6 perks every 3rd wave for the whole
-      run; a longer run (wave 15+) can see repeats. Consider adding 3-4 more (e.g. a lifesteal
-      perk, a crit-chance perk, a dash-cooldown perk) once real playtests show which of the
-      current 6 get picked least (instrument via a `meta.perkPicks[id]++` counter, same pattern as
-      `matchStat`).
+- [x] **Perk variety beyond 6** (v2.63.0) — 10 perks: Ricochet Rounds, Explosive Reload,
+      Kill Storm and Razor Swing add new combat interactions. Special perks cap at one pick;
+      the original six cap at three ranks. Capped perks leave the pool; fully capped builds
+      heal 25% at perk milestones instead of blocking the next wave. Damage/cooldowns live in
+      `PERK_TUNE`; phone playtests should check shotgun ricochets and reload-blast cadence.
 
 ## Balance & tuning backlog (needs real-device playtests)
 
@@ -389,3 +394,8 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 - Work on the `claude/...` branch → draft PR → merge via GitHub API on "push to main"
   (direct push to main 503s). One session per branch — parallel sessions on one branch have
   collided before (see memory.md v1.8.0).
+
+## v2.64 — Enemy character redesign
+
+- [x] Rebuilt all 19 enemy designs with distinct headwear, anatomy, equipment, faces and cel shading in `ENEMY_ART` / `drawZombie`. Preserved combat stats, collision radii, animation inputs, boss warning radius and hit flashes.
+- [ ] Phone playtest: identify acid carriers, hunters and armored bosses in a crowded night wave; check animation readability and frame rate.
