@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.63.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.64.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -394,3 +394,8 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 - Work on the `claude/...` branch → draft PR → merge via GitHub API on "push to main"
   (direct push to main 503s). One session per branch — parallel sessions on one branch have
   collided before (see memory.md v1.8.0).
+
+## v2.64 — Enemy character redesign
+
+- [x] Rebuilt all 19 enemy designs with distinct headwear, anatomy, equipment, faces and cel shading in `ENEMY_ART` / `drawZombie`. Preserved combat stats, collision radii, animation inputs, boss warning radius and hit flashes.
+- [ ] Phone playtest: identify acid carriers, hunters and armored bosses in a crowded night wave; check animation readability and frame rate.
