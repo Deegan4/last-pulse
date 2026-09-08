@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.62.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.63.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -352,11 +352,11 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       the two cycles overlap. Three new mutators shipped alongside: **Glass Cannon** (`dmgOutMul`/
       `dmgInMul` 1.6×, high-risk/high-reward), **Rich Vein** (`scrapMul` 1.7×, read in `die()`'s
       scrap-drop calc), and **Blood Moon** (`xpMul`/`coinMul` 1.5×, read in `showResults()`).
-- [ ] **Perk variety beyond 6** — the picker reuses the same 6 perks every 3rd wave for the whole
-      run; a longer run (wave 15+) can see repeats. Consider adding 3-4 more (e.g. a lifesteal
-      perk, a crit-chance perk, a dash-cooldown perk) once real playtests show which of the
-      current 6 get picked least (instrument via a `meta.perkPicks[id]++` counter, same pattern as
-      `matchStat`).
+- [x] **Perk variety beyond 6** (v2.63.0) — 10 perks: Ricochet Rounds, Explosive Reload,
+      Kill Storm and Razor Swing add new combat interactions. Special perks cap at one pick;
+      the original six cap at three ranks. Capped perks leave the pool; fully capped builds
+      heal 25% at perk milestones instead of blocking the next wave. Damage/cooldowns live in
+      `PERK_TUNE`; phone playtests should check shotgun ricochets and reload-blast cadence.
 
 ## Balance & tuning backlog (needs real-device playtests)
 

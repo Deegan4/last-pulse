@@ -1275,8 +1275,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.62.0';
+const GAME_VERSION = '2.63.0';
 const CHANGELOG = [
+  { v:'2.63.0', items:[
+    ['⚡','Build-changing perks','Ricochet rounds, explosive reloads, every-fourth-kill lightning, and damaging grapple swings join the perk picker'],
+    ['🧰','Bounded builds','Stat perks cap at three ranks; special perks are one-time picks. Fully upgraded builds receive a healing break instead'],
+  ]},
   { v:'2.62.0', items:[
     ['🎨','Character expression studio','personalize your fighter with saved outfit palettes, hair silhouettes, accessories, and facial traits — visible in the menu and during every run'],
     ['✨','Sharper hero read','custom accent lighting, accessory silhouettes, and an expressive player ring make your chosen fighter easier to read in the swarm'],
@@ -1891,6 +1895,9 @@ function pickMutator(){ return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : n
 // Each perk's apply(h) mutates the player instance directly (h.perkDmgMul etc.) — read at the
 // existing single choke points in fire()/hurt()/die() rather than a generic buff-list, matching
 // how activeMutator's numeric fields are consumed.
+const PERK_TUNE = { statRanks:3, ricochetRange:180, ricochetMul:0.5,
+  reloadRadius:110, reloadDamage:40, reloadCooldown:6, lightningKills:4,
+  lightningRange:220, lightningDamage:35, lightningTargets:3, grappleRadius:48, grappleDamage:55 };
 const PERKS = [
   {id:'extClip',  icon:'🧰', name:'EXTENDED CLIP', desc:'+50% magazine size',            apply:h=>{ h.magMul=(h.magMul||1)*1.5; }},
   {id:'adrenaline',icon:'⚡', name:'ADRENALINE',    desc:'+15% move speed',               apply:h=>{ h.perkSpeedMul=(h.perkSpeedMul||1)*1.15; }},
@@ -1898,24 +1905,38 @@ const PERKS = [
   {id:'thickSkin',icon:'🛡️', name:'THICK SKIN',    desc:'-20% damage taken',             apply:h=>{ h.perkDmgInMul=(h.perkDmgInMul||1)*0.8; }},
   {id:'regen',    icon:'💗', name:'REGENERATION',  desc:'Heal 1.5 hp/s passively',       apply:h=>{ h.perkRegen=(h.perkRegen||0)+1.5; }},
   {id:'secondWind',icon:'💖',name:'SECOND WIND',    desc:'Survive one lethal hit at 50% hp',apply:h=>{ h.perkRevives=(h.perkRevives||0)+1; }},
+  {id:'ricochet',icon:'↪️',name:'RICOCHET ROUNDS',maxRanks:1,desc:'Bullet hits bounce to one nearby enemy for 50% damage. Excludes flames and rockets.',apply:h=>{ h.perkRicochet=true; }},
+  {id:'reloadBlast',icon:'💥',name:'EXPLOSIVE RELOAD',maxRanks:1,desc:'Finish a reload to blast nearby enemies for 40 damage. 6s cooldown.',apply:h=>{ h.perkReloadBlast=true; }},
+  {id:'killLightning',icon:'🌩️',name:'KILL STORM',maxRanks:1,desc:'Every 4 kills zap up to 3 enemies near the last kill for 35 damage. Zap kills do not charge it.',apply:h=>{ h.perkKillLightning=true; h.perkKillCount=0; }},
+  {id:'grappleDamage',icon:'🪝',name:'RAZOR SWING',maxRanks:1,desc:'While grappling, strike nearby enemies for 55 damage once per enemy per swing.',apply:h=>{ h.perkGrappleDamage=true; }},
 ];
 let perkChoices=[], pendingWaveBoss=false;
+function perkRank(h,id){ return h.perkRanks?.[id]||0; }
+function perkLimit(p){ return p.maxRanks||PERK_TUNE.statRanks; }
+function availablePerks(h){ return PERKS.filter(p=>perkRank(h,p.id)<perkLimit(p)); }
+function applyPerk(h,p){
+  if(perkRank(h,p.id)>=perkLimit(p)) return false;
+  h.perkRanks=h.perkRanks||{}; h.perkRanks[p.id]=perkRank(h,p.id)+1;
+  p.apply(h); return true;
+}
 function openPerkPick(boss){
   pendingWaveBoss = boss;
-  const pool = PERKS.slice(); perkChoices=[];
+  const pool = availablePerks(player); perkChoices=[];
+  if(!pool.length){ player.hp=Math.min(player.maxhp,player.hp+player.maxhp*0.25);
+    toast('BUILD COMPLETE — healed 25%'); hordeSpawnWave(boss); return; }
   while(perkChoices.length<3 && pool.length) perkChoices.push(pool.splice(randi(0,pool.length-1),1)[0]);
   const grid = el('perkGrid'); grid.innerHTML='';
   for(const p of perkChoices){
     const card = document.createElement('div'); card.className='achcard shopcard'; card.dataset.perk=p.id;
-    card.innerHTML = `<span class="aic">${p.icon}</span><div class="atxt"><b>${p.name}</b><span>${p.desc}</span></div>`;
+    card.innerHTML = `<span class="aic">${p.icon}</span><div class="atxt"><b>${p.name}</b><span>${p.desc} · Rank ${perkRank(player,p.id)+1}/${perkLimit(p)}</span></div>`;
     grid.appendChild(card);
   }
   paused = true;
   el('perkPick').classList.remove('hidden');
 }
 function choosePerk(id){
-  const p = perkChoices.find(x=>x.id===id); if(!p) return;
-  p.apply(player);
+  const p = perkChoices.find(x=>x.id===id); if(!p || !applyPerk(player,p)) return;
+  perkChoices=[];
   toast(p.icon+' '+p.name+' picked!'); sfx('level');
   el('perkPick').classList.add('hidden');
   paused = false;
@@ -2616,6 +2637,7 @@ function die(e, src, isHumanTarget){
       // EVERY player kill counts (v2.33.0: horde is the only mode, so zombie kills must feed
       // the counter, streaks, and the end-of-match economy — they used to be human-only)
       killsTotal++;
+      killStorm(src,e);
       const now=performance.now()/1000;
       player.streak = (now - player.lastKillT < 4.5) ? player.streak+1 : 1;
       player.lastKillT = now;
@@ -2649,6 +2671,40 @@ function die(e, src, isHumanTarget){
     if(killFeed.length>4) killFeed.pop();
     checkEnd();
   }
+}
+
+// Perk attacks share ownership with weapon kills, but never hit allies.
+function perkTargets(h,x,y,r){
+  return [...zombies,...humans].filter(e=>e.alive && e!==h &&
+    (!humans.includes(e)||e.team!==h.team) && dist2(x,y,e.x,e.y)<r*r)
+    .sort((a,b)=>dist2(x,y,a.x,a.y)-dist2(x,y,b.x,b.y));
+}
+function perkStrike(h,e,dmg,x,y){
+  zaps.push({x1:x,y1:y,x2:e.x,y2:e.y,t:0.18});
+  hurt(e,dmg,h,humans.includes(e));
+}
+function ricochetHit(b,e){
+  if(!b.owner?.perkRicochet || b.flame || b.boom || b.ricochetUsed) return;
+  b.ricochetUsed=true;
+  const target=perkTargets(b.owner,e.x,e.y,PERK_TUNE.ricochetRange).find(t=>t!==e);
+  if(target) perkStrike(b.owner,target,b.dmg*PERK_TUNE.ricochetMul,e.x,e.y);
+}
+function reloadBlast(h){
+  if(!h.perkReloadBlast || elapsed<(h.perkReloadReady||0) || grace>0) return;
+  h.perkReloadReady=elapsed+PERK_TUNE.reloadCooldown;
+  rings.push({x:h.x,y:h.y,t:0,dur:0.35,r0:8,r1:PERK_TUNE.reloadRadius,col:'255,170,70',lw:4});
+  for(const e of perkTargets(h,h.x,h.y,PERK_TUNE.reloadRadius))
+    hurt(e,PERK_TUNE.reloadDamage,h,humans.includes(e));
+  sfx('boom');
+}
+function killStorm(h,e){
+  if(!h.alive || !h.perkKillLightning || h.perkStormActive) return;
+  h.perkKillCount=(h.perkKillCount||0)+1;
+  if(h.perkKillCount<PERK_TUNE.lightningKills) return;
+  h.perkKillCount=0; h.perkStormActive=true;
+  try{ for(const t of perkTargets(h,e.x,e.y,PERK_TUNE.lightningRange).slice(0,PERK_TUNE.lightningTargets))
+    perkStrike(h,t,PERK_TUNE.lightningDamage,e.x,e.y);
+  } finally { h.perkStormActive=false; }
 }
 
 // ---------- Power-ups ----------
@@ -2792,6 +2848,13 @@ function updateScraps(dt){
 }
 function updateGrapple(h,dt){
   const g=h.grap; if(!g) return;
+  if(h.perkGrappleDamage){
+    g.perkHits=g.perkHits||new Set();
+    for(const e of perkTargets(h,h.x,h.y,PERK_TUNE.grappleRadius)){
+      if(g.perkHits.has(e)) continue;
+      g.perkHits.add(e); perkStrike(h,e,PERK_TUNE.grappleDamage,h.x,h.y);
+    }
+  }
   g.t+=dt;
   g.len=Math.max(GRAPPLE.minLen, g.len-GRAPPLE.reel*dt);
   const dx=g.ax-h.x, dy=g.ay-h.y, d=Math.hypot(dx,dy);
@@ -3310,7 +3373,7 @@ function updateZombie(z,dt){
 // touch/keyboard fallback — so it always passes readShared=false.
 function updatePlayer(h,dt,gp,readShared){
   if(!h.alive) return;
-  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=magCap(h); }
+  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0){ h.mag=magCap(h); reloadBlast(h); } }
   let mx=0,my=0;
   if(readShared){
     if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
@@ -3646,14 +3709,14 @@ function updateBullets(dt){
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
-        hurt(z,b.dmg,b.owner,false); if(b.flame) ignite(z,b.owner); if(b.frost) z.slowT=Math.max(z.slowT||0,2.0);
+        hurt(z,b.dmg,b.owner,false); ricochetHit(b,z); if(b.flame) ignite(z,b.owner); if(b.frost) z.slowT=Math.max(z.slowT||0,2.0);
         if(b.arc && b.hits===0){ const n=nearestHuman(z,false).o; if(n&&n!==b.owner&&n!==z){ hurt(n,b.dmg*.55,b.owner,!!n.isPlayer); zaps.push({x1:z.x,y1:z.y,x2:n.x,y2:n.y,t:.18}); } }
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
     if(!gone) for(const h of humans){ if(!h.alive||h===b.owner||(b.owner&&h.team===b.owner.team)) continue;
       if(dist2(b.x,b.y,h.x,h.y)<(R+3)*(R+3)){
         if(b.boom){ gone=true; break; }
-        hurt(h,b.dmg,b.owner,true); if(b.flame) ignite(h,b.owner); if(b.frost) h.slowT=Math.max(h.slowT||0,1.6);
+        hurt(h,b.dmg,b.owner,true); ricochetHit(b,h); if(b.flame) ignite(h,b.owner); if(b.frost) h.slowT=Math.max(h.slowT||0,1.6);
         if(b.arc && b.hits===0){ const n=nearestHuman(h,false).o; if(n&&n!==b.owner&&n!==h){ hurt(n,b.dmg*.55,b.owner,!!n.isPlayer); zaps.push({x1:h.x,y1:h.y,x2:n.x,y2:n.y,t:.18}); } }
         h.vx+=b.vx*0.04; h.vy+=b.vy*0.04;
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);

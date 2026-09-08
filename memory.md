@@ -1623,3 +1623,8 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
   still ungenerated), or explicitly drop the moonshot?
 # 2.62.0 — Character expression studio
 - Added a persistent modular player look with outfit palettes, hair silhouettes, accessories, and facial traits; the avatar screen now exposes the controls and the selected accents render in menu portraits and live gameplay.
+
+# 2.63.0 — Build-changing perks
+- Expanded the picker from 6 to 10 perks with one secondary ricochet hit per bullet (50%, excludes flames/rockets), a completed-reload blast (40 damage, 110 radius, 6s cooldown), every-fourth-kill lightning (3 targets, 35 damage, no recursive charging), and grapple contact damage (55, once per enemy per swing). All perk attacks exclude allies.
+- Added visible ranks, three-rank limits for original perks and one-rank limits for new perks; exhausted pools heal 25% and continue the wave. Cleared choices after selection to prevent repeated activation; fresh players reset all run perks.
+- Validation: `node scripts/validate.mjs` passed; normal Horde combat ran in installed Chrome with no page errors; `scripts/test-perks.mjs` passed 90 assertions including forced progression through wave 15, boss overlaps, proc limits, reload completion/cooldown, rank exhaustion, and fresh-run reset. Portrait picker screenshot inspected. Real-device balance remains unmeasured.
