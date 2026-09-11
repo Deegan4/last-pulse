@@ -103,7 +103,13 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
             guard let productID = message.body as? String else { return }
             Task { @MainActor in
                 let bought = await StoreManager.shared.purchase(productID)
-                if bought { pushEntitlement(productID: productID) }
+                guard bought else { return }
+                if productID == StoreManager.coinPackProductID {
+                    // Consumable — nothing to "own", just credit the coins this one time.
+                    pushCoinGrant(productID: productID, amount: StoreManager.coinPackAmount)
+                } else {
+                    pushEntitlement(productID: productID)
+                }
             }
         case Self.nativeRestoreHandlerName:
             Task { @MainActor in
@@ -131,6 +137,11 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
         webView.evaluateJavaScript(js)
     }
 
+    private func pushCoinGrant(productID: String, amount: Int) {
+        let js = "window.__nativeGrantCoins && window.__nativeGrantCoins(\(jsString(productID)), \(amount));"
+        webView.evaluateJavaScript(js)
+    }
+
     /// JSON-encodes a Swift string into a safe single-quoted JS string literal.
     private func jsString(_ s: String) -> String {
         (try? String(data: JSONEncoder().encode(s), encoding: .utf8)) ?? "\"\""
@@ -142,6 +153,7 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
             await StoreManager.shared.refreshEntitlements()
             pushPrice(productID: StoreManager.unlockAllProductID)
             pushEntitlement(productID: StoreManager.unlockAllProductID)
+            pushPrice(productID: StoreManager.coinPackProductID)
         }
     }
 }

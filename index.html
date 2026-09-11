@@ -868,6 +868,7 @@
     <button class="btn blue donateCta" id="donateGo">❤ Donate via Stripe →</button>
     <div class="donateSecure" id="donateSecure">🔒 You choose your amount securely on Stripe’s own page — the game never sees your card details.</div>
     <button class="btn blue donateCta" id="iapUnlockBtn" hidden>🔓 Unlock Everything — $4.99</button>
+    <button class="btn blue donateCta" id="iapCoinsBtn" hidden>🪙 500 Coins — $1.99</button>
     <button class="btn ghost donateCta" id="iapRestoreBtn" hidden>Restore Purchases</button>
     <div id="donateNote" class="donateNote" hidden></div>
     <button class="close" id="donateClose">Close</button>
@@ -1214,8 +1215,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.57.0';
+const GAME_VERSION = '2.58.0';
 const CHANGELOG = [
+  { v:'2.58.0', items:[
+    ['🪙','500 Coins (iOS)','a second in-app purchase — a repeatable $1.99 consumable that credits 500 coins straight into your Shop balance, alongside the existing Unlock Everything purchase'],
+  ]},
   { v:'2.57.0', items:[
     ['🔓','Unlock Everything (iOS)','the app version now offers a real in-app purchase to unlock every fighter and weapon instantly, replacing the external donate link Apple doesn\'t allow inside native apps'],
     ['🎯','Sniper rebalance','damage 250→190 — still drops almost anything in one shot, but no longer trivializes the burst-vs-DPS gap against the rest of the arsenal'],
@@ -1680,8 +1684,22 @@ function nativeRestore(){
   try{ window.webkit.messageHandlers.nativeRestore.postMessage('restore'); }catch(e){}
 }
 const IAP_UNLOCKALL_ID = 'com.lastpulse.game.unlockall';
+const IAP_COINS500_ID = 'com.lastpulse.game.coins500';   // consumable — grants coins, can be bought repeatedly
+const IAP_COINS500_AMOUNT = 500;
 window.__nativeSetProductPrice = function(productId, localizedPrice){
   if(productId===IAP_UNLOCKALL_ID && localizedPrice) el('iapUnlockBtn').textContent = '🔓 Unlock Everything — '+localizedPrice;
+  if(productId===IAP_COINS500_ID && localizedPrice) el('iapCoinsBtn').textContent = '🪙 '+IAP_COINS500_AMOUNT+' Coins — '+localizedPrice;
+};
+// Consumable purchase confirmation: unlike __nativeSetEntitlement (a durable owned/not-owned
+// flag), StoreManager finishes the coins500 transaction immediately and calls this once per
+// purchase — meta.coins is credited here rather than derived from any StoreKit entitlement
+// state, since a consumable leaves nothing to "restore" later.
+window.__nativeGrantCoins = function(productId, amount){
+  if(productId!==IAP_COINS500_ID || !(amount>0)) return;
+  meta.coins += amount;
+  saveMeta();
+  toast('🪙 +'+amount+' coins — thank you!');
+  renderShop(); renderMenu();
 };
 window.__nativeSetEntitlement = function(productId, owned){
   if(productId===IAP_UNLOCKALL_ID){
@@ -5513,7 +5531,7 @@ function closeShop(){ el('shop').classList.add('hidden');
 function donateConfigured(){ return /^https:\/\/(buy\.stripe\.com|[a-z0-9-]+\.stripe\.com)\//i.test(STRIPE_DONATE_URL); }
 function openDonate(){
   const note=el('donateNote'), go=el('donateGo'), sec=el('donateSecure');
-  const iapGo=el('iapUnlockBtn'), iapRestore=el('iapRestoreBtn'), blurb=el('donateBlurb');
+  const iapGo=el('iapUnlockBtn'), iapCoins=el('iapCoinsBtn'), iapRestore=el('iapRestoreBtn'), blurb=el('donateBlurb');
   if(inNativeWrapper()){
     // Native build: real StoreKit purchase, no external payment link (App Store 3.1.1).
     go.style.display='none'; sec.style.display='none'; note.hidden=true;
@@ -5521,14 +5539,15 @@ function openDonate(){
       ? 'You already own everything — thanks for the support!'
       : 'Skip the grind: unlock every fighter and weapon right now, no waiting on levels.';
     iapGo.hidden = meta.iapUnlockAll;
+    iapCoins.hidden = false;   // consumable — always offered, even after buying Unlock Everything
     iapRestore.hidden = false;
     nativeRestore();   // silent re-check on open, in case a prior purchase never confirmed
   } else if(donateConfigured()){
     note.hidden=true; go.style.display=''; sec.style.display='';
-    iapGo.hidden=true; iapRestore.hidden=true;
+    iapGo.hidden=true; iapCoins.hidden=true; iapRestore.hidden=true;
   } else {                                   // not set up yet — explain instead of opening a dead link
     go.style.display='none'; sec.style.display='none'; note.hidden=false;
-    iapGo.hidden=true; iapRestore.hidden=true;
+    iapGo.hidden=true; iapCoins.hidden=true; iapRestore.hidden=true;
     note.textContent='Donations aren’t set up yet. The game owner can enable this by pasting a Stripe Payment Link into STRIPE_DONATE_URL in index.html.';
   }
   el('donate').classList.remove('hidden');
@@ -5758,6 +5777,7 @@ el('donateBtn').addEventListener('click',()=>{ audioInit(); openDonate(); });
 el('donateGo').addEventListener('click',donateGo);
 el('donateClose').addEventListener('click',closeDonate);
 el('iapUnlockBtn').addEventListener('click',()=>{ audioInit(); nativePurchase(IAP_UNLOCKALL_ID); });
+el('iapCoinsBtn').addEventListener('click',()=>{ audioInit(); nativePurchase(IAP_COINS500_ID); });
 el('iapRestoreBtn').addEventListener('click',()=>{ audioInit(); nativeRestore(); toast('Checking for past purchases…'); });
 // add to home screen (iOS)
 el('a2hsBtn').addEventListener('click',openA2HS);

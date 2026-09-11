@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.57.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.58.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -10,6 +10,23 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 > and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
 > bumps the version. **When it disagrees with the code, the code wins** — verify against
 > `index.html` before trusting any bullet below.
+
+## v2.58 — "Coin pack IAP" (shipped)
+
+- [x] **IAP #2: consumable coin pack** — `StoreManager.swift` now loads a second product,
+      `com.lastpulse.game.coins500` (`.consumable`, 500 coins, distinct from `unlockall`'s
+      `.nonconsumable`); `GameViewController.swift`'s `nativePurchase` handler branches on
+      product ID and calls `pushCoinGrant` instead of `pushEntitlement` for the coin pack, since
+      a consumable has nothing to "own" — it just credits once per purchase via
+      `window.__nativeGrantCoins(productId, amount)` in index.html, which adds to `meta.coins`
+      and `saveMeta()`s. Surfaced as a second button (`#iapCoinsBtn`) in the same Support/IAP
+      modal as Unlock Everything, always offered (even after buying Unlock Everything, since it's
+      repeatable) — see `openDonate()`.
+- [ ] **You must create `com.lastpulse.game.coins500` as a real consumable product in App Store
+      Connect** before this can load a price or complete a real purchase — same blocker as
+      `unlockall` below; until then `#iapCoinsBtn` stays hidden (`products` loads empty), which
+      is safe but inert. Price/coin-amount ($1.99 / 500 coins) was a reasonable default, not a
+      tested number — revisit once there's real purchase data.
 
 ## v2.54 — "Real IAP for the App Store" (shipped)
 
@@ -26,14 +43,6 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
       Store Connect** before this can load a price or complete a real purchase — until then the
       button silently never appears (`products` loads empty), which is safe but means the
       feature is inert. This is the one step no tool here can do for you.
-- [ ] **IAP #2: consumable coin pack** (decided 2026-08-25) — a real-money purchase of `meta.coins`
-      (`index.html:1565`), the existing shop currency. Reuses `WEAPONS`/`AVATARS` unlock plumbing
-      pattern from `StoreManager.swift`: add a second Product ID (e.g.
-      `com.lastpulse.game.coins500`), StoreKit `.consumable` type (finishes the transaction
-      immediately, unlike `unlockall`'s non-consumable), and a JS bridge call that adds coins to
-      `meta.coins` + `saveMeta()` instead of setting a flag. Blocked on the same App Store Connect
-      step as `unlockall`, plus deciding the coin amount/price tiers. Do this **after** PR #97 is
-      merged — building it now would only add more surface to an already-diverged branch.
 
 ## Shipped since this plan was last synced (v2.7.0 → v2.34.0)
 

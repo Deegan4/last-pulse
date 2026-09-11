@@ -1585,6 +1585,15 @@ already landed.
   does anything real — verified in-browser that the JS side (button visibility, price/entitlement
   callbacks, unlock-all bypassing every roster lock) works correctly with a mocked native bridge.
 
+- v2.58.0: Added IAP #2 — a repeatable $1.99 consumable coin pack (`com.lastpulse.game.coins500`,
+  500 coins) alongside the existing "Unlock Everything" non-consumable. `StoreManager.swift`
+  fetches both product IDs; `GameViewController.swift`'s purchase handler branches on product ID
+  so a consumable purchase credits coins via `window.__nativeGrantCoins` instead of flipping the
+  `__nativeSetEntitlement` owned/not-owned flag a non-consumable uses (a consumable finishes its
+  transaction immediately and has nothing to "own" or restore). Still blocked on the account
+  holder creating the real App Store Connect product before it can load a price or complete a
+  real purchase — same gap as `unlockall`.
+
 ## Open questions for the user
 _(Superseded the old v1.8.0-era list here — those were answered or overtaken long ago; current
 open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_

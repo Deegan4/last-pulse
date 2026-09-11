@@ -1,22 +1,25 @@
 import Foundation
 import StoreKit
 
-/// Wraps the single non-consumable IAP ("Unlock Everything" — bypasses the level-gated
-/// avatar/weapon unlocks in index.html) via StoreKit2. Real money purchases can't go through
-/// the web game's Stripe donate link inside a native app (App Store Review Guideline 3.1.1
-/// forbids an external payment link for digital content), so this is the compliant path;
-/// GameViewController relays its results into the page via window.__nativeSetEntitlement /
-/// window.__nativeSetProductPrice.
+/// Wraps the app's IAPs via StoreKit2: a non-consumable "Unlock Everything" (bypasses the
+/// level-gated avatar/weapon unlocks in index.html) and a repeatable consumable coin pack.
+/// Real money purchases can't go through the web game's Stripe donate link inside a native app
+/// (App Store Review Guideline 3.1.1 forbids an external payment link for digital content), so
+/// this is the compliant path; GameViewController relays results into the page via
+/// window.__nativeSetEntitlement / window.__nativeGrantCoins / window.__nativeSetProductPrice.
 ///
-/// NOTE: `unlockAllProductID` must exactly match a non-consumable IAP product created in
-/// App Store Connect before this can load a real price or complete a real purchase — in
-/// sandbox/dev without that product configured, `loadProducts()` simply finds nothing and the
-/// button never appears (see `iapGo.hidden` gating in index.html's openDonate()).
+/// NOTE: both product IDs must exactly match IAP products created in App Store Connect
+/// (`unlockAllProductID` non-consumable, `coinPackProductID` consumable) before this can load a
+/// real price or complete a real purchase — in sandbox/dev without them configured,
+/// `loadProducts()` simply finds nothing and the buttons never appear (see `iapGo`/`iapCoins`
+/// `.hidden` gating in index.html's openDonate()).
 @MainActor
 final class StoreManager {
     static let shared = StoreManager()
 
     static let unlockAllProductID = "com.lastpulse.game.unlockall"
+    static let coinPackProductID = "com.lastpulse.game.coins500"
+    static let coinPackAmount = 500
 
     private(set) var products: [Product] = []
     private(set) var ownsUnlockAll = false
@@ -33,7 +36,7 @@ final class StoreManager {
     deinit { updatesTask?.cancel() }
 
     func loadProducts() async {
-        products = (try? await Product.products(for: [Self.unlockAllProductID])) ?? []
+        products = (try? await Product.products(for: [Self.unlockAllProductID, Self.coinPackProductID])) ?? []
     }
 
     func localizedPrice(for productID: String) -> String? {
