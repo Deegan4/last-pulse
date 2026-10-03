@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.57.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.58.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -246,8 +246,8 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       item, a **banner color** cosmetic slot on the nameplate: 4 colors (crimson, azure, gold,
       violet), bought/equipped from Shop → Nameplate Banner, drawn as a colored pill behind the
       player's own name in `drawNameplate`.
-- [ ] **Weekly challenge** — a harder 7-day cousin of the daily (worth 200 🪙), same
-      deterministic day-hash pattern. _(not yet)_
+- [x] **Weekly challenge** (shipped v2.58.0) — `WEEKLIES`/`checkWeekly`, Monday-keyed hash, 200 🪙,
+      second card under the daily on the menu.
 
 ## v2.6 — "Illustrated World" (shipped)
 
@@ -347,11 +347,9 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       the two cycles overlap. Three new mutators shipped alongside: **Glass Cannon** (`dmgOutMul`/
       `dmgInMul` 1.6×, high-risk/high-reward), **Rich Vein** (`scrapMul` 1.7×, read in `die()`'s
       scrap-drop calc), and **Blood Moon** (`xpMul`/`coinMul` 1.5×, read in `showResults()`).
-- [ ] **Perk variety beyond 6** — the picker reuses the same 6 perks every 3rd wave for the whole
-      run; a longer run (wave 15+) can see repeats. Consider adding 3-4 more (e.g. a lifesteal
-      perk, a crit-chance perk, a dash-cooldown perk) once real playtests show which of the
-      current 6 get picked least (instrument via a `meta.perkPicks[id]++` counter, same pattern as
-      `matchStat`).
+- [x] **Perk variety beyond 6** (shipped v2.58.0) — added Bloodthirst, Sharpshooter, Quick Hands,
+      Scavenger (10 total) and a `meta.perkPicks[id]` counter to see which perks actually get picked.
+      _(A dash-cooldown perk was swapped for Quick Hands: the game has no dash.)_
 
 ## Balance & tuning backlog (needs real-device playtests)
 

@@ -1594,3 +1594,5 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
   none have real playtest answers yet.
 - Provide `MESHY_API_KEY` via environment config to unblock 3D character generation (25/28 assets
   still ungenerated), or explicitly drop the moonshot?
+
+- **v2.58.0** — Perk pool 6→10 (`lifesteal` in `die()`, `sharpshooter` crit roll in `fire()`, `quickHands` in `startReload`, `scavenger` in die's scrap calc); `meta.perkPicks` counts picks (`dd2_perkpicks`). Weekly challenge: `WEEKLIES`/`weekKey()` (Monday-keyed)/`checkWeekly()`, 200 🪙, `#weeklyCard` under the daily; results banner row.
