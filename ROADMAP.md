@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.60.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.61.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -174,6 +174,14 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
 - [x] **More rumble** — heavy-gun kick, explosions (distance falloff), Juggernaut slam, low-hp
       heartbeat; `meta.rumble` master toggle gates `gpRumble`.
 - [ ] **Still needs a real-controller playtest** — mocked input only.
+
+## v2.61.0 — "Co-op revive" (shipped)
+
+- [x] **Revive a downed Player 2** (`updateRevive`, `drawDowned`, `REVIVE_R=70`, `REVIVE_TIME=2.5`) —
+      P2's body stays put (zombies ignore the downed); P1 standing within 70px for 2.5s revives them
+      at 50% hp. No button, so it works on keyboard/touch/pad. Progress drains 2× when P1 steps away;
+      minimap shows a hollow cyan ring for the downed partner. Match end is still P1-death-only.
+- [ ] Needs a real 2-controller playtest (radius/time feel; mocked only).
 
 ## v2.41.0 — "Local 2-player co-op" (shipped)
 
