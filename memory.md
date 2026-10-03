@@ -8,6 +8,9 @@
 - **v2.69.0 — Watchtower upgrades.** Horde towers now render a survivor banner, searchlight housing,
   and an active light cone. Reaching a tower base triggers a four-second scan on a 15-second cooldown;
   zombies within 430px receive a brief slow effect, giving the existing climbable roof a tactical role.
+- **v2.70.0 — Combat readability pass.** Pickups now cast color-coded vertical beams and ground
+  rings, landed supply drops emit a taller beacon, and Arc Rifle/Frost Blaster projectiles render
+  distinct diamond-like silhouettes instead of sharing the generic tracer head.
 
 _Last updated: 2026-08-22. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
 v2.55.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
