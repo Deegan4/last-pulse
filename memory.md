@@ -1663,3 +1663,4 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
 
 - **v2.61.0** — Co-op revive: `updateRevive(dt)` (called in loop after `integrate`), `drawDowned(p)` (drawn before the y-sorted sprites), `REVIVE_R=70`/`REVIVE_TIME=2.5`, progress drains 2× when P1 leaves; `die()` toasts when P2 falls; minimap hollow ring. Revive restores 50% hp, refills mag.
 - Removed the 3D GLB building billboards (`assets/buildings/*.glb`, `BUILDING_FILES`, `Models3D.drawBuilding`, validator check): the placeholder boxes clipped at the tile edge and hid doors/hp bars. Buildings always use the hand-drawn 2D `drawBuilding()` art.
+- v2.71.1: service worker (`sw.js`) now re-wraps redirected responses (`clean()`) and CACHE_VERSION is `lp-cache-v2`; Vercel `cleanUrls` redirects /index.html→/, and a cached redirected response made Safari show "Response served by service worker has redirections".
