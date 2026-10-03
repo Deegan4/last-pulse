@@ -1596,3 +1596,4 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
   still ungenerated), or explicitly drop the moonshot?
 
 - **v2.58.0** — Perk pool 6→10 (`lifesteal` in `die()`, `sharpshooter` crit roll in `fire()`, `quickHands` in `startReload`, `scavenger` in die's scrap calc); `meta.perkPicks` counts picks (`dd2_perkpicks`). Weekly challenge: `WEEKLIES`/`weekKey()` (Monday-keyed)/`checkWeekly()`, 200 🪙, `#weeklyCard` under the daily; results banner row.
+- **v2.58.0 (follow-up)** — Sharpshooter now rolls once per volley in `fire()` (`perkCritHit`) and shows a gold `CRIT ×2` floater. Save codes already carry `weeklyDone`/`weeklies`/`perkPicks` (`exportSave` serializes all of `meta`). Weekly card text/padding tightened for 430px.
