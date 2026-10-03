@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.59.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.60.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -162,6 +162,18 @@ Reconstructed from `git log`; see [memory.md](memory.md) for the per-version det
 - Web pages cannot trigger or complete Bluetooth pairing themselves (that's an OS-level
   handshake) — this card's job is purely live status + pointing the player at the right OS
   setting, not literally "connecting" a controller from in-page.
+
+## v2.60.0 — "Controller upgrade" (shipped)
+
+- [x] **Radial stick dead-zones** (`readGamepadFrom`) — circular 0.16 (move) / 0.20 (aim) cut with
+      rescale replaces the per-axis 0.18 square cut, so drift no longer skews diagonals.
+- [x] **Analog walking** (`updatePlayer`, `padAnalog`) — pad-only: speed scales 0.35→1.0 with stick
+      push; keyboard/touch unchanged.
+- [x] **Aim assist** (`assistAim`, `ASSIST_CONE/RANGE/PULL` = 0.23rad / 520px / 0.55) — gamepad aim
+      bends onto the nearest-in-angle zombie; `meta.aimAssist` toggle in Settings.
+- [x] **More rumble** — heavy-gun kick, explosions (distance falloff), Juggernaut slam, low-hp
+      heartbeat; `meta.rumble` master toggle gates `gpRumble`.
+- [ ] **Still needs a real-controller playtest** — mocked input only.
 
 ## v2.41.0 — "Local 2-player co-op" (shipped)
 
