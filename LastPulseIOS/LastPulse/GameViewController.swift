@@ -16,7 +16,12 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
     private static let nativeSaveHandlerName = "nativeSave"
     private static let nativePurchaseHandlerName = "nativePurchase"
     private static let nativeRestoreHandlerName = "nativeRestore"
-    private static let handlerNames = [nativeSaveHandlerName, nativePurchaseHandlerName, nativeRestoreHandlerName]
+    private static let nativeSubmitScoreHandlerName = "nativeSubmitScore"
+    private static let nativeShowLeaderboardHandlerName = "nativeShowLeaderboard"
+    private static let handlerNames = [
+        nativeSaveHandlerName, nativePurchaseHandlerName, nativeRestoreHandlerName,
+        nativeSubmitScoreHandlerName, nativeShowLeaderboardHandlerName,
+    ]
 
     private let webView: WKWebView
 
@@ -51,6 +56,9 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
         view.addSubview(webView)
         webView.frame = view.bounds
 
+        GameCenterManager.shared.presentingViewController = self
+        GameCenterManager.shared.authenticate()
+
         if let code = GameSaveStore.shared.loadCode(),
            let payload = try? JSONSerialization.data(withJSONObject: [code]),
            let payloadJSON = String(data: payload, encoding: .utf8) {
@@ -70,18 +78,13 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
             return
         }
         let readAccessURL = gameURL.deletingLastPathComponent()
-        WKWebsiteDataStore.default().removeData(
-            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
-            modifiedSince: .distantPast
-        ) { [weak self] in
-            self?.webView.loadFileURL(gameURL, allowingReadAccessTo: readAccessURL)
-        }
+        webView.loadFileURL(gameURL, allowingReadAccessTo: readAccessURL)
     }
 
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
-    override var shouldAutorotate: Bool { true }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .all }
+    override var shouldAutorotate: Bool { false }
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
 
     // MARK: - Native save bridge (SwiftData)
     //
@@ -102,14 +105,25 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
         case Self.nativePurchaseHandlerName:
             guard let productID = message.body as? String else { return }
             Task { @MainActor in
-                let bought = await StoreManager.shared.purchase(productID)
-                if bought { pushEntitlement(productID: productID) }
+                switch await StoreManager.shared.purchase(productID) {
+                case .unlockAll:
+                    pushEntitlement(productID: productID)
+                case .coins(let amount):
+                    pushCoinsGranted(amount)
+                case .failed:
+                    break
+                }
             }
         case Self.nativeRestoreHandlerName:
             Task { @MainActor in
                 await StoreManager.shared.restore()
                 pushEntitlement(productID: StoreManager.unlockAllProductID)
             }
+        case Self.nativeSubmitScoreHandlerName:
+            guard let wave = message.body as? Int ?? (message.body as? NSNumber)?.intValue else { return }
+            GameCenterManager.shared.submitScore(wave)
+        case Self.nativeShowLeaderboardHandlerName:
+            GameCenterManager.shared.showLeaderboard()
         default:
             break
         }
@@ -118,6 +132,11 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
     // MARK: - StoreKit bridge (see StoreManager.swift + index.html's "Native (iOS wrapper) IAP
     // bridge" section for the full round trip: JS nativePurchase()/nativeRestore() → the message
     // handlers above → StoreManager → back into window.__nativeSetEntitlement / ...SetProductPrice)
+
+    // MARK: - Game Center bridge (see GameCenterManager.swift + bridges.js's "Native (iOS
+    // wrapper) Game Center bridge" section: JS nativeSubmitScore()/nativeShowLeaderboard() →
+    // the message handlers above → GameCenterManager. No JS callback — the leaderboard sheet
+    // is native UI, and score submission has nothing to report back into the page.)
 
     private func pushEntitlement(productID: String) {
         let owned = StoreManager.shared.ownsUnlockAll
@@ -131,6 +150,11 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
         webView.evaluateJavaScript(js)
     }
 
+    private func pushCoinsGranted(_ amount: Int) {
+        let js = "window.__nativeCoinsGranted && window.__nativeCoinsGranted(\(amount));"
+        webView.evaluateJavaScript(js)
+    }
+
     /// JSON-encodes a Swift string into a safe single-quoted JS string literal.
     private func jsString(_ s: String) -> String {
         (try? String(data: JSONEncoder().encode(s), encoding: .utf8)) ?? "\"\""
@@ -141,6 +165,7 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKScript
             await StoreManager.shared.loadProducts()
             await StoreManager.shared.refreshEntitlements()
             pushPrice(productID: StoreManager.unlockAllProductID)
+            for id in StoreManager.coinProductIDs { pushPrice(productID: id) }
             pushEntitlement(productID: StoreManager.unlockAllProductID)
         }
     }

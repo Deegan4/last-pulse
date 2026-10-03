@@ -2,7 +2,7 @@
 
 # 🧟 LAST PULSE
 
-### A portrait, mobile-first, cartoon **twin-stick survival royale** — the entire game in one `index.html`.
+### A portrait, mobile-first, cartoon **twin-stick survival royale** — shared game sources packaged for web and the native iOS app.
 
 Pick a fighter, pick a gun, drop into a field of 15. Outlast the other players, the roaming zombies, and the closing safe zone — **scavenge scrap and build your own cover** while you're at it. **Last one standing wins.**
 
@@ -13,7 +13,7 @@ Pick a fighter, pick a gun, drop into a field of 15. Outlast the other players, 
 [![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://raw.githack.com/Deegan4/last-pulse/main/index.html)
 &nbsp;
 ![HTML5 Canvas](https://img.shields.io/badge/HTML5-canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white)
-![Single file](https://img.shields.io/badge/single_file-no_build-blue?style=for-the-badge)
+![iOS](https://img.shields.io/badge/iOS-shared_sources-blue?style=for-the-badge)
 ![Vanilla JS](https://img.shields.io/badge/vanilla-JS-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 
 <br/>
@@ -59,7 +59,29 @@ These use free third-party proxies for the public `index.html`. If one shows a b
 - **Latest:** <https://raw.githack.com/Deegan4/last-pulse/main/index.html>
 - **Backup:** [open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/last-pulse/main/index.html)
 
-On a laptop you can also download [`index.html`](index.html) and open it in any browser — no server, no build step, no dependencies.
+For local development, clone the repository, run `python3 scripts/build-game.py`, then `python3 -m http.server 8000`. Open http://localhost:8000. HTML, scripts, styles and assets must stay together.
+
+## Source files and iOS builds
+
+Edit `src/`; root `index.html` and `assets/game/` are generated deployment artifacts.
+
+| Area | Source |
+|---|---|
+| Enemy drawings and palettes | `src/game/rendering/enemies.js` |
+| Enemy stats and creation | `src/game/entities/enemies.js` |
+| Combat and perks | `src/game/combat/` |
+| Characters, weapons and release notes | `src/game/data/` |
+| Movement, touch and gamepad | `src/game/input/` |
+| Screens and selection | `src/game/ui/` |
+| Styling and markup | `src/styles/game.css`, `src/index.html` |
+| iOS save/purchase bridge | `src/game/native/bridges.js` |
+| Native Swift app | `LastPulseIOS/LastPulse/` |
+
+Run `python3 scripts/build-game.py` after source edits, then `node scripts/validate.mjs`.
+Xcode's **Build Shared Game** phase packages the same sources and canonical `assets/`
+directly into the app's `GameContent/` directory on every build and archive. It needs
+Python 3, not Node or npm. `LastPulseIOS/GameContent/` is an ignored local preview output.
+See [architecture and build details](docs/ARCHITECTURE.md).
 
 ## ✨ Features
 

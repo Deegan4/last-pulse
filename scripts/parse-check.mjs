@@ -3,7 +3,7 @@
 // Used by the GitHub Action and handy to run locally:  node scripts/parse-check.mjs
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
@@ -23,8 +23,10 @@ if (blocks.length === 0) {
 const tmp = mkdtempSync(join(tmpdir(), 'parsecheck-'));
 let lines = 0, checked = 0;
 blocks.forEach((m, i) => {
-  const attrs = m[1] || '', code = m[2];
-  if (/\bsrc=/.test(attrs)) return;                 // external script, nothing inline to check
+  const attrs = m[1] || '';
+  const src = attrs.match(/\bsrc=["']([^"']+)["']/)?.[1];
+  const code = src ? readFileSync(resolve(root,src),'utf8') : m[2];
+  //                 // external script, nothing inline to check
   lines += code.split('\n').length; checked++;
   const isModule = /type\s*=\s*["']module["']/.test(attrs);
   try {
