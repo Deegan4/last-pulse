@@ -53,6 +53,7 @@ function draw(){
     if(h.onTower) drawables.push({y:1e8, fn:()=>{ ctx.save(); ctx.translate(0,-TOWER_ELEV); drawHuman(h); ctx.restore(); }});  // stand on the roof (drawn last, on top)
     else drawables.push({y:h.y, fn:()=>drawHuman(h)}); }
   drawables.sort((a,b)=>a.y-b.y);
+  drawDowned(player2);   // under the y-sorted sprites so a revived player pops back up on top
   for(const d of drawables) d.fn();
   // build-mode ghost: a snapped preview of the piece you're about to drop (green ok / red blocked)
   if(player && player.alive && player.buildSel>=0){ drawBuildGhost(player); }
@@ -149,6 +150,9 @@ function draw(){
       const frac=player.maxhp>0?player.hp/player.maxhp:1;
       if(frac<0.3){
         const intensity=1-frac/0.3;                      // 0 at 30% HP → 1 near death
+        ctx.globalCompositeOperation='saturation';       // drain colour as you near death (cheap full-screen blend)
+        ctx.fillStyle='rgba(128,128,128,'+(0.55*intensity).toFixed(3)+')'; ctx.fillRect(0,0,W,H);
+        ctx.globalCompositeOperation='source-over';
         const pulse=0.5+0.5*Math.sin(gtime*6);
         const a=(0.16+0.30*intensity)*(0.55+0.45*pulse);
         const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.28,W/2,H/2,Math.max(W,H)*0.74);

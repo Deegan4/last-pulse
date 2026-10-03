@@ -22,6 +22,7 @@ function loop(now){
     if(player2 && player2.alive) updatePlayer(player2,dt,curGp2,false);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
+    updateRevive(dt);
     leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();

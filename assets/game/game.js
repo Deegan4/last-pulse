@@ -345,8 +345,13 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.66.0';
+const GAME_VERSION = '2.67.0';
 const CHANGELOG = [
+  { v:'2.67.0', items:[
+    ['⛑','Co-op revive','when your Player 2 partner goes down they stay where they fell — stand next to them for about 2.5 seconds to bring them back at half health'],
+    ['🎮','Controller upgrade','circular stick dead-zones, analog walking, aim assist, heavier vibration, and new Aim assist / Vibration toggles in Settings'],
+    ['💥','Hits land harder','zombies stagger from every shot, the screen drains of colour near death, and clearing a wave lingers in slow-mo'],
+  ]},
   { v:'2.66.0', items:[
     ['🏆','Weekly challenge','a harder 7-day challenge now sits under the daily on the home screen — complete it for 200 🪙, resets every Monday'],
     ['🧛','4 new perks','Bloodthirst (heal on kill), Sharpshooter (20% double-damage shots), Quick Hands (-30% reload) and Scavenger (+40% scrap) join the perk picker'],
@@ -769,6 +774,8 @@ const meta = {
   magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
+  aimAssist: safeGet('dd2_aimassist','1')==='1',                   // controller soft-lock on nearby zombies
+  rumble: safeGet('dd2_rumble','1')==='1',                         // controller vibration
   weeklyDone: safeGet('dd2_weekly',''),                              // week-key of last completed weekly
   weeklies: parseInt(safeGet('dd2_weeklies','0'),10) || 0,           // total weeklies completed
   perkPicks: (()=>{ try{ return JSON.parse(safeGet('dd2_perkpicks','{}'))||{}; }catch(e){ return {}; } })(),   // perk id -> times picked
@@ -809,6 +816,7 @@ function saveMeta(){
   safeSet('dd2_banner',meta.banner);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
+  safeSet('dd2_aimassist',meta.aimAssist?'1':'0'); safeSet('dd2_rumble',meta.rumble?'1':'0');
   safeSet('dd2_weekly',meta.weeklyDone); safeSet('dd2_weeklies',meta.weeklies);
   safeSet('dd2_perkpicks',JSON.stringify(meta.perkPicks));
   safeSet('dd2_iap_unlockall', meta.iapUnlockAll ? '1' : '0');
@@ -1529,7 +1537,7 @@ function spawnMatch(){
   combo=0; comboT=0; hitstop=0;
   menuAmbient=false;                                     // real match takes over the canvas
   matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
-  player2 = null;   // fresh match always starts solo; tryJoinPlayer2() re-adds them if a 2nd pad is present
+  player2 = null; reviveT = 0;   // fresh match always starts solo; tryJoinPlayer2() re-adds them if a 2nd pad is present
   buildDecor();
   // interior loot — every house hides a pickup (a reason to step inside)
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
@@ -1683,6 +1691,7 @@ function fire(h){
   if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2, wrist=wristPos(h);  // ejected shell (red for shotgun), from the ejection port near the hand
     spark(wrist.x, wrist.y-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
   h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
+  if(h.gpIndex!=null && fx.push>=34) gpRumble(h.gpIndex,60,0.15,clamp(fx.push/90,0.25,0.7));   // heavy guns kick through the pad
   if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
   sfx('shoot', w);
   if(h.mag<=0) startReload(h);
@@ -1723,6 +1732,11 @@ function hurt(e, dmg, src, isHumanTarget){
     for(let i=0;i<3;i++) spark(e.x,e.y-6,'#7fc8ff',rand(40,120),rand(0,TAU),.3); }
   if(dmg>0){ e.hp -= dmg; if(e.isPlayer) matchStat.dmgTaken += dmg; }
   e.hitFlash=0.12;
+  // zombie stagger: a damage-scaled shove along the shot so hits visibly land (bosses barely flinch).
+  // z.vx/vy are re-lerped toward the chase target every frame, so the shove decays on its own.
+  if(!e.isPlayer && !e.weapon && src && src!==e && dmg>0){
+    const sa=Math.atan2(e.y-src.y, e.x-src.x), sk=clamp(dmg*2.4,40,190)*(e.boss?0.2:1);
+    e.vx+=Math.cos(sa)*sk; e.vy+=Math.sin(sa)*sk; }
   // blood: a directional spray along the shot's path (exit-wound style), sized by damage,
   // plus a close mist and — on solid hits — a splatter decal left on the ground
   const blood = '#c0303a', dark = '#8f1f28';   // everything bleeds red
@@ -1760,6 +1774,8 @@ function die(e, src, isHumanTarget){
     y:e.y+6+rand(-6,14), r:rand(6,12), t:6, col:goreCol});
   if(wallStreaks.length<160) spraySplatOnWall(e.x, e.y, 24);
   sfx('die',null,e);
+  // last zombie of a wave: an extended slow-mo beat so clearing a wave reads as an event
+  if(gameMode==='horde' && !e.isPlayer && !e.weapon && src && src.isPlayer && !zombies.some(z=>z.alive)) hitstop=0.45;
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
     if(src.isPlayer){
@@ -1808,6 +1824,7 @@ function die(e, src, isHumanTarget){
     const killer = src ? (src.weapon ? (src.isPlayer2?src.name : src.isPlayer?meta.name:src.name) : 'A zombie') : 'The safe zone';
     killFeed.unshift({ txt: killer+'  ☠  '+victim, t:5, you: e.isPlayer || (src&&src.isPlayer) });
     if(killFeed.length>4) killFeed.pop();
+    if(e.isPlayer2 && player && player.alive){ reviveT=0; toast('⛑ Player 2 is down — stand next to them to revive!'); }
     checkEnd();
   }
 }
@@ -2046,6 +2063,8 @@ function explode(b){
   shake=Math.min(shake+8,16);
   for(const z of zombies) if(z.alive && dist2(b.x,b.y,z.x,z.y)<RAD2) hurt(z, 90, b.owner, false);
   for(const o of humans) if(o.alive && dist2(b.x,b.y,o.x,o.y)<RAD2){ const dd = 110*(1-Math.sqrt(dist2(b.x,b.y,o.x,o.y))/RAD); hurt(o, Math.max(30,dd), b.owner, true); }
+  for(const o of humans){ if(o.alive && o.gpIndex!=null){ const d=Math.sqrt(dist2(b.x,b.y,o.x,o.y));   // blast rumble falls off with distance
+    if(d<RAD*2.2) gpRumble(o.gpIndex,200,0.3,clamp(1-d/(RAD*2.2),0.2,1)); } }
   sfx('boom',null,b);
 }
 // ---- src/game/effects/particles.js ----
@@ -2450,7 +2469,8 @@ function updateZombie(z,dt){
           if(dist2(hh.x,hh.y,z.x,z.y) < JUGGERNAUT_SLAM.r*JUGGERNAUT_SLAM.r){
             hurt(hh, JUGGERNAUT_SLAM.dmg, z, true);
             const ka=Math.atan2(hh.y-z.y,hh.x-z.x); hh.vx+=Math.cos(ka)*JUGGERNAUT_SLAM.knock; hh.vy+=Math.sin(ka)*JUGGERNAUT_SLAM.knock;
-            if(hh.isPlayer) shake=Math.min(shake+8,18); } }
+            if(hh.isPlayer) shake=Math.min(shake+8,18);
+            if(hh.gpIndex!=null) gpRumble(hh.gpIndex,260,0.6,1.0); } }
         rings.push({x:z.x,y:z.y,t:0,dur:0.4,r0:10,r1:JUGGERNAUT_SLAM.r,col:'255,140,40',lw:4});
         for(let i=0;i<14;i++) spark(z.x,z.y,'#caa46a',rand(80,220),rand(0,TAU),.5);
         z.slamCd=rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax); }
@@ -2523,12 +2543,16 @@ function updatePlayer(h,dt,gp,readShared){
     if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
     if(moveVec.active){ mx+=moveVec.x; my+=moveVec.y; }
   }
+  const kbTouch = mx!==0 || my!==0;
   if(gp){ mx+=gp.mx; my+=gp.my; }
   const m=len(mx,my);
+  // analog walking: a half-pushed stick walks at ~half speed (pad-only; keys/touch stay full speed)
+  const padAnalog = (gp && !kbTouch) ? clamp(0.35+0.65*m,0.35,1) : 1;
   if(h.grap){ // rope physics owns velocity — input only steers (pumps the swing)
     if(m>0){ h.vx+=mx/m*520*dt; h.vy+=my/m*520*dt; } h.walk+=dt*10;
   }
-  else if(m>0){ const spd=h.speed*(h.perkSpeedMul||1); h.vx+=(mx/m*spd-h.vx)*MOVE.accel; h.vy+=(my/m*spd-h.vy)*MOVE.accel; }
+  else if(m>0){ const spd=h.speed*(h.perkSpeedMul||1)*padAnalog;   // padAnalog<1 only for a pad-only light push
+    h.vx+=(mx/m*spd-h.vx)*MOVE.accel; h.vy+=(my/m*spd-h.vy)*MOVE.accel; }
   else { h.vx*=MOVE.friction; h.vy*=MOVE.friction; }   // coast to a stop with a little skid
   // stride cadence tracks real speed: fast run = quick legs, a creep = a slow shuffle
   if(!h.grap){ const s01=clamp(Math.hypot(h.vx,h.vy)/(h.speed||1),0,1.25); h.walk+=dt*(2.5+9*s01); }
@@ -2547,7 +2571,7 @@ function updatePlayer(h,dt,gp,readShared){
   }
   // aim + fire
   let firing=false, mouseAim=false;
-  if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=Math.atan2(gp.ay,gp.ax); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
+  if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=assistAim(h,Math.atan2(gp.ay,gp.ax)); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
   else if(readShared && aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
   else if(readShared && !isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
   if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
@@ -2579,11 +2603,26 @@ function updatePlayer(h,dt,gp,readShared){
   // whichever of the two humans updatePlayer() happened to process last each frame.
   if(readShared){
     const lf = h.maxhp>0 ? h.hp/h.maxhp : 1;
-    if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
+    if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); if(h.gpIndex!=null) gpRumble(h.gpIndex,70,0.0,0.35); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
     else heartT=0;
   }
 }
 let gpSeen=false, curGp=null, curGp2=null;
+// Controller aim assist: a right stick can't match a mouse for precision, so when you're aiming
+// roughly at a zombie (inside ~13°) the aim bends 55% of the way onto it. Nearest-in-angle wins
+// with a small distance penalty so a far zombie never beats a close one. Gamepad-only, toggled by
+// meta.aimAssist; mouse and touch aim are untouched.
+const ASSIST_CONE=0.23, ASSIST_RANGE=520, ASSIST_PULL=0.55;
+function assistAim(h,a){
+  if(!meta.aimAssist) return a;
+  let best=null, bestScore=1e9;
+  for(const z of zombies){ if(!z.alive) continue;
+    const dx=z.x-h.x, dy=z.y-h.y, d2=dx*dx+dy*dy; if(d2>ASSIST_RANGE*ASSIST_RANGE) continue;
+    let da=Math.atan2(dy,dx)-a; da=Math.atan2(Math.sin(da),Math.cos(da)); if(Math.abs(da)>ASSIST_CONE) continue;
+    const score=Math.abs(da)+Math.sqrt(d2)/ASSIST_RANGE*0.15;
+    if(score<bestScore){ bestScore=score; best=da; } }
+  return best===null ? a : a+best*ASSIST_PULL;
+}
 // Edge-trigger state is a per-CONTROLLER bag, not module-level singletons — a second local
 // gamepad (co-op player 2) needs its OWN prev-frame button state, or it would corrupt player 1's
 // edge detection (and vice versa) every time both controllers happened to press something the
@@ -2598,8 +2637,13 @@ let gp1Edge = makeGpEdgeState(), gp2Edge = makeGpEdgeState();
 // ---- src/game/input/gamepad.js ----
 function readGamepadFrom(gp, st){
   if(!gp) return null;
-  const dz=v=>Math.abs(v)<0.18?0:v, btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
-  const mx=dz(gp.axes[0]||0), my=dz(gp.axes[1]||0), ax=dz(gp.axes[2]||0), ay=dz(gp.axes[3]||0);
+  const btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  // radial deadzone with rescale: a square per-axis cut makes a drifting stick skew diagonals and
+  // jumps from 0 to 0.18 the instant it leaves the dead area; this keeps full analog range and
+  // an even circular dead zone, which is what makes light-push walking (analog speed) possible.
+  const stick=(x,y,dead)=>{ const m=Math.hypot(x,y); if(m<dead) return [0,0];
+    const k=Math.min(1,(m-dead)/(1-dead))/m; return [x*k,y*k]; };
+  const [mx,my]=stick(gp.axes[0]||0, gp.axes[1]||0, 0.16), [ax,ay]=stick(gp.axes[2]||0, gp.axes[3]||0, 0.2);
   const fire=btn(7)||btn(5)||btn(0);
   const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6), gN=btn(10), stN=btn(9);
   const reload=rN&&!st.RP, light=lN&&!st.LP, bomb=bN&&!st.BP, grapple=gN&&!st.GP, start=stN&&!st.StP;
@@ -2645,6 +2689,40 @@ function tryJoinPlayer2(pads){
 // position leash that keeps both players on-screen without touching rendering at all. If a
 // zoomed camera is wanted later, search this file for every `cam.x`/`cam.y` read (not just this
 // comment) — each one currently assumes zoom===1.
+// Co-op revive: when Player 2 goes down they stay where they fell (zombies ignore the downed) and
+// Player 1 brings them back by standing within REVIVE_R for REVIVE_TIME seconds — no button, so it
+// works for keyboard/touch/pad alike. Leaving the circle drains progress at 2x. Revived at 50% hp.
+const REVIVE_R=70, REVIVE_TIME=2.5;
+let reviveT=0, reviveRumbleT=0;
+function updateRevive(dt){
+  if(!player2 || player2.alive || !player || !player.alive || grace>0) { reviveT=0; return; }
+  if(dist2(player.x,player.y,player2.x,player2.y) < REVIVE_R*REVIVE_R){
+    reviveT+=dt; reviveRumbleT-=dt;
+    if(reviveRumbleT<=0){ reviveRumbleT=0.35; gpRumble(0,90,0.15,0.2); gpRumble(1,90,0.15,0.2); }
+  } else reviveT=Math.max(0,reviveT-dt*2);
+  if(reviveT>=REVIVE_TIME){
+    reviveT=0; const p=player2;
+    p.alive=true; p.hp=Math.round(p.maxhp*0.5); p.burn=0; p.shield=0; p.vx=p.vy=0;
+    p.fireCd=0.5; p.reloading=0; p.mag=magCap(p);
+    toast('🎮 Player 2 is back up!'); sfx('level');
+    rings.push({x:p.x,y:p.y,t:0,dur:0.6,r0:8,r1:REVIVE_R+30,col:'90,209,255',lw:4});
+    for(let i=0;i<18;i++) spark(p.x,p.y-6,'#5ad1ff',rand(80,240),rand(0,TAU),.7);
+    gpRumble(0,220,0.4,0.6); gpRumble(1,220,0.4,0.6);
+  }
+}
+// the downed marker: a pulsing cyan circle with a fill arc showing revive progress
+function drawDowned(p){
+  if(!p || p.alive || !inView(p.x,p.y,60)) return;
+  const pulse=0.5+0.5*Math.sin(gtime*5), prog=clamp(reviveT/REVIVE_TIME,0,1);
+  ctx.save();
+  ctx.strokeStyle='rgba(90,209,255,'+(0.35+0.3*pulse).toFixed(2)+')'; ctx.lineWidth=2.5; ctx.setLineDash([6,6]);
+  ctx.beginPath(); ctx.arc(p.x,p.y,REVIVE_R,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(20,30,40,.55)'; ctx.beginPath(); ctx.arc(p.x,p.y,16,0,TAU); ctx.fill();
+  if(prog>0){ ctx.strokeStyle='#5ad1ff'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(p.x,p.y,16,-Math.PI/2,-Math.PI/2+prog*TAU); ctx.stroke(); }
+  ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff'; ctx.fillText('⛑',p.x,p.y+1);
+  ctx.font='800 11px Trebuchet MS, sans-serif'; ctx.fillStyle='#bfeaff'; ctx.fillText('stand close to revive',p.x,p.y-REVIVE_R-8);
+  ctx.restore();
+}
 function leashPlayer2(){
   if(!player2 || !player2.alive || !player || !player.alive) return;
   const maxLeash = Math.min(W,H)*0.42;
@@ -2707,6 +2785,7 @@ function syncControllerStatus(){
 // unsupported on plenty of browsers/pads — a missing rumble should never be able to throw and
 // interrupt hurt()/die(), which run in the middle of live combat.
 function gpRumble(padIndex, duration, weakMagnitude, strongMagnitude){
+  if(!meta.rumble) return;
   try{
     const pads = navigator.getGamepads && navigator.getGamepads();
     const act = pads && pads[padIndex] && pads[padIndex].vibrationActuator;
@@ -3185,6 +3264,7 @@ function draw(){
     if(h.onTower) drawables.push({y:1e8, fn:()=>{ ctx.save(); ctx.translate(0,-TOWER_ELEV); drawHuman(h); ctx.restore(); }});  // stand on the roof (drawn last, on top)
     else drawables.push({y:h.y, fn:()=>drawHuman(h)}); }
   drawables.sort((a,b)=>a.y-b.y);
+  drawDowned(player2);   // under the y-sorted sprites so a revived player pops back up on top
   for(const d of drawables) d.fn();
   // build-mode ghost: a snapped preview of the piece you're about to drop (green ok / red blocked)
   if(player && player.alive && player.buildSel>=0){ drawBuildGhost(player); }
@@ -3281,6 +3361,9 @@ function draw(){
       const frac=player.maxhp>0?player.hp/player.maxhp:1;
       if(frac<0.3){
         const intensity=1-frac/0.3;                      // 0 at 30% HP → 1 near death
+        ctx.globalCompositeOperation='saturation';       // drain colour as you near death (cheap full-screen blend)
+        ctx.fillStyle='rgba(128,128,128,'+(0.55*intensity).toFixed(3)+')'; ctx.fillRect(0,0,W,H);
+        ctx.globalCompositeOperation='source-over';
         const pulse=0.5+0.5*Math.sin(gtime*6);
         const a=(0.16+0.30*intensity)*(0.55+0.45*pulse);
         const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.28,W/2,H/2,Math.max(W,H)*0.74);
@@ -4570,6 +4653,8 @@ function drawMini(){
     mctx.moveTo(px,py); mctx.lineTo(px+Math.cos(player.aim)*7,py+Math.sin(player.aim)*7); mctx.stroke();
     mctx.fillStyle='#7bff4a'; mctx.beginPath(); mctx.arc(px,py,3,0,TAU); mctx.fill();
     mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke(); }
+  if(player2&&!player2.alive&&player){   // downed co-op partner: hollow cyan ring so you can find them
+    mctx.strokeStyle='#5ad1ff'; mctx.lineWidth=1.6; mctx.beginPath(); mctx.arc(player2.x*sc,player2.y*sc,4,0,TAU); mctx.stroke(); }
   if(player2&&player2.alive){   // cyan, matching the .gpfocus controller-accent color used elsewhere
     const px=player2.x*sc, py=player2.y*sc;
     mctx.strokeStyle='rgba(255,255,255,.8)'; mctx.lineWidth=1.6; mctx.beginPath();
@@ -4635,6 +4720,7 @@ function loop(now){
     if(player2 && player2.alive) updatePlayer(player2,dt,curGp2,false);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
+    updateRevive(dt);
     leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();
@@ -5092,8 +5178,13 @@ el('specBtn').addEventListener('click',()=>{ if(!ended){ ended=true; showResults
 
 // settings sliders
 function syncSliders(){ el('sfxVol').value=Math.round(meta.sfxVol*100); el('sfxVal').textContent=Math.round(meta.sfxVol*100)+'%';
-  el('aimSens').value=Math.round(meta.aimSens*100); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; }
+  el('aimSens').value=Math.round(meta.aimSens*100); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; syncPadToggles(); }
 el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100,0,1); el('sfxVal').textContent=Math.round(meta.sfxVol*100)+'%'; applyVolume(); saveMeta(); });
+function syncPadToggles(){ el('sAimAssistTxt').textContent='Aim assist: '+(meta.aimAssist?'ON':'OFF');
+  el('sRumbleTxt').textContent='Vibration: '+(meta.rumble?'ON':'OFF'); }
+el('sAimAssist').addEventListener('click',()=>{ meta.aimAssist=!meta.aimAssist; saveMeta(); syncPadToggles(); });
+el('sRumble').addEventListener('click',()=>{ meta.rumble=!meta.rumble; saveMeta(); syncPadToggles();
+  if(meta.rumble) gpRumble(0,120,0.4,0.6); });   // buzz once so you can feel it turned on
 el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings

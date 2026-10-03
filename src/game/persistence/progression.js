@@ -26,6 +26,8 @@ const meta = {
   magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
+  aimAssist: safeGet('dd2_aimassist','1')==='1',                   // controller soft-lock on nearby zombies
+  rumble: safeGet('dd2_rumble','1')==='1',                         // controller vibration
   weeklyDone: safeGet('dd2_weekly',''),                              // week-key of last completed weekly
   weeklies: parseInt(safeGet('dd2_weeklies','0'),10) || 0,           // total weeklies completed
   perkPicks: (()=>{ try{ return JSON.parse(safeGet('dd2_perkpicks','{}'))||{}; }catch(e){ return {}; } })(),   // perk id -> times picked
@@ -66,6 +68,7 @@ function saveMeta(){
   safeSet('dd2_banner',meta.banner);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
+  safeSet('dd2_aimassist',meta.aimAssist?'1':'0'); safeSet('dd2_rumble',meta.rumble?'1':'0');
   safeSet('dd2_weekly',meta.weeklyDone); safeSet('dd2_weeklies',meta.weeklies);
   safeSet('dd2_perkpicks',JSON.stringify(meta.perkPicks));
   safeSet('dd2_iap_unlockall', meta.iapUnlockAll ? '1' : '0');

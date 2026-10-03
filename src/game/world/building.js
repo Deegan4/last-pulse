@@ -147,6 +147,8 @@ function explode(b){
   shake=Math.min(shake+8,16);
   for(const z of zombies) if(z.alive && dist2(b.x,b.y,z.x,z.y)<RAD2) hurt(z, 90, b.owner, false);
   for(const o of humans) if(o.alive && dist2(b.x,b.y,o.x,o.y)<RAD2){ const dd = 110*(1-Math.sqrt(dist2(b.x,b.y,o.x,o.y))/RAD); hurt(o, Math.max(30,dd), b.owner, true); }
+  for(const o of humans){ if(o.alive && o.gpIndex!=null){ const d=Math.sqrt(dist2(b.x,b.y,o.x,o.y));   // blast rumble falls off with distance
+    if(d<RAD*2.2) gpRumble(o.gpIndex,200,0.3,clamp(1-d/(RAD*2.2),0.2,1)); } }
   sfx('boom',null,b);
 }
 

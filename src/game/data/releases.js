@@ -9,8 +9,13 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.66.0';
+const GAME_VERSION = '2.67.0';
 const CHANGELOG = [
+  { v:'2.67.0', items:[
+    ['⛑','Co-op revive','when your Player 2 partner goes down they stay where they fell — stand next to them for about 2.5 seconds to bring them back at half health'],
+    ['🎮','Controller upgrade','circular stick dead-zones, analog walking, aim assist, heavier vibration, and new Aim assist / Vibration toggles in Settings'],
+    ['💥','Hits land harder','zombies stagger from every shot, the screen drains of colour near death, and clearing a wave lingers in slow-mo'],
+  ]},
   { v:'2.66.0', items:[
     ['🏆','Weekly challenge','a harder 7-day challenge now sits under the daily on the home screen — complete it for 200 🪙, resets every Monday'],
     ['🧛','4 new perks','Bloodthirst (heal on kill), Sharpshooter (20% double-damage shots), Quick Hands (-30% reload) and Scavenger (+40% scrap) join the perk picker'],

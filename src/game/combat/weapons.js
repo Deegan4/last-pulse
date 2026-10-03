@@ -80,6 +80,7 @@ function fire(h){
   if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2, wrist=wristPos(h);  // ejected shell (red for shotgun), from the ejection port near the hand
     spark(wrist.x, wrist.y-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
   h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
+  if(h.gpIndex!=null && fx.push>=34) gpRumble(h.gpIndex,60,0.15,clamp(fx.push/90,0.25,0.7));   // heavy guns kick through the pad
   if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
   sfx('shoot', w);
   if(h.mag<=0) startReload(h);
@@ -120,6 +121,11 @@ function hurt(e, dmg, src, isHumanTarget){
     for(let i=0;i<3;i++) spark(e.x,e.y-6,'#7fc8ff',rand(40,120),rand(0,TAU),.3); }
   if(dmg>0){ e.hp -= dmg; if(e.isPlayer) matchStat.dmgTaken += dmg; }
   e.hitFlash=0.12;
+  // zombie stagger: a damage-scaled shove along the shot so hits visibly land (bosses barely flinch).
+  // z.vx/vy are re-lerped toward the chase target every frame, so the shove decays on its own.
+  if(!e.isPlayer && !e.weapon && src && src!==e && dmg>0){
+    const sa=Math.atan2(e.y-src.y, e.x-src.x), sk=clamp(dmg*2.4,40,190)*(e.boss?0.2:1);
+    e.vx+=Math.cos(sa)*sk; e.vy+=Math.sin(sa)*sk; }
   // blood: a directional spray along the shot's path (exit-wound style), sized by damage,
   // plus a close mist and — on solid hits — a splatter decal left on the ground
   const blood = '#c0303a', dark = '#8f1f28';   // everything bleeds red
@@ -157,6 +163,8 @@ function die(e, src, isHumanTarget){
     y:e.y+6+rand(-6,14), r:rand(6,12), t:6, col:goreCol});
   if(wallStreaks.length<160) spraySplatOnWall(e.x, e.y, 24);
   sfx('die',null,e);
+  // last zombie of a wave: an extended slow-mo beat so clearing a wave reads as an event
+  if(gameMode==='horde' && !e.isPlayer && !e.weapon && src && src.isPlayer && !zombies.some(z=>z.alive)) hitstop=0.45;
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
     if(src.isPlayer){
@@ -205,6 +213,7 @@ function die(e, src, isHumanTarget){
     const killer = src ? (src.weapon ? (src.isPlayer2?src.name : src.isPlayer?meta.name:src.name) : 'A zombie') : 'The safe zone';
     killFeed.unshift({ txt: killer+'  ☠  '+victim, t:5, you: e.isPlayer || (src&&src.isPlayer) });
     if(killFeed.length>4) killFeed.pop();
+    if(e.isPlayer2 && player && player.alive){ reviveT=0; toast('⛑ Player 2 is down — stand next to them to revive!'); }
     checkEnd();
   }
 }

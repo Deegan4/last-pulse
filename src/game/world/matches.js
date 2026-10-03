@@ -37,7 +37,7 @@ function spawnMatch(){
   combo=0; comboT=0; hitstop=0;
   menuAmbient=false;                                     // real match takes over the canvas
   matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
-  player2 = null;   // fresh match always starts solo; tryJoinPlayer2() re-adds them if a 2nd pad is present
+  player2 = null; reviveT = 0;   // fresh match always starts solo; tryJoinPlayer2() re-adds them if a 2nd pad is present
   buildDecor();
   // interior loot — every house hides a pickup (a reason to step inside)
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));

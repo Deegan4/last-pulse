@@ -36,6 +36,8 @@ function drawMini(){
     mctx.moveTo(px,py); mctx.lineTo(px+Math.cos(player.aim)*7,py+Math.sin(player.aim)*7); mctx.stroke();
     mctx.fillStyle='#7bff4a'; mctx.beginPath(); mctx.arc(px,py,3,0,TAU); mctx.fill();
     mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke(); }
+  if(player2&&!player2.alive&&player){   // downed co-op partner: hollow cyan ring so you can find them
+    mctx.strokeStyle='#5ad1ff'; mctx.lineWidth=1.6; mctx.beginPath(); mctx.arc(player2.x*sc,player2.y*sc,4,0,TAU); mctx.stroke(); }
   if(player2&&player2.alive){   // cyan, matching the .gpfocus controller-accent color used elsewhere
     const px=player2.x*sc, py=player2.y*sc;
     mctx.strokeStyle='rgba(255,255,255,.8)'; mctx.lineWidth=1.6; mctx.beginPath();

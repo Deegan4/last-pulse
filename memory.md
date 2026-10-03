@@ -1641,3 +1641,9 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
 
 - **v2.58.0** — Perk pool 6→10 (`lifesteal` in `die()`, `sharpshooter` crit roll in `fire()`, `quickHands` in `startReload`, `scavenger` in die's scrap calc); `meta.perkPicks` counts picks (`dd2_perkpicks`). Weekly challenge: `WEEKLIES`/`weekKey()` (Monday-keyed)/`checkWeekly()`, 200 🪙, `#weeklyCard` under the daily; results banner row.
 - **v2.58.0 (follow-up)** — Sharpshooter now rolls once per volley in `fire()` (`perkCritHit`) and shows a gold `CRIT ×2` floater. Save codes already carry `weeklyDone`/`weeklies`/`perkPicks` (`exportSave` serializes all of `meta`). Weekly card text/padding tightened for 430px.
+
+- **v2.59.0** — Feel bundle: zombie stagger in `hurt()` (dmg×2.4 shove, clamp 40–190, bosses ×0.2); `saturation`-blend desaturation in the low-hp draw block (the heartbeat already existed — `sfx('heart')` in updatePlayer); last-zombie `hitstop=0.45` in `die()`. Note: the `--waves` harness bot stalling at wave 1 is documented (kiting bot, true-clear waves) — use survivedSec, not wave reached.
+
+- **v2.60.0** — Controller upgrade: radial deadzones (`stick()` in `readGamepadFrom`), analog walk `padAnalog`, `assistAim()` (cone 0.23rad, 520px, pull 0.55, `meta.aimAssist`), extra `gpRumble` calls (heavy-gun kick in `fire`, `explode`, boss slam, low-hp heart), `meta.rumble` gate; Settings gets `#sAimAssist`/`#sRumble` `.opt` toggles (auto-included in gamepad menu nav).
+
+- **v2.61.0** — Co-op revive: `updateRevive(dt)` (called in loop after `integrate`), `drawDowned(p)` (drawn before the y-sorted sprites), `REVIVE_R=70`/`REVIVE_TIME=2.5`, progress drains 2× when P1 leaves; `die()` toasts when P2 falls; minimap hollow ring. Revive restores 50% hp, refills mag.

@@ -52,8 +52,13 @@ el('specBtn').addEventListener('click',()=>{ if(!ended){ ended=true; showResults
 
 // settings sliders
 function syncSliders(){ el('sfxVol').value=Math.round(meta.sfxVol*100); el('sfxVal').textContent=Math.round(meta.sfxVol*100)+'%';
-  el('aimSens').value=Math.round(meta.aimSens*100); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; }
+  el('aimSens').value=Math.round(meta.aimSens*100); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; syncPadToggles(); }
 el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100,0,1); el('sfxVal').textContent=Math.round(meta.sfxVol*100)+'%'; applyVolume(); saveMeta(); });
+function syncPadToggles(){ el('sAimAssistTxt').textContent='Aim assist: '+(meta.aimAssist?'ON':'OFF');
+  el('sRumbleTxt').textContent='Vibration: '+(meta.rumble?'ON':'OFF'); }
+el('sAimAssist').addEventListener('click',()=>{ meta.aimAssist=!meta.aimAssist; saveMeta(); syncPadToggles(); });
+el('sRumble').addEventListener('click',()=>{ meta.rumble=!meta.rumble; saveMeta(); syncPadToggles();
+  if(meta.rumble) gpRumble(0,120,0.4,0.6); });   // buzz once so you can feel it turned on
 el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings

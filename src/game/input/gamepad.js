@@ -1,7 +1,12 @@
 function readGamepadFrom(gp, st){
   if(!gp) return null;
-  const dz=v=>Math.abs(v)<0.18?0:v, btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
-  const mx=dz(gp.axes[0]||0), my=dz(gp.axes[1]||0), ax=dz(gp.axes[2]||0), ay=dz(gp.axes[3]||0);
+  const btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  // radial deadzone with rescale: a square per-axis cut makes a drifting stick skew diagonals and
+  // jumps from 0 to 0.18 the instant it leaves the dead area; this keeps full analog range and
+  // an even circular dead zone, which is what makes light-push walking (analog speed) possible.
+  const stick=(x,y,dead)=>{ const m=Math.hypot(x,y); if(m<dead) return [0,0];
+    const k=Math.min(1,(m-dead)/(1-dead))/m; return [x*k,y*k]; };
+  const [mx,my]=stick(gp.axes[0]||0, gp.axes[1]||0, 0.16), [ax,ay]=stick(gp.axes[2]||0, gp.axes[3]||0, 0.2);
   const fire=btn(7)||btn(5)||btn(0);
   const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6), gN=btn(10), stN=btn(9);
   const reload=rN&&!st.RP, light=lN&&!st.LP, bomb=bN&&!st.BP, grapple=gN&&!st.GP, start=stN&&!st.StP;
@@ -47,6 +52,40 @@ function tryJoinPlayer2(pads){
 // position leash that keeps both players on-screen without touching rendering at all. If a
 // zoomed camera is wanted later, search this file for every `cam.x`/`cam.y` read (not just this
 // comment) — each one currently assumes zoom===1.
+// Co-op revive: when Player 2 goes down they stay where they fell (zombies ignore the downed) and
+// Player 1 brings them back by standing within REVIVE_R for REVIVE_TIME seconds — no button, so it
+// works for keyboard/touch/pad alike. Leaving the circle drains progress at 2x. Revived at 50% hp.
+const REVIVE_R=70, REVIVE_TIME=2.5;
+let reviveT=0, reviveRumbleT=0;
+function updateRevive(dt){
+  if(!player2 || player2.alive || !player || !player.alive || grace>0) { reviveT=0; return; }
+  if(dist2(player.x,player.y,player2.x,player2.y) < REVIVE_R*REVIVE_R){
+    reviveT+=dt; reviveRumbleT-=dt;
+    if(reviveRumbleT<=0){ reviveRumbleT=0.35; gpRumble(0,90,0.15,0.2); gpRumble(1,90,0.15,0.2); }
+  } else reviveT=Math.max(0,reviveT-dt*2);
+  if(reviveT>=REVIVE_TIME){
+    reviveT=0; const p=player2;
+    p.alive=true; p.hp=Math.round(p.maxhp*0.5); p.burn=0; p.shield=0; p.vx=p.vy=0;
+    p.fireCd=0.5; p.reloading=0; p.mag=magCap(p);
+    toast('🎮 Player 2 is back up!'); sfx('level');
+    rings.push({x:p.x,y:p.y,t:0,dur:0.6,r0:8,r1:REVIVE_R+30,col:'90,209,255',lw:4});
+    for(let i=0;i<18;i++) spark(p.x,p.y-6,'#5ad1ff',rand(80,240),rand(0,TAU),.7);
+    gpRumble(0,220,0.4,0.6); gpRumble(1,220,0.4,0.6);
+  }
+}
+// the downed marker: a pulsing cyan circle with a fill arc showing revive progress
+function drawDowned(p){
+  if(!p || p.alive || !inView(p.x,p.y,60)) return;
+  const pulse=0.5+0.5*Math.sin(gtime*5), prog=clamp(reviveT/REVIVE_TIME,0,1);
+  ctx.save();
+  ctx.strokeStyle='rgba(90,209,255,'+(0.35+0.3*pulse).toFixed(2)+')'; ctx.lineWidth=2.5; ctx.setLineDash([6,6]);
+  ctx.beginPath(); ctx.arc(p.x,p.y,REVIVE_R,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(20,30,40,.55)'; ctx.beginPath(); ctx.arc(p.x,p.y,16,0,TAU); ctx.fill();
+  if(prog>0){ ctx.strokeStyle='#5ad1ff'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(p.x,p.y,16,-Math.PI/2,-Math.PI/2+prog*TAU); ctx.stroke(); }
+  ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff'; ctx.fillText('⛑',p.x,p.y+1);
+  ctx.font='800 11px Trebuchet MS, sans-serif'; ctx.fillStyle='#bfeaff'; ctx.fillText('stand close to revive',p.x,p.y-REVIVE_R-8);
+  ctx.restore();
+}
 function leashPlayer2(){
   if(!player2 || !player2.alive || !player || !player.alive) return;
   const maxLeash = Math.min(W,H)*0.42;
@@ -109,6 +148,7 @@ function syncControllerStatus(){
 // unsupported on plenty of browsers/pads — a missing rumble should never be able to throw and
 // interrupt hurt()/die(), which run in the middle of live combat.
 function gpRumble(padIndex, duration, weakMagnitude, strongMagnitude){
+  if(!meta.rumble) return;
   try{
     const pads = navigator.getGamepads && navigator.getGamepads();
     const act = pads && pads[padIndex] && pads[padIndex].vibrationActuator;

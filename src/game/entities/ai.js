@@ -84,7 +84,8 @@ function updateZombie(z,dt){
           if(dist2(hh.x,hh.y,z.x,z.y) < JUGGERNAUT_SLAM.r*JUGGERNAUT_SLAM.r){
             hurt(hh, JUGGERNAUT_SLAM.dmg, z, true);
             const ka=Math.atan2(hh.y-z.y,hh.x-z.x); hh.vx+=Math.cos(ka)*JUGGERNAUT_SLAM.knock; hh.vy+=Math.sin(ka)*JUGGERNAUT_SLAM.knock;
-            if(hh.isPlayer) shake=Math.min(shake+8,18); } }
+            if(hh.isPlayer) shake=Math.min(shake+8,18);
+            if(hh.gpIndex!=null) gpRumble(hh.gpIndex,260,0.6,1.0); } }
         rings.push({x:z.x,y:z.y,t:0,dur:0.4,r0:10,r1:JUGGERNAUT_SLAM.r,col:'255,140,40',lw:4});
         for(let i=0;i<14;i++) spark(z.x,z.y,'#caa46a',rand(80,220),rand(0,TAU),.5);
         z.slamCd=rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax); }
