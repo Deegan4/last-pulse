@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.71.1). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.72.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -10,6 +10,11 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 > and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
 > bumps the version. **When it disagrees with the code, the code wins** — verify against
 > `index.html` before trusting any bullet below.
+
+## v2.72 — "Safari navigation fix" (shipped)
+
+- [x] **Service-worker navigation hardening** — navigation requests now use a network-first path,
+      strip redirect metadata, and invalidate the previous cache version before falling back offline.
 
 ## v2.71 — "Building art pass" (shipped)
 

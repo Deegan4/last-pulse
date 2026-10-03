@@ -9,8 +9,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.71.1';
+const GAME_VERSION = '2.72.0';
 const CHANGELOG = [
+  { v:'2.72.0', items:[
+    ['🧭','Safari loading fix','service-worker navigations now bypass stale redirect responses so the game opens normally on iPhone'],
+  ]},
   { v:'2.71.1', items:[
     ['🛠️','Loading fix','fixed Safari showing "Response served by service worker has redirections" instead of the game'],
   ]},

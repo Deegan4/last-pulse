@@ -14,6 +14,9 @@
 - **v2.71.0 — Building art pass.** Reworked the procedural house/shop/barn/cabin facade layer with
   cast shadows, a right-side depth plane, perspective roof slabs, bold trim, framed windows, and
   stronger entrances so buildings no longer read as flat placeholder rectangles on mobile.
+- **v2.72.0 — Safari navigation fix.** Service-worker navigations now bypass cache-first responses,
+  strip redirect metadata, and use a new cache namespace so Vercel's `/` → `/index.html` rewrite
+  cannot produce Safari's "Response served by service worker has redirections" error.
 
 _Last updated: 2026-08-22. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
 v2.55.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
