@@ -345,8 +345,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.70.0';
+const GAME_VERSION = '2.71.0';
 const CHANGELOG = [
+  { v:'2.71.0', items:[
+    ['🏠','Building art pass','houses, shops, barns and cabins now have stronger top-down depth, roof planes, facade trim, framed windows, shadows and clearer entrances'],
+  ]},
   { v:'2.70.0', items:[
     ['✨','Combat readability pass','loot now has color-coded rarity beams, supply drops cast a visible beacon, and Arc Rifle / Frost Blaster projectiles have distinct silhouettes'],
   ]},
@@ -3612,15 +3615,23 @@ function drawBuilding(d){
   const x=d.x,y=d.y,w=d.w,h=d.h, lit=timeOfDay!=='day', cx=x+w/2;   // windows glow at dusk/night
   const kind=d.kind||'house';
   if((d.fade===undefined?1:d.fade)<=0.02) return;
-  if(window.Models3D && window.Models3D.drawBuilding && window.Models3D.drawBuilding(ctx,d)) return;
+  // 3D GLB building billboards are intentionally NOT used: the placeholder boxes clipped at the tile edge,
+  // hid the door/hp bar/interior, and clashed with the 2D art. Always draw the hand-drawn facade below.
   ctx.lineJoin='round';
   ctx.save(); ctx.globalAlpha=(d.fade===undefined?1:d.fade);
+  // Strong top-down silhouette: the old flat rectangle lost its depth on small screens.
+  ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(x+w*.52,y+h+10,w*.57,10,0,0,TAU); ctx.fill();
+  const sideFill = kind==='barn'?'#7d382f' : kind==='cabin'?'#8d603a' : kind==='shop'?'#b5a993' : '#a69782';
+  ctx.fillStyle=sideFill; ctx.strokeStyle=INK; ctx.lineWidth=2.4; ctx.beginPath();
+  ctx.moveTo(x+w-2,y+7); ctx.lineTo(x+w+11,y+14); ctx.lineTo(x+w+11,y+h-4); ctx.lineTo(x+w-2,y+h); ctx.closePath(); ctx.fill(); ctx.stroke();
   // --- wall + soft top-light / right-shade (fill colour per kind) ---
   const wallFill = kind==='barn'?'#b0503f' : kind==='cabin'?'#b78a52' : kind==='shop'?'#e6dcc4' : '#ddd0b8';
   ctx.fillStyle=wallFill; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x,y,w,h,5); ctx.fill(); ctx.stroke();
   ctx.save(); roundRect(x,y,w,h,5); ctx.clip();
   ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x,y,w,h*0.3);
   ctx.fillStyle='rgba(0,0,0,.10)'; ctx.fillRect(x+w*0.64,y,w*0.36,h);
+  ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(x+3,y+5,w-6,4);                    // upper facade trim
+  ctx.fillStyle='rgba(55,40,28,.22)'; ctx.fillRect(x+3,y+h-13,w-6,4);                    // foundation trim
   if(kind==='cabin'){                                                         // horizontal log courses
     ctx.strokeStyle='rgba(80,54,26,.4)'; ctx.lineWidth=1.4;
     for(let ly=y+11; ly<y+h-3; ly+=12){ ctx.beginPath(); ctx.moveTo(x,ly); ctx.lineTo(x+w,ly); ctx.stroke(); }
@@ -3673,21 +3684,26 @@ function drawBuilding(d){
     const wins = kind==='cabin' ? [cx] : [x+w*0.24, x+w*0.76];
     for(const wx of wins){
       if(lit){ ctx.shadowColor='#ffcf6a'; ctx.shadowBlur=10; ctx.fillStyle='#ffd98a'; } else ctx.fillStyle='#9fd0e6';
-      roundRect(wx-13,y+h*0.34,26,21,3); ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
+      ctx.fillStyle='#3d4c55'; roundRect(wx-16,y+h*0.32,32,26,4); ctx.fill(); ctx.stroke();
+      if(lit){ ctx.shadowColor='#ffcf6a'; ctx.shadowBlur=10; ctx.fillStyle='#ffd98a'; } else { ctx.shadowBlur=0; ctx.fillStyle='#9fd0e6'; }
+      roundRect(wx-12,y+h*0.34,24,20,2); ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
       if(!lit){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(wx-11,y+h*0.34+2); ctx.lineTo(wx-3,y+h*0.34+2); ctx.lineTo(wx-11,y+h*0.34+10); ctx.closePath(); ctx.fill(); }  // glass glint
       ctx.strokeStyle='rgba(20,40,60,.5)'; ctx.lineWidth=1.4; ctx.beginPath();
       ctx.moveTo(wx,y+h*0.34); ctx.lineTo(wx,y+h*0.34+21); ctx.moveTo(wx-13,y+h*0.34+10.5); ctx.lineTo(wx+13,y+h*0.34+10.5); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2; }
-    ctx.fillStyle='#5a4632'; const dw=22,dh=28; roundRect(cx-dw/2,y+h-dh,dw,dh,3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#5a4632'; const dw=26,dh=31; roundRect(cx-dw/2,y+h-dh,dw,dh,3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(cx-dw/2+3,y+h-dh+4,4,dh-8);
+    ctx.fillStyle='#7f633d'; ctx.fillRect(cx-dw/2+5,y+h-7,dw-10,3);                 // threshold
     ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1.2; roundRect(cx-dw/2+3,y+h-dh+4,dw-6,dh-7,2); ctx.stroke(); ctx.strokeStyle=INK; ctx.lineWidth=2;
     ctx.fillStyle='#caa24a'; ctx.beginPath(); ctx.arc(cx+5,y+h-dh/2,1.8,0,TAU); ctx.fill();
   }
   // --- roof slab with shingle courses + ridge highlight (shared) ---
-  ctx.fillStyle=d.roof; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x-6,y-16,w+12,26,6); ctx.fill(); ctx.stroke();
-  ctx.save(); roundRect(x-6,y-16,w+12,26,6); ctx.clip();
+  ctx.fillStyle=d.roof; ctx.strokeStyle=INK; ctx.lineWidth=2.5; ctx.beginPath();
+  ctx.moveTo(x-8,y-14); ctx.lineTo(x+w+8,y-14); ctx.lineTo(x+w+13,y+7); ctx.lineTo(x-3,y+7); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.save(); ctx.beginPath(); ctx.moveTo(x-8,y-14); ctx.lineTo(x+w+8,y-14); ctx.lineTo(x+w+13,y+7); ctx.lineTo(x-3,y+7); ctx.closePath(); ctx.clip();
   ctx.strokeStyle='rgba(0,0,0,.16)'; ctx.lineWidth=1.4;
-  for(let ry=y-8; ry<y+10; ry+=6){ ctx.beginPath(); ctx.moveTo(x-6,ry); ctx.lineTo(x+w+6,ry); ctx.stroke(); }
+  for(let ry=y-8; ry<y+10; ry+=6){ ctx.beginPath(); ctx.moveTo(x-10,ry); ctx.lineTo(x+w+12,ry+2); ctx.stroke(); }
   ctx.restore();
-  ctx.fillStyle='rgba(255,255,255,.14)'; ctx.fillRect(x-2,y-13,w+4,5);
+  ctx.fillStyle='rgba(255,255,255,.18)'; ctx.beginPath(); ctx.moveTo(x-4,y-10); ctx.lineTo(x+w+7,y-10); ctx.lineTo(x+w+9,y-6); ctx.lineTo(x-3,y-6); ctx.closePath(); ctx.fill();
   // rooftop trim per kind: cabin gets a thin stovepipe, shops skip the chimney, others a brick chimney
   if(kind==='cabin'){ ctx.fillStyle='#4a4a4e'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(x+w*0.72,y-30,7,18,2); ctx.fill(); ctx.stroke();
     if(lit){ ctx.fillStyle='rgba(200,200,210,.4)'; ctx.beginPath(); ctx.arc(x+w*0.72+3.5,y-34,5,0,TAU); ctx.fill(); } }   // smoke puff at night
