@@ -29,9 +29,9 @@ const BKINDS={
   barn:  {roof:['#4a3730','#5a4038']},             // red planks, X-braced big doors, hayloft
   cabin: {roof:['#4a6a44','#6a5a3a']},             // log-course walls + stovepipe
 };
-const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1,cache:1,antenna:1,medtent:1,barrel:1};   // level-milestone landmarks + prop assets (y-sorted)
+const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1,cache:1,antenna:1,medtent:1,barrel:1,barricade:1,door:1};   // level-milestone landmarks + prop assets (y-sorted)
 function buildDecor(){
-  decor.length=0; obstacles.length=0;
+  decor.length=0; obstacles.length=0; worldInteractables.length=0;
   timeOfDay = pick(['day','day','dusk','night']);   // mostly day, sometimes dusk/night
   // biome ground variants (desert/snow/ash/stone/swamp) are an "Unlock Everything" IAP perk —
   // free players always render the classic grass ground, paid players get the full rotation.
@@ -61,6 +61,11 @@ function buildDecor(){
         if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
       tries++; } while(!ok && tries<40);
     if(ok){ obstacles.push(b); decor.push(b); } }
+  // Building doors start shuttered, then can be shot open to create an entry route.
+  for(const o of obstacles.filter(o=>o.type==='building')){
+    const door={type:'door', x:o.x+o.w/2-DOOR_HALF, y:o.y+o.h-WALL_T-2, w:DOOR_HALF*2, h:WALL_T+4, hp:70, maxhp:70, building:o};
+    obstacles.push(door); decor.push(door);
+  }
   for(let i=0;i<36+Math.floor(xtra*0.9);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
   for(let i=0;i<46+Math.floor(xtra*1.3);i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
   for(let i=0;i<92+Math.floor(xtra*2.6);i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
@@ -68,9 +73,15 @@ function buildDecor(){
   for(let i=0;i<20+Math.floor(xtra*0.7);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
   for(let i=0;i<8+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
   for(let i=0;i<8+Math.floor(xtra*0.35);i++){ const p=decorSpot(70); decor.push({type:'cache', x:p.x, y:p.y, s:rand(0.88,1.16), open:Math.random()<0.28}); }
-  for(let i=0;i<5+Math.floor(xtra*0.22);i++){ const p=decorSpot(80); decor.push({type:'barrel', x:p.x, y:p.y, s:rand(0.86,1.18), hot:Math.random()<0.36}); }
+  for(let i=0;i<5+Math.floor(xtra*0.22);i++){ const p=decorSpot(80); decor.push({type:'barrel', x:p.x, y:p.y, s:rand(0.86,1.18), hot:Math.random()<0.36, fuel:true}); }
   for(let i=0;i<3+Math.floor(lvl/10);i++){ const p=decorSpot(95); decor.push({type:'antenna', x:p.x, y:p.y, s:rand(0.9,1.15), blink:rand(0,TAU)}); }
   for(let i=0;i<2+Math.floor(lvl/12);i++){ const p=decorSpot(105); decor.push({type:'medtent', x:p.x, y:p.y, s:rand(0.9,1.12), flip:Math.random()<0.5}); }
+  // Destructible cover: solid in the world, readable at phone scale, and cheap to simulate.
+  for(let i=0;i<5+Math.floor(xtra*0.25);i++){
+    const p=decorSpot(80), horiz=Math.random()<0.5;
+    const b={type:'barricade', x:p.x-34, y:p.y-11, w:horiz?68:22, h:horiz?22:68, hp:80, maxhp:80};
+    obstacles.push(b); decor.push(b);
+  }
   // level-milestone landmarks — the map gains character as you rank up
   if(lvl>=3)  for(let i=0;i<4;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
   if(lvl>=6)  for(let i=0;i<7;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
@@ -109,7 +120,7 @@ function escalateMap(){
 const WALL_T = 9, DOOR_HALF = 21;   // gap 42px: humans (r15) fit easily, brutes (r20) barely
 const BIG_HOUSE = 170;              // wider houses get a second door in the top wall (no dead ends)
 function wallRects(o){
-  if(o.tower || o.built) return [[o.x,o.y,o.w,o.h]];   // towers + player-built pieces are fully solid
+  if(o.tower || o.built || o.type==='barricade') return [[o.x,o.y,o.w,o.h]];   // towers, barricades + player-built pieces are fully solid
   const dx0=o.x+o.w/2-DOOR_HALF, dx1=o.x+o.w/2+DOOR_HALF;
   const r = [
     [o.x, o.y, WALL_T, o.h],                       // left

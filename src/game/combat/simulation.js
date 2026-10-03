@@ -21,7 +21,10 @@ function updateBullets(dt){
     b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; let gone=false;
     if(obstacles.length && bulletInObstacle(b)){
       if(b.boom){ gone=true; }
-      else { for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue; } }
+      else {
+        const hitObs=worldObstacleAt(b.x,b.y); if(hitObs) damageWorldObstacle(hitObs,b.dmg||12,b.owner);
+        for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue;
+      } }
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
@@ -111,6 +114,61 @@ function updateParticles(dt){
   if(toastT>0){ toastT-=dt; if(toastT<=0) el('toast').style.opacity='0'; }
   // respawn a few zombies over time to keep pressure
   if(zombies.filter(z=>z.alive).length<6 && Math.random()<dt*0.3){ const s=farSpawn(zone.r*0.3+60); if(s) zombies.push(makeZombie(s.x,s.y)); }
+}
+
+// Shared proximity interactions keep the first asset bundle usable on keyboard, touch, and pad.
+function worldObstacleAt(x,y){
+  for(const o of obstacles) if((o.type==='barricade'||o.type==='door') && x>o.x && x<o.x+o.w && y>o.y && y<o.y+o.h) return o;
+  return null;
+}
+function damageWorldObstacle(o,dmg,src){
+  if(!o || !['barricade','door'].includes(o.type) || o.hp<=0) return;
+  o.hp-=dmg;
+  for(let i=0;i<4;i++) spark(o.x+rand(0,o.w),o.y+rand(0,o.h),'#d9a56b',rand(30,100),rand(0,TAU),.25);
+  if(o.hp<=0){
+    const oi=obstacles.indexOf(o); if(oi>=0) obstacles.splice(oi,1);
+    const di=decor.indexOf(o); if(di>=0) decor.splice(di,1);
+    rings.push({x:o.x+o.w/2,y:o.y+o.h/2,t:0,dur:.3,r0:8,r1:42,col:'210,170,110',lw:2});
+    if(src&&src.isPlayer) toast(o.type==='door'?'🚪 DOOR BROKEN OPEN':'🪵 BARRICADE BROKEN');
+  }
+}
+function updateWorldInteractables(dt){
+  if(!player || !player.alive || grace>0) return;
+  for(const d of decor){
+    if(!['cache','medtent','antenna','barrel'].includes(d.type)) continue;
+    if(d.interactCd>0) d.interactCd-=dt;
+    if(d.interactCd>0 || dist2(player.x,player.y,d.x,d.y)>52*52) continue;
+    if(d.type==='cache' && !d.open){
+      d.open=true; d.interactCd=.8; pickups.push(makePickup(d.x+rand(-8,8),d.y+rand(-8,8)));
+      toast('📦 CACHE OPENED'); sfx('pickup');
+    } else if(d.type==='medtent'){
+      d.interactCd=16; player.hp=Math.min(player.maxhp,player.hp+42);
+      floaters.push({x:d.x,y:d.y-34,vy:-28,t:.8,txt:'+42 HP',col:'#7bff4a'}); toast('⛑ FIELD CLINIC'); sfx('pickup');
+    } else if(d.type==='antenna'){
+      d.interactCd=24; player.scrap=(player.scrap||0)+5;
+      rings.push({x:d.x,y:d.y,t:0,dur:.55,r0:8,r1:90,col:'100,225,255',lw:2.5}); toast('📡 RELAY ONLINE · +5 SCRAP'); sfx('level');
+    } else if(d.type==='barrel' && d.fuel){
+      d.interactCd=18; player.shield=Math.min(100,(player.shield||0)+18);
+      floaters.push({x:d.x,y:d.y-30,vy:-28,t:.8,txt:'+18 ARMOR',col:'#5fa8ff'}); toast('⛽ FUEL STATION SCAVENGED'); sfx('pickup');
+    }
+  }
+  // Watchtower searchlight: stand at the ladder/base to trigger a short scan that slows
+  // nearby zombies, making the elevated firing position a tactical objective rather than
+  // only a traversal gimmick.
+  for(const tower of obstacles){
+    if(!tower.tower) continue;
+    if(tower.scanT>0) tower.scanT-=dt;
+    if(tower.scanCd>0) tower.scanCd-=dt;
+    const nearBase=dist2(player.x,tower.x+tower.w/2,player.y,tower.y+tower.h)<105*105;
+    if(nearBase && tower.scanCd<=0){
+      tower.scanT=4; tower.scanCd=15; rings.push({x:tower.x+tower.w/2,y:tower.y+tower.h/2,t:0,dur:.55,r0:10,r1:110,col:'120,230,255',lw:2.5});
+      toast('🔦 SEARCHLIGHT SCAN'); sfx('level');
+    }
+    if(tower.scanT>0){
+      const r2=430*430;
+      for(const z of zombies) if(z.alive && dist2(z.x,tower.x+tower.w/2,z.y,tower.y+tower.h/2)<r2) z.slowT=Math.max(z.slowT||0,.35);
+    }
+  }
 }
 
 // ============================================================

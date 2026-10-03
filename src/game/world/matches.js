@@ -65,7 +65,7 @@ function spawnMatch(){
     for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
       while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
       const tw={type:'tower', tower:true, x:clamp(sp.x-TOWER_W/2,120,ARENA-120-TOWER_W), y:clamp(sp.y-TOWER_H/2,120,ARENA-120-TOWER_H),
-        w:TOWER_W, h:TOWER_H, roof:'#6b7178'};
+        w:TOWER_W, h:TOWER_H, roof:'#6b7178', scanT:0, scanCd:0};
       obstacles.push(tw); decor.push(tw); }
     const n=Math.round(10*(activeMutator?.zMul||1)); for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
   } else if(gameMode==='squad'){
@@ -108,4 +108,3 @@ function botTarget(e){
   for(const z of zombies){ if(!z.alive) continue; const d=dist2(e.x,e.y,z.x,z.y); if(d<bd){bd=d;best=z;} }
   return {o:best, d:Math.sqrt(bd)};
 }
-

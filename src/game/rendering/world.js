@@ -157,6 +157,10 @@ function drawTower(d){
   const rx=x+11, rw=w-22, rTop=y+11-E, rBot=y+h-11-E;        // rooftop floor (footprint lifted by E)
   ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.fillStyle='rgba(0,0,0,.24)'; roundRect(x+5,y+9,w,h,7); ctx.fill();          // ground shadow
+  // Searchlight upgrade: a soft forward cone telegraphs the tower's active scan without
+  // obscuring fighters or changing the existing elevated collision model.
+  if(d.scanT>0){ const a=clamp(d.scanT/4,0,1); ctx.save(); ctx.globalAlpha=.13*a; ctx.fillStyle='#9fe9ff';
+    ctx.beginPath(); ctx.moveTo(cx,rTop-15); ctx.lineTo(cx-112,y-250); ctx.lineTo(cx+112,y-250); ctx.closePath(); ctx.fill(); ctx.restore(); }
   // --- tall front wall (from just under the roof slab down to the base) ---
   const wallTop=rBot-4, wallH=(y+h)-wallTop;
   ctx.fillStyle='#7c848e'; ctx.strokeStyle=INK; ctx.lineWidth=2.6; roundRect(x,wallTop,w,wallH,6); ctx.fill(); ctx.stroke();
@@ -178,6 +182,18 @@ function drawTower(d){
   ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.lineWidth=1; for(let fx=rx+7; fx<rx+rw; fx+=9){ ctx.beginPath(); ctx.moveTo(fx,rTop); ctx.lineTo(fx,rBot); ctx.stroke(); }
   ctx.fillStyle='#9aa1aa'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;                 // merlons (crenellations) along the top edge
   for(let mx=x-5; mx<x+w+2; mx+=15){ roundRect(mx,rTop-12,9,10,2); ctx.fill(); ctx.stroke(); }
+  // Survivor banner and searchlight housing.
+  ctx.strokeStyle='#4a372a'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(cx+24,rTop-10); ctx.lineTo(cx+24,rTop-52); ctx.stroke();
+  ctx.fillStyle='#c8444b'; ctx.strokeStyle=INK; ctx.lineWidth=1.5; ctx.beginPath();
+  ctx.moveTo(cx+25,rTop-50); ctx.lineTo(cx+45,rTop-44); ctx.lineTo(cx+25,rTop-36); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=d.scanT>0?'#bfffff':'#6d8090'; ctx.strokeStyle=INK; ctx.lineWidth=1.8; roundRect(cx-9,rTop-24,18,9,3); ctx.fill(); ctx.stroke();
+  // Sandbag nests make the upgraded roof read as a defended position at phone scale.
+  for(const side of [-1,1]) for(let k=0;k<3;k++){
+    const bx=cx+side*(rw*.28+k*11), by=rTop+5+(k%2)*5;
+    ctx.fillStyle='#b39a72'; ctx.strokeStyle=INK; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.ellipse(bx,by,8,4.2,0,0,TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='rgba(70,48,30,.38)'; ctx.beginPath(); ctx.moveTo(bx-3,by); ctx.lineTo(bx+3,by); ctx.stroke();
+  }
   // --- ladder on the south face (climb point) ---
   ctx.strokeStyle='#5a4632'; ctx.lineWidth=3; ctx.beginPath();
   ctx.moveTo(cx-8,y+h); ctx.lineTo(cx-8,rBot); ctx.moveTo(cx+8,y+h); ctx.lineTo(cx+8,rBot); ctx.stroke();
@@ -191,6 +207,18 @@ function drawTower(d){
   }
 }
 function drawDecor(d){
+  if(d.type==='door'){ const x=d.x,y=d.y,w=d.w||42,h=d.h||13,hp=clamp((d.hp||0)/(d.maxhp||70),0,1);
+    ctx.save(); ctx.fillStyle='#5a4632'; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x,y,w,h,2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='rgba(240,220,170,.55)'; ctx.lineWidth=1.5; for(let px=x+8;px<x+w;px+=10){ ctx.beginPath();ctx.moveTo(px,y+2);ctx.lineTo(px,y+h-2);ctx.stroke(); }
+    ctx.fillStyle='rgba(0,0,0,.42)'; roundRect(x,y-6,w,3,1); ctx.fill(); ctx.fillStyle=hp>.45?'#ffd35a':'#ff5a4a'; roundRect(x,y-6,w*hp,3,1); ctx.fill(); ctx.restore(); return; }
+  if(d.type==='barricade'){ const x=d.x,y=d.y,w=d.w||68,h=d.h||22,hp=clamp((d.hp||0)/(d.maxhp||80),0,1);
+    ctx.save(); ctx.lineJoin='round'; ctx.fillStyle='rgba(0,0,0,.24)'; ctx.beginPath(); ctx.ellipse(x+w/2,y+h+4,Math.max(w*.48,14),5,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#715035'; ctx.strokeStyle=INK; ctx.lineWidth=3; roundRect(x,y,w,h,4); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='#a97848'; ctx.lineWidth=4; ctx.beginPath();
+    if(w>h){ ctx.moveTo(x+8,y+h-4); ctx.lineTo(x+w-8,y+4); ctx.moveTo(x+8,y+4); ctx.lineTo(x+w-8,y+h-4); }
+    else { ctx.moveTo(x+4,y+8); ctx.lineTo(x+w-4,y+h-8); ctx.moveTo(x+w-4,y+8); ctx.lineTo(x+4,y+h-8); }
+    ctx.stroke(); ctx.fillStyle='rgba(0,0,0,.42)'; roundRect(x,y-8,w,4,2); ctx.fill();
+    ctx.fillStyle=hp>.45?'#7bff4a':'#ff5a4a'; roundRect(x,y-8,w*hp,4,2); ctx.fill(); ctx.restore(); return; }
   if(d.type==='cache'){ const x=d.x, y=d.y, s=d.s||1, open=!!d.open;
     ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';
     ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(2,10,27,8,0,0,TAU); ctx.fill();
@@ -206,6 +234,8 @@ function drawDecor(d){
     for(const bx of [-17,17]){ ctx.fillStyle='#f3d276'; ctx.strokeStyle=INK; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(bx,-2,2.7,0,TAU); ctx.fill(); ctx.stroke(); }
     if(open){ ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=3; roundRect(-20,-28,40,12,4); ctx.fill(); ctx.stroke();
       ctx.fillStyle='#ffd35a'; ctx.beginPath(); ctx.ellipse(0,-12,15,4,0,0,TAU); ctx.fill(); ctx.stroke(); }
+    if(!open){ const pulse=.45+.35*Math.sin(gtime*4+d.x*.01); ctx.strokeStyle='rgba(214,255,110,'+pulse+')'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,-31,8+4*pulse,0,TAU); ctx.stroke();
+      ctx.fillStyle='#d6ff6e'; ctx.font='900 7px system-ui,sans-serif'; ctx.fillText('OPEN',0,19); }
     ctx.restore(); return; }
   if(d.type==='barrel'){ const x=d.x, y=d.y, s=d.s||1, hot=d.hot;
     ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';
@@ -216,6 +246,13 @@ function drawDecor(d){
     ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.3; roundRect(-13,-14,26,5,1.5); ctx.fill(); ctx.stroke(); roundRect(-13,-2,26,5,1.5); ctx.fill(); ctx.stroke();
     if(hot){ ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(-5,-11); ctx.lineTo(2,-8); ctx.lineTo(-2,-4); ctx.lineTo(6,2); ctx.stroke(); }
     else { ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(4,-8,3,0,TAU); ctx.fill(); ctx.stroke(); }
+    if(d.fuel){
+      // A compact pump beside the barrel turns the reused prop into a readable fuel station.
+      ctx.fillStyle='#3d5964'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(18,-19,13,25,3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#ffcf5b'; roundRect(20,-15,9,6,1); ctx.fill();
+      ctx.strokeStyle='#222b31'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(30,-10); ctx.quadraticCurveTo(39,-7,35,3); ctx.stroke();
+      ctx.fillStyle='#ff6b4a'; ctx.font='900 6px system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText('FUEL',24.5,2);
+    }
     ctx.restore(); return; }
   if(d.type==='antenna'){ const x=d.x, y=d.y, s=d.s||1, pulse=0.5+0.5*Math.sin(gtime*4+d.blink);
     ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineCap='round'; ctx.lineJoin='round';
@@ -230,6 +267,9 @@ function drawDecor(d){
     ctx.fillStyle='rgba(255,211,90,'+(0.65+0.35*pulse)+')'; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,-45,4.8,0,TAU); ctx.fill(); ctx.stroke();
     ctx.strokeStyle='rgba(255,211,90,'+(0.25+0.22*pulse)+')'; ctx.lineWidth=1.8;
     for(let r=11;r<=25;r+=7){ ctx.beginPath(); ctx.arc(0,-45,r,-0.85,-0.18); ctx.stroke(); ctx.beginPath(); ctx.arc(0,-45,r,Math.PI+0.18,Math.PI+0.85); ctx.stroke(); }
+    ctx.fillStyle='rgba(100,225,255,'+(0.35+0.3*pulse)+')'; ctx.shadowColor='#64e1ff'; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(0,-8,5+2*pulse,0,TAU); ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle='#bff7ff'; ctx.font='900 6px system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText('RELAY',0,16);
     ctx.restore(); return; }
   if(d.type==='medtent'){ const x=d.x, y=d.y, s=d.s||1, flip=d.flip?-1:1;
     ctx.save(); ctx.translate(x,y); ctx.scale(s*flip,s); ctx.lineJoin='round';
@@ -243,6 +283,8 @@ function drawDecor(d){
     ctx.restore();
     ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=2.1; roundRect(-5,-24,10,18,1.5); ctx.fill(); ctx.stroke(); roundRect(-10,-19,20,9,1.5); ctx.fill(); ctx.stroke();
     ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.4; roundRect(-10,-7,20,10,2); ctx.fill(); ctx.stroke();
+    const pulse=.5+.5*Math.sin(gtime*3+d.x*.01); ctx.strokeStyle='rgba(123,255,74,'+(.24+.22*pulse)+')'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,4,35+5*pulse,0,TAU); ctx.stroke();
+    ctx.fillStyle='#ffcf5b'; ctx.font='900 7px system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText('CLINIC',0,14);
     ctx.fillStyle='#d8c7a4'; ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(-23,1,3,0,TAU); ctx.arc(23,1,3,0,TAU); ctx.fill(); ctx.stroke();
     ctx.restore(); return; }
   if(d.type==='campfire'){ const x=d.x, y=d.y, ni=timeOfDay!=='day';

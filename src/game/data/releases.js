@@ -9,8 +9,14 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.67.0';
+const GAME_VERSION = '2.69.0';
 const CHANGELOG = [
+  { v:'2.69.0', items:[
+    ['🔦','Watchtower upgrades','survivor banners and searchlights now mark the two Horde towers; activate a searchlight at the ladder to slow nearby zombies for a short scan window'],
+  ]},
+  { v:'2.68.0', items:[
+    ['🧰','Interactive field assets','caches, clinics, fuel barrels and radio relays now reward close exploration, while wooden barricades break under fire and create temporary cover'],
+  ]},
   { v:'2.67.0', items:[
     ['⛑','Co-op revive','when your Player 2 partner goes down they stay where they fell — stand next to them for about 2.5 seconds to bring them back at half health'],
     ['🎮','Controller upgrade','circular stick dead-zones, analog walking, aim assist, heavier vibration, and new Aim assist / Vibration toggles in Settings'],
@@ -409,4 +415,3 @@ const CHANGELOG = [
     ['📱','Small-screen fixes','settings & results now scroll — nothing cut off'],
   ]},
 ];
-

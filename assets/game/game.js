@@ -345,8 +345,14 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.67.0';
+const GAME_VERSION = '2.69.0';
 const CHANGELOG = [
+  { v:'2.69.0', items:[
+    ['🔦','Watchtower upgrades','survivor banners and searchlights now mark the two Horde towers; activate a searchlight at the ladder to slow nearby zombies for a short scan window'],
+  ]},
+  { v:'2.68.0', items:[
+    ['🧰','Interactive field assets','caches, clinics, fuel barrels and radio relays now reward close exploration, while wooden barricades break under fire and create temporary cover'],
+  ]},
   { v:'2.67.0', items:[
     ['⛑','Co-op revive','when your Player 2 partner goes down they stay where they fell — stand next to them for about 2.5 seconds to bring them back at half health'],
     ['🎮','Controller upgrade','circular stick dead-zones, analog walking, aim assist, heavier vibration, and new Aim assist / Vibration toggles in Settings'],
@@ -1180,6 +1186,7 @@ const floaters = [];
 const killFeed = [];
 const decor = [];
 const obstacles = [];      // buildings (AABB) — block movement & bullets
+const worldInteractables = []; // first-bundle cache/clinic/fuel/radio state
 const pickups = [];        // ground items (health/medkit/armor/ammo/weapon)
 const builds = [];         // player-built structures (walls/spikes/turrets) — solids also live in `obstacles`
 const scraps = [];         // collectible scrap bits (the currency for building)
@@ -1363,9 +1370,9 @@ const BKINDS={
   barn:  {roof:['#4a3730','#5a4038']},             // red planks, X-braced big doors, hayloft
   cabin: {roof:['#4a6a44','#6a5a3a']},             // log-course walls + stovepipe
 };
-const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1,cache:1,antenna:1,medtent:1,barrel:1};   // level-milestone landmarks + prop assets (y-sorted)
+const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1,cache:1,antenna:1,medtent:1,barrel:1,barricade:1,door:1};   // level-milestone landmarks + prop assets (y-sorted)
 function buildDecor(){
-  decor.length=0; obstacles.length=0;
+  decor.length=0; obstacles.length=0; worldInteractables.length=0;
   timeOfDay = pick(['day','day','dusk','night']);   // mostly day, sometimes dusk/night
   // biome ground variants (desert/snow/ash/stone/swamp) are an "Unlock Everything" IAP perk —
   // free players always render the classic grass ground, paid players get the full rotation.
@@ -1395,6 +1402,11 @@ function buildDecor(){
         if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
       tries++; } while(!ok && tries<40);
     if(ok){ obstacles.push(b); decor.push(b); } }
+  // Building doors start shuttered, then can be shot open to create an entry route.
+  for(const o of obstacles.filter(o=>o.type==='building')){
+    const door={type:'door', x:o.x+o.w/2-DOOR_HALF, y:o.y+o.h-WALL_T-2, w:DOOR_HALF*2, h:WALL_T+4, hp:70, maxhp:70, building:o};
+    obstacles.push(door); decor.push(door);
+  }
   for(let i=0;i<36+Math.floor(xtra*0.9);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
   for(let i=0;i<46+Math.floor(xtra*1.3);i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
   for(let i=0;i<92+Math.floor(xtra*2.6);i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
@@ -1402,9 +1414,15 @@ function buildDecor(){
   for(let i=0;i<20+Math.floor(xtra*0.7);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
   for(let i=0;i<8+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
   for(let i=0;i<8+Math.floor(xtra*0.35);i++){ const p=decorSpot(70); decor.push({type:'cache', x:p.x, y:p.y, s:rand(0.88,1.16), open:Math.random()<0.28}); }
-  for(let i=0;i<5+Math.floor(xtra*0.22);i++){ const p=decorSpot(80); decor.push({type:'barrel', x:p.x, y:p.y, s:rand(0.86,1.18), hot:Math.random()<0.36}); }
+  for(let i=0;i<5+Math.floor(xtra*0.22);i++){ const p=decorSpot(80); decor.push({type:'barrel', x:p.x, y:p.y, s:rand(0.86,1.18), hot:Math.random()<0.36, fuel:true}); }
   for(let i=0;i<3+Math.floor(lvl/10);i++){ const p=decorSpot(95); decor.push({type:'antenna', x:p.x, y:p.y, s:rand(0.9,1.15), blink:rand(0,TAU)}); }
   for(let i=0;i<2+Math.floor(lvl/12);i++){ const p=decorSpot(105); decor.push({type:'medtent', x:p.x, y:p.y, s:rand(0.9,1.12), flip:Math.random()<0.5}); }
+  // Destructible cover: solid in the world, readable at phone scale, and cheap to simulate.
+  for(let i=0;i<5+Math.floor(xtra*0.25);i++){
+    const p=decorSpot(80), horiz=Math.random()<0.5;
+    const b={type:'barricade', x:p.x-34, y:p.y-11, w:horiz?68:22, h:horiz?22:68, hp:80, maxhp:80};
+    obstacles.push(b); decor.push(b);
+  }
   // level-milestone landmarks — the map gains character as you rank up
   if(lvl>=3)  for(let i=0;i<4;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
   if(lvl>=6)  for(let i=0;i<7;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
@@ -1443,7 +1461,7 @@ function escalateMap(){
 const WALL_T = 9, DOOR_HALF = 21;   // gap 42px: humans (r15) fit easily, brutes (r20) barely
 const BIG_HOUSE = 170;              // wider houses get a second door in the top wall (no dead ends)
 function wallRects(o){
-  if(o.tower || o.built) return [[o.x,o.y,o.w,o.h]];   // towers + player-built pieces are fully solid
+  if(o.tower || o.built || o.type==='barricade') return [[o.x,o.y,o.w,o.h]];   // towers, barricades + player-built pieces are fully solid
   const dx0=o.x+o.w/2-DOOR_HALF, dx1=o.x+o.w/2+DOOR_HALF;
   const r = [
     [o.x, o.y, WALL_T, o.h],                       // left
@@ -1565,7 +1583,7 @@ function spawnMatch(){
     for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
       while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
       const tw={type:'tower', tower:true, x:clamp(sp.x-TOWER_W/2,120,ARENA-120-TOWER_W), y:clamp(sp.y-TOWER_H/2,120,ARENA-120-TOWER_H),
-        w:TOWER_W, h:TOWER_H, roof:'#6b7178'};
+        w:TOWER_W, h:TOWER_H, roof:'#6b7178', scanT:0, scanCd:0};
       obstacles.push(tw); decor.push(tw); }
     const n=Math.round(10*(activeMutator?.zMul||1)); for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
   } else if(gameMode==='squad'){
@@ -2929,7 +2947,10 @@ function updateBullets(dt){
     b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; let gone=false;
     if(obstacles.length && bulletInObstacle(b)){
       if(b.boom){ gone=true; }
-      else { for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue; } }
+      else {
+        const hitObs=worldObstacleAt(b.x,b.y); if(hitObs) damageWorldObstacle(hitObs,b.dmg||12,b.owner);
+        for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue;
+      } }
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
@@ -3019,6 +3040,61 @@ function updateParticles(dt){
   if(toastT>0){ toastT-=dt; if(toastT<=0) el('toast').style.opacity='0'; }
   // respawn a few zombies over time to keep pressure
   if(zombies.filter(z=>z.alive).length<6 && Math.random()<dt*0.3){ const s=farSpawn(zone.r*0.3+60); if(s) zombies.push(makeZombie(s.x,s.y)); }
+}
+
+// Shared proximity interactions keep the first asset bundle usable on keyboard, touch, and pad.
+function worldObstacleAt(x,y){
+  for(const o of obstacles) if((o.type==='barricade'||o.type==='door') && x>o.x && x<o.x+o.w && y>o.y && y<o.y+o.h) return o;
+  return null;
+}
+function damageWorldObstacle(o,dmg,src){
+  if(!o || !['barricade','door'].includes(o.type) || o.hp<=0) return;
+  o.hp-=dmg;
+  for(let i=0;i<4;i++) spark(o.x+rand(0,o.w),o.y+rand(0,o.h),'#d9a56b',rand(30,100),rand(0,TAU),.25);
+  if(o.hp<=0){
+    const oi=obstacles.indexOf(o); if(oi>=0) obstacles.splice(oi,1);
+    const di=decor.indexOf(o); if(di>=0) decor.splice(di,1);
+    rings.push({x:o.x+o.w/2,y:o.y+o.h/2,t:0,dur:.3,r0:8,r1:42,col:'210,170,110',lw:2});
+    if(src&&src.isPlayer) toast(o.type==='door'?'🚪 DOOR BROKEN OPEN':'🪵 BARRICADE BROKEN');
+  }
+}
+function updateWorldInteractables(dt){
+  if(!player || !player.alive || grace>0) return;
+  for(const d of decor){
+    if(!['cache','medtent','antenna','barrel'].includes(d.type)) continue;
+    if(d.interactCd>0) d.interactCd-=dt;
+    if(d.interactCd>0 || dist2(player.x,player.y,d.x,d.y)>52*52) continue;
+    if(d.type==='cache' && !d.open){
+      d.open=true; d.interactCd=.8; pickups.push(makePickup(d.x+rand(-8,8),d.y+rand(-8,8)));
+      toast('📦 CACHE OPENED'); sfx('pickup');
+    } else if(d.type==='medtent'){
+      d.interactCd=16; player.hp=Math.min(player.maxhp,player.hp+42);
+      floaters.push({x:d.x,y:d.y-34,vy:-28,t:.8,txt:'+42 HP',col:'#7bff4a'}); toast('⛑ FIELD CLINIC'); sfx('pickup');
+    } else if(d.type==='antenna'){
+      d.interactCd=24; player.scrap=(player.scrap||0)+5;
+      rings.push({x:d.x,y:d.y,t:0,dur:.55,r0:8,r1:90,col:'100,225,255',lw:2.5}); toast('📡 RELAY ONLINE · +5 SCRAP'); sfx('level');
+    } else if(d.type==='barrel' && d.fuel){
+      d.interactCd=18; player.shield=Math.min(100,(player.shield||0)+18);
+      floaters.push({x:d.x,y:d.y-30,vy:-28,t:.8,txt:'+18 ARMOR',col:'#5fa8ff'}); toast('⛽ FUEL STATION SCAVENGED'); sfx('pickup');
+    }
+  }
+  // Watchtower searchlight: stand at the ladder/base to trigger a short scan that slows
+  // nearby zombies, making the elevated firing position a tactical objective rather than
+  // only a traversal gimmick.
+  for(const tower of obstacles){
+    if(!tower.tower) continue;
+    if(tower.scanT>0) tower.scanT-=dt;
+    if(tower.scanCd>0) tower.scanCd-=dt;
+    const nearBase=dist2(player.x,tower.x+tower.w/2,player.y,tower.y+tower.h)<105*105;
+    if(nearBase && tower.scanCd<=0){
+      tower.scanT=4; tower.scanCd=15; rings.push({x:tower.x+tower.w/2,y:tower.y+tower.h/2,t:0,dur:.55,r0:10,r1:110,col:'120,230,255',lw:2.5});
+      toast('🔦 SEARCHLIGHT SCAN'); sfx('level');
+    }
+    if(tower.scanT>0){
+      const r2=430*430;
+      for(const z of zombies) if(z.alive && dist2(z.x,tower.x+tower.w/2,z.y,tower.y+tower.h/2)<r2) z.slowT=Math.max(z.slowT||0,.35);
+    }
+  }
 }
 
 // ============================================================
@@ -3615,6 +3691,10 @@ function drawTower(d){
   const rx=x+11, rw=w-22, rTop=y+11-E, rBot=y+h-11-E;        // rooftop floor (footprint lifted by E)
   ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.fillStyle='rgba(0,0,0,.24)'; roundRect(x+5,y+9,w,h,7); ctx.fill();          // ground shadow
+  // Searchlight upgrade: a soft forward cone telegraphs the tower's active scan without
+  // obscuring fighters or changing the existing elevated collision model.
+  if(d.scanT>0){ const a=clamp(d.scanT/4,0,1); ctx.save(); ctx.globalAlpha=.13*a; ctx.fillStyle='#9fe9ff';
+    ctx.beginPath(); ctx.moveTo(cx,rTop-15); ctx.lineTo(cx-112,y-250); ctx.lineTo(cx+112,y-250); ctx.closePath(); ctx.fill(); ctx.restore(); }
   // --- tall front wall (from just under the roof slab down to the base) ---
   const wallTop=rBot-4, wallH=(y+h)-wallTop;
   ctx.fillStyle='#7c848e'; ctx.strokeStyle=INK; ctx.lineWidth=2.6; roundRect(x,wallTop,w,wallH,6); ctx.fill(); ctx.stroke();
@@ -3636,6 +3716,18 @@ function drawTower(d){
   ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.lineWidth=1; for(let fx=rx+7; fx<rx+rw; fx+=9){ ctx.beginPath(); ctx.moveTo(fx,rTop); ctx.lineTo(fx,rBot); ctx.stroke(); }
   ctx.fillStyle='#9aa1aa'; ctx.strokeStyle=INK; ctx.lineWidth=1.8;                 // merlons (crenellations) along the top edge
   for(let mx=x-5; mx<x+w+2; mx+=15){ roundRect(mx,rTop-12,9,10,2); ctx.fill(); ctx.stroke(); }
+  // Survivor banner and searchlight housing.
+  ctx.strokeStyle='#4a372a'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(cx+24,rTop-10); ctx.lineTo(cx+24,rTop-52); ctx.stroke();
+  ctx.fillStyle='#c8444b'; ctx.strokeStyle=INK; ctx.lineWidth=1.5; ctx.beginPath();
+  ctx.moveTo(cx+25,rTop-50); ctx.lineTo(cx+45,rTop-44); ctx.lineTo(cx+25,rTop-36); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=d.scanT>0?'#bfffff':'#6d8090'; ctx.strokeStyle=INK; ctx.lineWidth=1.8; roundRect(cx-9,rTop-24,18,9,3); ctx.fill(); ctx.stroke();
+  // Sandbag nests make the upgraded roof read as a defended position at phone scale.
+  for(const side of [-1,1]) for(let k=0;k<3;k++){
+    const bx=cx+side*(rw*.28+k*11), by=rTop+5+(k%2)*5;
+    ctx.fillStyle='#b39a72'; ctx.strokeStyle=INK; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.ellipse(bx,by,8,4.2,0,0,TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='rgba(70,48,30,.38)'; ctx.beginPath(); ctx.moveTo(bx-3,by); ctx.lineTo(bx+3,by); ctx.stroke();
+  }
   // --- ladder on the south face (climb point) ---
   ctx.strokeStyle='#5a4632'; ctx.lineWidth=3; ctx.beginPath();
   ctx.moveTo(cx-8,y+h); ctx.lineTo(cx-8,rBot); ctx.moveTo(cx+8,y+h); ctx.lineTo(cx+8,rBot); ctx.stroke();
@@ -3649,6 +3741,18 @@ function drawTower(d){
   }
 }
 function drawDecor(d){
+  if(d.type==='door'){ const x=d.x,y=d.y,w=d.w||42,h=d.h||13,hp=clamp((d.hp||0)/(d.maxhp||70),0,1);
+    ctx.save(); ctx.fillStyle='#5a4632'; ctx.strokeStyle=INK; ctx.lineWidth=2.5; roundRect(x,y,w,h,2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='rgba(240,220,170,.55)'; ctx.lineWidth=1.5; for(let px=x+8;px<x+w;px+=10){ ctx.beginPath();ctx.moveTo(px,y+2);ctx.lineTo(px,y+h-2);ctx.stroke(); }
+    ctx.fillStyle='rgba(0,0,0,.42)'; roundRect(x,y-6,w,3,1); ctx.fill(); ctx.fillStyle=hp>.45?'#ffd35a':'#ff5a4a'; roundRect(x,y-6,w*hp,3,1); ctx.fill(); ctx.restore(); return; }
+  if(d.type==='barricade'){ const x=d.x,y=d.y,w=d.w||68,h=d.h||22,hp=clamp((d.hp||0)/(d.maxhp||80),0,1);
+    ctx.save(); ctx.lineJoin='round'; ctx.fillStyle='rgba(0,0,0,.24)'; ctx.beginPath(); ctx.ellipse(x+w/2,y+h+4,Math.max(w*.48,14),5,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#715035'; ctx.strokeStyle=INK; ctx.lineWidth=3; roundRect(x,y,w,h,4); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='#a97848'; ctx.lineWidth=4; ctx.beginPath();
+    if(w>h){ ctx.moveTo(x+8,y+h-4); ctx.lineTo(x+w-8,y+4); ctx.moveTo(x+8,y+4); ctx.lineTo(x+w-8,y+h-4); }
+    else { ctx.moveTo(x+4,y+8); ctx.lineTo(x+w-4,y+h-8); ctx.moveTo(x+w-4,y+8); ctx.lineTo(x+4,y+h-8); }
+    ctx.stroke(); ctx.fillStyle='rgba(0,0,0,.42)'; roundRect(x,y-8,w,4,2); ctx.fill();
+    ctx.fillStyle=hp>.45?'#7bff4a':'#ff5a4a'; roundRect(x,y-8,w*hp,4,2); ctx.fill(); ctx.restore(); return; }
   if(d.type==='cache'){ const x=d.x, y=d.y, s=d.s||1, open=!!d.open;
     ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';
     ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(2,10,27,8,0,0,TAU); ctx.fill();
@@ -3664,6 +3768,8 @@ function drawDecor(d){
     for(const bx of [-17,17]){ ctx.fillStyle='#f3d276'; ctx.strokeStyle=INK; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(bx,-2,2.7,0,TAU); ctx.fill(); ctx.stroke(); }
     if(open){ ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=3; roundRect(-20,-28,40,12,4); ctx.fill(); ctx.stroke();
       ctx.fillStyle='#ffd35a'; ctx.beginPath(); ctx.ellipse(0,-12,15,4,0,0,TAU); ctx.fill(); ctx.stroke(); }
+    if(!open){ const pulse=.45+.35*Math.sin(gtime*4+d.x*.01); ctx.strokeStyle='rgba(214,255,110,'+pulse+')'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,-31,8+4*pulse,0,TAU); ctx.stroke();
+      ctx.fillStyle='#d6ff6e'; ctx.font='900 7px system-ui,sans-serif'; ctx.fillText('OPEN',0,19); }
     ctx.restore(); return; }
   if(d.type==='barrel'){ const x=d.x, y=d.y, s=d.s||1, hot=d.hot;
     ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';
@@ -3674,6 +3780,13 @@ function drawDecor(d){
     ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.3; roundRect(-13,-14,26,5,1.5); ctx.fill(); ctx.stroke(); roundRect(-13,-2,26,5,1.5); ctx.fill(); ctx.stroke();
     if(hot){ ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(-5,-11); ctx.lineTo(2,-8); ctx.lineTo(-2,-4); ctx.lineTo(6,2); ctx.stroke(); }
     else { ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(4,-8,3,0,TAU); ctx.fill(); ctx.stroke(); }
+    if(d.fuel){
+      // A compact pump beside the barrel turns the reused prop into a readable fuel station.
+      ctx.fillStyle='#3d5964'; ctx.strokeStyle=INK; ctx.lineWidth=2; roundRect(18,-19,13,25,3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#ffcf5b'; roundRect(20,-15,9,6,1); ctx.fill();
+      ctx.strokeStyle='#222b31'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(30,-10); ctx.quadraticCurveTo(39,-7,35,3); ctx.stroke();
+      ctx.fillStyle='#ff6b4a'; ctx.font='900 6px system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText('FUEL',24.5,2);
+    }
     ctx.restore(); return; }
   if(d.type==='antenna'){ const x=d.x, y=d.y, s=d.s||1, pulse=0.5+0.5*Math.sin(gtime*4+d.blink);
     ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineCap='round'; ctx.lineJoin='round';
@@ -3688,6 +3801,9 @@ function drawDecor(d){
     ctx.fillStyle='rgba(255,211,90,'+(0.65+0.35*pulse)+')'; ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,-45,4.8,0,TAU); ctx.fill(); ctx.stroke();
     ctx.strokeStyle='rgba(255,211,90,'+(0.25+0.22*pulse)+')'; ctx.lineWidth=1.8;
     for(let r=11;r<=25;r+=7){ ctx.beginPath(); ctx.arc(0,-45,r,-0.85,-0.18); ctx.stroke(); ctx.beginPath(); ctx.arc(0,-45,r,Math.PI+0.18,Math.PI+0.85); ctx.stroke(); }
+    ctx.fillStyle='rgba(100,225,255,'+(0.35+0.3*pulse)+')'; ctx.shadowColor='#64e1ff'; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(0,-8,5+2*pulse,0,TAU); ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle='#bff7ff'; ctx.font='900 6px system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText('RELAY',0,16);
     ctx.restore(); return; }
   if(d.type==='medtent'){ const x=d.x, y=d.y, s=d.s||1, flip=d.flip?-1:1;
     ctx.save(); ctx.translate(x,y); ctx.scale(s*flip,s); ctx.lineJoin='round';
@@ -3701,6 +3817,8 @@ function drawDecor(d){
     ctx.restore();
     ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=2.1; roundRect(-5,-24,10,18,1.5); ctx.fill(); ctx.stroke(); roundRect(-10,-19,20,9,1.5); ctx.fill(); ctx.stroke();
     ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.4; roundRect(-10,-7,20,10,2); ctx.fill(); ctx.stroke();
+    const pulse=.5+.5*Math.sin(gtime*3+d.x*.01); ctx.strokeStyle='rgba(123,255,74,'+(.24+.22*pulse)+')'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,4,35+5*pulse,0,TAU); ctx.stroke();
+    ctx.fillStyle='#ffcf5b'; ctx.font='900 7px system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText('CLINIC',0,14);
     ctx.fillStyle='#d8c7a4'; ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(-23,1,3,0,TAU); ctx.arc(23,1,3,0,TAU); ctx.fill(); ctx.stroke();
     ctx.restore(); return; }
   if(d.type==='campfire'){ const x=d.x, y=d.y, ni=timeOfDay!=='day';
@@ -4627,7 +4745,7 @@ function drawZone(){
 
 // minimap
 const MINI_LANDMARK_COL = {campfire:'#ff8a2a', well:'#7fc8e8', statue:'#c9c2b0', graveyard:'#8f8d86',
-  cache:'#d6ff6e', antenna:'#6fe6ff', medtent:'#f2f6e8', barrel:'#ff7d5c'};
+  cache:'#d6ff6e', antenna:'#6fe6ff', medtent:'#f2f6e8', barrel:'#ff7d5c', barricade:'#b88754'};
 function drawMini(){
   const S=132, sc=S/ARENA; mctx.clearRect(0,0,S,S);
   mctx.fillStyle='#2c4a1e'; mctx.fillRect(0,0,S,S);
@@ -4724,7 +4842,7 @@ function loop(now){
     leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();
-    updateBuilds(dt); updateBullets(dt); updateBombs(dt); updatePickups(dt); updateScraps(dt); updateParticles(dt);
+    updateBuilds(dt); updateBullets(dt); updateBombs(dt); updatePickups(dt); updateScraps(dt); updateWorldInteractables(dt); updateParticles(dt);
     if(spectating){ spectateT+=dt; if(!specTarget||!specTarget.alive) specPick();
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }

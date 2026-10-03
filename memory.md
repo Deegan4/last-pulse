@@ -1,5 +1,14 @@
 # memory.md — project handoff & running notes
 
+- **v2.68.0 — Interactive field asset bundle.** Upgraded existing caches, med tents, fuel barrels,
+  and radio antennas into proximity rewards, and added destructible wooden barricades plus 70-HP
+  building-door shutters to the live obstacle/depth-sort pipeline. Barricades and doors block
+  movement and bullets until destroyed; proximity interactions are shared across keyboard, touch,
+  and gamepad without another HUD button.
+- **v2.69.0 — Watchtower upgrades.** Horde towers now render a survivor banner, searchlight housing,
+  and an active light cone. Reaching a tower base triggers a four-second scan on a 15-second cooldown;
+  zombies within 430px receive a brief slow effect, giving the existing climbable roof a tactical role.
+
 _Last updated: 2026-08-22. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
 v2.55.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
 what's next" snapshot — **add a bullet under "Current state" for every shipped change**._

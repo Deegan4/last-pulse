@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.67.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.69.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -10,6 +10,18 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 > and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
 > bumps the version. **When it disagrees with the code, the code wins** — verify against
 > `index.html` before trusting any bullet below.
+
+## v2.69 — "Watchtower upgrades" (shipped)
+
+- [x] **Searchlight and survivor-banner tower pass** — Horde towers now carry a clearer landmark
+      silhouette and a ladder-triggered four-second scan that slows nearby zombies, with a 15-second
+      cooldown.
+
+## v2.68 — "Interactive field asset bundle" (shipped)
+
+- [x] **Interactive caches, clinics, fuel barrels, radio relays, and destructible cover** — existing
+      landmark art now provides proximity rewards; barricades use 80 HP cover and building doors
+      use 70 HP shutters, both blocking movement and bullets until destroyed.
 
 ## v2.54 — "Real IAP for the App Store" (shipped)
 

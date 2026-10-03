@@ -10,7 +10,7 @@ function drawZone(){
 
 // minimap
 const MINI_LANDMARK_COL = {campfire:'#ff8a2a', well:'#7fc8e8', statue:'#c9c2b0', graveyard:'#8f8d86',
-  cache:'#d6ff6e', antenna:'#6fe6ff', medtent:'#f2f6e8', barrel:'#ff7d5c'};
+  cache:'#d6ff6e', antenna:'#6fe6ff', medtent:'#f2f6e8', barrel:'#ff7d5c', barricade:'#b88754'};
 function drawMini(){
   const S=132, sc=S/ARENA; mctx.clearRect(0,0,S,S);
   mctx.fillStyle='#2c4a1e'; mctx.fillRect(0,0,S,S);

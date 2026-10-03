@@ -40,6 +40,7 @@ const floaters = [];
 const killFeed = [];
 const decor = [];
 const obstacles = [];      // buildings (AABB) — block movement & bullets
+const worldInteractables = []; // first-bundle cache/clinic/fuel/radio state
 const pickups = [];        // ground items (health/medkit/armor/ammo/weapon)
 const builds = [];         // player-built structures (walls/spikes/turrets) — solids also live in `obstacles`
 const scraps = [];         // collectible scrap bits (the currency for building)
