@@ -668,7 +668,8 @@
   #startScreen.menu .btn.play{margin-top:16px;margin-bottom:14px;
     box-shadow:0 6px 0 #61892a, 0 10px 20px rgba(140,220,70,.22)}
   #startScreen.menu .dailycard{margin-top:0}
-  #startScreen.menu #weeklyCard{margin-top:6px}
+  #startScreen.menu #weeklyCard{margin-top:6px;padding:7px 12px}
+  #weeklyCard .dtx span{font-size:12px}
   /* dedicated mode-select screen: roomy, centred cards */
   #modeScreen{justify-content:flex-start}
   #modeScreen .modes.wide{width:min(94%,460px);gap:12px;margin:18px auto 0}
@@ -1852,8 +1853,8 @@ const WEEKLIES = [
   {icon:'🌊', desc:'Reach wave 10 in Endless Horde',          test:c=>c.horde && c.wave>=10},
   {icon:'💀', desc:'Get 40+ kills in one run',                test:c=>c.matchKills>=40},
   {icon:'⏱',  desc:'Survive 4+ minutes in one run',           test:c=>c.time>=240},
-  {icon:'💨', desc:'Reach wave 7 taking under 60 damage',     test:c=>c.wave>=7 && c.dmgTaken<60},
-  {icon:'🪝', desc:'Grapple and get 15+ kills in one run',    test:c=>c.grappled && c.matchKills>=15},
+  {icon:'💨', desc:'Reach wave 7, under 60 damage',     test:c=>c.wave>=7 && c.dmgTaken<60},
+  {icon:'🪝', desc:'Grapple + 15 kills in one run',    test:c=>c.grappled && c.matchKills>=15},
 ];
 function weekKey(){ const d=new Date(); const m=new Date(d.getFullYear(),d.getMonth(),d.getDate());
   m.setDate(m.getDate()-((m.getDay()+6)%7));   // back up to Monday
@@ -2422,7 +2423,9 @@ function fire(h){
   if(h.mag<=0){ startReload(h); return; }
   const w=h.weapon; h.fireCd = w.fireCd * (h.isPlayer?1:h.fireMul);
   const range=w.range*RANGE_SCALE;
-  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1)*((h.perkCrit && Math.random()<h.perkCrit)?2:1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
+  const perkCritHit = !!(h.isPlayer && h.perkCrit && Math.random()<h.perkCrit);   // Sharpshooter: whole volley deals double
+  if(perkCritHit) floaters.push({x:h.x, y:h.y-R-30, vy:-46, t:0.6, txt:'CRIT ×2', col:'#ffd24a'});
+  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1)*(perkCritHit?2:1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
   if(w.mode==='flame'){
     const fspd=320, tip=gunTip(h);
     for(let i=0;i<3;i++){ const a=h.aim+rand(-0.34,0.34), sp=fspd*rand(.7,1.1);
