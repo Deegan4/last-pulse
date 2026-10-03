@@ -1219,8 +1219,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.60.0';
+const GAME_VERSION = '2.61.0';
 const CHANGELOG = [
+  { v:'2.61.0', items:[
+    ['⛑','Co-op revive','when your Player 2 partner goes down they stay where they fell — stand next to them for about 2.5 seconds to bring them back at half health, with a progress ring and controller buzz as you do'],
+  ]},
   { v:'2.60.0', items:[
     ['🎮','Controller upgrade','smoother circular stick dead-zones, analog walking (push gently to walk slowly), and a new aim assist that nudges your aim onto zombies near your crosshair'],
     ['📳','More vibration','heavy guns kick through the pad, explosions and boss slams rumble, and a heartbeat pulses when you are near death'],
@@ -2328,7 +2331,7 @@ function spawnMatch(){
   combo=0; comboT=0; hitstop=0;
   menuAmbient=false;                                     // real match takes over the canvas
   matchStat={dmgTaken:0, grappled:false, bestCombo:0};   // per-match feats for achievements
-  player2 = null;   // fresh match always starts solo; tryJoinPlayer2() re-adds them if a 2nd pad is present
+  player2 = null; reviveT = 0;   // fresh match always starts solo; tryJoinPlayer2() re-adds them if a 2nd pad is present
   buildDecor();
   // interior loot — every house hides a pickup (a reason to step inside)
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
@@ -2614,6 +2617,7 @@ function die(e, src, isHumanTarget){
     const killer = src ? (src.weapon ? (src.isPlayer2?src.name : src.isPlayer?meta.name:src.name) : 'A zombie') : 'The safe zone';
     killFeed.unshift({ txt: killer+'  ☠  '+victim, t:5, you: e.isPlayer || (src&&src.isPlayer) });
     if(killFeed.length>4) killFeed.pop();
+    if(e.isPlayer2 && player && player.alive){ reviveT=0; toast('⛑ Player 2 is down — stand next to them to revive!'); }
     checkEnd();
   }
 }
@@ -3432,6 +3436,40 @@ function tryJoinPlayer2(pads){
 // position leash that keeps both players on-screen without touching rendering at all. If a
 // zoomed camera is wanted later, search this file for every `cam.x`/`cam.y` read (not just this
 // comment) — each one currently assumes zoom===1.
+// Co-op revive: when Player 2 goes down they stay where they fell (zombies ignore the downed) and
+// Player 1 brings them back by standing within REVIVE_R for REVIVE_TIME seconds — no button, so it
+// works for keyboard/touch/pad alike. Leaving the circle drains progress at 2x. Revived at 50% hp.
+const REVIVE_R=70, REVIVE_TIME=2.5;
+let reviveT=0, reviveRumbleT=0;
+function updateRevive(dt){
+  if(!player2 || player2.alive || !player || !player.alive || grace>0) { reviveT=0; return; }
+  if(dist2(player.x,player.y,player2.x,player2.y) < REVIVE_R*REVIVE_R){
+    reviveT+=dt; reviveRumbleT-=dt;
+    if(reviveRumbleT<=0){ reviveRumbleT=0.35; gpRumble(0,90,0.15,0.2); gpRumble(1,90,0.15,0.2); }
+  } else reviveT=Math.max(0,reviveT-dt*2);
+  if(reviveT>=REVIVE_TIME){
+    reviveT=0; const p=player2;
+    p.alive=true; p.hp=Math.round(p.maxhp*0.5); p.burn=0; p.shield=0; p.vx=p.vy=0;
+    p.fireCd=0.5; p.reloading=0; p.mag=magCap(p);
+    toast('🎮 Player 2 is back up!'); sfx('level');
+    rings.push({x:p.x,y:p.y,t:0,dur:0.6,r0:8,r1:REVIVE_R+30,col:'90,209,255',lw:4});
+    for(let i=0;i<18;i++) spark(p.x,p.y-6,'#5ad1ff',rand(80,240),rand(0,TAU),.7);
+    gpRumble(0,220,0.4,0.6); gpRumble(1,220,0.4,0.6);
+  }
+}
+// the downed marker: a pulsing cyan circle with a fill arc showing revive progress
+function drawDowned(p){
+  if(!p || p.alive || !inView(p.x,p.y,60)) return;
+  const pulse=0.5+0.5*Math.sin(gtime*5), prog=clamp(reviveT/REVIVE_TIME,0,1);
+  ctx.save();
+  ctx.strokeStyle='rgba(90,209,255,'+(0.35+0.3*pulse).toFixed(2)+')'; ctx.lineWidth=2.5; ctx.setLineDash([6,6]);
+  ctx.beginPath(); ctx.arc(p.x,p.y,REVIVE_R,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(20,30,40,.55)'; ctx.beginPath(); ctx.arc(p.x,p.y,16,0,TAU); ctx.fill();
+  if(prog>0){ ctx.strokeStyle='#5ad1ff'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(p.x,p.y,16,-Math.PI/2,-Math.PI/2+prog*TAU); ctx.stroke(); }
+  ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff'; ctx.fillText('⛑',p.x,p.y+1);
+  ctx.font='800 11px Trebuchet MS, sans-serif'; ctx.fillStyle='#bfeaff'; ctx.fillText('stand close to revive',p.x,p.y-REVIVE_R-8);
+  ctx.restore();
+}
 function leashPlayer2(){
   if(!player2 || !player2.alive || !player || !player.alive) return;
   const maxLeash = Math.min(W,H)*0.42;
@@ -3969,6 +4007,7 @@ function draw(){
     if(h.onTower) drawables.push({y:1e8, fn:()=>{ ctx.save(); ctx.translate(0,-TOWER_ELEV); drawHuman(h); ctx.restore(); }});  // stand on the roof (drawn last, on top)
     else drawables.push({y:h.y, fn:()=>drawHuman(h)}); }
   drawables.sort((a,b)=>a.y-b.y);
+  drawDowned(player2);   // under the y-sorted sprites so a revived player pops back up on top
   for(const d of drawables) d.fn();
   // build-mode ghost: a snapped preview of the piece you're about to drop (green ok / red blocked)
   if(player && player.alive && player.buildSel>=0){ drawBuildGhost(player); }
@@ -5400,6 +5439,8 @@ function drawMini(){
     mctx.moveTo(px,py); mctx.lineTo(px+Math.cos(player.aim)*7,py+Math.sin(player.aim)*7); mctx.stroke();
     mctx.fillStyle='#7bff4a'; mctx.beginPath(); mctx.arc(px,py,3,0,TAU); mctx.fill();
     mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke(); }
+  if(player2&&!player2.alive&&player){   // downed co-op partner: hollow cyan ring so you can find them
+    mctx.strokeStyle='#5ad1ff'; mctx.lineWidth=1.6; mctx.beginPath(); mctx.arc(player2.x*sc,player2.y*sc,4,0,TAU); mctx.stroke(); }
   if(player2&&player2.alive){   // cyan, matching the .gpfocus controller-accent color used elsewhere
     const px=player2.x*sc, py=player2.y*sc;
     mctx.strokeStyle='rgba(255,255,255,.8)'; mctx.lineWidth=1.6; mctx.beginPath();
@@ -5464,6 +5505,7 @@ function loop(now){
     if(player2 && player2.alive) updatePlayer(player2,dt,curGp2,false);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
+    updateRevive(dt);
     leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();
