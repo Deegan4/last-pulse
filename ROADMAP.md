@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.64.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.65.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -399,3 +399,12 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 
 - [x] Rebuilt all 19 enemy designs with distinct headwear, anatomy, equipment, faces and cel shading in `ENEMY_ART` / `drawZombie`. Preserved combat stats, collision radii, animation inputs, boss warning radius and hit flashes.
 - [ ] Phone playtest: identify acid carriers, hunters and armored bosses in a crowded night wave; check animation readability and frame rate.
+
+## v2.65 — Shared iOS/web sources
+
+- [x] Extract markup, styles and 38 ordered game source units from the monolithic HTML.
+- [x] Generate the web runtime with source maps and validate freshness before shipping.
+- [x] Build native GameContent from canonical src/ and assets/ on every Xcode build/archive;
+      remove the stale tracked duplicate. Preserve SwiftData / StoreKit bridge contracts.
+- [ ] Longer-term: introduce explicit module interfaces around shared game state; this first
+      extraction preserves the existing private scope and initialization order.

@@ -1632,3 +1632,8 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
 # 2.64.0 — The horde reborn
 - Replaced the shared round-head/ribcage enemy art with 19 cel-shaded monster designs: villagers and guards, scarfed hunters, insect skitters, horned ogres, plated crushers, acid throats, cobra hoods, swollen bellies, quilled stalkers, masked wraiths, frog leapers, antler shamans, frilled howlers, beetle armor, brood husks, knights and crowned colossi. Visual descriptors live in ENEMY_ART; gameplay values remain in ZTYPES.
 - Validation: both script blocks and release gates pass. `scripts/render-enemies.mjs` captures the before/after roster, exercises 19 enemies in four states (76 renders), and runs a 57-enemy night crowd with live boss telegraphs; no page errors. Normal Horde shooting also passes. Screenshots inspected; phone performance and visual preference remain playtest items.
+
+# 2.65.0 — Shared iOS/web source tree
+- Extracted HTML, CSS, the 3D layer and 38 ordered game source files into src/. The stdlib Python builder preserves the private game scope, emits source maps and generates web outputs; validators reject stale outputs and parse external scripts.
+- Xcode and project.yml now build GameContent directly from canonical sources/assets on every build/archive. Removed the tracked stale native copy; the local preview bundle is generated and ignored. Native save and StoreKit contracts remain unchanged.
+- Updated perk/roster/audio fixtures to instrument only disposable copies of the assembled runtime. Xcode simulator build succeeded with the new packaging phase; native boot shows the actual app UI.

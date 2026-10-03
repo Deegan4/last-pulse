@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<!-- iOS Safari's status bar is handled via the app-specific meta tag below; we intentionally do not
+     use theme-color here because Firefox/Opera do not support it and this page does not depend on
+     it for its gameplay visuals. The surrounding page/background remains tuned to the canvas edge tone. -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Last Pulse" />
+<meta name="mobile-web-app-capable" content="yes" />
+<!-- App icons + PWA manifest -->
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icon/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon/icon-192.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icon/apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<title>Last Pulse</title>
+<meta name="description" content="A cartoon twin-stick zombie survival royale you can play free in your browser — build cover, blast the horde, and outlast the shrinking safe zone. No install, no sign-up." />
+<link rel="canonical" href="https://deegan4.github.io/last-pulse/" />
+<!-- Social share preview — Open Graph (Facebook, LinkedIn, Discord, iMessage, WhatsApp…) -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Last Pulse" />
+<meta property="og:title" content="Last Pulse — Survive the Swarm" />
+<meta property="og:description" content="A cartoon twin-stick zombie survival royale. Build cover, blast the horde, outlast the shrinking zone. Play free — no install, no sign-up." />
+<meta property="og:url" content="https://deegan4.github.io/last-pulse/" />
+<meta property="og:image" content="https://raw.githack.com/Deegan4/last-pulse/main/docs/img/social-card.png" />
+<meta property="og:image:secure_url" content="https://raw.githack.com/Deegan4/last-pulse/main/docs/img/social-card.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1920" />
+<meta property="og:image:height" content="1008" />
+<meta property="og:image:alt" content="Last Pulse — Survive the Swarm: a cartoon twin-stick zombie survival royale" />
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Last Pulse — Survive the Swarm" />
+<meta name="twitter:description" content="A cartoon twin-stick zombie survival royale. Build, blast, and outlast — play free in your browser." />
+<meta name="twitter:image" content="https://raw.githack.com/Deegan4/last-pulse/main/docs/img/social-card.png" />
+<meta name="twitter:image:alt" content="Last Pulse — Survive the Swarm" />
+<link rel="stylesheet" href="assets/game/game.css" />
+</head>
+<body>
+<div id="game">
+  <canvas id="cv"></canvas>
+
+  <!-- ===== In-game HUD ===== -->
+  <div id="hud" class="hidden">
+    <button id="gearHud" aria-label="settings">⚙</button>
+    <div id="xpwrap"><span id="lvlText">LV 1</span><div id="xpbar"><div id="xpfill"></div></div></div>
+    <div id="mmwrap">
+      <div id="mmBody">
+        <canvas id="minimap" width="132" height="132"></canvas>
+        <div id="stats">
+          <div class="srow"><span class="si">👥</span><b id="statPlayers">15/15</b> <span id="lblPlayers">players</span></div>
+          <div class="srow"><span class="si">💀</span><b id="statKills">0</b> kills</div>
+          <div class="srow safe"><span class="si">⏱️</span><span id="lblSafe">Safe area:</span> <b id="statSafe">--</b></div>
+          <div class="srow is-hidden" id="mutRow"><span class="si">🎲</span><b id="statMut">--</b></div>
+          <div class="srow fps"><span class="si">📶</span>FPS <b id="statFps">60</b></div>
+        </div>
+      </div>
+      <div id="mmFab" role="button" aria-label="Toggle minimap" title="Toggle minimap"><span class="fabChevron">︿</span></div>
+    </div>
+  </div>
+
+  <!-- ===== Controls (zones capture touch; bases/knobs float over the whole stage) ===== -->
+  <div id="ctrl" class="hidden">
+    <div id="moveHint"><div class="gly move"></div></div>
+    <div id="aimHint"><div class="gly aim"><b></b></div></div>
+    <div id="moveZone" class="stickzone"></div>
+    <div id="aimZone" class="stickzone"></div>
+    <div class="stickbase" id="moveBase"><div class="gly move"></div></div>
+    <div class="stickknob" id="moveKnob"></div>
+    <div class="stickbase" id="aimBase"><div class="gly aim"><b></b></div></div>
+    <div class="stickknob" id="aimKnob"></div>
+  </div>
+  <div id="powers" class="hidden collapsed">
+    <div id="powerBtns">
+      <div id="scrapHud" title="Scrap — spend it to build (B)"><span class="sc">🔩</span><b id="scrapCount">0</b></div>
+      <div class="power" id="buildBtn"><div class="cool" id="buildCost"></div><span id="buildIcon">🔨</span><span class="key">B</span></div>
+      <div class="power" id="boltBtn"><div class="cool" id="boltCool"></div><span>⚡</span><span class="key">Q</span></div>
+      <div class="power" id="bombBtn"><div class="cool" id="bombCool"></div><span>💣</span><span class="key">E</span></div>
+      <div class="power" id="grapBtn"><div class="cool" id="grapCool"></div><span>🪝</span><span class="key">F</span></div>
+    </div>
+    <div id="powerFab" role="button" aria-label="Abilities" title="Abilities (tap to open)"><span class="fabChevron">︿</span></div>
+  </div>
+
+  <!-- ===== Start / name screen ===== -->
+  <div id="startScreen" class="screen center menu">
+    <div class="menuGlow"></div>
+    <div class="logo">Last Pulse<small>Survive the swarm</small></div>
+
+    <div class="fighter">
+      <div class="fighterPortrait" id="fighterPortrait" title="Change fighter"></div>
+      <div class="fighterInfo">
+        <input id="nameInput" class="nameField" maxlength="12" placeholder="deegan" aria-label="your name" />
+        <div class="lvlrow"><span class="lvlbadge">LV <b id="menuLvl">1</b></span>
+          <div class="xpmini"><i id="menuXp"></i></div>
+          <span class="coinbadge">🪙 <b id="menuCoins">0</b></span></div>
+        <div class="rankrow"><span class="rankbadge" id="menuRank">🐣 Rookie</span>
+          <span class="ranknext" id="menuRankNext"></span></div>
+        <div class="fighterEdit" id="changeAvatar">▸ tap portrait to change fighter</div>
+      </div>
+    </div>
+
+    <div class="rosterStrip" id="rosterStrip"></div>
+
+    <button class="btn play" id="toModeBtn"><span id="playLabel">▶ PLAY</span></button>
+    <div id="dailyCard" class="dailycard"></div>
+    <div id="statsCard" class="statscard"></div>
+    <div class="menurow">
+      <button class="btn ghost achbtn" id="achBtn">🏅 Achievements <span id="achCount" class="achcount"></span></button>
+      <button class="btn ghost achbtn" id="shopBtn">🛒 Shop</button>
+    </div>
+    <div class="menurow"><button class="btn ghost achbtn donatebtn" id="donateBtn">💜 Support the game</button></div>
+    <button class="btn ghost achbtn a2hsbtn hidden" id="a2hsBtn">📲 Add to Home Screen</button>
+    <div class="footer footer-ver"><span id="verLink" class="verlink"></span></div>
+  </div>
+
+  <!-- ===== Mode select (picked after the main menu) ===== -->
+  <!-- mode select removed: Endless Horde is the game (BR & Squads retired in v2.33.0) -->
+
+  <!-- ===== Avatar select ===== -->
+  <div id="avatarScreen" class="screen hidden">
+    <div class="top"><button class="gearbtn" id="avatarGear">⚙</button>
+      <h2 class="heading">Select Your Avatar</h2></div>
+    <div class="sub">Current level: <span id="curLevel">1</span></div>
+    <canvas id="hero3d" width="220" height="220" title="3D preview"></canvas>
+    <div class="customizer" id="customizer">
+      <div class="customizerHead"><b>Customize your look</b><span>saved to your profile</span></div>
+      <div class="customRow"><label>Palette</label><div class="customChoices" id="paletteChoices"></div></div>
+      <div class="customRow"><label>Hair</label><div class="customChoices" id="hairChoices"></div></div>
+      <div class="customRow"><label>Accessory</label><div class="customChoices" id="accessoryChoices"></div></div>
+      <div class="customRow"><label>Trait</label><div class="customChoices" id="traitChoices"></div></div>
+      <div class="customSummary" id="customSummary"></div>
+    </div>
+    <div class="grid" id="avatarGrid"></div>
+    <div class="footer"><button class="btn" id="toWeaponBtn">Continue</button></div>
+  </div>
+
+  <!-- ===== Weapon select ===== -->
+  <div id="weaponScreen" class="screen hidden">
+    <div class="top"><button class="gearbtn" id="weaponGear">⚙</button>
+      <h2 class="heading">Select Your Weapon</h2></div>
+    <div class="sub">Current level: <span id="curLevel2">1</span></div>
+    <div class="grid" id="weaponGrid"></div>
+    <div class="footer"><button class="btn blue" id="dropInBtn">Drop In</button></div>
+  </div>
+
+  <!-- ===== Settings modal ===== -->
+  <div id="settings" class="modal hidden">
+    <h2 class="heading">Settings</h2>
+    <div class="stack">
+      <button class="opt" id="sShop"><span class="oic">🛒</span>Shop</button>
+      <div class="slider"><label>🔉 SFX volume <span id="sfxVal">80%</span></label>
+        <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
+      <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
+        <input type="range" id="aimSens" min="30" max="200" step="10"></div>
+      <div class="opt ctrlrow" id="sCtrlRow"><span class="oic">🎮</span>
+        <div class="ctrltxt"><b id="sCtrlStatus">⚪ No controller connected</b>
+          <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
+      </div>
+      <!-- mid-match (pause) starts these collapsed behind sMoreToggle — profile/save/diagnostic
+           options aren't what you reach for while a horde is bearing down. Pre-match (reached via
+           the avatar/weapon screen gear icons) shows everything, same as before this change. -->
+      <button class="opt" id="sMoreToggle"><span class="oic">⋯</span>More options</button>
+      <button class="opt sMoreItem" id="sAvatar"><span class="oic">🦸</span>Change Avatar</button>
+      <button class="opt sMoreItem" id="sWeapon"><span class="oic">🔫</span>Change Weapon</button>
+      <button class="opt sMoreItem" id="sName"><span class="oic">✏️</span>Change Name</button>
+      <button class="opt sMoreItem" id="sExport"><span class="oic">💾</span>Copy Save Code</button>
+      <button class="opt sMoreItem" id="sImport"><span class="oic">📥</span>Enter Save Code</button>
+      <button class="opt sMoreItem" id="sFit"><span class="oic">📏</span>Screen Fit Check</button>
+      <button class="opt danger hidden" id="sQuit"><span class="oic">🏳️</span>Quit to Main Menu</button>
+    </div>
+    <button class="close" id="sClose">Close</button>
+  </div>
+
+  <!-- ===== Results ===== -->
+  <div id="results" class="modal hidden">
+    <div class="placard" id="placard">#8</div>
+    <div id="placeSub">Eliminated</div>
+    <div class="rstats" id="rStats"></div>
+    <div class="runlocks" id="rUnlocks"></div>
+    <div class="xpwrap"><div class="xprow"><span id="rXpLbl">+0 XP</span><span id="rLvl">Lv 1</span></div>
+      <div class="xpbar"><i id="rXpFill"></i></div></div>
+    <div id="rNext" class="rnext"></div>
+    <div id="rCareer" class="career"></div>
+    <div id="rDonate" class="rdonate hidden">💜 Enjoying Last Pulse? <u>Support the game</u> — every tip helps.</div>
+    <div class="btnrow">
+      <button class="btn" id="againBtn">Play Again</button>
+      <button class="btn ghost" id="menuBtn">Menu</button>
+    </div>
+    <!-- Game Center leaderboard — native wrapper only; shown/hidden by inNativeWrapper() in
+         renderResultsLeaderboardBtn() (screens.js). Tapping posts to LastPulseIOS/LastPulse/
+         GameCenterManager.swift via the "nativeShowLeaderboard" message handler. -->
+    <button class="btn ghost" id="gcLeaderboardBtn" hidden>🏆 Leaderboard</button>
+  </div>
+
+  <!-- ===== Achievements ===== -->
+  <div id="achievements" class="modal hidden">
+    <h2 class="heading">Achievements</h2>
+    <div id="achProg" class="career"></div>
+    <div class="achgrid" id="achGrid"></div>
+    <button class="close" id="achClose">Close</button>
+  </div>
+
+  <!-- ===== Shop ===== -->
+  <div id="shop" class="modal hidden">
+    <h2 class="heading">Shop</h2>
+    <div id="shopCoins" class="career"></div>
+    <div class="achgrid" id="shopGrid"></div>
+    <button class="close" id="shopClose">Close</button>
+  </div>
+
+  <!-- ===== Perk pick (every 3rd Horde wave, forced choice — no close button) ===== -->
+  <div id="perkPick" class="modal hidden">
+    <h2 class="heading">Choose a Perk</h2>
+    <div class="achgrid" id="perkGrid"></div>
+  </div>
+
+  <!-- ===== Support / IAP =====
+       Two mutually-exclusive paths, toggled in openDonate() via inNativeWrapper(): the web build
+       opens the creator's Stripe Payment Link (external payment, fine outside the App Store);
+       the iOS wrapper build offers a real StoreKit2 purchase instead — Apple 3.1.1 forbids an
+       external payment link for digital content inside a native app. -->
+  <div id="donate" class="modal hidden">
+    <div class="wnburst">💜</div>
+    <h2 class="heading">Support Last Pulse</h2>
+    <div class="donateBlurb" id="donateBlurb">Last Pulse is free and made by one person. If you’re having fun, a small tip keeps new modes, weapons &amp; fixes coming. Thank you!</div>
+    <button class="btn blue donateCta" id="donateGo">❤ Donate via Stripe →</button>
+    <div class="donateSecure" id="donateSecure">🔒 You choose your amount securely on Stripe’s own page — the game never sees your card details.</div>
+    <button class="btn blue donateCta" id="iapUnlockBtn" hidden>🔓 Unlock Everything — $4.99</button>
+    <button class="btn ghost donateCta" id="iapRestoreBtn" hidden>Restore Purchases</button>
+    <div id="donateNote" class="donateNote" hidden></div>
+    <button class="close" id="donateClose">Close</button>
+  </div>
+
+  <!-- ===== Add to Home Screen (iOS instructions) ===== -->
+  <div id="a2hs" class="modal hidden">
+    <div class="wnburst">📲</div>
+    <h2 class="heading">Add to Home Screen</h2>
+    <div class="a2hsBlurb">Install Last Pulse like a real app — it opens <b>fullscreen</b> with no browser bars, and it’s one tap from your Home Screen.</div>
+    <ol class="a2hsSteps">
+      <li><span class="a2n">1</span><div>In <b>Safari</b>, tap the <b>Share</b> button — a square with an arrow pointing up <span class="a2ic">↑</span> — at the bottom of the screen <span class="a2sub">(top-right on iPad)</span>.</div></li>
+      <li><span class="a2n">2</span><div>Scroll down the list and tap <b>Add to Home Screen</b> <span class="a2ic">＋</span>.</div></li>
+      <li><span class="a2n">3</span><div>Tap <b>Add</b> — a <b>Last Pulse</b> icon appears on your Home Screen. Launch it from there for the best experience.</div></li>
+    </ol>
+    <div class="a2hsNote">Already in the app? You’re all set — this only shows in Safari.</div>
+    <button class="close" id="a2hsClose">Got it</button>
+  </div>
+
+  <!-- ===== Game-updated notification ===== -->
+  <div id="whatsnew" class="modal hidden">
+    <div class="wnburst">🎉</div>
+    <h2 class="heading">Game Updated!</h2>
+    <div class="wnver" id="wnVer">v1.0</div>
+    <div class="wnlist" id="wnList"></div>
+    <button class="close" id="wnClose">Let's Go!</button>
+  </div>
+
+  <!-- spectate bar (after the player dies) -->
+  <div id="specBar" class="hidden">
+    <div class="specinfo">ELIMINATED <b id="specPlace">#8</b> · watching <span id="specName">—</span></div>
+    <button id="specBtn" class="specbtn">Results ▸</button>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script src="assets/game/game.js"></script>
+
+<!-- ===== 3D model layer — progressive enhancement =====
+     Loads vendored Three.js and renders generated GLB models as billboards in the 2D field
+     (player avatars + local building props) AND on the avatar screen.
+     Each model is rendered to an offscreen sprite once per frame; drawHuman/drawBuilding
+     blit that sprite at the world position so it depth-sorts with the 2D art.
+     Entirely fail-safe: no CDN / no WebGL / no GLB → window.Models3D never appears and
+     every entity draws its hand-drawn 2D chibi instead. The game never depends on this. -->
+<script type="module" src="assets/game/models3d.js"></script>
+
+<!-- PWA install + offline play (ROADMAP.md "PWA install"). Registration is guarded to
+     http(s) origins only: the native iOS wrapper loads this same document via file:// through
+     WKWebView, where the Service Worker API is unavailable — the guard keeps that console
+     silent rather than relying on the try/catch alone. -->
+<script>
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>

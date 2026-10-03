@@ -20,11 +20,16 @@ final class StoreManager {
 
     static let unlockAllProductID = "com.lastpulse.game.unlockall"
     static let coins500ProductID = "com.lastpulse.game.coins500"
+    static let coins1200ProductID = "com.lastpulse.game.coins1200"
+    static let coins3000ProductID = "com.lastpulse.game.coins3000"
 
     /// Consumable product IDs mapped to the coin amount they grant. Consumables never appear
     /// in `Transaction.currentEntitlements` and aren't restorable across devices/reinstalls —
     /// that's expected App Store behavior for consumables, not a bug.
-    private static let coinAmounts: [String: Int] = [coins500ProductID: 500]
+    private static let coinAmounts: [String: Int] = [
+        coins500ProductID: 500, coins1200ProductID: 1200, coins3000ProductID: 3000,
+    ]
+    static var coinProductIDs: [String] { Array(coinAmounts.keys) }
 
     enum PurchaseResult {
         case unlockAll
@@ -47,7 +52,7 @@ final class StoreManager {
     deinit { updatesTask?.cancel() }
 
     func loadProducts() async {
-        products = (try? await Product.products(for: [Self.unlockAllProductID, Self.coins500ProductID])) ?? []
+        products = (try? await Product.products(for: [Self.unlockAllProductID] + Self.coinProductIDs)) ?? []
     }
 
     func localizedPrice(for productID: String) -> String? {

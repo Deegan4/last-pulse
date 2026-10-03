@@ -12,22 +12,23 @@
 		51D22DA8A35EF607B8F1A0D5 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9940BBCD3FA5FA1878DA03A0 /* AppDelegate.swift */; };
 		6BA9092E4F850828157BEB4B /* StoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F75EE83AA972726D640EFF /* StoreManager.swift */; };
 		7C199C1DCDF65CFB78CD5C30 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 828030D38F8D609649B191CF /* PrivacyInfo.xcprivacy */; };
-		82F5952F82E5446750C00B7D /* GameContent in Resources */ = {isa = PBXBuildFile; fileRef = 4F37286D854ABD1EA43EABC6 /* GameContent */; };
 		999E9C50D52C4527684CA4A7 /* GameSaveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3227FDA42576E49452934F /* GameSaveStore.swift */; };
+		AC3CA33CD3A79542E87D93F3 /* GameCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DD45796C412D0799654D8E /* GameCenterManager.swift */; };
 		D0861D669DC522588D9BA6CF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 958E178ABA1B685E84EF4407 /* SceneDelegate.swift */; };
 		DA5D43361BC83C98A90ADA78 /* GameSave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1838D4B4CE87F04A5D20F8DC /* GameSave.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		01B1438378F97DE9CD666275 /* LastPulse.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LastPulse.entitlements; sourceTree = "<group>"; };
 		0A3227FDA42576E49452934F /* GameSaveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSaveStore.swift; sourceTree = "<group>"; };
 		14F75EE83AA972726D640EFF /* StoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreManager.swift; sourceTree = "<group>"; };
 		1838D4B4CE87F04A5D20F8DC /* GameSave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSave.swift; sourceTree = "<group>"; };
 		25555F74490A677F1072445E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		4DD4D7CE447B6EECF04E003F /* LastPulse.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LastPulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4F37286D854ABD1EA43EABC6 /* GameContent */ = {isa = PBXFileReference; lastKnownFileType = folder; path = GameContent; sourceTree = SOURCE_ROOT; };
 		828030D38F8D609649B191CF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		958E178ABA1B685E84EF4407 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		9940BBCD3FA5FA1878DA03A0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D5DD45796C412D0799654D8E /* GameCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterManager.swift; sourceTree = "<group>"; };
 		E569D00D09288752FE8F2A3A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F82CC19D5A8532E8E1E752B5 /* GameViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -46,10 +47,12 @@
 			children = (
 				9940BBCD3FA5FA1878DA03A0 /* AppDelegate.swift */,
 				E569D00D09288752FE8F2A3A /* Assets.xcassets */,
+				D5DD45796C412D0799654D8E /* GameCenterManager.swift */,
 				1838D4B4CE87F04A5D20F8DC /* GameSave.swift */,
 				0A3227FDA42576E49452934F /* GameSaveStore.swift */,
 				F82CC19D5A8532E8E1E752B5 /* GameViewController.swift */,
 				25555F74490A677F1072445E /* Info.plist */,
+				01B1438378F97DE9CD666275 /* LastPulse.entitlements */,
 				828030D38F8D609649B191CF /* PrivacyInfo.xcprivacy */,
 				958E178ABA1B685E84EF4407 /* SceneDelegate.swift */,
 				14F75EE83AA972726D640EFF /* StoreManager.swift */,
@@ -60,7 +63,6 @@
 		C205F580C0557A79B00DC280 = {
 			isa = PBXGroup;
 			children = (
-				4F37286D854ABD1EA43EABC6 /* GameContent */,
 				9CB40ADC6A75CC7393A71E83 /* LastPulse */,
 				75A3FCEBA4350C11D37520CC /* Products */,
 			);
@@ -73,6 +75,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 12FED11551471B5EF4D7E06F /* Build configuration list for PBXNativeTarget "LastPulse" */;
 			buildPhases = (
+				EC828DE1B1FFE881C5819C59 /* Build Shared Game */,
 				BCBA37ADB310E21BE97B76E0 /* Sources */,
 				0AB90B1A7856E4CD7BF4B57E /* Resources */,
 			);
@@ -126,12 +129,33 @@
 			buildActionMask = 2147483647;
 			files = (
 				39DD63E75A82892C2B286266 /* Assets.xcassets in Resources */,
-				82F5952F82E5446750C00B7D /* GameContent in Resources */,
 				7C199C1DCDF65CFB78CD5C30 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		EC828DE1B1FFE881C5819C59 /* Build Shared Game */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Shared Game";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/usr/bin/python3 \"$SRCROOT/../scripts/build-game.py\" --ios-only --ios-output \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/GameContent\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		BCBA37ADB310E21BE97B76E0 /* Sources */ = {
@@ -139,6 +163,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				51D22DA8A35EF607B8F1A0D5 /* AppDelegate.swift in Sources */,
+				AC3CA33CD3A79542E87D93F3 /* GameCenterManager.swift in Sources */,
 				DA5D43361BC83C98A90ADA78 /* GameSave.swift in Sources */,
 				999E9C50D52C4527684CA4A7 /* GameSaveStore.swift in Sources */,
 				2106259937881A342E7CF133 /* GameViewController.swift in Sources */,
@@ -217,8 +242,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = LastPulse/LastPulse.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = A6H72TGWNL;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = LastPulse/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -236,8 +263,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = LastPulse/LastPulse.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = A6H72TGWNL;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = LastPulse/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

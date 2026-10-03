@@ -4,9 +4,11 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { validationSource } from './game-source.mjs';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+execFileSync('python3', [join(root, 'scripts/build-game.py'), '--check'], { stdio: 'inherit' });
 try {
   const out = execFileSync('node', [join(root, 'scripts', 'parse-check.mjs')], { encoding: 'utf8' }).trim();
   console.log(out);
@@ -47,11 +49,11 @@ if (existsSync(join(root, 'assets', 'meshy', 'manifest.json'))) {
       if (rel) files.push('assets/meshy/' + rel);
     }
   } else {
-    const html = readFileSync(join(root, 'index.html'), 'utf8');
+    const html = validationSource();
     const block = (html.match(/const FALLBACK_FILES\s*=\s*\{([\s\S]*?)\}/) || [])[1] || '';
     files.push(...[...block.matchAll(/['"]([^'"]+\.glb)['"]/g)].map(x => x[1]));
   }
-  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const html = validationSource();
   const buildingBlock = (html.match(/const BUILDING_FILES\s*=\s*\{([\s\S]*?)\}/) || [])[1] || '';
   files.push(...[...buildingBlock.matchAll(/['"]([^'"]+\.glb)['"]/g)].map(x => x[1]));
   const triCount = (file) => {
@@ -85,7 +87,7 @@ if (existsSync(join(root, 'assets', 'meshy', 'manifest.json'))) {
 // Name-drift gate — the in-game <title>, the README H1, and the GitHub repo name must agree, so
 // the game's name can't silently fork across the three places it lives (as it did before the rename).
 try {
-  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const html = validationSource();
   const title = (html.match(/<title>([^<]+)<\/title>/) || [])[1]?.trim();
   const logo  = (html.match(/class="logo">([^<]+?)<small/) || [])[1]?.trim();
   const readme = readFileSync(join(root, 'README.md'), 'utf8');
@@ -109,7 +111,7 @@ try {
 // CHANGELOG[0].v; if they drift, returning players see a version that doesn't match the notes (or
 // no popup at all). Assert they agree so a bump can't ship half-done.
 try {
-  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const html = validationSource();
   const gv  = (html.match(/GAME_VERSION\s*=\s*'([^']+)'/) || [])[1];
   const clv = (html.match(/CHANGELOG\s*=\s*\[\s*\{\s*v:\s*'([^']+)'/) || [])[1];
   if (!gv || !clv) { console.error('✗ version gate: could not read GAME_VERSION / CHANGELOG[0].v'); process.exit(1); }
@@ -130,7 +132,7 @@ try {
 // people to run `--mode br`, and the driver's mode click is .catch()-wrapped, so the documented
 // smoke test silently tested the wrong thing instead of failing.
 try {
-  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const html = validationSource();
   const modes = [...((html.match(/const MODES\s*=\s*\[([^\]]*)\]/) || [])[1] || '').matchAll(/['"]([^'"]+)['"]/g)].map(m => m[1]);
   if (!modes.length) { console.error('✗ mode gate: could not read `const MODES = [...]` from index.html'); process.exit(1); }
   const bad = [];
@@ -148,7 +150,7 @@ try {
 // reachable by a spawn path, or it's dead content (as spitter/bloater were: defined in v2.20.0 but
 // hordeKind never returned them). Assert each is referenced by hordeKind (mix) or a makeZombie call.
 try {
-  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const html = validationSource();
   const hkStart = html.indexOf('function hordeKind');
   const hkBody = hkStart >= 0 ? html.slice(hkStart, html.indexOf('\nfunction ', hkStart + 1)) : '';
   const huStart = html.indexOf('function hordeUpdate');

@@ -1,0 +1,666 @@
+:root{
+    /* safe-area insets as vars: default to env(), but resize() OVERRIDES them with real
+       hardware values when iOS standalone reports env()=0 (a known WebKit lie — it made the
+       title clip under the clock and left "black bar" strips no measurement-based fix could
+       see). Every layout rule below reads these vars, never env() directly. */
+    --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px); --sar:env(safe-area-inset-right,0px);
+    --grass:#6aa84f; --grass2:#5c9a43; --panel:#5f7d3f; --panelHi:#6f9149;
+    --line:rgba(255,255,255,.18); --lime:#a6e22e; --lime2:#7bbf2e;
+    --ink:#1d2a14; --txt:#f3f7ea; --muted:#cddcb6; --hp:#5fd35f; --hp2:#2c8a2c;
+    --ammo:#ff9b3d; --danger:#e2452f; --bolt:#39a0ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+    font-family:"Trebuchet MS",system-ui,"Segoe UI",Roboto,sans-serif}
+  /* Page background mirrors the .screen menu mesh (same green blooms), so the iOS status-bar /
+     notch strip — which on standalone / in-app contexts falls through to the page bg — shows the
+     game's glowing green and blends into the menu, instead of a black band. */
+  /* base color matches the #game stage (#111d0c): iOS paints this beyond the layout viewport
+     when it mis-measures, so a mismatch shows as a black bar at the bottom on real devices */
+  /* fallback paint for any strip a lying viewport leaves uncovered — tuned to the same
+     dark-olive the translucent menus produce over the field, so a residual sliver blends
+     instead of reading as a black bar (the recurring iOS complaint) */
+  html,body{height:100%;overflow:hidden;background:#243418;color:var(--txt);
+    background-image:
+      radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.12), transparent 66%),
+      radial-gradient(130% 95% at 50% 45%, #2a3b1c, #1a2610 92%);
+    background-attachment:fixed;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  /* portrait stage, centered with letterbox on desktop. Size is computed in JS
+     (resize()) for reliability — iOS Safari mis-evaluates min()/calc() viewport math
+     and can collapse the stage to zero height. CSS here is just a full-screen fallback. */
+  /* The 100vmax box-shadow is the desktop letterbox AND whatever fills the iOS status-bar /
+     notch strip when the stage doesn't reach it — so it's tinted the game's dark green, not
+     near-black, which is what used to read as a black bar at the top of the screen. */
+  #game{position:fixed;inset:0;margin:auto;overflow:hidden;background:#2a4420;
+    width:100%;height:100%;
+    box-shadow:0 0 0 100vmax #2a4420;}
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  .hidden{display:none!important}
+  .srow.is-hidden{display:none}
+  .heading{font-weight:800;letter-spacing:1px;font-style:italic;
+    text-shadow:2px 2px 0 rgba(0,0,0,.35);font-size:clamp(26px,8vw,42px);
+    text-transform:uppercase;color:#fff;line-height:1}
+
+  /* ---------- Full-screen menu screens ---------- */
+  .screen{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
+    padding:calc(var(--sat) + 12px) 14px calc(var(--sab) + 16px);
+    overflow-y:auto;overflow-x:hidden;isolation:isolate;background:#0b120a;
+    /* modern mesh-gradient base: layered neon blooms over a deep near-black green + centre vignette */
+    background-image:
+      radial-gradient(58% 44% at 50% -6%, rgba(160,240,95,.26), transparent 66%),
+      radial-gradient(52% 48% at 90% 16%, rgba(50,196,180,.22), transparent 62%),
+      radial-gradient(58% 52% at 8% 90%, rgba(128,98,240,.20), transparent 62%),
+      radial-gradient(46% 40% at 82% 96%, rgba(226,120,47,.14), transparent 60%),
+      radial-gradient(130% 95% at 50% 45%, #17280f, #090d07 92%);}
+  /* keep screen content above the ember / glow layers (which stay at z-index:0 via their own rules) */
+  .screen > *{position:relative;z-index:1}
+  /* drifting aurora mesh — slow rotating/scaling neon blobs (below content, above the base) */
+  .screen::before{content:"";position:absolute;inset:-25%;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(38% 38% at 24% 30%, rgba(170,255,100,.34), transparent 60%),
+      radial-gradient(42% 42% at 76% 22%, rgba(56,214,196,.28), transparent 60%),
+      radial-gradient(46% 46% at 66% 80%, rgba(140,104,244,.24), transparent 62%),
+      radial-gradient(40% 40% at 22% 82%, rgba(255,138,58,.18), transparent 60%);
+    animation:aurora 24s ease-in-out infinite alternate;will-change:transform;}
+  /* modern tech grid + top light-beam, softly masked to the centre (below content) */
+  .screen::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background:
+      linear-gradient(180deg, rgba(190,255,100,.06), transparent 26%),
+      repeating-linear-gradient(0deg, rgba(210,255,180,.035) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(210,255,180,.035) 0 1px, transparent 1px 44px);
+    -webkit-mask-image:radial-gradient(82% 80% at 50% 36%, #000, transparent 86%);
+            mask-image:radial-gradient(82% 80% at 50% 36%, #000, transparent 86%);
+    animation:gridpan 26s linear infinite;}
+  @keyframes aurora{
+    0%{transform:translate3d(-3%,-2%,0) rotate(0deg) scale(1.06)}
+    50%{transform:translate3d(3%,2%,0) rotate(7deg) scale(1.2)}
+    100%{transform:translate3d(-2%,3%,0) rotate(-5deg) scale(1.12)}}
+  @keyframes gridpan{from{background-position:0 0, 0 0, 0 0}to{background-position:0 0, 0 -44px, 44px 0}}
+  @media (prefers-reduced-motion:reduce){ .screen::before,.screen::after{animation:none} }
+  .screen .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .gearbtn{width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;flex:0 0 auto;
+    background:#3f5628;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 3px 0 rgba(0,0,0,.25)}
+  .screen h2{margin:2px 0}
+  .screen .sub{color:#eaf6d6;font-weight:700;font-size:15px;margin:2px 0 12px;text-align:center}
+  .center{align-items:center;justify-content:center;text-align:center}
+  /* 3D hero preview on the avatar screen — hidden until a model successfully loads */
+  #hero3d{display:none;width:220px;height:220px;margin:0 auto 10px;border-radius:14px;
+    background:radial-gradient(circle at 50% 35%, #3a4a2c, #20251a);box-shadow:0 6px 22px rgba(0,0,0,.35)}
+  #hero3d.ready{display:block}
+
+  /* ---------- Character customization ---------- */
+  .customizer{width:min(100%,520px);margin:0 auto 10px;padding:12px;border:1px solid rgba(214,255,110,.28);
+    border-radius:16px;background:linear-gradient(145deg,rgba(53,78,35,.82),rgba(24,38,22,.76));
+    box-shadow:0 8px 22px rgba(0,0,0,.22)}
+  .customizerHead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:9px}
+  .customizerHead b{font-size:15px;color:#fff;letter-spacing:.4px}.customizerHead span{font-size:10px;color:#b9d18d;font-weight:700}
+  .customRow{display:grid;grid-template-columns:68px 1fr;align-items:center;gap:8px;margin:8px 0}
+  .customRow label{font-size:11px;color:#dfeccb;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+  .customChoices{display:flex;gap:7px;flex-wrap:wrap}
+  .customChoice{min-width:36px;height:30px;padding:0 9px;border:1px solid rgba(255,255,255,.2);border-radius:999px;
+    background:rgba(0,0,0,.23);color:#fff;font-weight:800;font-size:11px;cursor:pointer;transition:transform .08s,border-color .12s,box-shadow .12s}
+  .customChoice:active{transform:scale(.94)}.customChoice.on{border-color:#d6ff6e;box-shadow:0 0 0 2px #d6ff6e44;background:rgba(181,235,86,.2)}
+  .paletteChoice{width:30px;min-width:30px;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.38)}
+  .customSummary{margin-top:9px;color:#b9d18d;font-size:11px;font-weight:700;text-align:center}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:520px;margin:0 auto}
+  .card{background:rgba(60,82,38,.72);border:2px solid var(--line);border-radius:14px;
+    padding:10px 10px 12px;position:relative;cursor:pointer;transition:transform .08s,border-color .12s}
+  .card:active{transform:scale(.98)}
+  .card.sel{border-color:#d6ff6e;box-shadow:0 0 0 2px #d6ff6e44, 0 8px 22px rgba(0,0,0,.3)}
+  .card.locked{opacity:.55;cursor:not-allowed}
+  /* gamepad menu-cursor ring — outline (not border/box-shadow) so it layers cleanly over .sel's
+     own border-color/box-shadow on cards, and over .opt/.btn elsewhere, without fighting layout */
+  .gpfocus{outline:3px solid #5ad1ff!important;outline-offset:2px;
+    box-shadow:0 0 0 5px rgba(90,209,255,.28)!important}
+  .card .lock{position:absolute;top:8px;right:9px;font-size:18px;filter:grayscale(1)}
+  .card .por{height:84px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px}
+  .card .por canvas{display:block}
+  .card .nm{text-align:center;font-weight:800;font-size:17px;margin:2px 0 7px;color:#fff}
+  .row{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;color:#eaf6d6;margin-top:5px}
+  .bar{height:7px;border-radius:5px;background:rgba(0,0,0,.28);margin-top:3px;overflow:hidden}
+  .bar > i{display:block;height:100%;border-radius:5px;
+    background:linear-gradient(90deg,#bfff5a,#7bbf2e)}
+  .card .lvl{text-align:center;margin-top:8px;font-weight:800;font-size:13px;color:#dfeccb}
+  .card .special{color:#ffd05a;font-weight:700;font-size:11.5px;text-align:center;margin-top:7px;line-height:1.2}
+  .wicon{text-align:center;margin:6px 0 2px;height:46px;display:flex;align-items:center;justify-content:center}
+  .wicon canvas{display:block}
+  /* ---------- Weapon-select card upgrades ---------- */
+  .wtop{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:2px 0 6px}
+  .wtop .nm2{font-weight:800;font-size:16px;color:#fff}
+  .wmode{font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 6px;border-radius:999px;
+    text-transform:uppercase;color:#12160c;background:#9aa}
+  .wmode.semi{background:#8fb6d8} .wmode.auto{background:#ffb04a} .wmode.shotgun{background:#ff7a5a}
+  .wmode.sniper{background:#c08bff} .wmode.flame{background:#ff8a3a} .wmode.launcher{background:#e2662f}
+  .wdps{display:flex;align-items:baseline;justify-content:center;gap:5px;margin:0 0 7px;flex-wrap:wrap}
+  .wdps b{font-size:23px;font-weight:800;color:#ffd24a;line-height:1;text-shadow:0 1px 0 rgba(0,0,0,.35)}
+  .wdps span{font-size:10px;font-weight:800;color:#cddcb6;letter-spacing:.5px}
+  /* DPS vs currently equipped */
+  .wdelta{font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px;margin-left:2px}
+  .wdelta.up{color:#0e2a10;background:linear-gradient(180deg,#a6ef62,#6fbf2c)}
+  .wdelta.down{color:#2a0e10;background:linear-gradient(180deg,#ff9a8a,#e2452f)}
+  .wdelta.same{color:#dfeccb;background:rgba(255,255,255,.12)}
+  /* rarity tier — colored top accent, icon-plate ring, rarity wash, and a chip */
+  .card.wcard{border-top:3px solid var(--tier,rgba(255,255,255,.2));
+    background-image:linear-gradient(180deg, var(--tw,transparent), transparent 55%)}
+  .card.wcard.sel{box-shadow:0 0 0 2px var(--tier), 0 0 22px -4px var(--tier), var(--shadow-md,0 8px 22px rgba(0,0,0,.3))}
+  .wcard .wicon{height:60px;border-radius:12px;margin:4px 0 4px;overflow:hidden;
+    background:radial-gradient(circle at 50% 38%, rgba(255,255,255,.08), rgba(0,0,0,.28));
+    box-shadow:inset 0 0 0 1.5px var(--tier), inset 0 0 16px rgba(0,0,0,.32)}
+  .wtier{font-size:8.5px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:999px;
+    text-transform:uppercase;color:#0e1408;background:var(--tier);white-space:nowrap}
+  /* epic gets a soft glow; legendary sweeps a sheen across the chip */
+  .wtier.epic{box-shadow:0 0 10px -1px var(--tier)}
+  .wtier.legendary{box-shadow:0 0 12px -1px var(--tier);position:relative;overflow:hidden}
+  .wtier.legendary::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.85) 50%,transparent 70%);
+    transform:translateX(-120%);animation:wshimmer 2.6s ease-in-out infinite}
+  @keyframes wshimmer{0%,55%{transform:translateX(-120%)}80%,100%{transform:translateX(120%)}}
+  /* normalized Power bar — DPS vs the strongest gun, tinted by rarity */
+  .row.powrow > span:last-child{color:var(--tier);font-weight:800}
+  .bar.pow{background:rgba(0,0,0,.34)}
+  .bar.pow > i{background:linear-gradient(90deg, color-mix(in srgb, var(--tier) 55%, #fff), var(--tier))}
+  @supports not (color: color-mix(in srgb, red, blue)){ .bar.pow > i{background:var(--tier)} }
+  /* common's grey reads as "empty" on the dark track — give its Power fill a brighter, warmer floor */
+  .card.t-common .bar.pow > i{background:linear-gradient(90deg,#d2dcc4,#9fae8e)}
+  .bar.dmg > i{background:linear-gradient(90deg,#ffb06a,#e2452f)}
+  .bar.fire > i{background:linear-gradient(90deg,#fff07a,#ffb02e)}
+  .bar.mag > i{background:linear-gradient(90deg,#bfff5a,#5fb32e)}
+  .bar.rng > i{background:linear-gradient(90deg,#8fd6ff,#3a86ff)}
+  .card .equip{position:absolute;top:8px;left:8px;font-size:9px;font-weight:800;letter-spacing:.5px;
+    color:#22330f;background:linear-gradient(180deg,#cdee6a,#9ace3c);padding:2px 7px;border-radius:999px}
+  .aclass{font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:999px;text-transform:uppercase;color:#12160c}
+  .aclass.swift{background:#7fd0e0} .aclass.tank{background:#8ed07a} .aclass.balanced{background:#c9b98a}
+  .bar.spd > i{background:linear-gradient(90deg,#8fe0ff,#3aa0ff)}
+  .bar.hp > i{background:linear-gradient(90deg,#bfff5a,#3fbf4a)}
+
+  .btn{appearance:none;border:none;cursor:pointer;font-weight:800;letter-spacing:1px;
+    color:#22330f;border-radius:13px;padding:14px 26px;font-size:19px;text-transform:uppercase;
+    background:linear-gradient(180deg,#cdee6a,#9ace3c);box-shadow:0 5px 0 #6f9a25;transition:transform .06s}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 #6f9a25}
+  .btn.blue{background:linear-gradient(180deg,#7cc6ff,#3aa0ff);box-shadow:0 5px 0 #2c79c2;color:#0a2236}
+  .btn.ghost{background:#445c2a;color:#fff;box-shadow:0 4px 0 #2f4420}
+  .btnrow{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .footer{margin-top:auto;padding-top:12px;display:flex;justify-content:center}
+  .footer-ver{font-size:12px}
+
+  .namebox{display:flex;flex-direction:column;align-items:center;gap:12px;margin:14px 0}
+  .namebox input{font-size:20px;font-weight:800;text-align:center;padding:12px 16px;border-radius:12px;
+    border:2px solid var(--line);background:rgba(0,0,0,.25);color:#fff;width:min(78vw,300px);outline:none}
+  .logo{font-size:clamp(40px,13vw,72px);font-weight:800;font-style:italic;color:#fff;
+    text-shadow:3px 3px 0 #2f4420, 0 0 26px rgba(180,255,120,.3);line-height:.9;text-transform:uppercase}
+  .logo small{display:block;font-size:clamp(15px,4.5vw,24px);letter-spacing:6px;color:#d6ff6e;margin-top:6px}
+  .statscard{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(88%,340px);margin:18px auto 0}
+  .statscard .st{background:rgba(40,56,28,.6);border:1px solid var(--line);border-radius:11px;padding:8px 4px;text-align:center}
+  .statscard .st b{display:block;font-size:20px;font-weight:800;color:#fff;line-height:1.1}
+  .statscard .st span{font-size:11px;font-weight:700;color:#cddcb6;text-transform:uppercase;letter-spacing:.5px}
+  .career{color:#cddcb6;font-weight:700;font-size:13px;margin-top:2px;text-align:center}
+  .career b{color:#fff}
+  .modesel{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 14px}
+  .modebtn{cursor:pointer;padding:9px 14px;border-radius:11px;border:2px solid var(--line);
+    background:rgba(40,56,28,.55);color:#dfeccb;font-weight:800;font-size:13px}
+  .modebtn.on{background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f;border-color:#d6ff6e}
+
+  /* ---------- Upgraded main menu ---------- */
+  #startScreen.menu{justify-content:flex-start;padding-top:calc(var(--sat) + 10px);overflow-x:hidden}
+  #startScreen.menu > *{position:relative;z-index:1}
+  .menuGlow{position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(56% 38% at 50% 24%, rgba(190,255,90,.20), rgba(120,220,120,0) 70%);
+    animation:menuPulse 1.9s ease-in-out infinite}
+  @keyframes menuPulse{0%,100%{opacity:.45;transform:scale(1)}16%{opacity:1;transform:scale(1.05)}
+    28%{opacity:.55;transform:scale(1)}44%{opacity:.85;transform:scale(1.035)}58%{opacity:.45;transform:scale(1)}}
+  #startScreen.menu .logo{animation:beat 1.9s ease-in-out infinite;transform-origin:50% 65%}
+  @keyframes beat{0%,100%{transform:scale(1)}16%{transform:scale(1.045)}28%{transform:scale(1)}
+    44%{transform:scale(1.028)}58%{transform:scale(1)}}
+  /* glowing embers rising behind the menus (colour set inline per-particle via --g) */
+  .spore{position:absolute;z-index:0;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle at 50% 40%, #fbffe8, var(--g,rgba(190,255,120,.9)) 55%, transparent 72%);
+    box-shadow:0 0 9px 2px var(--g,rgba(190,255,120,.5));filter:blur(.2px);
+    animation:drift linear infinite}
+  @keyframes drift{from{transform:translate3d(0,0,0) scale(.7);opacity:0}
+    12%{opacity:.85}50%{transform:translate3d(10px,-90px,0) scale(1)}
+    88%{opacity:.7}to{transform:translate3d(-6px,-190px,0) scale(.6);opacity:0}}
+
+  .fighter{display:flex;align-items:center;gap:12px;margin:16px auto 6px;
+    background:rgba(30,44,20,.55);border:1px solid var(--line);border-radius:16px;padding:9px 16px 9px 9px;
+    width:min(84vw,340px)}
+  .fighterPortrait{width:58px;height:70px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;
+    cursor:pointer;border-radius:12px;transition:transform .08s}
+  .fighterPortrait:active{transform:scale(.95)}
+  .fighterPortrait canvas{transform:scale(.86);transform-origin:bottom;display:block}
+  .fighterInfo{flex:1;text-align:left;min-width:0}
+  .nameField{background:transparent;border:none;outline:none;color:#fff;font-weight:800;font-size:19px;
+    width:100%;padding:1px 0;border-bottom:2px dashed rgba(255,255,255,.2)}
+  .nameField:focus{border-bottom-color:#d6ff6e}
+  .nameField::placeholder{color:rgba(255,255,255,.38)}
+  .lvlrow{display:flex;align-items:center;gap:8px;margin:7px 0 5px}
+  .lvlbadge{background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f;font-weight:800;font-size:11px;
+    padding:2px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.4px}
+  .xpmini{flex:1;height:7px;border-radius:5px;background:rgba(0,0,0,.35);overflow:hidden}
+  .xpmini > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#bfff5a,#7bbf2e);transition:width .3s}
+  .fighterEdit{font-size:11px;font-weight:700;color:#9fc267;letter-spacing:.2px;cursor:pointer}
+  .rankrow{display:flex;align-items:center;gap:8px;margin:0 0 5px;flex-wrap:wrap}
+  .rankbadge{background:linear-gradient(180deg,rgba(255,210,90,.28),rgba(200,150,40,.16));
+    border:1px solid rgba(255,214,110,.5);color:#ffe6a8;font-weight:800;font-size:11px;
+    padding:2px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.3px}
+  .ranknext{font-size:10.5px;font-weight:700;color:#a9c47f}
+
+  .rosterStrip{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;width:min(84vw,340px);
+    margin:2px auto 4px;padding:2px 2px 6px}
+  .rosterStrip::-webkit-scrollbar{display:none}
+  .rosterItem{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;
+    cursor:pointer;transition:transform .08s}
+  .rosterItem:active{transform:scale(.93)}
+  .rosterItem .rip{width:44px;height:52px;border-radius:12px;background:rgba(0,0,0,.22);
+    display:flex;align-items:flex-end;justify-content:center;border:2px solid rgba(255,255,255,.14);
+    position:relative;overflow:hidden}
+  .rosterItem .rip canvas{transform:scale(.62);transform-origin:bottom}
+  .rosterItem.sel .rip{border-color:#a6e22e;box-shadow:0 0 10px rgba(166,226,46,.5)}
+  .rosterItem.locked .rip{filter:grayscale(1) brightness(.6)}
+  .rosterItem.locked .rip::after{content:'🔒';position:absolute;inset:0;display:flex;
+    align-items:center;justify-content:center;font-size:14px}
+  .rosterItem .rin{font-size:10px;font-weight:700;color:#cddcb6;max-width:48px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rosterItem.sel .rin{color:#d6ff6e}
+
+  .modes{display:flex;flex-direction:column;gap:9px;width:min(84vw,340px);margin:8px auto 2px}
+  .modecard{cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;
+    padding:11px 14px;border-radius:14px;border:2px solid var(--line);
+    background:rgba(40,56,28,.5);color:#dfeccb;transition:transform .08s,border-color .12s,background .12s}
+  .modecard:active{transform:scale(.985)}
+  .modecard .mi{font-size:26px;flex:0 0 auto;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+  .modecard .mtxt{flex:1;min-width:0}
+  .modecard .mt{font-weight:800;font-size:16px;color:#fff;display:block}
+  .modecard .md{font-size:11.5px;font-weight:700;color:#a9c47f;display:block;margin-top:1px}
+  .modecard.on{background:linear-gradient(180deg,rgba(205,238,106,.26),rgba(154,206,60,.16));border-color:#d6ff6e;
+    box-shadow:0 0 0 2px #d6ff6e33, 0 6px 18px rgba(0,0,0,.28)}
+  .modecard.on .md{color:#dfeccb}
+  .btn.play{margin-top:14px;padding:16px 36px;font-size:20px;
+    box-shadow:0 6px 0 #6f9a25, 0 9px 22px rgba(120,200,60,.32)}
+  .btn.play:active{transform:translateY(3px);box-shadow:0 3px 0 #6f9a25}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;inset:0;z-index:10;pointer-events:none}
+  #xpwrap{position:absolute;left:56px;top:12px;width:min(54%,210px);display:flex;align-items:center;gap:8px}
+  #lvlText{flex:0 0 auto;background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f;font-weight:800;
+    font-size:12px;letter-spacing:.4px;padding:3px 9px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+  #xpbar{flex:1;height:14px;border-radius:8px;background:rgba(0,0,0,.5);border:1px solid var(--line);overflow:hidden;position:relative}
+  #xpfill{height:100%;width:0;background:linear-gradient(90deg,#bfff5a,#7bbf2e);transition:width .3s}
+  #xpbar::after{content:'';position:absolute;inset:0 0 auto 0;height:45%;background:rgba(255,255,255,.14);border-radius:8px 8px 0 0}
+  #gearHud{position:absolute;left:10px;top:10px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(40,56,24,.85);color:#fff;font-size:19px;pointer-events:auto;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  #mmwrap{position:absolute;right:10px;top:10px;width:148px;pointer-events:none}
+  #mmBody{position:absolute;right:0;top:38px;background:rgba(20,30,12,.5);border:1px solid var(--line);
+    border-radius:14px;padding:8px;pointer-events:auto;transform-origin:top right;
+    transition:transform .22s cubic-bezier(.2,1.5,.4,1),opacity .16s}
+  #mmwrap.collapsed #mmBody{transform:scale(.08);opacity:0;pointer-events:none}
+  #minimap{width:132px;height:132px;border-radius:8px;border:2px solid rgba(0,0,0,.45);background:#243818;display:block}
+  #stats{margin-top:7px;font-weight:800;font-size:12.5px;color:#fff;text-shadow:1px 1px 0 rgba(0,0,0,.45)}
+  .srow{display:flex;align-items:center;gap:5px;line-height:1.75}
+  .srow .si{font-size:12px;width:16px;text-align:center;opacity:.92}
+  .srow b{color:#fff} .srow.safe b{color:#ffe27a}
+  /* the small pill that opens / closes the minimap panel, top-right corner of #mmwrap */
+  #mmFab{position:absolute;right:0;top:0;width:34px;height:34px;border-radius:50%;pointer-events:auto;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;
+    border:2px solid rgba(255,255,255,.55);background:rgba(20,30,12,.72);box-shadow:0 3px 8px rgba(0,0,0,.4);z-index:1}
+  #mmFab .fabChevron{transition:transform .22s;line-height:1;transform:rotate(0deg)}
+  #mmwrap.collapsed #mmFab .fabChevron{transform:rotate(180deg)}
+
+  /* ---------- Touch / controls ---------- */
+  #ctrl{position:absolute;inset:0;z-index:14;pointer-events:none}
+  .stickzone{position:absolute;bottom:0;height:46%;width:48%;pointer-events:auto;touch-action:none}
+  #moveZone{left:0} #aimZone{right:0}
+  /* floating joystick (appears under the thumb) */
+  .stickbase{position:absolute;width:134px;height:134px;border-radius:50%;
+    background:radial-gradient(circle at 50% 40%, rgba(18,28,16,.34), rgba(18,28,16,.12) 58%, rgba(255,255,255,.05) 73%);
+    border:2px solid rgba(255,255,255,.42);
+    box-shadow:0 0 0 6px rgba(255,255,255,.05), inset 0 0 26px rgba(0,0,0,.28);
+    transform:translate(-50%,-50%) scale(.55);opacity:0;transition:opacity .12s,transform .12s;
+    display:flex;align-items:center;justify-content:center}
+  .stickbase::before{content:'';position:absolute;width:86px;height:86px;border-radius:50%;border:1px dashed rgba(255,255,255,.20)}
+  /* v2.53.0: sticks are invisible — zones still take touch input, but no base/knob/hint
+     graphics render, so the play area stays uncluttered. */
+  .stickbase.on{opacity:0!important;transform:translate(-50%,-50%) scale(1)}
+  .stickknob{position:absolute;width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.92);
+    transform:translate(-50%,-50%);opacity:0;transition:opacity .12s;
+    box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 7px 11px rgba(255,255,255,.4), inset 0 -9px 13px rgba(0,0,0,.28)}
+  .stickknob.on{opacity:0!important}
+  #moveKnob{background:radial-gradient(circle at 38% 30%, #d6ecff, #6aa6ff 54%, #3f78d6)}
+  #aimKnob{background:radial-gradient(circle at 38% 30%, #ffd6ba, #ff8a5b 52%, #ed5638)}
+  /* resting hints in the corners (touch only) */
+  #moveHint,#aimHint{position:absolute;bottom:28px;width:106px;height:106px;border-radius:50%;
+    background:radial-gradient(circle at 50% 40%, rgba(18,28,16,.30), rgba(255,255,255,.04) 73%);
+    border:2px solid rgba(255,255,255,.38);box-shadow:0 0 0 5px rgba(255,255,255,.045), inset 0 0 18px rgba(0,0,0,.26);
+    display:flex;align-items:center;justify-content:center;transition:opacity .12s}
+  #moveHint{left:26px} #aimHint{right:26px}
+  #moveHint,#aimHint,#moveHint.hide,#aimHint.hide{opacity:0!important}
+  /* CSS glyphs: move = plus, aim = crosshair ring */
+  .gly{position:relative;width:40px;height:40px;opacity:.62}
+  .gly.move::before,.gly.move::after{content:'';position:absolute;background:#fff;border-radius:2px}
+  .gly.move::before{left:50%;top:1px;width:3.6px;height:38px;transform:translateX(-50%)}
+  .gly.move::after{top:50%;left:1px;height:3.6px;width:38px;transform:translateY(-50%)}
+  .gly.aim{border:3px solid #fff;border-radius:50%}
+  .gly.aim::before,.gly.aim::after{content:'';position:absolute;background:#fff}
+  .gly.aim::before{left:50%;top:-8px;width:2.6px;height:54px;transform:translateX(-50%)}
+  .gly.aim::after{top:50%;left:-8px;height:2.6px;width:54px;transform:translateY(-50%)}
+  .gly.aim b{position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;background:#fff;transform:translate(-50%,-50%)}
+  /* Powers consolidated into a compact 2x2 corner cluster (scrap counter spans the top) so the
+     four ability buttons tuck into the bottom-right instead of running a tall strip up the map. */
+  /* The four abilities live in a collapsible cluster that genies into a single round FAB toggle,
+     so they take almost no screen space until you tap to open them. */
+  #powers{position:absolute;right:14px;bottom:150px;width:52px;z-index:16;pointer-events:none}
+  #powerBtns{position:absolute;right:0;bottom:62px;display:grid;grid-template-columns:repeat(2,auto);
+    gap:9px;justify-items:center;align-content:end;transform-origin:bottom right;
+    transition:transform .22s cubic-bezier(.2,1.5,.4,1),opacity .16s}
+  #powers.collapsed #powerBtns{transform:scale(.12);opacity:0;pointer-events:none}
+  #powerBtns #scrapHud{grid-column:1 / -1;justify-self:end}
+  /* the push button that opens / closes the cluster */
+  #powerFab{width:52px;height:52px;border-radius:50%;pointer-events:auto;cursor:pointer;position:absolute;right:0;bottom:0;
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:800;
+    border:3px solid rgba(255,255,255,.65);background:radial-gradient(circle at 38% 32%,#8fe6c6,#219a76);
+    box-shadow:0 4px 10px rgba(0,0,0,.4)}
+  #powerFab .fabChevron{transition:transform .22s;line-height:1;transform:rotate(0deg)}
+  #powers:not(.collapsed) #powerFab{background:radial-gradient(circle at 38% 32%,#ff9a9a,#c23a3a)}
+  #powers:not(.collapsed) #powerFab .fabChevron{transform:rotate(180deg)}
+  .power{width:48px;height:48px;border-radius:50%;pointer-events:auto;cursor:pointer;border:2.5px solid rgba(255,255,255,.5);
+    display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;overflow:hidden;
+    box-shadow:0 4px 10px rgba(0,0,0,.4);transition:box-shadow .18s,border-color .18s}
+  .power.ready{border-color:rgba(255,255,255,.95);box-shadow:0 0 0 2px rgba(255,255,255,.3),0 0 15px rgba(255,255,255,.32),0 4px 10px rgba(0,0,0,.4)}
+  #boltBtn{background:radial-gradient(circle at 38% 32%,#9fd2ff,#39a0ff)}
+  #bombBtn{background:radial-gradient(circle at 38% 32%,#3a3f4a,#15181f)}
+  #grapBtn{background:radial-gradient(circle at 38% 32%,#e8cf9a,#8a6a3a)}
+  /* Donate / support */
+  .donatebtn{width:min(86%,360px);border-color:rgba(200,140,255,.5);color:#f0dcff}
+  .donatebtn:hover{border-color:rgba(210,150,255,.9)}
+  .donateBlurb{width:min(88%,360px);text-align:center;color:#e8ecff;font-size:14px;line-height:1.45}
+  .donateCta{width:min(80%,320px);background:linear-gradient(135deg,#7a4dff,#c86bff);border:none}
+  .donateSecure{width:min(86%,360px);text-align:center;color:#b9c6a6;font-size:11.5px;line-height:1.4}
+  .donateNote{width:min(86%,360px);text-align:center;color:#ffd27a;font-size:12.5px;line-height:1.45;
+    background:rgba(60,44,10,.5);border:1px solid rgba(255,190,90,.4);border-radius:10px;padding:10px 12px}
+  #buildBtn{background:radial-gradient(circle at 38% 32%,#d8b070,#7a4a1f)}
+  /* build mode active → pulsing amber ring so you know taps place structures */
+  #buildBtn.sel{border-color:#ffd27a;box-shadow:0 0 0 2px rgba(255,190,90,.5),0 0 18px rgba(255,180,60,.55),0 4px 10px rgba(0,0,0,.4)}
+  #buildBtn.broke{filter:grayscale(.5) brightness(.8)}   /* can't afford the selected structure */
+  #scrapHud{pointer-events:none;align-self:flex-end;display:flex;align-items:center;gap:5px;
+    background:rgba(20,16,8,.62);border:2px solid rgba(230,207,160,.55);border-radius:16px;
+    padding:3px 11px 3px 8px;font-weight:800;color:#f0e0c0;font-size:15px;
+    box-shadow:0 3px 8px rgba(0,0,0,.4);text-shadow:0 1px 2px rgba(0,0,0,.5)}
+  #scrapHud .sc{font-size:15px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
+  .power .cool{position:absolute;left:0;bottom:0;width:100%;background:rgba(0,0,0,.55);pointer-events:none}
+  .power span{position:relative;z-index:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
+  .power .key{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);z-index:3;font-size:8.5px;
+    font-weight:800;color:rgba(255,255,255,.8);letter-spacing:.3px;pointer-events:none}
+  body.touch .power .key{display:none}
+  /* Landscape / short viewports: keep the FAB in the bottom-right and open the cluster as a single
+     row above it, and shrink the minimap so nothing collides. */
+  @media (max-height:560px){
+    #powers{bottom:12px}
+    #powerBtns{grid-template-columns:repeat(4,auto);bottom:56px;gap:10px}
+    #powerBtns #scrapHud{grid-column:1 / -1;justify-self:end}
+    .power{width:46px;height:46px;font-size:21px}
+    #powerFab{width:48px;height:48px;font-size:20px}
+    #mmwrap{transform:scale(.82);transform-origin:top right}
+    #xpwrap{width:min(40%,180px)}
+  }
+
+  /* ---------- Settings & results ---------- */
+  .modal{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;
+    justify-content:safe center;gap:14px;padding:24px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:rgba(20,28,12,.82)}
+  /* keep the heading and Close button from being squeezed when the list is tall in portrait */
+  .modal .heading{flex:0 0 auto}
+  .modal .stack{flex:0 0 auto}
+  .modal .stack{display:flex;flex-direction:column;gap:12px;width:min(86%,360px)}
+  .modal .opt{background:#fff;color:#1d2a14;border:none;border-radius:14px;padding:14px 18px;font-size:17px;
+    font-weight:800;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.25);display:flex;align-items:center;gap:12px;text-align:left}
+  .modal .opt:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+  .modal .opt .oic{font-size:20px;width:24px;text-align:center;flex:0 0 auto}
+  .modal .opt.danger{background:#7a1f24;color:#ffd9dd;box-shadow:0 4px 0 rgba(0,0,0,.35)}   /* quit to menu */
+  /* controller status card — visually matches .opt (and stays a gamepad-nav stop so pad users can
+     see their own connection state), but it's informational, not a button: no cursor/press feel */
+  .modal .opt.ctrlrow{cursor:default;align-items:flex-start}
+  .modal .opt.ctrlrow:active{transform:none;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  .ctrltxt{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .ctrltxt b{font-size:14.5px}
+  .ctrltxt span{font-size:11.5px;font-weight:600;color:#5a6a4a;line-height:1.4}
+  /* subtle, occasional donation nudge on the results screen */
+  .rdonate{font-size:13px;color:#e2c8ff;opacity:.9;cursor:pointer;text-align:center;
+    background:rgba(150,90,230,.14);border:1px solid rgba(190,140,255,.35);border-radius:999px;
+    padding:7px 14px;margin-top:2px;transition:opacity .15s,background .15s}
+  .rdonate:hover{opacity:1;background:rgba(150,90,230,.24)}
+  #donate{z-index:50}   /* sit above the results modal when opened from its nudge */
+  /* Add to Home Screen (iOS) */
+  .a2hsBlurb{color:#eaf6d6;font-size:14px;line-height:1.5;text-align:center;margin:2px 4px 4px}
+  .a2hsSteps{list-style:none;display:flex;flex-direction:column;gap:10px;margin:4px 0;text-align:left}
+  .a2hsSteps li{display:flex;align-items:flex-start;gap:12px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 13px;color:#eef7e2;font-size:14px;line-height:1.45}
+  .a2hsSteps .a2n{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:#7bbf2e;color:#12280a;
+    font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .a2hsSteps .a2ic{display:inline-block;background:#0a66ff;color:#fff;border-radius:6px;padding:0 6px;font-weight:800}
+  .a2hsSteps .a2sub{color:#a9c48a;font-size:12px}
+  .a2hsNote{color:#a9c48a;font-size:12px;text-align:center;margin-top:6px}
+  /* Close stays pinned to the bottom while the option list scrolls under it (tall / short screens) */
+  .modal .close{flex:0 0 auto;position:sticky;bottom:0;background:#445c2a;color:#fff;font-weight:800;
+    border:none;border-radius:12px;padding:11px 30px;cursor:pointer;font-size:15px;margin-top:4px;
+    box-shadow:0 6px 20px 6px rgba(20,28,12,.92)}
+
+  /* achievements */
+  .achbtn{margin-top:8px;font-size:14px}
+  .achcount{opacity:.85;font-weight:800;font-size:12px;margin-left:4px}
+  .achgrid{flex:0 0 auto;display:flex;flex-direction:column;gap:9px;width:min(90%,380px)}
+  .achcard{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.96);color:#1d2a14;
+    border-radius:13px;padding:11px 14px;box-shadow:0 3px 0 rgba(0,0,0,.22);position:relative}
+  .achcard.locked{background:rgba(38,50,26,.72);color:#95a982;box-shadow:none;
+    border:1px dashed rgba(150,170,120,.4)}
+  .achcard .aic{font-size:26px;width:30px;text-align:center;flex:0 0 auto;filter:saturate(1.1)}
+  .achcard.locked .aic{filter:grayscale(1) opacity(.7)}
+  .achcard .atxt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+  .achcard .atxt b{font-size:15px}
+  .achcard .atxt span{font-size:12px;opacity:.8}
+  .achcard .adone{margin-left:auto;color:#3a9d2a;font-weight:900;font-size:18px;flex:0 0 auto}
+
+  /* achievement tiers */
+  .achcard.tier-bronze{border-left:5px solid #c77b3a}
+  .achcard.tier-silver{border-left:5px solid #9fb2c4}
+  .achcard.tier-gold{border-left:5px solid #e8b83a}
+  .tchip{font-style:normal;font-size:12px;margin-left:2px}
+
+  /* coins / daily / shop */
+  .coinbadge{background:rgba(0,0,0,.35);border:1px solid rgba(255,209,102,.5);color:#ffd166;
+    font-weight:900;font-size:12px;border-radius:999px;padding:3px 9px;flex:0 0 auto}
+  .menurow{display:flex;gap:8px;align-items:center;justify-content:center}
+  .dailycard{display:flex;align-items:center;gap:10px;width:min(88%,340px);margin:10px auto 0;text-align:left;
+    background:rgba(46,64,30,.75);border:1px solid rgba(255,209,102,.45);border-radius:13px;padding:9px 12px}
+  .dailycard.done{border-color:rgba(140,220,110,.5);opacity:.85}
+  .dailycard .dic{font-size:22px;flex:0 0 auto}
+  .dailycard .dtx{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+  .dailycard .dtx b{font-size:12px;color:#ffd166;text-transform:uppercase;letter-spacing:.6px}
+  .dailycard .dtx span{font-size:12.5px;color:#e6f2c8;font-weight:700}
+  .dailycard .drw{margin-left:auto;flex:0 0 auto;font-weight:900;font-size:12px;color:#ffd166;
+    background:rgba(0,0,0,.3);border-radius:999px;padding:4px 10px}
+  .dailycard.done .drw{color:#9de07a}
+  .shopcard{cursor:pointer}
+  .shopHdr{font-size:12px;font-weight:800;color:#cddcb6;text-transform:uppercase;letter-spacing:.04em;
+    margin:8px 2px 0;opacity:.85}
+  .shopHdr:first-child{margin-top:0}
+  .upgcard{background:linear-gradient(180deg,#fff3d8,#ffe6b0)}   /* upgrades stand apart from cosmetic trails */
+  .upgcard .aic{filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
+  .shopcard.equipped{outline:2px solid #7bbf2e}
+  .shopcard.poor{opacity:.75}
+  .shopbtn{margin-left:auto;flex:0 0 auto;cursor:pointer;border:none;border-radius:999px;padding:7px 12px;
+    font-weight:900;font-size:11.5px;background:linear-gradient(180deg,#ffe27a,#f0b840);color:#4a3a10}
+  .shopbtn.on{background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f}
+  .runlocks{display:flex;flex-direction:column;gap:6px;width:min(88%,340px);margin:0 0 10px}
+  .runlocks:empty{display:none}
+  .ru{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:#fff;
+    background:rgba(60,82,38,.7);border:1px solid var(--line);border-radius:11px;padding:7px 12px}
+  .ru span{margin-left:auto;font-size:11.5px;color:#cddcb6}
+  .ru.coin{border-color:rgba(255,209,102,.55);color:#ffd166}
+  .ru.bronze{border-color:#c77b3a}
+  .ru.silver{border-color:#9fb2c4}
+  .ru.gold{border-color:#e8b83a}
+  .ru.dailyhit{border-color:rgba(140,220,110,.6);color:#c9f2a8}
+
+  /* game-updated notification */
+  .wnburst{font-size:44px;line-height:1;animation:wnpop .6s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes wnpop{from{transform:scale(0) rotate(-30deg)}to{transform:scale(1) rotate(0)}}
+  .wnver{flex:0 0 auto;background:#ffd166;color:#4a3a10;font-weight:900;font-size:13px;
+    border-radius:999px;padding:4px 16px;letter-spacing:1.5px;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+  .wnlist{flex:0 0 auto;display:flex;flex-direction:column;gap:9px;width:min(90%,380px);margin-top:4px}
+  .wnitem{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.96);color:#1d2a14;
+    border-radius:13px;padding:11px 14px;box-shadow:0 3px 0 rgba(0,0,0,.22)}
+  .wnitem .ic{font-size:24px;width:28px;text-align:center;flex:0 0 auto}
+  .wnitem .tx{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+  .wnitem .tx b{font-size:15px}
+  .wnitem .tx span{font-size:12px;opacity:.8}
+  .verlink{text-decoration:underline;cursor:pointer;color:#e6f2c8}
+
+  /* next-unlock teaser on results */
+  .rnext{color:#ffd88a;font-weight:700;font-size:13px;background:rgba(60,45,12,.5);
+    border:1px solid rgba(255,210,100,.35);border-radius:10px;padding:6px 14px}
+  .rnext b{color:#ffe9b0}
+
+  #results .placard{font-size:clamp(30px,10vw,56px);font-weight:800;font-style:italic;text-transform:uppercase;
+    color:#fff;text-shadow:2px 2px 0 #2f4420}
+  #results .placard.win{color:#ffe27a;text-shadow:2px 2px 0 #7a5a10;animation:winGlow 1.4s ease-in-out infinite}
+  @keyframes winGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(255,215,90,.4))}50%{filter:drop-shadow(0 0 20px rgba(255,215,90,.85))}}
+  #results .rstats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(88%,340px);margin:14px 0 10px}
+  #results .rstats > div{background:rgba(60,82,38,.7);border:1px solid var(--line);border-radius:12px;
+    padding:9px 4px;text-align:center;font-size:11.5px;font-weight:800;color:#cddcb6;text-transform:uppercase;letter-spacing:.4px}
+  #results .rstats b{display:block;color:#fff;font-size:23px;margin-top:2px;font-style:normal}
+  #results .xpwrap{width:min(88%,340px);margin:0 0 8px}
+  #results .xprow{display:flex;justify-content:space-between;font-weight:800;font-size:12px;color:#dfeccb;margin-bottom:4px}
+  #results .xprow .up{color:#bfff5a}
+  #results .xpbar{height:10px;border-radius:6px;background:rgba(0,0,0,.4);overflow:hidden;border:1px solid var(--line)}
+  #results .xpbar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#bfff5a,#7bbf2e);transition:width .5s}
+  #results .career{background:rgba(30,44,20,.5);border:1px solid var(--line);border-radius:12px;padding:8px 12px;width:min(88%,340px);margin-top:2px}
+  #toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);background:rgba(0,0,0,.6);
+    color:#ffe27a;font-weight:800;padding:8px 16px;border-radius:10px;font-size:15px;opacity:0;
+    transition:opacity .3s;z-index:45;pointer-events:none}
+  .slider{background:#fff;border-radius:14px;padding:11px 16px;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  .slider label{display:flex;justify-content:space-between;font-weight:800;color:#1d2a14;font-size:15px;margin-bottom:7px}
+  .slider input[type=range]{width:100%;accent-color:#7bbf2e;height:22px}
+  #specBar{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:22;display:flex;align-items:center;gap:10px;
+    background:rgba(20,28,12,.85);border:1px solid var(--line);border-radius:999px;padding:7px 9px 7px 15px;pointer-events:auto;
+    box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  #specBar .specinfo{font-weight:800;font-size:12.5px;color:#ffd0d0}
+  #specBar .specinfo b{color:#fff}
+  .specbtn{cursor:pointer;border:none;border-radius:999px;padding:7px 14px;font-weight:800;font-size:12px;
+    background:linear-gradient(180deg,#cdee6a,#9ace3c);color:#22330f}
+
+  /* ================================================================
+     UI v2 — design-system override layer. Deep "midnight forest" glass
+     look: darker layered gradients, frosted panels (backdrop blur),
+     entrance motion on screens/modals, hero-button sheen, and notch
+     safe-areas. Overrides earlier rules; selectors untouched so all JS
+     hooks keep working. Tune tokens here, not per-rule.
+     ================================================================ */
+  :root{
+    --bg0:#131b0c; --bg1:#22331a; --bg2:#31491f;
+    --glass:rgba(22,33,13,.58); --stroke:rgba(255,255,255,.13); --stroke2:rgba(214,255,110,.55);
+    --acc:#c8f556; --gold:#ffd24a;
+    --r-lg:20px; --r-md:14px;
+    --shadow-md:0 10px 26px rgba(0,0,0,.38); --shadow-lg:0 20px 44px rgba(0,0,0,.5);
+  }
+  *{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',
+    "Trebuchet MS",sans-serif}
+  /* screens: deep layered forest gradient + smooth entrance */
+  /* translucent scrim (not opaque): the live game canvas shows through, so the ambient
+     horde shambles behind every menu. Alpha tuned so text/buttons stay fully readable. */
+  .screen{background:
+    radial-gradient(135% 95% at 50% -8%, rgba(49,73,31,.62), rgba(34,51,26,.68) 52%, rgba(19,27,12,.84) 100%);
+    -ms-overflow-style:none}
+  .screen::-webkit-scrollbar{display:none}
+  @supports (scrollbar-width: none){
+    .screen{scrollbar-width:none}
+  }
+  .screen:not(.hidden){animation:scrIn .3s cubic-bezier(.2,.9,.3,1)}
+  @keyframes scrIn{from{opacity:0;transform:translateY(12px) scale(.996)}to{opacity:1;transform:none}}
+  /* modals: frosted backdrop + slide-up */
+  .modal{background:rgba(12,18,7,.66);-webkit-backdrop-filter:blur(12px) saturate(1.15);
+    backdrop-filter:blur(12px) saturate(1.15)}
+  .modal:not(.hidden){animation:mdIn .27s cubic-bezier(.2,.9,.3,1)}
+  @keyframes mdIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+  /* glass cards everywhere */
+  .card,.fighter,.statscard .st,.modecard,#results .career,#results .rstats > div,
+  .xpwrap,.rnext,.achcard.locked{
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015)) padding-box,var(--glass);
+    border:1.5px solid var(--stroke);
+    -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px)}
+  .card{border-radius:var(--r-lg);box-shadow:var(--shadow-md)}
+  .card.sel{border-color:var(--stroke2);
+    box-shadow:0 0 0 3px rgba(214,255,110,.16), 0 0 26px rgba(198,245,86,.14), var(--shadow-md)}
+  .fighter,.modecard{border-radius:16px}
+  .modecard.on{background:linear-gradient(180deg,rgba(205,238,106,.22),rgba(120,170,50,.12)) padding-box,var(--glass);
+    border-color:var(--stroke2);box-shadow:0 0 0 2.5px rgba(214,255,110,.2), 0 0 30px rgba(198,245,86,.13), var(--shadow-md)}
+  /* typography polish */
+  .heading{letter-spacing:1.5px;
+    text-shadow:0 2px 0 rgba(0,0,0,.42), 0 0 30px rgba(198,245,86,.22)}
+  .logo{background:linear-gradient(180deg,#ffffff 55%,#cfe89a);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    text-shadow:none;filter:drop-shadow(3px 3px 0 #1e2f12) drop-shadow(0 0 26px rgba(180,255,120,.32))}
+  .logo small{background:none;-webkit-text-fill-color:#d6ff6e}
+  /* buttons: springier press + sheen sweep on the hero button */
+  .btn{border-radius:16px;transition:transform .08s cubic-bezier(.3,1.6,.5,1),box-shadow .08s}
+  .btn.play{position:relative;overflow:hidden;
+    box-shadow:0 6px 0 #61892a, 0 12px 30px rgba(140,220,70,.30)}
+  .btn.play::after{content:'';position:absolute;top:0;left:-70%;width:42%;height:100%;
+    background:linear-gradient(105deg,transparent,rgba(255,255,255,.55),transparent);
+    transform:skewX(-18deg);animation:sheen 3.4s ease-in-out infinite;pointer-events:none}
+  @keyframes sheen{0%,68%{left:-70%}100%{left:135%}}
+  .achbtn{border:1.5px solid var(--stroke);border-radius:999px;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px)}
+  /* HUD: frosted panels + notch safe-areas */
+  #mmBody{background:rgba(14,22,9,.55);border:1.5px solid var(--stroke);border-radius:16px;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--shadow-md)}
+  #mmFab{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  #gearHud{background:rgba(14,22,9,.62);border:1.5px solid var(--stroke);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  #gearHud,#xpwrap{top:calc(10px + var(--sat))}
+  #mmwrap{top:calc(10px + var(--sat));right:calc(10px + var(--sar))}
+  #xpbar{box-shadow:inset 0 2px 5px rgba(0,0,0,.45)}
+  #powers{bottom:calc(150px + var(--sab))}
+  .power{border:2.5px solid rgba(255,255,255,.55);box-shadow:0 8px 20px rgba(0,0,0,.4)}
+  #specBar{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);background:rgba(14,22,9,.7)}
+  #toast{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);background:rgba(10,16,6,.72);
+    border:1px solid var(--stroke);box-shadow:var(--shadow-md)}
+  /* modal option rows & sliders: soft ivory, rounder, floatier */
+  .modal .opt,.slider{border-radius:16px;box-shadow:0 6px 0 rgba(0,0,0,.28), 0 12px 24px rgba(0,0,0,.22)}
+  .modal .close{border-radius:14px}
+  .wnitem,.achcard:not(.locked){border-radius:16px;box-shadow:0 5px 0 rgba(0,0,0,.24), 0 10px 22px rgba(0,0,0,.2)}
+  /* grids breathe a little more */
+  .grid{gap:12px}
+  .namebox input{border-radius:14px;background:rgba(0,0,0,.32);
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+
+  /* --- v2.0.1 layout fixes (must stay LAST so they win the cascade) --- */
+  /* Menu: stop flex items from compressing/overlapping on iOS Safari — the column
+     just scrolls when tall. Also tame the PLAY glow so it doesn't bleed onto the
+     Daily Challenge card, and guarantee clear spacing around it. */
+  #startScreen.menu > *{flex-shrink:0}
+  #startScreen.menu .btn.play{margin-top:16px;margin-bottom:14px;
+    box-shadow:0 6px 0 #61892a, 0 10px 20px rgba(140,220,70,.22)}
+  #startScreen.menu .dailycard{margin-top:0}
+  /* dedicated mode-select screen: roomy, centred cards */
+  #modeScreen{justify-content:flex-start}
+  #modeScreen .modes.wide{width:min(94%,460px);gap:12px;margin:18px auto 0}
+  #modeScreen .modecard{padding:16px 16px}
+  #modeScreen .modecard .mi{font-size:30px}
+  #modeScreen .modecard .mt{font-size:18px}
+  #modeScreen .modecard .md{font-size:12.5px}
+
+  /* v2.47.0's "fantasy village polish" (thick wood borders, corner bolts, parchment cards)
+     was removed here per user feedback — dated/generic, too cluttered, wrong palette. The
+     glass-card theme above (~line 560) it had overridden is what's live again. */
+  /* In-game powers in landscape: a v2 safe-area rule (added later in the sheet than the
+     original landscape query) had knocked the power buttons back to the portrait
+     mid-screen spot, floating over the player. Re-assert the bottom-centre row here. */
+  @media (max-height:560px){
+    #powers{grid-template-columns:repeat(4,auto);left:50%;right:auto;top:auto;
+      bottom:calc(14px + var(--sab));transform:translateX(-50%);gap:14px}
+    #powers #scrapHud{justify-self:center}
+    .power{width:54px;height:54px;font-size:23px}
+  }

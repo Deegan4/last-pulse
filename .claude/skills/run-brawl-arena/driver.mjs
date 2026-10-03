@@ -75,7 +75,6 @@ if (!MODES.includes(mode)) {
 // `})();` in a temp copy — this is the documented hook pattern, and the copy is deleted after.
 let tmpFile = null;
 if (waves > 0) {
-  const src = fs.readFileSync(file, 'utf8');
   const HOOK = `
 /* === injected by driver.mjs --waves (throwaway copy only) === */
 window.__m = function(){
@@ -93,17 +92,31 @@ window.__m = function(){
            arena: ARENA };
 };
 `;
-  // FIRST `})();\n</script>` = the game IIFE. (lastIndexOf would land in the second, module
-  // script — the 3D layer — where none of the game state is in scope.)
-  const idx = src.indexOf('\n})();\n</script>');
+  // Since v2.65.0 the game IIFE lives in assets/game/game.js (index.html only <script src="">s
+  // it) rather than inline — inject the hook there, right before that file's closing `})();`.
+  const gameJsPath = path.join(path.dirname(file), 'assets', 'game', 'game.js');
+  const gameSrc = fs.readFileSync(gameJsPath, 'utf8');
+  const idx = gameSrc.lastIndexOf('\n})();');
   if (idx < 0) { console.error('could not locate the game IIFE close to inject the metrics hook'); process.exit(2); }
-  tmpFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lp-drv-')), 'index.html');
-  fs.writeFileSync(tmpFile, src.slice(0, idx) + HOOK + src.slice(idx));
-  // the game loads sibling assets (assets/img/*) relative to the document — symlink them in
-  for (const dir of ['assets']) {
-    const from = path.join(path.dirname(file), dir);
-    if (fs.existsSync(from)) { try { fs.symlinkSync(from, path.join(path.dirname(tmpFile), dir)); } catch {} }
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lp-drv-'));
+  tmpFile = path.join(tmpDir, 'index.html');
+  fs.copyFileSync(file, tmpFile);
+  // The game loads sibling assets relative to the document. Symlink every assets/ subdir
+  // EXCEPT game/ (never write through a symlink into the shipped tree) — assets/game/ gets a
+  // real copy so game.js can be overwritten with the instrumented version.
+  const assetsRoot = path.join(path.dirname(file), 'assets');
+  fs.mkdirSync(path.join(tmpDir, 'assets'));
+  for (const entry of fs.readdirSync(assetsRoot)) {
+    if (entry === 'game') continue;
+    try { fs.symlinkSync(path.join(assetsRoot, entry), path.join(tmpDir, 'assets', entry)); } catch {}
   }
+  const gameDirSrc = path.join(assetsRoot, 'game');
+  const gameDirDst = path.join(tmpDir, 'assets', 'game');
+  fs.mkdirSync(gameDirDst);
+  for (const entry of fs.readdirSync(gameDirSrc)) {
+    fs.copyFileSync(path.join(gameDirSrc, entry), path.join(gameDirDst, entry));
+  }
+  fs.writeFileSync(path.join(gameDirDst, 'game.js'), gameSrc.slice(0, idx) + HOOK + gameSrc.slice(idx));
   file = tmpFile;
 }
 

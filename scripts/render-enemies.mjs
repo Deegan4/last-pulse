@@ -1,3 +1,4 @@
+import {inlineGame} from './game-source.mjs';
 // Roster review against the real canvas renderer; no hooks are written to production HTML.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -42,7 +43,7 @@ window.__enemyCrowd=()=>{
 try{
   fs.mkdirSync(out,{recursive:true});
   const html=fs.readFileSync(process.argv[3]||path.join(root,'index.html'),'utf8');
-  fs.writeFileSync(copy,html.replace(/\}\)\(\);\s*<\/script>/,hook+'\n})();\n</script>'));
+  fs.writeFileSync(copy,inlineGame(html).replace(/\}\)\(\);\s*<\/script>/,hook+'\n})();\n</script>'));
   let driver=fs.readFileSync(path.join(root,'.agents/skills/run-brawl-arena/driver.mjs'),'utf8');
   const require=createRequire(path.join(root,'.agents/skills/run-brawl-arena/driver.mjs'));
   try{driver=driver.replace("['playwright',",'['+JSON.stringify(require.resolve('playwright'))+',');}catch{}

@@ -11,13 +11,14 @@
 // offline render — they fire on the wall clock, after rendering has finished. What this measures is
 // the SIMULTANEOUS TRANSIENT STACK, which is precisely the clipping risk: N guns firing on the same
 // frame. Treat the number as a floor on peak level, not the full mix.
+import { inlineGame } from './game-source.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(process.argv[2] || join(root, '.audit-tmp.html'));
-const src = readFileSync(join(root, 'index.html'), 'utf8');
+const src = inlineGame(readFileSync(join(root, 'index.html'), 'utf8'));
 
 const HOOK = `
 /* === injected by scripts/make-audit-copy.mjs — THROWAWAY COPY ONLY === */

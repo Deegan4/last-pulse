@@ -20,3 +20,6 @@ assets/meshy/bo.glb
 assets/meshy/*-tex.png
 assets/meshy/*_base_color.png
 .audit-tmp.html
+
+# Generated local iOS content; Xcode builds from src/ and assets/ directly.
+LastPulseIOS/GameContent/

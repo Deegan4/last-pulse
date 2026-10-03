@@ -12,11 +12,13 @@ final class GameSaveStore {
     private let container: ModelContainer
 
     private init() {
-        do {
-            container = try ModelContainer(for: GameSave.self)
-        } catch {
-            fatalError("Failed to create SwiftData container for GameSave: \(error)")
-        }
+        // A corrupted on-disk store or disk pressure shouldn't crash launch — fall back to an
+        // in-memory container so the game still runs; progress just won't persist this session
+        // (matches the JS side's own safeGet/safeSet fail-safe philosophy). In-memory container
+        // creation has no disk I/O to fail on, so this is the actual last resort.
+        let inMemory = ModelConfiguration(isStoredInMemoryOnly: true)
+        container = (try? ModelContainer(for: GameSave.self))
+            ?? (try! ModelContainer(for: GameSave.self, configurations: inMemory))
     }
 
     func loadCode() -> String? {
