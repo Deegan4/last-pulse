@@ -464,6 +464,10 @@ function drawDecor(d){
 function drawPickup(p){
   const bob=Math.sin(p.t*4)*2, c=PKCOL[p.kind], pulse=0.5+0.5*Math.sin(gtime*3+p.t);
   ctx.save(); ctx.translate(p.x,p.y+bob);
+  // Vertical rarity beam makes ground loot readable through grass and during night runs.
+  ctx.save(); ctx.globalAlpha=.10+.08*pulse; ctx.fillStyle=c.line; ctx.shadowColor=c.line; ctx.shadowBlur=9;
+  ctx.fillRect(-3,-58,6,42); ctx.globalAlpha=.24+.16*pulse; ctx.beginPath(); ctx.arc(0,-58,5+3*pulse,0,TAU); ctx.fill(); ctx.restore();
+  ctx.strokeStyle=c.line; ctx.globalAlpha=.34+.2*pulse; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,0,18+4*pulse,0,TAU); ctx.stroke(); ctx.globalAlpha=1;
   ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0,p.r-1-bob,p.r*0.9,4,0,0,TAU); ctx.fill();
   ctx.shadowColor=c.line; ctx.shadowBlur=6+5*pulse;   // pulsing glow (cheap)
   ctx.fillStyle=c.bg; ctx.strokeStyle=c.line; ctx.lineWidth=2; roundRect(-p.r,-p.r,p.r*2,p.r*2,4); ctx.fill(); ctx.stroke();
@@ -534,6 +538,8 @@ function drawDrop(d){
   } else {
     const pulse=2+Math.sin(d.lt*6)*2; ctx.strokeStyle='rgba(255,210,80,.7)'; ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(d.x,d.y,18+pulse,0,TAU); ctx.stroke();
+    ctx.save(); ctx.globalAlpha=.14+.05*Math.sin(d.lt*5); ctx.fillStyle='#ffd24a'; ctx.shadowColor='#ffd24a'; ctx.shadowBlur=16;
+    ctx.fillRect(d.x-5,d.y-170,10,150); ctx.restore();
   }
   ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+12,16,5,0,0,TAU); ctx.fill();
   // wooden loot crate: body + planks + metal corner brackets + red supply band

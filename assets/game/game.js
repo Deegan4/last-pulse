@@ -345,8 +345,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.69.0';
+const GAME_VERSION = '2.70.0';
 const CHANGELOG = [
+  { v:'2.70.0', items:[
+    ['✨','Combat readability pass','loot now has color-coded rarity beams, supply drops cast a visible beacon, and Arc Rifle / Frost Blaster projectiles have distinct silhouettes'],
+  ]},
   { v:'2.69.0', items:[
     ['🔦','Watchtower upgrades','survivor banners and searchlights now mark the two Horde towers; activate a searchlight at the ladder to slow nearby zombies for a short scan window'],
   ]},
@@ -3366,6 +3369,13 @@ function draw(){
     if(b.acid){ ctx.save(); ctx.shadowColor='#b6ff3a'; ctx.shadowBlur=9; ctx.fillStyle='#c6ff4a';   // spitter acid gob + trail
       ctx.beginPath(); ctx.arc(b.x,b.y,b.r||5,0,TAU); ctx.fill();
       ctx.globalAlpha=.5; ctx.beginPath(); ctx.arc(b.x-b.vx*0.012,b.y-b.vy*0.012,(b.r||5)*0.7,0,TAU); ctx.fill(); ctx.restore(); continue; }
+    if(b.arc){ const a=Math.atan2(b.vy,b.vx); ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(a);
+      ctx.shadowColor='#78d7ff'; ctx.shadowBlur=12; ctx.fillStyle='#bff6ff'; ctx.strokeStyle='#38a9e8'; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(7,0); ctx.lineTo(0,-3); ctx.lineTo(-6,0); ctx.lineTo(0,3); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='rgba(120,215,255,.65)'; ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(-18,Math.sin(gtime*20+b.x)*3); ctx.stroke(); ctx.restore(); continue; }
+    if(b.frost){ const a=Math.atan2(b.vy,b.vx); ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(a);
+      ctx.shadowColor='#c9f7ff'; ctx.shadowBlur=10; ctx.fillStyle='#eaffff'; ctx.strokeStyle='#8ed7ee'; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.moveTo(7,0); ctx.lineTo(1,-4); ctx.lineTo(-5,0); ctx.lineTo(1,4); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); continue; }
     if(b.rocket){ const a=b.aim||Math.atan2(b.vy,b.vx);
       // fiery exhaust trail
       spark(b.x-Math.cos(a)*6, b.y-Math.sin(a)*6, pick(['#ffae3a','#ff6a2a','#cfcfcf']), rand(10,60), a+Math.PI+rand(-.4,.4), .35);
@@ -3998,6 +4008,10 @@ function drawDecor(d){
 function drawPickup(p){
   const bob=Math.sin(p.t*4)*2, c=PKCOL[p.kind], pulse=0.5+0.5*Math.sin(gtime*3+p.t);
   ctx.save(); ctx.translate(p.x,p.y+bob);
+  // Vertical rarity beam makes ground loot readable through grass and during night runs.
+  ctx.save(); ctx.globalAlpha=.10+.08*pulse; ctx.fillStyle=c.line; ctx.shadowColor=c.line; ctx.shadowBlur=9;
+  ctx.fillRect(-3,-58,6,42); ctx.globalAlpha=.24+.16*pulse; ctx.beginPath(); ctx.arc(0,-58,5+3*pulse,0,TAU); ctx.fill(); ctx.restore();
+  ctx.strokeStyle=c.line; ctx.globalAlpha=.34+.2*pulse; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,0,18+4*pulse,0,TAU); ctx.stroke(); ctx.globalAlpha=1;
   ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0,p.r-1-bob,p.r*0.9,4,0,0,TAU); ctx.fill();
   ctx.shadowColor=c.line; ctx.shadowBlur=6+5*pulse;   // pulsing glow (cheap)
   ctx.fillStyle=c.bg; ctx.strokeStyle=c.line; ctx.lineWidth=2; roundRect(-p.r,-p.r,p.r*2,p.r*2,4); ctx.fill(); ctx.stroke();
@@ -4068,6 +4082,8 @@ function drawDrop(d){
   } else {
     const pulse=2+Math.sin(d.lt*6)*2; ctx.strokeStyle='rgba(255,210,80,.7)'; ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(d.x,d.y,18+pulse,0,TAU); ctx.stroke();
+    ctx.save(); ctx.globalAlpha=.14+.05*Math.sin(d.lt*5); ctx.fillStyle='#ffd24a'; ctx.shadowColor='#ffd24a'; ctx.shadowBlur=16;
+    ctx.fillRect(d.x-5,d.y-170,10,150); ctx.restore();
   }
   ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+12,16,5,0,0,TAU); ctx.fill();
   // wooden loot crate: body + planks + metal corner brackets + red supply band
