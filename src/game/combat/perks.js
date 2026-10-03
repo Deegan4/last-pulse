@@ -33,6 +33,10 @@ const PERKS = [
   {id:'reloadBlast',icon:'💥',name:'EXPLOSIVE RELOAD',maxRanks:1,desc:'Finish a reload to blast nearby enemies for 40 damage. 6s cooldown.',apply:h=>{ h.perkReloadBlast=true; }},
   {id:'killLightning',icon:'🌩️',name:'KILL STORM',maxRanks:1,desc:'Every 4 kills zap up to 3 enemies near the last kill for 35 damage. Zap kills do not charge it.',apply:h=>{ h.perkKillLightning=true; h.perkKillCount=0; }},
   {id:'grappleDamage',icon:'🪝',name:'RAZOR SWING',maxRanks:1,desc:'While grappling, strike nearby enemies for 55 damage once per enemy per swing.',apply:h=>{ h.perkGrappleDamage=true; }},
+  {id:'lifesteal',icon:'🧛', name:'BLOODTHIRST',   desc:'Heal 4 hp on every kill',       apply:h=>{ h.perkLifesteal=(h.perkLifesteal||0)+4; }},
+  {id:'sharpshooter',icon:'🎯',name:'SHARPSHOOTER',desc:'+20% chance to deal double damage',apply:h=>{ h.perkCrit=(h.perkCrit||0)+0.2; }},
+  {id:'quickHands',icon:'🤲',name:'QUICK HANDS',   desc:'-30% reload time',              apply:h=>{ h.perkReloadMul=(h.perkReloadMul||1)*0.7; }},
+  {id:'scavenger',icon:'🧲', name:'SCAVENGER',     desc:'Zombies drop 40% more scrap',   apply:h=>{ h.perkScrapMul=(h.perkScrapMul||1)*1.4; }},
 ];
 let perkChoices=[], pendingWaveBoss=false;
 function perkRank(h,id){ return h.perkRanks?.[id]||0; }
@@ -61,12 +65,34 @@ function openPerkPick(boss){
 function choosePerk(id){
   const p = perkChoices.find(x=>x.id===id); if(!p || !applyPerk(player,p)) return;
   perkChoices=[];
+  meta.perkPicks[id]=(meta.perkPicks[id]||0)+1; saveMeta();   // instrumentation: which perks actually get picked
   toast(p.icon+' '+p.name+' picked!'); sfx('level');
   el('perkPick').classList.add('hidden');
   paused = false;
   hordeSpawnWave(pendingWaveBoss);
 }
 function dailyDoneToday(){ return meta.dailyDone===dayKey(); }
+// Weekly challenge — a harder 7-day cousin of the daily, hashed from the week's Monday.
+const WEEKLY_COINS = 200;
+const WEEKLIES = [
+  {icon:'🌊', desc:'Reach wave 10 in Endless Horde',          test:c=>c.horde && c.wave>=10},
+  {icon:'💀', desc:'Get 40+ kills in one run',                test:c=>c.matchKills>=40},
+  {icon:'⏱',  desc:'Survive 4+ minutes in one run',           test:c=>c.time>=240},
+  {icon:'💨', desc:'Reach wave 7, under 60 damage',     test:c=>c.wave>=7 && c.dmgTaken<60},
+  {icon:'🪝', desc:'Grapple + 15 kills in one run',    test:c=>c.grappled && c.matchKills>=15},
+];
+function weekKey(){ const d=new Date(); const m=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  m.setDate(m.getDate()-((m.getDay()+6)%7));   // back up to Monday
+  return 'w'+m.getFullYear()+'-'+(m.getMonth()+1)+'-'+m.getDate(); }
+function thisWeeksChallenge(){ const k=weekKey(); let h=7; for(let i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0; return WEEKLIES[h%WEEKLIES.length]; }
+function weeklyDoneThisWeek(){ return meta.weeklyDone===weekKey(); }
+function checkWeekly(ctx){
+  if(weeklyDoneThisWeek()) return false;
+  let ok=false; try{ ok=!!thisWeeksChallenge().test(ctx||{}); }catch(e){}
+  if(ok){ meta.weeklyDone=weekKey(); meta.weeklies++; meta.coins+=WEEKLY_COINS; saveMeta();
+    setTimeout(()=>{ toast('🏆 Weekly challenge complete! +'+WEEKLY_COINS+' 🪙'); sfx('level'); }, 1200); }
+  return ok;
+}
 // Called at match end (before results render). Returns true if the daily was just completed.
 function checkDaily(ctx){
   if(dailyDoneToday()) return false;

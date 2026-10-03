@@ -644,6 +644,8 @@
   #startScreen.menu .btn.play{margin-top:16px;margin-bottom:14px;
     box-shadow:0 6px 0 #61892a, 0 10px 20px rgba(140,220,70,.22)}
   #startScreen.menu .dailycard{margin-top:0}
+  #startScreen.menu #weeklyCard{margin-top:6px;padding:7px 12px}
+  #weeklyCard .dtx span{font-size:12px}
   /* dedicated mode-select screen: roomy, centred cards */
   #modeScreen{justify-content:flex-start}
   #modeScreen .modes.wide{width:min(94%,460px);gap:12px;margin:18px auto 0}

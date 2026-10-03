@@ -2,7 +2,7 @@
 // effective magazine capacity for a fighter (base weapon mag × their extended-mag multiplier).
 // Bots have no magMul → 1×; the player's is set from the shop upgrade at match start.
 function magCap(h){ return Math.max(1, Math.round(h.weapon.mag * (h.magMul||1))); }
-function startReload(h){ if(h.reloading<=0 && h.mag<magCap(h)) h.reloading=h.weapon.reload; }
+function startReload(h){ if(h.reloading<=0 && h.mag<magCap(h)) h.reloading=h.weapon.reload*(h.perkReloadMul||1); }
 // per-weapon firing feel: tracer look (col/lw/tl/glow/tip), muzzle radius (mz),
 // recoil kick, spark count/spread, knockback push, and player screen shake.
 function bulletFx(w){
@@ -36,7 +36,9 @@ function fire(h){
   if(h.mag<=0){ startReload(h); return; }
   const w=h.weapon; h.fireCd = w.fireCd * (h.isPlayer?1:h.fireMul);
   const range=w.range*RANGE_SCALE;
-  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
+  const perkCritHit = !!(h.isPlayer && h.perkCrit && Math.random()<h.perkCrit);   // Sharpshooter: whole volley deals double
+  if(perkCritHit) floaters.push({x:h.x, y:h.y-R-30, vy:-46, t:0.6, txt:'CRIT ×2', col:'#ffd24a'});
+  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1)*(perkCritHit?2:1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
   if(w.mode==='flame'){
     const fspd=320, tip=gunTip(h);
     for(let i=0;i<3;i++){ const a=h.aim+rand(-0.34,0.34), sp=fspd*rand(.7,1.1);
@@ -158,6 +160,7 @@ function die(e, src, isHumanTarget){
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
     if(src.isPlayer){
+      if(src.perkLifesteal) src.hp=Math.min(src.maxhp, src.hp+src.perkLifesteal);
       shake=Math.min(shake+5,14); if(src.gpIndex!=null) gpRumble(src.gpIndex, 90, 0.25, 0.6);
       hitmarks.push({x:e.x,y:e.y-6,t:0.42,kill:true}); sfx('kill',null,e);
       // kill combo: chain kills inside the window for up to 3x XP + escalating slow-mo
@@ -181,7 +184,7 @@ function die(e, src, isHumanTarget){
   if(!isHumanTarget){ // zombie death pop
     rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
-    const scrapMul = activeMutator?.scrapMul||1;   // Rich Vein mutator
+    const scrapMul = (activeMutator?.scrapMul||1)*((src&&src.isPlayer&&src.perkScrapMul)||1);   // Rich Vein mutator
     // boss loot table — guaranteed, unlike the regular corpse's 62% scrap roll: a big scrap
     // bundle plus 2 always-good pickups (never plain health), so a boss kill always feels worth it
     if(e.boss){

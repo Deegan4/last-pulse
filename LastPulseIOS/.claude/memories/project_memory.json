@@ -1,0 +1,32 @@
+{
+  "memories": [],
+  "manual_memories": [],
+  "realtime_memories": [
+    {
+      "type": "claude_response",
+      "content": "Reinstalling wiped the mobilecli agent pairing — reinstalling it.",
+      "added_at": "2026-09-08T13:00:12.742037",
+      "source": "realtime_capture"
+    },
+    {
+      "type": "message",
+      "content": "wrong characters are in the game now",
+      "added_at": "2026-09-08T13:00:12.742042",
+      "source": "realtime_capture"
+    },
+    {
+      "type": "claude_response",
+      "content": "Still running (5 runs to wave 15 is slow with real Chrome). Letting it finish in background while I write `scripts/test-build.py` (flagged in the earlier answer as missing/doc-promised).",
+      "added_at": "2026-09-11T09:39:49.815020",
+      "source": "realtime_capture"
+    },
+    {
+      "type": "message",
+      "content": "<task-notification> <task-id>bpiemhml2</task-id> <tool-use-id>toolu_012UyVDVY83mDTvdZRjL8Neq</tool-use-id> <output-file>/private/tmp/claude-501/-Volumes-SAMSUNG-1TB-last-pulse/eddd0b0d-3112-4ab8-8179-",
+      "added_at": "2026-09-11T09:39:49.815030",
+      "source": "realtime_capture"
+    }
+  ],
+  "created_at": "2026-09-08T13:00:12.740723",
+  "updated_at": "2026-09-11T09:39:49.815031"
+}

@@ -345,8 +345,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.65.0';
+const GAME_VERSION = '2.66.0';
 const CHANGELOG = [
+  { v:'2.66.0', items:[
+    ['🏆','Weekly challenge','a harder 7-day challenge now sits under the daily on the home screen — complete it for 200 🪙, resets every Monday'],
+    ['🧛','4 new perks','Bloodthirst (heal on kill), Sharpshooter (20% double-damage shots), Quick Hands (-30% reload) and Scavenger (+40% scrap) join the perk picker'],
+  ]},
   { v:'2.65.0', items:[
     ['📱','One game across iOS and web','the iOS app now builds from the same organized game sources, including the new enemies, character customization and run perks'],
   ]},
@@ -765,6 +769,9 @@ const meta = {
   magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
+  weeklyDone: safeGet('dd2_weekly',''),                              // week-key of last completed weekly
+  weeklies: parseInt(safeGet('dd2_weeklies','0'),10) || 0,           // total weeklies completed
+  perkPicks: (()=>{ try{ return JSON.parse(safeGet('dd2_perkpicks','{}'))||{}; }catch(e){ return {}; } })(),   // perk id -> times picked
   iapUnlockAll: safeGet('dd2_iap_unlockall','0')==='1',              // real-money IAP: bypass avatar/weapon level-gates
 };
 // iOS wrapper bridge: GameViewController injects window.__nativeBootCode (see
@@ -802,6 +809,8 @@ function saveMeta(){
   safeSet('dd2_banner',meta.banner);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
+  safeSet('dd2_weekly',meta.weeklyDone); safeSet('dd2_weeklies',meta.weeklies);
+  safeSet('dd2_perkpicks',JSON.stringify(meta.perkPicks));
   safeSet('dd2_iap_unlockall', meta.iapUnlockAll ? '1' : '0');
   nativeSaveDebounced();
 }
@@ -1004,6 +1013,10 @@ const PERKS = [
   {id:'reloadBlast',icon:'💥',name:'EXPLOSIVE RELOAD',maxRanks:1,desc:'Finish a reload to blast nearby enemies for 40 damage. 6s cooldown.',apply:h=>{ h.perkReloadBlast=true; }},
   {id:'killLightning',icon:'🌩️',name:'KILL STORM',maxRanks:1,desc:'Every 4 kills zap up to 3 enemies near the last kill for 35 damage. Zap kills do not charge it.',apply:h=>{ h.perkKillLightning=true; h.perkKillCount=0; }},
   {id:'grappleDamage',icon:'🪝',name:'RAZOR SWING',maxRanks:1,desc:'While grappling, strike nearby enemies for 55 damage once per enemy per swing.',apply:h=>{ h.perkGrappleDamage=true; }},
+  {id:'lifesteal',icon:'🧛', name:'BLOODTHIRST',   desc:'Heal 4 hp on every kill',       apply:h=>{ h.perkLifesteal=(h.perkLifesteal||0)+4; }},
+  {id:'sharpshooter',icon:'🎯',name:'SHARPSHOOTER',desc:'+20% chance to deal double damage',apply:h=>{ h.perkCrit=(h.perkCrit||0)+0.2; }},
+  {id:'quickHands',icon:'🤲',name:'QUICK HANDS',   desc:'-30% reload time',              apply:h=>{ h.perkReloadMul=(h.perkReloadMul||1)*0.7; }},
+  {id:'scavenger',icon:'🧲', name:'SCAVENGER',     desc:'Zombies drop 40% more scrap',   apply:h=>{ h.perkScrapMul=(h.perkScrapMul||1)*1.4; }},
 ];
 let perkChoices=[], pendingWaveBoss=false;
 function perkRank(h,id){ return h.perkRanks?.[id]||0; }
@@ -1032,12 +1045,34 @@ function openPerkPick(boss){
 function choosePerk(id){
   const p = perkChoices.find(x=>x.id===id); if(!p || !applyPerk(player,p)) return;
   perkChoices=[];
+  meta.perkPicks[id]=(meta.perkPicks[id]||0)+1; saveMeta();   // instrumentation: which perks actually get picked
   toast(p.icon+' '+p.name+' picked!'); sfx('level');
   el('perkPick').classList.add('hidden');
   paused = false;
   hordeSpawnWave(pendingWaveBoss);
 }
 function dailyDoneToday(){ return meta.dailyDone===dayKey(); }
+// Weekly challenge — a harder 7-day cousin of the daily, hashed from the week's Monday.
+const WEEKLY_COINS = 200;
+const WEEKLIES = [
+  {icon:'🌊', desc:'Reach wave 10 in Endless Horde',          test:c=>c.horde && c.wave>=10},
+  {icon:'💀', desc:'Get 40+ kills in one run',                test:c=>c.matchKills>=40},
+  {icon:'⏱',  desc:'Survive 4+ minutes in one run',           test:c=>c.time>=240},
+  {icon:'💨', desc:'Reach wave 7, under 60 damage',     test:c=>c.wave>=7 && c.dmgTaken<60},
+  {icon:'🪝', desc:'Grapple + 15 kills in one run',    test:c=>c.grappled && c.matchKills>=15},
+];
+function weekKey(){ const d=new Date(); const m=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  m.setDate(m.getDate()-((m.getDay()+6)%7));   // back up to Monday
+  return 'w'+m.getFullYear()+'-'+(m.getMonth()+1)+'-'+m.getDate(); }
+function thisWeeksChallenge(){ const k=weekKey(); let h=7; for(let i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0; return WEEKLIES[h%WEEKLIES.length]; }
+function weeklyDoneThisWeek(){ return meta.weeklyDone===weekKey(); }
+function checkWeekly(ctx){
+  if(weeklyDoneThisWeek()) return false;
+  let ok=false; try{ ok=!!thisWeeksChallenge().test(ctx||{}); }catch(e){}
+  if(ok){ meta.weeklyDone=weekKey(); meta.weeklies++; meta.coins+=WEEKLY_COINS; saveMeta();
+    setTimeout(()=>{ toast('🏆 Weekly challenge complete! +'+WEEKLY_COINS+' 🪙'); sfx('level'); }, 1200); }
+  return ok;
+}
 // Called at match end (before results render). Returns true if the daily was just completed.
 function checkDaily(ctx){
   if(dailyDoneToday()) return false;
@@ -1570,7 +1605,7 @@ function botTarget(e){
 // effective magazine capacity for a fighter (base weapon mag × their extended-mag multiplier).
 // Bots have no magMul → 1×; the player's is set from the shop upgrade at match start.
 function magCap(h){ return Math.max(1, Math.round(h.weapon.mag * (h.magMul||1))); }
-function startReload(h){ if(h.reloading<=0 && h.mag<magCap(h)) h.reloading=h.weapon.reload; }
+function startReload(h){ if(h.reloading<=0 && h.mag<magCap(h)) h.reloading=h.weapon.reload*(h.perkReloadMul||1); }
 // per-weapon firing feel: tracer look (col/lw/tl/glow/tip), muzzle radius (mz),
 // recoil kick, spark count/spread, knockback push, and player screen shake.
 function bulletFx(w){
@@ -1604,7 +1639,9 @@ function fire(h){
   if(h.mag<=0){ startReload(h); return; }
   const w=h.weapon; h.fireCd = w.fireCd * (h.isPlayer?1:h.fireMul);
   const range=w.range*RANGE_SCALE;
-  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
+  const perkCritHit = !!(h.isPlayer && h.perkCrit && Math.random()<h.perkCrit);   // Sharpshooter: whole volley deals double
+  if(perkCritHit) floaters.push({x:h.x, y:h.y-R-30, vy:-46, t:0.6, txt:'CRIT ×2', col:'#ffd24a'});
+  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1)*(perkCritHit?2:1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
   if(w.mode==='flame'){
     const fspd=320, tip=gunTip(h);
     for(let i=0;i<3;i++){ const a=h.aim+rand(-0.34,0.34), sp=fspd*rand(.7,1.1);
@@ -1726,6 +1763,7 @@ function die(e, src, isHumanTarget){
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
     if(src.isPlayer){
+      if(src.perkLifesteal) src.hp=Math.min(src.maxhp, src.hp+src.perkLifesteal);
       shake=Math.min(shake+5,14); if(src.gpIndex!=null) gpRumble(src.gpIndex, 90, 0.25, 0.6);
       hitmarks.push({x:e.x,y:e.y-6,t:0.42,kill:true}); sfx('kill',null,e);
       // kill combo: chain kills inside the window for up to 3x XP + escalating slow-mo
@@ -1749,7 +1787,7 @@ function die(e, src, isHumanTarget){
   if(!isHumanTarget){ // zombie death pop
     rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
-    const scrapMul = activeMutator?.scrapMul||1;   // Rich Vein mutator
+    const scrapMul = (activeMutator?.scrapMul||1)*((src&&src.isPlayer&&src.perkScrapMul)||1);   // Rich Vein mutator
     // boss loot table — guaranteed, unlike the regular corpse's 62% scrap roll: a big scrap
     // bundle plus 2 always-good pickups (never plain health), so a boss kill always feels worth it
     if(e.boss){
@@ -3043,8 +3081,8 @@ function showResults(win, place){
   const mctxA = { win, place, horde, matchKills:killsTotal, wave:hordeWave, time:elapsed,
     dmgTaken:matchStat.dmgTaken, grappled:matchStat.grappled, bestCombo:matchStat.bestCombo };
   const newAch = checkAchievements(mctxA);
-  const dailyHit = checkDaily(mctxA);
-  coinsEarned += newAch.reduce((s,a)=>s+(TIER_COINS[a.tier]||25),0) + (dailyHit?DAILY_COINS:0);
+  const dailyHit = checkDaily(mctxA), weeklyHit = checkWeekly(mctxA);
+  coinsEarned += newAch.reduce((s,a)=>s+(TIER_COINS[a.tier]||25),0) + (dailyHit?DAILY_COINS:0) + (weeklyHit?WEEKLY_COINS:0);
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden');
   lastWin = win;
   if(win){ confetti=[]; for(let i=0;i<90;i++) confetti.push({x:rand(0,W), y:rand(-H,0),
@@ -3080,6 +3118,7 @@ function showResults(win, place){
   // unlock banner: coins earned + any new achievement badges + daily-challenge completion
   let ub='<div class="ru coin">🪙 +'+coinsEarned+' <span>coins</span></div>';
   for(const a of newAch) ub+='<div class="ru '+a.tier+'">'+a.icon+' '+a.name+' <span>'+TIER_ICON[a.tier]+' unlocked</span></div>';
+  if(weeklyHit) ub+='<div class="ru dailyhit">🏆 Weekly complete <span>+'+WEEKLY_COINS+' 🪙</span></div>';
   if(dailyHit) ub+='<div class="ru dailyhit">📅 Daily complete <span>+'+DAILY_COINS+' 🪙</span></div>';
   el('rUnlocks').innerHTML=ub;
   el('gcLeaderboardBtn').hidden = !(horde && inNativeWrapper());
@@ -4641,6 +4680,10 @@ function renderMenu(){
     dc.innerHTML='<span class="dic">'+(done?'✅':d.icon)+'</span><div class="dtx"><b>Daily Challenge</b>'
       +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+DAILY_COINS)+'</span>';
     dc.classList.toggle('done',done); }
+  const wc=el('weeklyCard'); if(wc){ const d=thisWeeksChallenge(), done=weeklyDoneThisWeek();
+    wc.innerHTML='<span class="dic">'+(done?'✅':'🏆')+'</span><div class="dtx"><b>Weekly Challenge</b>'
+      +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+WEEKLY_COINS)+'</span>';
+    wc.classList.toggle('done',done); }
 }
 function renderRoster(){
   const rs=el('rosterStrip'); if(!rs) return; rs.innerHTML='';

@@ -22,6 +22,10 @@ function renderMenu(){
     dc.innerHTML='<span class="dic">'+(done?'✅':d.icon)+'</span><div class="dtx"><b>Daily Challenge</b>'
       +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+DAILY_COINS)+'</span>';
     dc.classList.toggle('done',done); }
+  const wc=el('weeklyCard'); if(wc){ const d=thisWeeksChallenge(), done=weeklyDoneThisWeek();
+    wc.innerHTML='<span class="dic">'+(done?'✅':'🏆')+'</span><div class="dtx"><b>Weekly Challenge</b>'
+      +'<span>'+d.desc+'</span></div><span class="drw">'+(done?'DONE':'🪙 '+WEEKLY_COINS)+'</span>';
+    wc.classList.toggle('done',done); }
 }
 function renderRoster(){
   const rs=el('rosterStrip'); if(!rs) return; rs.innerHTML='';

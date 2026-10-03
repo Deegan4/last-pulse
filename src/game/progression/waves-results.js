@@ -133,8 +133,8 @@ function showResults(win, place){
   const mctxA = { win, place, horde, matchKills:killsTotal, wave:hordeWave, time:elapsed,
     dmgTaken:matchStat.dmgTaken, grappled:matchStat.grappled, bestCombo:matchStat.bestCombo };
   const newAch = checkAchievements(mctxA);
-  const dailyHit = checkDaily(mctxA);
-  coinsEarned += newAch.reduce((s,a)=>s+(TIER_COINS[a.tier]||25),0) + (dailyHit?DAILY_COINS:0);
+  const dailyHit = checkDaily(mctxA), weeklyHit = checkWeekly(mctxA);
+  coinsEarned += newAch.reduce((s,a)=>s+(TIER_COINS[a.tier]||25),0) + (dailyHit?DAILY_COINS:0) + (weeklyHit?WEEKLY_COINS:0);
   el('hud').classList.add('hidden'); el('ctrl').classList.add('hidden'); el('powers').classList.add('hidden');
   lastWin = win;
   if(win){ confetti=[]; for(let i=0;i<90;i++) confetti.push({x:rand(0,W), y:rand(-H,0),
@@ -170,6 +170,7 @@ function showResults(win, place){
   // unlock banner: coins earned + any new achievement badges + daily-challenge completion
   let ub='<div class="ru coin">🪙 +'+coinsEarned+' <span>coins</span></div>';
   for(const a of newAch) ub+='<div class="ru '+a.tier+'">'+a.icon+' '+a.name+' <span>'+TIER_ICON[a.tier]+' unlocked</span></div>';
+  if(weeklyHit) ub+='<div class="ru dailyhit">🏆 Weekly complete <span>+'+WEEKLY_COINS+' 🪙</span></div>';
   if(dailyHit) ub+='<div class="ru dailyhit">📅 Daily complete <span>+'+DAILY_COINS+' 🪙</span></div>';
   el('rUnlocks').innerHTML=ub;
   el('gcLeaderboardBtn').hidden = !(horde && inNativeWrapper());

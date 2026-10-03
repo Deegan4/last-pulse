@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.65.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.66.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -251,8 +251,8 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       item, a **banner color** cosmetic slot on the nameplate: 4 colors (crimson, azure, gold,
       violet), bought/equipped from Shop → Nameplate Banner, drawn as a colored pill behind the
       player's own name in `drawNameplate`.
-- [ ] **Weekly challenge** — a harder 7-day cousin of the daily (worth 200 🪙), same
-      deterministic day-hash pattern. _(not yet)_
+- [x] **Weekly challenge** (shipped v2.58.0) — `WEEKLIES`/`checkWeekly`, Monday-keyed hash, 200 🪙,
+      second card under the daily on the menu.
 
 ## v2.6 — "Illustrated World" (shipped)
 
@@ -357,6 +357,9 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
       the original six cap at three ranks. Capped perks leave the pool; fully capped builds
       heal 25% at perk milestones instead of blocking the next wave. Damage/cooldowns live in
       `PERK_TUNE`; phone playtests should check shotgun ricochets and reload-blast cadence.
+- [x] **Weekly challenge + perk picks** (v2.66.0, from main's v2.58.0) — added Bloodthirst, Sharpshooter,
+      Quick Hands, Scavenger (14 perks), `meta.perkPicks[id]` pick counter, and a Monday-reset weekly
+      challenge (`WEEKLIES`, 200 coins) under the daily card.
 
 ## Balance & tuning backlog (needs real-device playtests)
 

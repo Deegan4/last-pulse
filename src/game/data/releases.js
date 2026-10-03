@@ -9,8 +9,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.65.0';
+const GAME_VERSION = '2.66.0';
 const CHANGELOG = [
+  { v:'2.66.0', items:[
+    ['🏆','Weekly challenge','a harder 7-day challenge now sits under the daily on the home screen — complete it for 200 🪙, resets every Monday'],
+    ['🧛','4 new perks','Bloodthirst (heal on kill), Sharpshooter (20% double-damage shots), Quick Hands (-30% reload) and Scavenger (+40% scrap) join the perk picker'],
+  ]},
   { v:'2.65.0', items:[
     ['📱','One game across iOS and web','the iOS app now builds from the same organized game sources, including the new enemies, character customization and run perks'],
   ]},
