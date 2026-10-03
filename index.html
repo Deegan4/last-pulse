@@ -801,6 +801,8 @@
         <input type="range" id="sfxVol" min="0" max="100" step="5"></div>
       <div class="slider"><label>🎯 Aim sensitivity <span id="sensVal">1.0×</span></label>
         <input type="range" id="aimSens" min="30" max="200" step="10"></div>
+      <button class="opt" id="sAimAssist"><span class="oic">🎯</span><span id="sAimAssistTxt">Aim assist: ON</span></button>
+      <button class="opt" id="sRumble"><span class="oic">📳</span><span id="sRumbleTxt">Vibration: ON</span></button>
       <div class="opt ctrlrow" id="sCtrlRow"><span class="oic">🎮</span>
         <div class="ctrltxt"><b id="sCtrlStatus">⚪ No controller connected</b>
           <span id="sCtrlHint">Pair one in your device's Bluetooth settings first, then press any button on it here.</span></div>
@@ -1217,8 +1219,13 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.59.0';
+const GAME_VERSION = '2.60.0';
 const CHANGELOG = [
+  { v:'2.60.0', items:[
+    ['🎮','Controller upgrade','smoother circular stick dead-zones, analog walking (push gently to walk slowly), and a new aim assist that nudges your aim onto zombies near your crosshair'],
+    ['📳','More vibration','heavy guns kick through the pad, explosions and boss slams rumble, and a heartbeat pulses when you are near death'],
+    ['⚙️','Controller settings','new Aim assist and Vibration toggles in Settings, fully navigable with the controller'],
+  ]},
   { v:'2.59.0', items:[
     ['💥','Hits land harder','zombies now stagger back from every shot, scaled by damage — bosses barely flinch'],
     ['🩸','Near-death desaturation','under 30% health the screen now drains of colour the closer you get to dying, on top of the red pulse and heartbeat'],
@@ -1619,6 +1626,8 @@ const meta = {
   magLvl: parseInt(safeGet('dd2_maglvl','0'),10) || 0,               // Extended Magazines upgrade tier (0..MAG_MAX)
   dailies: parseInt(safeGet('dd2_dailies','0'),10) || 0,             // total dailies completed
   dailyDone: safeGet('dd2_daily',''),                                // day-key of last completed daily
+  aimAssist: safeGet('dd2_aimassist','1')==='1',                   // controller soft-lock on nearby zombies
+  rumble: safeGet('dd2_rumble','1')==='1',                         // controller vibration
   weeklyDone: safeGet('dd2_weekly',''),                              // week-key of last completed weekly
   weeklies: parseInt(safeGet('dd2_weeklies','0'),10) || 0,           // total weeklies completed
   perkPicks: (()=>{ try{ return JSON.parse(safeGet('dd2_perkpicks','{}'))||{}; }catch(e){ return {}; } })(),   // perk id -> times picked
@@ -1658,6 +1667,7 @@ function saveMeta(){
   safeSet('dd2_banner',meta.banner);
   safeSet('dd2_maglvl',meta.magLvl);
   safeSet('dd2_dailies',meta.dailies); safeSet('dd2_daily',meta.dailyDone);
+  safeSet('dd2_aimassist',meta.aimAssist?'1':'0'); safeSet('dd2_rumble',meta.rumble?'1':'0');
   safeSet('dd2_weekly',meta.weeklyDone); safeSet('dd2_weeklies',meta.weeklies);
   safeSet('dd2_perkpicks',JSON.stringify(meta.perkPicks));
   safeSet('dd2_iap_unlockall', meta.iapUnlockAll ? '1' : '0');
@@ -2472,6 +2482,7 @@ function fire(h){
   if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2, wrist=wristPos(h);  // ejected shell (red for shotgun), from the ejection port near the hand
     spark(wrist.x, wrist.y-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
   h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
+  if(h.gpIndex!=null && fx.push>=34) gpRumble(h.gpIndex,60,0.15,clamp(fx.push/90,0.25,0.7));   // heavy guns kick through the pad
   if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
   sfx('shoot', w);
   if(h.mag<=0) startReload(h);
@@ -2800,6 +2811,8 @@ function explode(b){
   shake=Math.min(shake+8,16);
   for(const z of zombies) if(z.alive && dist2(b.x,b.y,z.x,z.y)<RAD2) hurt(z, 90, b.owner, false);
   for(const o of humans) if(o.alive && dist2(b.x,b.y,o.x,o.y)<RAD2){ const dd = 110*(1-Math.sqrt(dist2(b.x,b.y,o.x,o.y))/RAD); hurt(o, Math.max(30,dd), b.owner, true); }
+  for(const o of humans){ if(o.alive && o.gpIndex!=null){ const d=Math.sqrt(dist2(b.x,b.y,o.x,o.y));   // blast rumble falls off with distance
+    if(d<RAD*2.2) gpRumble(o.gpIndex,200,0.3,clamp(1-d/(RAD*2.2),0.2,1)); } }
   sfx('boom',null,b);
 }
 
@@ -3201,7 +3214,8 @@ function updateZombie(z,dt){
           if(dist2(hh.x,hh.y,z.x,z.y) < JUGGERNAUT_SLAM.r*JUGGERNAUT_SLAM.r){
             hurt(hh, JUGGERNAUT_SLAM.dmg, z, true);
             const ka=Math.atan2(hh.y-z.y,hh.x-z.x); hh.vx+=Math.cos(ka)*JUGGERNAUT_SLAM.knock; hh.vy+=Math.sin(ka)*JUGGERNAUT_SLAM.knock;
-            if(hh.isPlayer) shake=Math.min(shake+8,18); } }
+            if(hh.isPlayer) shake=Math.min(shake+8,18);
+            if(hh.gpIndex!=null) gpRumble(hh.gpIndex,260,0.6,1.0); } }
         rings.push({x:z.x,y:z.y,t:0,dur:0.4,r0:10,r1:JUGGERNAUT_SLAM.r,col:'255,140,40',lw:4});
         for(let i=0;i<14;i++) spark(z.x,z.y,'#caa46a',rand(80,220),rand(0,TAU),.5);
         z.slamCd=rand(JUGGERNAUT_SLAM.cdMin,JUGGERNAUT_SLAM.cdMax); }
@@ -3273,12 +3287,16 @@ function updatePlayer(h,dt,gp,readShared){
     if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
     if(moveVec.active){ mx+=moveVec.x; my+=moveVec.y; }
   }
+  const kbTouch = mx!==0 || my!==0;
   if(gp){ mx+=gp.mx; my+=gp.my; }
   const m=len(mx,my);
+  // analog walking: a half-pushed stick walks at ~half speed (pad-only; keys/touch stay full speed)
+  const padAnalog = (gp && !kbTouch) ? clamp(0.35+0.65*m,0.35,1) : 1;
   if(h.grap){ // rope physics owns velocity — input only steers (pumps the swing)
     if(m>0){ h.vx+=mx/m*520*dt; h.vy+=my/m*520*dt; } h.walk+=dt*10;
   }
-  else if(m>0){ const spd=h.speed*(h.perkSpeedMul||1); h.vx+=(mx/m*spd-h.vx)*MOVE.accel; h.vy+=(my/m*spd-h.vy)*MOVE.accel; }
+  else if(m>0){ const spd=h.speed*(h.perkSpeedMul||1)*padAnalog;   // padAnalog<1 only for a pad-only light push
+    h.vx+=(mx/m*spd-h.vx)*MOVE.accel; h.vy+=(my/m*spd-h.vy)*MOVE.accel; }
   else { h.vx*=MOVE.friction; h.vy*=MOVE.friction; }   // coast to a stop with a little skid
   // stride cadence tracks real speed: fast run = quick legs, a creep = a slow shuffle
   if(!h.grap){ const s01=clamp(Math.hypot(h.vx,h.vy)/(h.speed||1),0,1.25); h.walk+=dt*(2.5+9*s01); }
@@ -3297,7 +3315,7 @@ function updatePlayer(h,dt,gp,readShared){
   }
   // aim + fire
   let firing=false, mouseAim=false;
-  if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=Math.atan2(gp.ay,gp.ax); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
+  if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=assistAim(h,Math.atan2(gp.ay,gp.ax)); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
   else if(readShared && aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
   else if(readShared && !isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
   if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
@@ -3329,11 +3347,26 @@ function updatePlayer(h,dt,gp,readShared){
   // whichever of the two humans updatePlayer() happened to process last each frame.
   if(readShared){
     const lf = h.maxhp>0 ? h.hp/h.maxhp : 1;
-    if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
+    if(h.alive && lf<0.3 && grace<=0){ heartT-=dt; if(heartT<=0){ sfx('heart'); if(h.gpIndex!=null) gpRumble(h.gpIndex,70,0.0,0.35); heartT=lerp(0.5,0.95,clamp(lf/0.3,0,1)); } }
     else heartT=0;
   }
 }
 let gpSeen=false, curGp=null, curGp2=null;
+// Controller aim assist: a right stick can't match a mouse for precision, so when you're aiming
+// roughly at a zombie (inside ~13°) the aim bends 55% of the way onto it. Nearest-in-angle wins
+// with a small distance penalty so a far zombie never beats a close one. Gamepad-only, toggled by
+// meta.aimAssist; mouse and touch aim are untouched.
+const ASSIST_CONE=0.23, ASSIST_RANGE=520, ASSIST_PULL=0.55;
+function assistAim(h,a){
+  if(!meta.aimAssist) return a;
+  let best=null, bestScore=1e9;
+  for(const z of zombies){ if(!z.alive) continue;
+    const dx=z.x-h.x, dy=z.y-h.y, d2=dx*dx+dy*dy; if(d2>ASSIST_RANGE*ASSIST_RANGE) continue;
+    let da=Math.atan2(dy,dx)-a; da=Math.atan2(Math.sin(da),Math.cos(da)); if(Math.abs(da)>ASSIST_CONE) continue;
+    const score=Math.abs(da)+Math.sqrt(d2)/ASSIST_RANGE*0.15;
+    if(score<bestScore){ bestScore=score; best=da; } }
+  return best===null ? a : a+best*ASSIST_PULL;
+}
 // Edge-trigger state is a per-CONTROLLER bag, not module-level singletons — a second local
 // gamepad (co-op player 2) needs its OWN prev-frame button state, or it would corrupt player 1's
 // edge detection (and vice versa) every time both controllers happened to press something the
@@ -3347,8 +3380,13 @@ let gp1Edge = makeGpEdgeState(), gp2Edge = makeGpEdgeState();
 // own "find a pad" scan, so the same logic serves player 1 and player 2 without duplication.
 function readGamepadFrom(gp, st){
   if(!gp) return null;
-  const dz=v=>Math.abs(v)<0.18?0:v, btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
-  const mx=dz(gp.axes[0]||0), my=dz(gp.axes[1]||0), ax=dz(gp.axes[2]||0), ay=dz(gp.axes[3]||0);
+  const btn=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  // radial deadzone with rescale: a square per-axis cut makes a drifting stick skew diagonals and
+  // jumps from 0 to 0.18 the instant it leaves the dead area; this keeps full analog range and
+  // an even circular dead zone, which is what makes light-push walking (analog speed) possible.
+  const stick=(x,y,dead)=>{ const m=Math.hypot(x,y); if(m<dead) return [0,0];
+    const k=Math.min(1,(m-dead)/(1-dead))/m; return [x*k,y*k]; };
+  const [mx,my]=stick(gp.axes[0]||0, gp.axes[1]||0, 0.16), [ax,ay]=stick(gp.axes[2]||0, gp.axes[3]||0, 0.2);
   const fire=btn(7)||btn(5)||btn(0);
   const rN=btn(2)||btn(1), lN=btn(3)||btn(4), bN=btn(6), gN=btn(10), stN=btn(9);
   const reload=rN&&!st.RP, light=lN&&!st.LP, bomb=bN&&!st.BP, grapple=gN&&!st.GP, start=stN&&!st.StP;
@@ -3456,6 +3494,7 @@ function syncControllerStatus(){
 // unsupported on plenty of browsers/pads — a missing rumble should never be able to throw and
 // interrupt hurt()/die(), which run in the middle of live combat.
 function gpRumble(padIndex, duration, weakMagnitude, strongMagnitude){
+  if(!meta.rumble) return;
   try{
     const pads = navigator.getGamepads && navigator.getGamepads();
     const act = pads && pads[padIndex] && pads[padIndex].vibrationActuator;
@@ -5844,8 +5883,13 @@ el('specBtn').addEventListener('click',()=>{ if(!ended){ ended=true; showResults
 
 // settings sliders
 function syncSliders(){ el('sfxVol').value=Math.round(meta.sfxVol*100); el('sfxVal').textContent=Math.round(meta.sfxVol*100)+'%';
-  el('aimSens').value=Math.round(meta.aimSens*100); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; }
+  el('aimSens').value=Math.round(meta.aimSens*100); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; syncPadToggles(); }
 el('sfxVol').addEventListener('input',e=>{ meta.sfxVol=clamp(+e.target.value/100,0,1); el('sfxVal').textContent=Math.round(meta.sfxVol*100)+'%'; applyVolume(); saveMeta(); });
+function syncPadToggles(){ el('sAimAssistTxt').textContent='Aim assist: '+(meta.aimAssist?'ON':'OFF');
+  el('sRumbleTxt').textContent='Vibration: '+(meta.rumble?'ON':'OFF'); }
+el('sAimAssist').addEventListener('click',()=>{ meta.aimAssist=!meta.aimAssist; saveMeta(); syncPadToggles(); });
+el('sRumble').addEventListener('click',()=>{ meta.rumble=!meta.rumble; saveMeta(); syncPadToggles();
+  if(meta.rumble) gpRumble(0,120,0.4,0.6); });   // buzz once so you can feel it turned on
 el('aimSens').addEventListener('input',e=>{ meta.aimSens=clamp(+e.target.value/100,0.3,2); el('sensVal').textContent=meta.aimSens.toFixed(1)+'×'; saveMeta(); });
 
 // settings
