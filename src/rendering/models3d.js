@@ -7,12 +7,6 @@ const FALLBACK_FILES = {
   'avatar:alex':   'assets/meshy/alex-walk.glb',
   // zombies are hand-drawn 2D monsters now — no 3D billboard (drawZombie no longer calls the 3D layer)
 };
-const BUILDING_FILES = {
-  'building:house': 'assets/buildings/building-house.glb',
-  'building:shop':  'assets/buildings/building-shop.glb',
-  'building:barn':  'assets/buildings/building-barn.glb',
-  'building:cabin': 'assets/buildings/building-cabin.glb',
-};
 const SPRITE = 256;                                  // offscreen render-tile size (px)
 const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to draw the billboard
 
@@ -38,9 +32,8 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
       if (m.type === 'character') map['avatar:' + m.id] = 'assets/meshy/' + (m.walk || m.preview);
       // zombie models intentionally skipped — enemies are hand-drawn 2D monsters
     }
-    if (Object.keys(map).length) MODEL_FILES = { ...map, ...BUILDING_FILES };
+    if (Object.keys(map).length) MODEL_FILES = map;
   } catch {}                                          // loader missing → fall back to pilots
-  MODEL_FILES = { ...MODEL_FILES, ...BUILDING_FILES };
 
   let renderer;
   const tile = document.createElement('canvas'); tile.width = tile.height = SPRITE;
@@ -70,12 +63,10 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
   function renderTile(key, flip, opts = {}) {
     const m = models[key]; if (!m) return null;
     scene.add(m.root);
-    if (opts.building) m.root.rotation.set(0, Math.PI / 5.4, 0);             // fixed 3/4 facade view
-    else m.root.rotation.set(0, flip < 0 ? -Math.PI / 2.4 : Math.PI / 2.4, 0);   // 3/4 view, faces travel dir
+    m.root.rotation.set(0, flip < 0 ? -Math.PI / 2.4 : Math.PI / 2.4, 0);   // 3/4 view, faces travel dir
     const h = m.h, dist = h * 1.7;
-    if (opts.building) camera.position.set(0, h * 0.68, dist * 1.18);
-    else camera.position.set(0, h * 0.52, dist);
-    camera.lookAt(0, h * (opts.building ? 0.46 : 0.5), 0);
+    camera.position.set(0, h * 0.52, dist);
+    camera.lookAt(0, h * 0.5, 0);
     camera.aspect = 1; camera.updateProjectionMatrix();
     renderer.setSize(SPRITE, SPRITE, false);
     renderer.render(scene, camera);
@@ -110,17 +101,6 @@ const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to
       if (!models[key]) return false;
       this._tickOnce();
       return blit(ctx, key, z.x, z.y + 18, WORLD_H.zombie * (z.size || 1), z.faceX < 0 ? -1 : 1);
-    },
-    drawBuilding(ctx, d) {
-      const key = 'building:' + (d.kind || 'house');
-      if (!models[key]) return false;
-      const t = renderTile(key, 1, { building: true }); if (!t) return false;
-      ctx.save();
-      ctx.globalAlpha = d.fade === undefined ? 1 : d.fade;
-      const dw = d.w * 1.26, dh = d.h * 1.62;
-      ctx.drawImage(t, d.x + d.w / 2 - dw / 2, d.y + d.h - dh * 0.88, dw, dh);
-      ctx.restore();
-      return true;
     },
   };
 

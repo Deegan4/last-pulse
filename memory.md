@@ -11,6 +11,9 @@
 - **v2.70.0 — Combat readability pass.** Pickups now cast color-coded vertical beams and ground
   rings, landed supply drops emit a taller beacon, and Arc Rifle/Frost Blaster projectiles render
   distinct diamond-like silhouettes instead of sharing the generic tracer head.
+- **v2.71.0 — Building art pass.** Reworked the procedural house/shop/barn/cabin facade layer with
+  cast shadows, a right-side depth plane, perspective roof slabs, bold trim, framed windows, and
+  stronger entrances so buildings no longer read as flat placeholder rectangles on mobile.
 
 _Last updated: 2026-08-22. Working memory for **Last Pulse** (repo `Deegan4/last-pulse`,
 v2.55.0). For architecture details see [CLAUDE.md](CLAUDE.md); this file is the "where we are /
@@ -1659,3 +1662,4 @@ open questions live in `ROADMAP.md`'s "Balance & tuning backlog" table too.)_
 - **v2.60.0** — Controller upgrade: radial deadzones (`stick()` in `readGamepadFrom`), analog walk `padAnalog`, `assistAim()` (cone 0.23rad, 520px, pull 0.55, `meta.aimAssist`), extra `gpRumble` calls (heavy-gun kick in `fire`, `explode`, boss slam, low-hp heart), `meta.rumble` gate; Settings gets `#sAimAssist`/`#sRumble` `.opt` toggles (auto-included in gamepad menu nav).
 
 - **v2.61.0** — Co-op revive: `updateRevive(dt)` (called in loop after `integrate`), `drawDowned(p)` (drawn before the y-sorted sprites), `REVIVE_R=70`/`REVIVE_TIME=2.5`, progress drains 2× when P1 leaves; `die()` toasts when P2 falls; minimap hollow ring. Revive restores 50% hp, refills mag.
+- Removed the 3D GLB building billboards (`assets/buildings/*.glb`, `BUILDING_FILES`, `Models3D.drawBuilding`, validator check): the placeholder boxes clipped at the tile edge and hid doors/hp bars. Buildings always use the hand-drawn 2D `drawBuilding()` art.

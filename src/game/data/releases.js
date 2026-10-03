@@ -9,8 +9,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.70.0';
+const GAME_VERSION = '2.71.0';
 const CHANGELOG = [
+  { v:'2.71.0', items:[
+    ['🏠','Building art pass','houses, shops, barns and cabins now have stronger top-down depth, roof planes, facade trim, framed windows, shadows and clearer entrances'],
+  ]},
   { v:'2.70.0', items:[
     ['✨','Combat readability pass','loot now has color-coded rarity beams, supply drops cast a visible beacon, and Arc Rifle / Frost Blaster projectiles have distinct silhouettes'],
   ]},
