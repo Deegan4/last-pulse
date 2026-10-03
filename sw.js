@@ -2,7 +2,7 @@
 // Hand-authored, never touched by scripts/build-game.py (unlike assets/game/*, which is
 // generated from src/). Bump CACHE_VERSION when the precached shell list changes shape;
 // runtime-cached assets self-heal via the network-then-cache fetch below regardless.
-const CACHE_VERSION = 'lp-cache-v1';
+const CACHE_VERSION = 'lp-cache-v2';   // v2: purge caches poisoned with redirected responses (Safari "Response served by service worker has redirections")
 const SHELL = [
   './',
   'index.html',
@@ -16,10 +16,22 @@ const SHELL = [
   'assets/icon/apple-touch-icon.png',
 ];
 
+// Vercel `cleanUrls` 308-redirects /index.html → /, so a fetched response can be `redirected`.
+// Browsers (Safari especially) refuse to render a navigation answered with a redirected
+// response, so always re-wrap it as a clean, non-redirected Response before cache/serve.
+async function clean(res) {
+  if (!res || !res.redirected) return res;
+  return new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: res.headers });
+}
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_VERSION)
-      .then(cache => cache.addAll(SHELL))
+      .then(cache => Promise.all(SHELL.map(async url => {
+        const res = await fetch(url, { cache: 'reload' });
+        if (!res.ok) throw new Error('precache failed: ' + url);
+        await cache.put(url, await clean(res));
+      })))
       .then(() => self.skipWaiting())
   );
 });
@@ -43,12 +55,13 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_VERSION);
     const cached = await cache.match(req);
-    const network = fetch(req).then(res => {
-      if (res && res.ok) cache.put(req, res.clone());
-      return res;
+    const network = fetch(req).then(async res => {
+      const ok = await clean(res);
+      if (ok && ok.ok) cache.put(req, ok.clone());
+      return ok;
     }).catch(() => null);
 
-    if (cached) { network; return cached; }
+    if (cached) { network; return clean(cached); }
     const fresh = await network;
     if (fresh) return fresh;
     if (req.mode === 'navigate') return cache.match('index.html');
