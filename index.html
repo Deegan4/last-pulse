@@ -1217,8 +1217,13 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.58.0';
+const GAME_VERSION = '2.59.0';
 const CHANGELOG = [
+  { v:'2.59.0', items:[
+    ['💥','Hits land harder','zombies now stagger back from every shot, scaled by damage — bosses barely flinch'],
+    ['🩸','Near-death desaturation','under 30% health the screen now drains of colour the closer you get to dying, on top of the red pulse and heartbeat'],
+    ['🎬','Wave-clear slow-mo','killing the last zombie of a wave now lingers in a short slow-motion beat'],
+  ]},
   { v:'2.58.0', items:[
     ['🏆','Weekly challenge','a harder 7-day challenge now sits under the daily on the home screen — complete it for 200 🪙, resets every Monday'],
     ['🧛','4 new perks','Bloodthirst (heal on kill), Sharpshooter (20% double-damage shots), Quick Hands (-30% reload) and Scavenger (+40% scrap) join the perk picker, so long runs stop repeating the same choices'],
@@ -2507,6 +2512,11 @@ function hurt(e, dmg, src, isHumanTarget){
     for(let i=0;i<3;i++) spark(e.x,e.y-6,'#7fc8ff',rand(40,120),rand(0,TAU),.3); }
   if(dmg>0){ e.hp -= dmg; if(e.isPlayer) matchStat.dmgTaken += dmg; }
   e.hitFlash=0.12;
+  // zombie stagger: a damage-scaled shove along the shot so hits visibly land (bosses barely flinch).
+  // z.vx/vy are re-lerped toward the chase target every frame, so the shove decays on its own.
+  if(!e.isPlayer && !e.weapon && src && src!==e && dmg>0){
+    const sa=Math.atan2(e.y-src.y, e.x-src.x), sk=clamp(dmg*2.4,40,190)*(e.boss?0.2:1);
+    e.vx+=Math.cos(sa)*sk; e.vy+=Math.sin(sa)*sk; }
   // blood: a directional spray along the shot's path (exit-wound style), sized by damage,
   // plus a close mist and — on solid hits — a splatter decal left on the ground
   const blood = '#c0303a', dark = '#8f1f28';   // everything bleeds red
@@ -2544,6 +2554,8 @@ function die(e, src, isHumanTarget){
     y:e.y+6+rand(-6,14), r:rand(6,12), t:6, col:goreCol});
   if(wallStreaks.length<160) spraySplatOnWall(e.x, e.y, 24);
   sfx('die',null,e);
+  // last zombie of a wave: an extended slow-mo beat so clearing a wave reads as an event
+  if(gameMode==='horde' && !e.isPlayer && !e.weapon && src && src.isPlayer && !zombies.some(z=>z.alive)) hitstop=0.45;
   if(src && src!==e){
     src.kills = (src.kills||0)+1;
     if(src.isPlayer){
@@ -4014,6 +4026,9 @@ function draw(){
       const frac=player.maxhp>0?player.hp/player.maxhp:1;
       if(frac<0.3){
         const intensity=1-frac/0.3;                      // 0 at 30% HP → 1 near death
+        ctx.globalCompositeOperation='saturation';       // drain colour as you near death (cheap full-screen blend)
+        ctx.fillStyle='rgba(128,128,128,'+(0.55*intensity).toFixed(3)+')'; ctx.fillRect(0,0,W,H);
+        ctx.globalCompositeOperation='source-over';
         const pulse=0.5+0.5*Math.sin(gtime*6);
         const a=(0.16+0.30*intensity)*(0.55+0.45*pulse);
         const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.28,W/2,H/2,Math.max(W,H)*0.74);
