@@ -89,7 +89,8 @@ function buildDecor(){
   if(lvl>=15) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
   if(lvl>=20) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
-  campfires = decor.filter(d=>d.type==='campfire');   // cache for the heal-aura check
+  campfires = decor.filter(d=>d.type==='campfire');
+  barrels = decor.filter(d=>d.type==='barrel');   // cache for the heal-aura check
 }
 // Additive map escalation (Horde only) — called on boss waves from the wave-clear block. NEVER
 // clears or repositions existing decor/obstacles (that would strand zombies/the player inside

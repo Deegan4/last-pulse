@@ -251,12 +251,20 @@ function drawDecor(d){
       ctx.fillStyle='#d6ff6e'; ctx.font='900 7px system-ui,sans-serif'; ctx.fillText('OPEN',0,19); }
     ctx.restore(); return; }
   if(d.type==='barrel'){ const x=d.x, y=d.y, s=d.s||1, hot=d.hot;
-    ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';
+    if(d.blown){ ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';   // scorched husk + char mark
+      ctx.fillStyle='rgba(20,14,10,.38)'; ctx.beginPath(); ctx.ellipse(0,4,30,11,0,0,TAU); ctx.fill();
+      ctx.fillStyle='#3a2a22'; ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.beginPath();
+      ctx.moveTo(-12,6); ctx.lineTo(-11,-6); ctx.lineTo(-6,-2); ctx.lineTo(-2,-10); ctx.lineTo(3,-3); ctx.lineTo(8,-8); ctx.lineTo(12,6); ctx.closePath(); ctx.fill(); ctx.stroke();
+      const sm=(gtime*0.6+d.x*0.01)%1; ctx.fillStyle='rgba(90,90,90,'+(0.35*(1-sm))+')'; ctx.beginPath(); ctx.arc(2+sm*4,-12-sm*22,4+sm*6,0,TAU); ctx.fill();
+      ctx.restore(); return; }
+    const wob=d.wobble>0?Math.sin(d.wobble*60)*d.wobble*0.4:0;
+    ctx.save(); ctx.translate(x,y); ctx.rotate(wob); ctx.scale(s,s); ctx.lineJoin='round';
     ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(2,8,15,5,0,0,TAU); ctx.fill();
     ctx.fillStyle=hot?'#b84431':'#7c5b36'; ctx.strokeStyle=INK; ctx.lineWidth=3.2; roundRect(-12,-23,24,31,5); ctx.fill(); ctx.stroke();
     ctx.fillStyle=hot?'#e95b45':'#a8753f'; ctx.fillRect(-8,-19,5,23);
     ctx.fillStyle='#d8c7a4'; ctx.strokeStyle=INK; ctx.lineWidth=2.2; ctx.beginPath(); ctx.ellipse(0,-23,12,4,0,0,TAU); ctx.fill(); ctx.stroke();
     ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.3; roundRect(-13,-14,26,5,1.5); ctx.fill(); ctx.stroke(); roundRect(-13,-2,26,5,1.5); ctx.fill(); ctx.stroke();
+    if(hot && d.hits){ const g=.35+.3*Math.sin(gtime*14); ctx.fillStyle='rgba(255,160,60,'+g+')'; ctx.beginPath(); ctx.arc(0,-26,6+d.hits*2,0,TAU); ctx.fill(); }
     if(hot){ ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(-5,-11); ctx.lineTo(2,-8); ctx.lineTo(-2,-4); ctx.lineTo(6,2); ctx.stroke(); }
     else { ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(4,-8,3,0,TAU); ctx.fill(); ctx.stroke(); }
     if(d.fuel){
@@ -457,6 +465,14 @@ function drawDecor(d){
         ctx.fillStyle=i===0?'#519c41':i===1?'#478f3a':'#3f7d33'; ctx.beginPath(); ctx.moveTo(tx,topY); ctx.lineTo(tx-hw,baseY); ctx.lineTo(tx+hw,baseY); ctx.closePath(); ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.13)'; ctx.beginPath(); ctx.moveTo(tx,topY); ctx.lineTo(tx-hw*0.42,baseY-(baseY-topY)*0.42); ctx.lineTo(tx+hw*0.12,topY+3*s); ctx.closePath(); ctx.fill(); } } }
   else if(d.type==='bush'){ const s=d.s; ctx.lineJoin='round';
+    const pn=player&&player.alive&&dist2(player.x,player.y,d.x,d.y)<(26*s)*(26*s);
+    if(pn && (Math.abs(player.vx||0)+Math.abs(player.vy||0))>20 && Math.random()<0.06) spark(d.x+rand(-12,12)*s,d.y-8*s,'#5fae4a',rand(20,60),rand(-2.6,-0.5),.4);
+    if(pn){ ctx.save(); ctx.translate(d.x,d.y); ctx.rotate(Math.sin(gtime*22)*0.05); ctx.translate(-d.x,-d.y); drawBushBody(d,s); ctx.restore(); return; }
+    drawBushBody(d,s); }
+  else if(d.type==='grass'){ drawGrassTuft(d); }
+}
+function drawBushBody(d,s){
+  {
     const bi=imgOk('bush');
     if(bi){ const DW=52*s, DH=DW*(bi.naturalHeight/bi.naturalWidth);
       ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+4,20*s,7*s,0,0,TAU); ctx.fill();
@@ -467,11 +483,33 @@ function drawDecor(d){
     ctx.fillStyle='#3f7d33'; for(const o of blobs){ ctx.beginPath(); ctx.arc(d.x+o[0]*s,d.y+o[1]*s,o[2]*s,0,TAU); ctx.fill(); }
     ctx.fillStyle='#519c41'; for(const o of blobs){ ctx.beginPath(); ctx.arc(d.x+o[0]*s,d.y+o[1]*s-2*s,o[2]*0.68*s,0,TAU); ctx.fill(); }
     ctx.fillStyle='#e0556a'; for(const b of [[-6,-6],[7,-4],[1,-9]]){ ctx.beginPath(); ctx.arc(d.x+b[0]*s,d.y+b[1]*s,1.7*s,0,TAU); ctx.fill(); } }  // berries
-  else if(d.type==='grass'){ const s=d.s, sway=Math.sin(gtime*1.6+d.ph)*2.4; ctx.lineCap='round';
+}
+// grass tufts bend away from the player as they walk through, then spring back to the wind sway
+function drawGrassTuft(d){
+  { const s=d.s; let sway=Math.sin(gtime*1.6+d.ph)*2.4; ctx.lineCap='round';
+    if(player&&player.alive){ const dx=d.x-player.x, dy=d.y-player.y, dd=dx*dx+dy*dy;
+      if(dd<34*34){ const k=1-Math.sqrt(dd)/34; sway+=Math.sign(dx||1)*k*9; } }
     ctx.strokeStyle='#3f7d33'; ctx.lineWidth=2.6*s;
     ctx.beginPath(); for(let i=-1;i<=1;i++){ ctx.moveTo(d.x+i*4*s,d.y); ctx.quadraticCurveTo(d.x+i*4*s+i*2,d.y-10*s,d.x+i*5*s+i*3+sway,d.y-16*s); } ctx.stroke();
     ctx.strokeStyle='rgba(150,220,120,.5)'; ctx.lineWidth=1*s;                                        // light tips
     ctx.beginPath(); for(let i=-1;i<=1;i++){ ctx.moveTo(d.x+i*4*s+i*1.5,d.y-11*s); ctx.lineTo(d.x+i*5*s+i*3+sway,d.y-16*s); } ctx.stroke(); }
+}
+
+// Usable props show a ground ring when the player is close: a cooldown arc while recharging,
+// a bright pulsing ring when ready, and a quick expanding pop the moment they're used.
+const INTERACT_TYPES={cache:1,medtent:1,antenna:1,barrel:1};
+function drawInteractHint(d){
+  if(!INTERACT_TYPES[d.type] || !player || !player.alive) return;
+  const usable = d.type==='cache' ? !d.open : d.type==='barrel' ? (d.fuel && !d.blown) : true;
+  if(d.pop>0){ const k=1-d.pop/.35; ctx.strokeStyle='rgba(214,255,110,'+(1-k)+')'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(d.x,d.y+6,30+k*30,(30+k*30)*.4,0,0,TAU); ctx.stroke(); }
+  if(!usable) return;
+  const dd=dist2(player.x,player.y,d.x,d.y); if(dd>150*150) return;
+  const near=1-Math.sqrt(dd)/150, cd=d.interactCd>0&&d.cdMax?clamp(d.interactCd/d.cdMax,0,1):0;
+  ctx.save(); ctx.translate(d.x,d.y+6); ctx.scale(1,.4); ctx.lineWidth=3/.7;
+  if(cd>0){ ctx.strokeStyle='rgba(255,255,255,'+(.18*near+.08)+')'; ctx.beginPath(); ctx.arc(0,0,30,0,TAU); ctx.stroke();
+    ctx.strokeStyle='rgba(255,200,90,'+(.55*near+.2)+')'; ctx.beginPath(); ctx.arc(0,0,30,-Math.PI/2,-Math.PI/2+TAU*(1-cd)); ctx.stroke(); }
+  else { const p=.5+.5*Math.sin(gtime*5+d.x*.02); ctx.strokeStyle='rgba(214,255,110,'+((.35+.4*p)*near+.1)+')'; ctx.beginPath(); ctx.arc(0,0,28+p*4,0,TAU); ctx.stroke(); }
+  ctx.restore();
 }
 
 function drawPickup(p){

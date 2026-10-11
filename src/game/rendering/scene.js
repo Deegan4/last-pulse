@@ -42,7 +42,7 @@ function draw(){
     // buildings split in two layers: the interior floor sorts at the TOP edge (under anyone
     // standing inside), the facade at the bottom edge (over anyone inside, until it fades)
     if(d.type==='building') drawables.push({y:d.y, fn:()=>drawBuildingBase(d)});
-    drawables.push({y:(d.y+(d.h||0)), fn:()=>drawDecor(d)}); }
+    drawables.push({y:(d.y+(d.h||0)), fn:INTERACT_TYPES[d.type]?()=>{ drawInteractHint(d); drawDecor(d); }:()=>drawDecor(d)}); }
   for(const p of pickups) if(inView(p.x,p.y,40)) drawables.push({y:p.y, fn:()=>drawPickup(p)});
   for(const s of scraps) if(inView(s.x,s.y,30)) drawables.push({y:s.y, fn:()=>drawScrap(s)});
   for(const b of builds){ if(b.key==='spikes' || !inView(b.cx,b.cy,60)) continue;   // walls/turrets y-sort with entities

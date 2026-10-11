@@ -25,6 +25,7 @@ function updateBullets(dt){
         const hitObs=worldObstacleAt(b.x,b.y); if(hitObs) damageWorldObstacle(hitObs,b.dmg||12,b.owner);
         for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue;
       } }
+    if(!gone && !b.enemy && !b.boom && shootBarrel(b)){ bullets.splice(i,1); continue; }
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
@@ -132,23 +133,38 @@ function damageWorldObstacle(o,dmg,src){
     if(src&&src.isPlayer) toast(o.type==='door'?'🚪 DOOR BROKEN OPEN':'🪵 BARRICADE BROKEN');
   }
 }
+// Hot (red) fuel barrels are shootable: a few hits and they blow, reusing explode() so the
+// blast hurts zombies + bots and credits the shooter. Blown barrels stay as scorched husks.
+const BARREL_HP=3;
+function shootBarrel(b){
+  for(const d of barrels){ if(!d.hot || d.blown) continue;
+    const s=d.s||1; if(Math.abs(b.x-d.x)>13*s || b.y<d.y-24*s || b.y>d.y+8*s) continue;
+    d.hits=(d.hits||0)+1; d.wobble=.35;
+    for(let k=0;k<4;k++) spark(b.x,b.y,'#ffb13d',rand(40,140),rand(0,TAU),.3);
+    if(d.hits>=BARREL_HP){ d.blown=true; d.fuel=false; explode({x:d.x,y:d.y-10,owner:b.owner});
+      if(b.owner&&b.owner.isPlayer) toast('🛢 BARREL DETONATED'); }
+    return true; }
+  return false;
+}
 function updateWorldInteractables(dt){
+  for(const d of barrels) if(d.wobble>0) d.wobble-=dt;
   if(!player || !player.alive || grace>0) return;
   for(const d of decor){
     if(!['cache','medtent','antenna','barrel'].includes(d.type)) continue;
     if(d.interactCd>0) d.interactCd-=dt;
+    if(d.pop>0) d.pop-=dt;
     if(d.interactCd>0 || dist2(player.x,player.y,d.x,d.y)>52*52) continue;
     if(d.type==='cache' && !d.open){
-      d.open=true; d.interactCd=.8; pickups.push(makePickup(d.x+rand(-8,8),d.y+rand(-8,8)));
+      d.open=true; d.interactCd=.8; d.pop=.35; pickups.push(makePickup(d.x+rand(-8,8),d.y+rand(-8,8)));
       toast('📦 CACHE OPENED'); sfx('pickup');
     } else if(d.type==='medtent'){
-      d.interactCd=16; player.hp=Math.min(player.maxhp,player.hp+42);
+      d.interactCd=16; d.cdMax=16; d.pop=.35; player.hp=Math.min(player.maxhp,player.hp+42);
       floaters.push({x:d.x,y:d.y-34,vy:-28,t:.8,txt:'+42 HP',col:'#7bff4a'}); toast('⛑ FIELD CLINIC'); sfx('pickup');
     } else if(d.type==='antenna'){
-      d.interactCd=24; player.scrap=(player.scrap||0)+5;
+      d.interactCd=24; d.cdMax=24; d.pop=.35; player.scrap=(player.scrap||0)+5;
       rings.push({x:d.x,y:d.y,t:0,dur:.55,r0:8,r1:90,col:'100,225,255',lw:2.5}); toast('📡 RELAY ONLINE · +5 SCRAP'); sfx('level');
     } else if(d.type==='barrel' && d.fuel){
-      d.interactCd=18; player.shield=Math.min(100,(player.shield||0)+18);
+      d.interactCd=18; d.cdMax=18; d.pop=.35; player.shield=Math.min(100,(player.shield||0)+18);
       floaters.push({x:d.x,y:d.y-30,vy:-28,t:.8,txt:'+18 ARMOR',col:'#5fa8ff'}); toast('⛽ FUEL STATION SCAVENGED'); sfx('pickup');
     }
   }
@@ -159,14 +175,14 @@ function updateWorldInteractables(dt){
     if(!tower.tower) continue;
     if(tower.scanT>0) tower.scanT-=dt;
     if(tower.scanCd>0) tower.scanCd-=dt;
-    const nearBase=dist2(player.x,tower.x+tower.w/2,player.y,tower.y+tower.h)<105*105;
+    const nearBase=dist2(player.x,player.y,tower.x+tower.w/2,tower.y+tower.h)<105*105;
     if(nearBase && tower.scanCd<=0){
       tower.scanT=4; tower.scanCd=15; rings.push({x:tower.x+tower.w/2,y:tower.y+tower.h/2,t:0,dur:.55,r0:10,r1:110,col:'120,230,255',lw:2.5});
       toast('🔦 SEARCHLIGHT SCAN'); sfx('level');
     }
     if(tower.scanT>0){
       const r2=430*430;
-      for(const z of zombies) if(z.alive && dist2(z.x,tower.x+tower.w/2,z.y,tower.y+tower.h/2)<r2) z.slowT=Math.max(z.slowT||0,.35);
+      for(const z of zombies) if(z.alive && dist2(z.x,z.y,tower.x+tower.w/2,tower.y+tower.h/2)<r2) z.slowT=Math.max(z.slowT||0,.35);
     }
   }
 }
