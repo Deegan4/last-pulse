@@ -81,6 +81,7 @@ const HERO_ARM_REACH = 12;             // shoulder-to-wrist length in drawHeroAr
                                         // spawn from the same point the arm is actually drawn at
 const WEAPON_HAND_SCALE = 1.06;       // procedural in-hand fallback scale
 const WEAPON_PNG_HAND_SCALE = 1.30;   // real PNG in-hand art scale
+let barrels = [];             // cached barrel decor (shootable) — rebuilt in buildDecor
 let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
 const CAMPFIRE = { r:72, heal:6 };   // heal radius (px) and hp/sec near a fire
 

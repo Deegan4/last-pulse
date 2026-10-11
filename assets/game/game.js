@@ -345,8 +345,14 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.72.0';
+const GAME_VERSION = '2.73.0';
 const CHANGELOG = [
+  { v:'2.73.0', items:[
+    ['🛢','Shootable fuel barrels','red barrels blow up after 3 hits — lure the horde in and detonate them'],
+    ['🎯','Prop prompts','caches, clinics, relays and fuel pumps show a ready ring and a recharge arc when you walk up'],
+    ['🌿','Living foliage','grass bends and bushes rustle as you move through them'],
+    ['🔦','Searchlight fix','watchtower scans now trigger reliably at the tower base'],
+  ]},
   { v:'2.72.0', items:[
     ['🧭','Safari loading fix','service-worker navigations now bypass stale redirect responses so the game opens normally on iPhone'],
   ]},
@@ -1239,6 +1245,7 @@ const HERO_ARM_REACH = 12;             // shoulder-to-wrist length in drawHeroAr
                                         // spawn from the same point the arm is actually drawn at
 const WEAPON_HAND_SCALE = 1.06;       // procedural in-hand fallback scale
 const WEAPON_PNG_HAND_SCALE = 1.30;   // real PNG in-hand art scale
+let barrels = [];             // cached barrel decor (shootable) — rebuilt in buildDecor
 let campfires = [];           // cached campfire decor (heal auras) — rebuilt in buildDecor
 const CAMPFIRE = { r:72, heal:6 };   // heal radius (px) and hp/sec near a fire
 
@@ -1442,7 +1449,8 @@ function buildDecor(){
   if(lvl>=15) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
   if(lvl>=20) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
-  campfires = decor.filter(d=>d.type==='campfire');   // cache for the heal-aura check
+  campfires = decor.filter(d=>d.type==='campfire');
+  barrels = decor.filter(d=>d.type==='barrel');   // cache for the heal-aura check
 }
 // Additive map escalation (Horde only) — called on boss waves from the wave-clear block. NEVER
 // clears or repositions existing decor/obstacles (that would strand zombies/the player inside
@@ -2963,6 +2971,7 @@ function updateBullets(dt){
         const hitObs=worldObstacleAt(b.x,b.y); if(hitObs) damageWorldObstacle(hitObs,b.dmg||12,b.owner);
         for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue;
       } }
+    if(!gone && !b.enemy && !b.boom && shootBarrel(b)){ bullets.splice(i,1); continue; }
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
@@ -3070,23 +3079,38 @@ function damageWorldObstacle(o,dmg,src){
     if(src&&src.isPlayer) toast(o.type==='door'?'🚪 DOOR BROKEN OPEN':'🪵 BARRICADE BROKEN');
   }
 }
+// Hot (red) fuel barrels are shootable: a few hits and they blow, reusing explode() so the
+// blast hurts zombies + bots and credits the shooter. Blown barrels stay as scorched husks.
+const BARREL_HP=3;
+function shootBarrel(b){
+  for(const d of barrels){ if(!d.hot || d.blown) continue;
+    const s=d.s||1; if(Math.abs(b.x-d.x)>13*s || b.y<d.y-24*s || b.y>d.y+8*s) continue;
+    d.hits=(d.hits||0)+1; d.wobble=.35;
+    for(let k=0;k<4;k++) spark(b.x,b.y,'#ffb13d',rand(40,140),rand(0,TAU),.3);
+    if(d.hits>=BARREL_HP){ d.blown=true; d.fuel=false; explode({x:d.x,y:d.y-10,owner:b.owner});
+      if(b.owner&&b.owner.isPlayer) toast('🛢 BARREL DETONATED'); }
+    return true; }
+  return false;
+}
 function updateWorldInteractables(dt){
+  for(const d of barrels) if(d.wobble>0) d.wobble-=dt;
   if(!player || !player.alive || grace>0) return;
   for(const d of decor){
     if(!['cache','medtent','antenna','barrel'].includes(d.type)) continue;
     if(d.interactCd>0) d.interactCd-=dt;
+    if(d.pop>0) d.pop-=dt;
     if(d.interactCd>0 || dist2(player.x,player.y,d.x,d.y)>52*52) continue;
     if(d.type==='cache' && !d.open){
-      d.open=true; d.interactCd=.8; pickups.push(makePickup(d.x+rand(-8,8),d.y+rand(-8,8)));
+      d.open=true; d.interactCd=.8; d.pop=.35; pickups.push(makePickup(d.x+rand(-8,8),d.y+rand(-8,8)));
       toast('📦 CACHE OPENED'); sfx('pickup');
     } else if(d.type==='medtent'){
-      d.interactCd=16; player.hp=Math.min(player.maxhp,player.hp+42);
+      d.interactCd=16; d.cdMax=16; d.pop=.35; player.hp=Math.min(player.maxhp,player.hp+42);
       floaters.push({x:d.x,y:d.y-34,vy:-28,t:.8,txt:'+42 HP',col:'#7bff4a'}); toast('⛑ FIELD CLINIC'); sfx('pickup');
     } else if(d.type==='antenna'){
-      d.interactCd=24; player.scrap=(player.scrap||0)+5;
+      d.interactCd=24; d.cdMax=24; d.pop=.35; player.scrap=(player.scrap||0)+5;
       rings.push({x:d.x,y:d.y,t:0,dur:.55,r0:8,r1:90,col:'100,225,255',lw:2.5}); toast('📡 RELAY ONLINE · +5 SCRAP'); sfx('level');
     } else if(d.type==='barrel' && d.fuel){
-      d.interactCd=18; player.shield=Math.min(100,(player.shield||0)+18);
+      d.interactCd=18; d.cdMax=18; d.pop=.35; player.shield=Math.min(100,(player.shield||0)+18);
       floaters.push({x:d.x,y:d.y-30,vy:-28,t:.8,txt:'+18 ARMOR',col:'#5fa8ff'}); toast('⛽ FUEL STATION SCAVENGED'); sfx('pickup');
     }
   }
@@ -3097,14 +3121,14 @@ function updateWorldInteractables(dt){
     if(!tower.tower) continue;
     if(tower.scanT>0) tower.scanT-=dt;
     if(tower.scanCd>0) tower.scanCd-=dt;
-    const nearBase=dist2(player.x,tower.x+tower.w/2,player.y,tower.y+tower.h)<105*105;
+    const nearBase=dist2(player.x,player.y,tower.x+tower.w/2,tower.y+tower.h)<105*105;
     if(nearBase && tower.scanCd<=0){
       tower.scanT=4; tower.scanCd=15; rings.push({x:tower.x+tower.w/2,y:tower.y+tower.h/2,t:0,dur:.55,r0:10,r1:110,col:'120,230,255',lw:2.5});
       toast('🔦 SEARCHLIGHT SCAN'); sfx('level');
     }
     if(tower.scanT>0){
       const r2=430*430;
-      for(const z of zombies) if(z.alive && dist2(z.x,tower.x+tower.w/2,z.y,tower.y+tower.h/2)<r2) z.slowT=Math.max(z.slowT||0,.35);
+      for(const z of zombies) if(z.alive && dist2(z.x,z.y,tower.x+tower.w/2,tower.y+tower.h/2)<r2) z.slowT=Math.max(z.slowT||0,.35);
     }
   }
 }
@@ -3341,7 +3365,7 @@ function draw(){
     // buildings split in two layers: the interior floor sorts at the TOP edge (under anyone
     // standing inside), the facade at the bottom edge (over anyone inside, until it fades)
     if(d.type==='building') drawables.push({y:d.y, fn:()=>drawBuildingBase(d)});
-    drawables.push({y:(d.y+(d.h||0)), fn:()=>drawDecor(d)}); }
+    drawables.push({y:(d.y+(d.h||0)), fn:INTERACT_TYPES[d.type]?()=>{ drawInteractHint(d); drawDecor(d); }:()=>drawDecor(d)}); }
   for(const p of pickups) if(inView(p.x,p.y,40)) drawables.push({y:p.y, fn:()=>drawPickup(p)});
   for(const s of scraps) if(inView(s.x,s.y,30)) drawables.push({y:s.y, fn:()=>drawScrap(s)});
   for(const b of builds){ if(b.key==='spikes' || !inView(b.cx,b.cy,60)) continue;   // walls/turrets y-sort with entities
@@ -3804,12 +3828,20 @@ function drawDecor(d){
       ctx.fillStyle='#d6ff6e'; ctx.font='900 7px system-ui,sans-serif'; ctx.fillText('OPEN',0,19); }
     ctx.restore(); return; }
   if(d.type==='barrel'){ const x=d.x, y=d.y, s=d.s||1, hot=d.hot;
-    ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';
+    if(d.blown){ ctx.save(); ctx.translate(x,y); ctx.scale(s,s); ctx.lineJoin='round';   // scorched husk + char mark
+      ctx.fillStyle='rgba(20,14,10,.38)'; ctx.beginPath(); ctx.ellipse(0,4,30,11,0,0,TAU); ctx.fill();
+      ctx.fillStyle='#3a2a22'; ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.beginPath();
+      ctx.moveTo(-12,6); ctx.lineTo(-11,-6); ctx.lineTo(-6,-2); ctx.lineTo(-2,-10); ctx.lineTo(3,-3); ctx.lineTo(8,-8); ctx.lineTo(12,6); ctx.closePath(); ctx.fill(); ctx.stroke();
+      const sm=(gtime*0.6+d.x*0.01)%1; ctx.fillStyle='rgba(90,90,90,'+(0.35*(1-sm))+')'; ctx.beginPath(); ctx.arc(2+sm*4,-12-sm*22,4+sm*6,0,TAU); ctx.fill();
+      ctx.restore(); return; }
+    const wob=d.wobble>0?Math.sin(d.wobble*60)*d.wobble*0.4:0;
+    ctx.save(); ctx.translate(x,y); ctx.rotate(wob); ctx.scale(s,s); ctx.lineJoin='round';
     ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(2,8,15,5,0,0,TAU); ctx.fill();
     ctx.fillStyle=hot?'#b84431':'#7c5b36'; ctx.strokeStyle=INK; ctx.lineWidth=3.2; roundRect(-12,-23,24,31,5); ctx.fill(); ctx.stroke();
     ctx.fillStyle=hot?'#e95b45':'#a8753f'; ctx.fillRect(-8,-19,5,23);
     ctx.fillStyle='#d8c7a4'; ctx.strokeStyle=INK; ctx.lineWidth=2.2; ctx.beginPath(); ctx.ellipse(0,-23,12,4,0,0,TAU); ctx.fill(); ctx.stroke();
     ctx.fillStyle='#5d351f'; ctx.strokeStyle=INK; ctx.lineWidth=2.3; roundRect(-13,-14,26,5,1.5); ctx.fill(); ctx.stroke(); roundRect(-13,-2,26,5,1.5); ctx.fill(); ctx.stroke();
+    if(hot && d.hits){ const g=.35+.3*Math.sin(gtime*14); ctx.fillStyle='rgba(255,160,60,'+g+')'; ctx.beginPath(); ctx.arc(0,-26,6+d.hits*2,0,TAU); ctx.fill(); }
     if(hot){ ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(-5,-11); ctx.lineTo(2,-8); ctx.lineTo(-2,-4); ctx.lineTo(6,2); ctx.stroke(); }
     else { ctx.fillStyle='#ffd35a'; ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(4,-8,3,0,TAU); ctx.fill(); ctx.stroke(); }
     if(d.fuel){
@@ -4010,6 +4042,14 @@ function drawDecor(d){
         ctx.fillStyle=i===0?'#519c41':i===1?'#478f3a':'#3f7d33'; ctx.beginPath(); ctx.moveTo(tx,topY); ctx.lineTo(tx-hw,baseY); ctx.lineTo(tx+hw,baseY); ctx.closePath(); ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.13)'; ctx.beginPath(); ctx.moveTo(tx,topY); ctx.lineTo(tx-hw*0.42,baseY-(baseY-topY)*0.42); ctx.lineTo(tx+hw*0.12,topY+3*s); ctx.closePath(); ctx.fill(); } } }
   else if(d.type==='bush'){ const s=d.s; ctx.lineJoin='round';
+    const pn=player&&player.alive&&dist2(player.x,player.y,d.x,d.y)<(26*s)*(26*s);
+    if(pn && (Math.abs(player.vx||0)+Math.abs(player.vy||0))>20 && Math.random()<0.06) spark(d.x+rand(-12,12)*s,d.y-8*s,'#5fae4a',rand(20,60),rand(-2.6,-0.5),.4);
+    if(pn){ ctx.save(); ctx.translate(d.x,d.y); ctx.rotate(Math.sin(gtime*22)*0.05); ctx.translate(-d.x,-d.y); drawBushBody(d,s); ctx.restore(); return; }
+    drawBushBody(d,s); }
+  else if(d.type==='grass'){ drawGrassTuft(d); }
+}
+function drawBushBody(d,s){
+  {
     const bi=imgOk('bush');
     if(bi){ const DW=52*s, DH=DW*(bi.naturalHeight/bi.naturalWidth);
       ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(d.x,d.y+4,20*s,7*s,0,0,TAU); ctx.fill();
@@ -4020,11 +4060,33 @@ function drawDecor(d){
     ctx.fillStyle='#3f7d33'; for(const o of blobs){ ctx.beginPath(); ctx.arc(d.x+o[0]*s,d.y+o[1]*s,o[2]*s,0,TAU); ctx.fill(); }
     ctx.fillStyle='#519c41'; for(const o of blobs){ ctx.beginPath(); ctx.arc(d.x+o[0]*s,d.y+o[1]*s-2*s,o[2]*0.68*s,0,TAU); ctx.fill(); }
     ctx.fillStyle='#e0556a'; for(const b of [[-6,-6],[7,-4],[1,-9]]){ ctx.beginPath(); ctx.arc(d.x+b[0]*s,d.y+b[1]*s,1.7*s,0,TAU); ctx.fill(); } }  // berries
-  else if(d.type==='grass'){ const s=d.s, sway=Math.sin(gtime*1.6+d.ph)*2.4; ctx.lineCap='round';
+}
+// grass tufts bend away from the player as they walk through, then spring back to the wind sway
+function drawGrassTuft(d){
+  { const s=d.s; let sway=Math.sin(gtime*1.6+d.ph)*2.4; ctx.lineCap='round';
+    if(player&&player.alive){ const dx=d.x-player.x, dy=d.y-player.y, dd=dx*dx+dy*dy;
+      if(dd<34*34){ const k=1-Math.sqrt(dd)/34; sway+=Math.sign(dx||1)*k*9; } }
     ctx.strokeStyle='#3f7d33'; ctx.lineWidth=2.6*s;
     ctx.beginPath(); for(let i=-1;i<=1;i++){ ctx.moveTo(d.x+i*4*s,d.y); ctx.quadraticCurveTo(d.x+i*4*s+i*2,d.y-10*s,d.x+i*5*s+i*3+sway,d.y-16*s); } ctx.stroke();
     ctx.strokeStyle='rgba(150,220,120,.5)'; ctx.lineWidth=1*s;                                        // light tips
     ctx.beginPath(); for(let i=-1;i<=1;i++){ ctx.moveTo(d.x+i*4*s+i*1.5,d.y-11*s); ctx.lineTo(d.x+i*5*s+i*3+sway,d.y-16*s); } ctx.stroke(); }
+}
+
+// Usable props show a ground ring when the player is close: a cooldown arc while recharging,
+// a bright pulsing ring when ready, and a quick expanding pop the moment they're used.
+const INTERACT_TYPES={cache:1,medtent:1,antenna:1,barrel:1};
+function drawInteractHint(d){
+  if(!INTERACT_TYPES[d.type] || !player || !player.alive) return;
+  const usable = d.type==='cache' ? !d.open : d.type==='barrel' ? (d.fuel && !d.blown) : true;
+  if(d.pop>0){ const k=1-d.pop/.35; ctx.strokeStyle='rgba(214,255,110,'+(1-k)+')'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(d.x,d.y+6,30+k*30,(30+k*30)*.4,0,0,TAU); ctx.stroke(); }
+  if(!usable) return;
+  const dd=dist2(player.x,player.y,d.x,d.y); if(dd>150*150) return;
+  const near=1-Math.sqrt(dd)/150, cd=d.interactCd>0&&d.cdMax?clamp(d.interactCd/d.cdMax,0,1):0;
+  ctx.save(); ctx.translate(d.x,d.y+6); ctx.scale(1,.4); ctx.lineWidth=3/.7;
+  if(cd>0){ ctx.strokeStyle='rgba(255,255,255,'+(.18*near+.08)+')'; ctx.beginPath(); ctx.arc(0,0,30,0,TAU); ctx.stroke();
+    ctx.strokeStyle='rgba(255,200,90,'+(.55*near+.2)+')'; ctx.beginPath(); ctx.arc(0,0,30,-Math.PI/2,-Math.PI/2+TAU*(1-cd)); ctx.stroke(); }
+  else { const p=.5+.5*Math.sin(gtime*5+d.x*.02); ctx.strokeStyle='rgba(214,255,110,'+((.35+.4*p)*near+.1)+')'; ctx.beginPath(); ctx.arc(0,0,28+p*4,0,TAU); ctx.stroke(); }
+  ctx.restore();
 }
 
 function drawPickup(p){
