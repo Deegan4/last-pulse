@@ -60,7 +60,7 @@ function refreshHud(){
   el('xpfill').style.width = clamp(meta.xp/xpNeed(meta.level),0,1)*100 + '%';
   el('lvlText').textContent = 'LV '+meta.level;
   // power cooldown fills + "ready" glow when off cooldown
-  const bc=(player?clamp(player.lightCd/11,0,1):0), mc=(player?clamp(player.bombCd/10,0,1):0),
+  const bc=(player?clamp(player.lightCd/11,0,1):0), mc=(player?clamp(player.bombCd/FIRSTAID.cd,0,1):0),
         gc=(player&&!player.grap?clamp(player.grapCd/GRAPPLE.cd,0,1):0);
   el('boltCool').style.height = bc*100 + '%'; el('boltBtn').classList.toggle('ready', bc<=0 && grace<=0);
   el('bombCool').style.height = mc*100 + '%'; el('bombBtn').classList.toggle('ready', mc<=0 && grace<=0);

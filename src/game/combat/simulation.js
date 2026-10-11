@@ -29,18 +29,16 @@ function updateBullets(dt){
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
-        hurt(z,b.dmg,b.owner,false); ricochetHit(b,z); if(b.flame) ignite(z,b.owner); if(b.frost) z.slowT=Math.max(z.slowT||0,2.0);
-        if(b.arc && b.hits===0){ const n=nearestHuman(z,false).o; if(n&&n!==b.owner&&n!==z){ hurt(n,b.dmg*.55,b.owner,!!n.isPlayer); zaps.push({x1:z.x,y1:z.y,x2:n.x,y2:n.y,t:.18}); } }
-        if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
-        b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
+        hurt(z,b.dmg,b.owner,false);
+        for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
+        b.hits++; gone=true; break; } }
     if(!gone) for(const h of humans){ if(!h.alive||h===b.owner||(b.owner&&h.team===b.owner.team)) continue;
       if(dist2(b.x,b.y,h.x,h.y)<(R+3)*(R+3)){
         if(b.boom){ gone=true; break; }
-        hurt(h,b.dmg,b.owner,true); ricochetHit(b,h); if(b.flame) ignite(h,b.owner); if(b.frost) h.slowT=Math.max(h.slowT||0,1.6);
-        if(b.arc && b.hits===0){ const n=nearestHuman(h,false).o; if(n&&n!==b.owner&&n!==h){ hurt(n,b.dmg*.55,b.owner,!!n.isPlayer); zaps.push({x1:h.x,y1:h.y,x2:n.x,y2:n.y,t:.18}); } }
+        hurt(h,b.dmg,b.owner,true);
         h.vx+=b.vx*0.04; h.vy+=b.vy*0.04;
-        if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
-        b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
+        for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
+        b.hits++; gone=true; break; } }
     const oob = b.x<0||b.y<0||b.x>ARENA_W||b.y>ARENA_H;
     if(gone||b.life<=0||oob){
       if(b.boom && !oob) explode(b);   // rockets detonate on impact / at max range (not off-map)
@@ -56,8 +54,7 @@ function applyPickup(h,p){
   if(p.kind==='health'){ h.hp=Math.min(h.maxhp,h.hp+30); }
   else if(p.kind==='medkit'){ h.hp=h.maxhp; }
   else if(p.kind==='armor'){ h.shield=Math.min(100,(h.shield||0)+50); }
-  else if(p.kind==='ammo'){ h.mag=magCap(h); h.reloading=0; }
-  else if(p.kind==='weapon'){ h.weapon=p.w; h.mag=magCap(h); h.reloading=0; }
+  else if(p.kind==='weapon'){ if(h.baseWeapon) h.baseWeapon=p.w; else h.weapon=p.w; h.swingT=0; h.comboWin=0; }
   if(h.isPlayer){ sfx('pickup'); toast(PKMSG[p.kind]); }
   for(let i=0;i<10;i++) spark(p.x,p.y,PKCOL[p.kind].line,rand(50,160),rand(0,TAU),.5);
 }
@@ -67,7 +64,6 @@ function updatePickups(dt){
       if(dist2(p.x,p.y,h.x,h.y) < (R+p.r+2)*(R+p.r+2)){
         if((p.kind==='health'||p.kind==='medkit') && h.hp>=h.maxhp) continue;
         if(p.kind==='armor' && (h.shield||0)>=100) continue;
-        if(p.kind==='ammo' && h.mag>=magCap(h)) continue;
         applyPickup(h,p); taken=true; break; } }
     if(taken) pickups.splice(i,1);
   }
@@ -91,8 +87,8 @@ function updatePickups(dt){
     else { d.lt+=dt;
       for(const h of humans){ if(!h.alive) continue;
         if(dist2(d.x,d.y,h.x,h.y)<(R+17)*(R+17)){
-          const goodW=pick(WEAPONS.filter(w=>['Minigun','Sniper','Crossbow','Flame'].includes(w.name)));
-          h.weapon=goodW; h.mag=magCap(h); h.reloading=0;
+          const goodW=pick(WEAPONS.filter(w=>w.unlock>=4));
+          h.weapon=goodW; h.swingT=0; h.comboWin=0;
           h.shield=Math.min(100,(h.shield||0)+60); h.hp=Math.min(h.maxhp,h.hp+30);
           if(h.isPlayer){ sfx('loot'); toast('📦 '+goodW.name.toUpperCase()+' + ARMOR'); }
           for(let k=0;k<16;k++) spark(d.x,d.y,'#ffd24a',rand(60,200),rand(0,TAU),.6);
@@ -103,6 +99,7 @@ function updateParticles(dt){
   for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.life-=dt; p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.92;p.vy*=0.92;
     if(p.life<=0){ particles.splice(i,1); if(partPool.length<400) partPool.push(p); } }
   for(let i=floaters.length-1;i>=0;i--){ const f=floaters[i]; f.t-=dt; f.y+=f.vy*dt; f.vy*=0.96; if(f.t<=0) floaters.splice(i,1); }
+  for(let i=slashes.length-1;i>=0;i--){ slashes[i].t+=dt; if(slashes[i].t>=slashes[i].dur) slashes.splice(i,1); }
   for(let i=zaps.length-1;i>=0;i--){ zaps[i].t-=dt; if(zaps[i].t<=0) zaps.splice(i,1); }
   for(let i=rings.length-1;i>=0;i--){ rings[i].t+=dt; if(rings[i].t>=rings[i].dur) rings.splice(i,1); }
   for(let i=killFeed.length-1;i>=0;i--){ killFeed[i].t-=dt; if(killFeed[i].t<=0) killFeed.splice(i,1); }

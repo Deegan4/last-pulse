@@ -10,7 +10,34 @@ function drawWeaponArt(w){
   ctx.drawImage(art, srcX, srcY, srcW, srcH, -dw*0.08, -dh*0.55, dw, dh);
   return true;
 }
+// ---- melee props: drawn in weapon space (origin at the hand, +x along the blade) ----
+function meleeLen(w){ return Math.max(10, Math.min(46, w.reach*0.55)); }
+function weaponOneHand(w){ return !!w && (w.name==='Pistol'||w.name==='Magnum'||(w.melee && w.name!=='Spear' && w.name!=='Sledgehammer')); }
+function drawMeleeProp(w, c){
+  const L = meleeLen(w), ink = 'rgba(0,0,0,.55)';
+  c.lineJoin='round'; c.lineCap='round'; c.strokeStyle=ink; c.lineWidth=1;
+  switch(w.name){
+    case 'Fists': c.fillStyle='#d94a3a'; c.beginPath(); c.arc(2.5,0,3.6,0,TAU); c.fill(); c.stroke(); break;
+    case 'Bat': c.fillStyle='#c79a5c'; c.beginPath(); c.moveTo(-2,-1.2); c.lineTo(L*0.55,-1.5); c.lineTo(L,-3.2); c.lineTo(L,3.2); c.lineTo(L*0.55,1.5); c.lineTo(-2,1.2); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle='rgba(255,255,255,.25)'; c.fillRect(L*0.3,-1.2,L*0.6,0.9); break;
+    case 'Knife': c.fillStyle='#3a2a1c'; roundRect(-3,-1.6,6,3.2,1,c); c.fill(); c.stroke();
+      c.fillStyle='#dfe6ee'; c.beginPath(); c.moveTo(3,-2); c.lineTo(L,0); c.lineTo(3,2); c.closePath(); c.fill(); c.stroke(); break;
+    case 'Pipe': c.fillStyle='#8c939c'; roundRect(-2,-2.2,L+2,4.4,1.8,c); c.fill(); c.stroke();
+      c.fillStyle='rgba(255,255,255,.3)'; c.fillRect(0,-1.7,L-2,1); c.fillStyle='#5d636b'; c.fillRect(L-4,-2.2,2,4.4); break;
+    case 'Nunchaku': { const a = L*0.42;
+      c.fillStyle='#2b2b30'; roundRect(-2,-1.8,a+2,3.6,1.4,c); c.fill(); c.stroke();
+      c.strokeStyle='#caa15a'; c.lineWidth=1.3; c.beginPath(); c.moveTo(a,0); c.quadraticCurveTo(a+L*0.18,-L*0.28,a+L*0.2,-L*0.1); c.stroke();
+      c.strokeStyle=ink; c.lineWidth=1; c.fillStyle='#2b2b30'; c.save(); c.translate(a+L*0.2,-L*0.1); c.rotate(-0.7); roundRect(0,-1.8,L*0.5,3.6,1.4,c); c.fill(); c.stroke(); c.restore(); break; }
+    case 'Spear': c.strokeStyle='#6b4a28'; c.lineWidth=2.2; c.beginPath(); c.moveTo(-L*0.28,0); c.lineTo(L-6,0); c.stroke();
+      c.strokeStyle=ink; c.lineWidth=1; c.fillStyle='#e6edf3'; c.beginPath(); c.moveTo(L-8,-3); c.lineTo(L+4,0); c.lineTo(L-8,3); c.closePath(); c.fill(); c.stroke(); break;
+    case 'Sledgehammer': c.strokeStyle='#6b4a28'; c.lineWidth=2.6; c.beginPath(); c.moveTo(-L*0.2,0); c.lineTo(L,0); c.stroke();
+      c.strokeStyle=ink; c.lineWidth=1; c.fillStyle='#7d838c'; roundRect(L-5,-6.5,11,13,2,c); c.fill(); c.stroke();
+      c.fillStyle='rgba(255,255,255,.25)'; c.fillRect(L-3.5,-5.5,2,11); break;
+    default: c.strokeStyle=w.col||'#ccc'; c.lineWidth=3; c.beginPath(); c.moveTo(0,0); c.lineTo(L,0); c.stroke();
+  }
+}
 function heldWeaponLen(w){
+  if(w && w.melee) return meleeLen(w) * WEAPON_HAND_SCALE;
   const g = GUNK[(w&&w.name)||'Pistol'] || {l:14};
   const art = imgOk(w&&w.img);
   if(art){
@@ -33,6 +60,8 @@ function drawHeldWeapon(w, fallbackName){
 }
 function drawGun(name,c){
   c=c||ctx;
+  const mw = WEAPONS.find(x=>x.name===name && x.melee);
+  if(mw){ drawMeleeProp(mw, c); return; }
   const g=GUNK[name]||{l:14,c:'#3a3f48'}, ink='rgba(0,0,0,.38)';
   c.lineJoin='round'; c.lineWidth=1;
   // ---- BEHIND BODY (drawn first so the main body occludes their near edge) ----
@@ -136,7 +165,7 @@ function drawGun(name,c){
 // (the plate background + tier ring come from CSS; DPR-scaled so it stays sharp on retina)
 function weaponIcon(w){
   const art=imgOk(w.img);
-  const g=GUNK[w.name]||{l:14}; const x0=-11, x1=g.l+9, span=x1-x0;
+  const g=GUNK[w.name]||{l:w.melee?meleeLen(w):14}; const x0=-11, x1=g.l+9, span=x1-x0;
   const CW=124, CH=58, DPR=3;
   const c=document.createElement('canvas'); c.width=CW*DPR; c.height=CH*DPR;
   c.style.width=CW+'px'; c.style.height=CH+'px';

@@ -84,12 +84,12 @@ window.__m = function(){
   var aliveZ=0; for (var j=0;j<zombies.length;j++) if(zombies[j].alive) aliveZ++;
   return { t: elapsed, wave: hordeWave, alive: !!(player&&player.alive), hp: player?player.hp:0,
            maxhp: player?player.maxhp:0, x: player?player.x:0, y: player?player.y:0,
-           mag: player?player.mag:0, reloading: player?player.reloading:0,
+           swingStep: player?player.swingStep:0,
            kills: player?player.kills:0, dmgTaken: matchStat?matchStat.dmgTaken:0,
            grace: grace, ended: ended, zombies: aliveZ, zArr: zombies.length,
            particles: particles.length, floaters: floaters.length, splats: splats.length,
            threat: z ? { dx: z.x-player.x, dy: z.y-player.y, d: zd } : null,
-           arena: ARENA };
+           arenaW: ARENA_W, arenaH: ARENA_H };
 };
 `;
   // Since v2.65.0 the game IIFE lives in assets/game/game.js (index.html only <script src="">s
@@ -249,15 +249,14 @@ async function runWaveTrial(runIdx) {
                    dmgTaken: Math.round(m.dmgTaken), zombies: m.zombies,
                    particles: m.particles, splats: m.splats, fps });
     if (!m.alive || m.ended || m.wave > waves) break;
-    if (m.mag <= 0 && !m.reloading) await page.keyboard.press('r');
-    // aim at the threat; flee along the reverse vector, pulled toward the arena centre
+    // melee bot: close on the nearest zombie, swing (Space is held), back off when badly hurt
     const th = m.threat;
     const ax = th ? th.dx : 1, ay = th ? th.dy : 0;
     const al = Math.hypot(ax, ay) || 1;
     await page.mouse.move(CX + (ax / al) * 150, CY + (ay / al) * 150);
-    let fx = -ax / al, fy = -ay / al;
-    const toC = Math.hypot(m.arena / 2 - m.x, m.arena / 2 - m.y);
-    if (toC > m.arena * 0.28) { fx += (m.arena / 2 - m.x) / toC * 1.3; fy += (m.arena / 2 - m.y) / toC * 1.3; }
+    let fx = ax / al, fy = ay / al;
+    if (th && th.d < 36) { fx = 0; fy = 0; }                       // in swing range: stand and fight
+    if (m.hp < m.maxhp * 0.3) { fx = -fx; fy = -fy; }               // low hp: retreat
     const want = new Set();
     if (fy < -0.35) want.add('w'); if (fy > 0.35) want.add('s');
     if (fx < -0.35) want.add('a'); if (fx > 0.35) want.add('d');

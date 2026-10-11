@@ -1,51 +1,45 @@
-// ---------- Power-ups ----------
+// ---------- Power-ups (melee brawler) ----------
+// Q — drone strike: zaps the nearest enemies from above.  E — first aid: heals a chunk of max HP.
+// F — power weapon: swaps to the Sledgehammer for POWER_DUR seconds, then back to the equipped weapon.
+const DRONE={range:420, hits:6, dmg:55, cd:11};
+const FIRSTAID={heal:0.4, cd:25};
+const GRAPPLE={cd:40, power:15, range:430, k:22, c:2.2, reel:230, minLen:46, maxV:760, maxT:2.6};   // rope fields only matter to the dormant updateGrapple
 function castLightning(h){
-  if(h.lightCd>0 || grace>0) return; h.lightCd=11;
-  const R2=360*360; let n=0;
-  const targets=[];
-  for(const z of zombies) if(z.alive && dist2(h.x,h.y,z.x,z.y)<R2) targets.push({e:z,hum:false});
-  for(const o of humans) if(o.alive && o!==h && dist2(h.x,h.y,o.x,o.y)<R2) targets.push({e:o,hum:true});
+  if(h.lightCd>0 || grace>0 || !h.alive) return; h.lightCd=DRONE.cd;
+  const R2=DRONE.range*DRONE.range, targets=[];
+  for(const z of zombies) if(z.alive && !z.amb && dist2(h.x,h.y,z.x,z.y)<R2) targets.push({e:z,hum:false});
+  for(const o of humans) if(o.alive && o!==h && o.team!==h.team && dist2(h.x,h.y,o.x,o.y)<R2) targets.push({e:o,hum:true});
   targets.sort((a,b)=>dist2(h.x,h.y,a.e.x,a.e.y)-dist2(h.x,h.y,b.e.x,b.e.y));
-  let px=h.x, py=h.y;
-  for(const t of targets){ if(n>=5) break; n++;
-    zaps.push({x1:px,y1:py,x2:t.e.x,y2:t.e.y,t:0.25});
-    px=t.e.x; py=t.e.y;
-    hurt(t.e, 45, h, t.hum);
+  let n=0;
+  for(const t of targets){ if(n>=DRONE.hits) break; n++;
+    zaps.push({x1:t.e.x+rand(-14,14),y1:t.e.y-300,x2:t.e.x,y2:t.e.y,t:0.25});
+    hurt(t.e, DRONE.dmg*(h.perkDmgMul||1), h, t.hum);
     rings.push({x:t.e.x, y:t.e.y, t:0, dur:0.32, r0:6, r1:42, col:'160,210,255', lw:2.5});
     for(let i=0;i<8;i++) spark(t.e.x,t.e.y,'#9fd2ff',rand(60,200),rand(0,TAU),.5);
   }
-  if(h.isPlayer){ shake=Math.min(shake+5,12); sfx('bolt'); }
+  if(h.isPlayer){ if(n){ shake=Math.min(shake+5,12); sfx('bolt'); } else { toast('DRONE: NO TARGETS'); h.lightCd=1; sfx('tick'); } }
 }
 function throwBomb(h){
-  if(h.bombCd>0 || grace>0) return; h.bombCd=10;
-  const a=h.aim, d=180;
-  const fuse=0.85*(activeMutator?.bombFuseMul||1);
-  bombs.push({x:h.x, y:h.y, tx:h.x+Math.cos(a)*d, ty:h.y+Math.sin(a)*d, t:0, fuse, owner:h, sx:h.x, sy:h.y});
-  if(h.isPlayer) sfx('throw');
-}
-
-// ---------- Grapple hook (player mobility) ----------
-// Unilateral spring-damper rope: it only pulls when taut (d > len), and the force is
-// radial-only — tangential velocity passes through untouched, so momentum is conserved
-// through the swing and release keeps your full speed (the zip IS the reward). The rest
-// length reels in over time; reeling a taut rope does work on the player, adding speed.
-const GRAPPLE={range:430, k:22, c:2.2, reel:230, minLen:46, cd:7, maxV:760, maxT:2.6};
-function grappleAnchor(h){ // march along aim, anchor on the first building edge
-  const step=8, a=h.aim;
-  for(let d=step; d<=GRAPPLE.range; d+=step){
-    const x=h.x+Math.cos(a)*d, y=h.y+Math.sin(a)*d;
-    for(const o of obstacles){ if(x>o.x&&x<o.x+o.w&&y>o.y&&y<o.y+o.h) return {x,y}; }
-  }
-  return null;
+  if(h.bombCd>0 || grace>0 || !h.alive) return;
+  if(h.hp>=h.maxhp){ if(h.isPlayer){ toast('ALREADY AT FULL HEALTH'); sfx('tick'); } return; }
+  h.bombCd=FIRSTAID.cd;
+  const heal=Math.round(h.maxhp*FIRSTAID.heal); h.hp=Math.min(h.maxhp,h.hp+heal);
+  floaters.push({x:h.x, y:h.y-R-24, vy:-46, t:0.7, txt:'+'+heal, col:'#7dff9a'});
+  rings.push({x:h.x, y:h.y, t:0, dur:0.5, r0:6, r1:36, col:'120,255,150', lw:2.5});
+  if(h.isPlayer) sfx('pickup');
 }
 function castGrapple(h){
-  if(grace>0 || !h.alive) return;
-  if(h.grap){ grappleRelease(h); return; }        // press again to let go early
-  if(h.grapCd>0) return;
-  const hit=grappleAnchor(h);
-  if(!hit){ h.grapCd=1; if(h.isPlayer){ toast('NO ANCHOR IN RANGE'); sfx('tick'); } return; }
-  h.grap={ax:hit.x, ay:hit.y, len:Math.hypot(hit.x-h.x,hit.y-h.y), t:0};
-  if(h.isPlayer){ matchStat.grappled=true; sfx('throw'); }
+  if(h.grapCd>0 || grace>0 || !h.alive) return;
+  const sled=WEAPONS.find(w=>w.name==='Sledgehammer');
+  if(!sled || h.weapon===sled) return;
+  h.grapCd=GRAPPLE.cd; h.baseWeapon=h.weapon; h.weapon=sled; h.powerT=GRAPPLE.power; h.swingT=0; h.comboWin=0;
+  rings.push({x:h.x, y:h.y, t:0, dur:0.5, r0:6, r1:48, col:'255,210,90', lw:3});
+  if(h.isPlayer){ matchStat.grappled=true; toast('SLEDGEHAMMER! '+GRAPPLE.power+'s'); sfx('level'); }
+}
+function tickPower(h,dt){
+  if(!(h.powerT>0)) return;
+  h.powerT-=dt;
+  if(h.powerT<=0){ h.powerT=0; if(h.baseWeapon){ h.weapon=h.baseWeapon; h.baseWeapon=null; } h.swingT=0; h.comboWin=0; }
 }
 function grappleRelease(h){ h.grap=null; h.grapCd=GRAPPLE.cd; }
 

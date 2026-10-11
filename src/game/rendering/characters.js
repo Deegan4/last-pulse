@@ -15,8 +15,8 @@ function drawHuman(h){
   const breath=moving?0:Math.sin(now*2.3+seed)*0.9;          // idle chest rise
   // stride & bob grow with actual speed: a creep barely moves, a full sprint pumps hard
   const bob=(moving?Math.sin(h.walk)*(1.1+1.7*spd01):0)+breath, step=moving?Math.sin(h.walk)*(1.8+3.2*spd01):0;
-  const ga=h.aim, flash=h.hitFlash>0;
-  const oneHand = h.weapon && (h.weapon.name==='Pistol'||h.weapon.name==='Magnum');
+  const ga=h.aim+swingAngle(h), flash=h.hitFlash>0;
+  const oneHand = weaponOneHand(h.weapon);
   ctx.save(); ctx.translate(x,y); ctx.scale(CHAR_VISUAL_SCALE, CHAR_VISUAL_SCALE); ctx.lineJoin='round'; ctx.lineCap='round';
   // shadow
   ctx.fillStyle='rgba(0,0,0,.20)'; ctx.beginPath(); ctx.ellipse(0,19,15,5,0,0,TAU); ctx.fill();
@@ -84,7 +84,7 @@ function drawHuman(h){
   }
   // gun arm (front), rotated to aim; keep the gun upright when aiming left
   const gname = h.weapon?h.weapon.name:'Pistol';
-  const reach = 15 - (h.recoil>0?h.recoil*3:0);   // recoil kicks the gun back
+  const reach = 15 + swingThrust(h)*14;   // thrust weapons lunge forward
   ctx.save(); ctx.translate(0,-2); ctx.rotate(ga);
   ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
   ctx.strokeStyle=flash?'#fff':L.skin; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
@@ -96,16 +96,9 @@ function drawHuman(h){
     ctx.strokeStyle=L.skin; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(fx-7,6); ctx.lineTo(fx,2.2); ctx.stroke();
     ctx.fillStyle=L.skin; ctx.strokeStyle=INK; ctx.lineWidth=1.2;
     ctx.beginPath(); ctx.arc(fx,2.2,2.5,0,TAU); ctx.fill(); ctx.stroke(); }
-  if(h.muzzleT>0){ const gl=heldWeaponLen(h.weapon), mr=h.muzzleR||7; ctx.save(); ctx.translate(gl+1,0);
-    ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
-    ctx.fillStyle='#fff6c0'; for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2+0.4);
-      ctx.beginPath(); ctx.moveTo(0,-mr*0.34); ctx.lineTo(mr*1.4+rand(0,3),0); ctx.lineTo(0,mr*0.34); ctx.closePath(); ctx.fill(); ctx.restore(); }
-    ctx.beginPath(); ctx.arc(0,0,mr*0.48,0,TAU); ctx.fill(); ctx.restore(); }
   ctx.restore();
   // player ring
-  if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.ellipse(0,19,17,5.5,0,0,TAU); ctx.stroke();
-    if(h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
-      ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); } }
+  if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.ellipse(0,19,17,5.5,0,0,TAU); ctx.stroke(); }
   ctx.restore();
   drawNameplate(h);
 }
@@ -148,14 +141,7 @@ function drawHeroSprite(h, img){
   // that rotates the full 360° to the aim — the weapon shows in-hand and points wherever we shoot.
   const armless = h.avatar && h.avatar.armless;
   if(armless){ drawHeroArm(h, 0); }                                 // pivots at the (already-moved) chest, aims true
-  else if(h.muzzleT>0){ const mr=h.muzzleR||7, mx=Math.cos(h.aim)*20, my=Math.sin(h.aim)*12-6;   // muzzle flash along aim
-    ctx.save(); ctx.translate(mx,my);
-    ctx.fillStyle='rgba(255,205,80,.5)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
-    ctx.fillStyle='#fff6c0'; ctx.beginPath(); ctx.arc(0,0,mr*0.5,0,TAU); ctx.fill(); ctx.restore(); }
   ctx.restore();                                                     // close bob/sway frame
-  if(h.isPlayer && h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1);   // reload ring (steady, un-bobbed)
-    ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
-    ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); }
   ctx.restore();
 }
 // Draw the billboard with an articulated two-part leg walk: the static PNG has no frames, so split
@@ -177,10 +163,10 @@ function drawWalkBody(img, DW, DH, gait){
 // rig so combat reads identically. Called in the sprite's local space (already translated to h.x,h.y).
 function drawHeroArm(h, bob){
   const L = h.look || (h.avatar && h.avatar.look) || {skin:'#f0c8a0', outfit:'#556'};
-  const ga = h.aim, gname = h.weapon ? h.weapon.name : 'Pistol';
+  const ga = h.aim+swingAngle(h), gname = h.weapon ? h.weapon.name : 'Pistol';
   const gl = heldWeaponLen(h.weapon);
-  const oneHand = h.weapon && (h.weapon.name==='Pistol' || h.weapon.name==='Magnum');
-  const reach = HERO_ARM_REACH - (h.recoil>0 ? h.recoil*3 : 0);        // recoil kicks the gun back
+  const oneHand = weaponOneHand(h.weapon);
+  const reach = HERO_ARM_REACH + swingThrust(h)*14;                     // thrust weapons lunge forward
   const sleeve = L.outfit || '#556', skin = L.skin || '#f0c8a0';
   ctx.save(); ctx.translate(HERO_ARM_ANCHOR_X, HERO_ARM_ANCHOR_Y + bob*0.6); ctx.scale(CHAR_VISUAL_SCALE, CHAR_VISUAL_SCALE); ctx.rotate(ga);   // shoulder pivot at the chest, bobbing with the body
   ctx.lineJoin='round'; ctx.lineCap='round';
@@ -198,12 +184,6 @@ function drawHeroArm(h, bob){
     ctx.strokeStyle=sleeve; ctx.lineWidth=2.8; ctx.beginPath(); ctx.moveTo(fx-6.5,6.5); ctx.lineTo(fx,2.4); ctx.stroke();
     ctx.fillStyle=skin; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
     ctx.beginPath(); ctx.arc(fx,2.4,2.3,0,TAU); ctx.fill(); ctx.stroke(); }
-  // muzzle flash at the barrel tip (in gun space, so it tracks the aim)
-  if(h.muzzleT>0){ const mr=h.muzzleR||7; ctx.save(); ctx.translate(gl+1,0);
-    ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
-    ctx.fillStyle='#fff6c0'; for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2+0.4);
-      ctx.beginPath(); ctx.moveTo(0,-mr*0.34); ctx.lineTo(mr*1.4+rand(0,3),0); ctx.lineTo(0,mr*0.34); ctx.closePath(); ctx.fill(); ctx.restore(); }
-    ctx.beginPath(); ctx.arc(0,0,mr*0.48,0,TAU); ctx.fill(); ctx.restore(); }
   ctx.restore();
 }
 function drawHair(L,hy,flip){
@@ -261,17 +241,4 @@ function drawNameplate(h){
   // armor/shield bar (thin blue, above hp)
   if(h.shield>0){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(x-bw/2,y-10,bw,3);
     ctx.fillStyle='#5fa8ff'; ctx.fillRect(x-bw/2,y-10,bw*clamp(h.shield/100,0,1),3); }
-  // ammo pips (orange) for player, mini for bots
-  if(h.isPlayer){ const w=h.weapon, n=magCap(h);
-    const seg=Math.min(n,10), gap=2, tot=bw, sw=(tot-(seg-1)*gap)/seg;
-    const low = h.reloading<=0 && h.mag<=Math.max(1,Math.ceil(n*0.25));
-    const pulse = low ? (0.45+0.55*Math.abs(Math.sin(performance.now()/130))) : 1;
-    for(let i=0;i<seg;i++){ ctx.fillStyle = i<h.mag ? (low?'rgba(255,'+Math.round(70+90*pulse)+',60,1)':'#ff9b3d') : 'rgba(0,0,0,.45)';
-      ctx.fillRect(x-bw/2+i*(sw+gap), y+1, sw, 4); }
-    if(h.reloading>0){ ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='700 9px Trebuchet MS'; ctx.fillText('reloading…',x,y+13); }
-    else if(low){ ctx.fillStyle='#ff6a6a'; ctx.font='700 9px Trebuchet MS'; ctx.fillText('LOW AMMO',x,y+13); }
-  } else if(h.reloading>0){ // bot reload progress
-    ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(x-bw/2,y+1,bw,3);
-    ctx.fillStyle='rgba(255,255,255,.8)'; ctx.fillRect(x-bw/2,y+1,bw*(1-h.reloading/h.weapon.reload),3);
-  }
 }

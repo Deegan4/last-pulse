@@ -35,7 +35,8 @@ const rings = [];                           // expanding shockwave rings (explos
 
 const humans = [];
 const zombies = [];
-const bullets = [];
+const bullets = [];      // turret rounds + spitter acid (the player's weapons are melee now)
+const slashes = [];      // melee swing arcs: {x,y,a,reach,sweep,step,thrust,fin,heavy,t,dur,col,hit}
 const bombs = [];
 const zaps = [];          // lightning visual segments
 const particles = [];
@@ -79,9 +80,7 @@ const CHAR_VISUAL_SCALE = 1.18;       // drawn chibi scale only; collisions stay
 const HERO_H = 70;                    // on-field hero sprite height (px) — nameplate offset tracks this
 const HERO_ARM_ANCHOR_X = 0;           // live weapon-arm pivot on PNG heroes, in sprite-local pixels
 const HERO_ARM_ANCHOR_Y = -15;         // chest-height anchor; avoids belly-mounted arms on v2 sprites
-const HERO_ARM_REACH = 12;             // shoulder-to-wrist length in drawHeroArm's local (pre-scale)
-                                        // space — shared with gunTip()/wristPos() below so bullets
-                                        // spawn from the same point the arm is actually drawn at
+const HERO_ARM_REACH = 12;             // shoulder-to-wrist length in drawHeroArm's local (pre-scale) space
 const WEAPON_HAND_SCALE = 1.06;       // procedural in-hand fallback scale
 const WEAPON_PNG_HAND_SCALE = 1.30;   // real PNG in-hand art scale
 let barrels = [];             // cached barrel decor (shootable) — rebuilt in buildDecor

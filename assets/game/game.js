@@ -211,22 +211,13 @@ const AVATARS = [
   {name:'Titan',  speed:4.4, health:150, unlock:26, img:'hero-titan',  armless:true, aura:'#ff5a5a', look:{skin:'#e8b48c',hair:'#3a3f47',outfit:'#33373d',style:'horns'}},
 ];
 const WEAPONS = [
-  {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit',        img:'weapon-pistol'},
-  {name:'Rifle',   icon:'🪖', dmg:10,  mag:10, reload:1.25, range:150, fireCd:0.10, mode:'auto',    unlock:1,  special:'10 bullets per ammo',                  img:'weapon-rifle'},
-  {name:'Shotgun', icon:'💥', dmg:20,  mag:2,  reload:1.25, range:150, fireCd:0.62, mode:'shotgun', unlock:2,  special:'wide pellet spread',                   img:'weapon-shotgun'},
-  {name:'SMG',     icon:'🧨', dmg:8,   mag:25, reload:1.6,  range:200, fireCd:0.07, mode:'auto',    unlock:3,  special:'blazing fire rate',                    img:'weapon-smg'},
-  {name:'Magnum',  icon:'🔩', dmg:55,  mag:6,  reload:1.8,  range:340, fireCd:0.40, mode:'semi',    unlock:4,  special:'heavy-hitting revolver',               img:'weapon-magnum'},
-  {name:'Sniper',  icon:'🎯', dmg:190, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage',        img:'weapon-sniper'},
-  {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt',                 img:'weapon-crossbow'},
-  {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire',                 img:'weapon-flame'},
-  {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds',          img:'weapon-minigun'},
-  {name:'Tommy',   icon:'🎻', dmg:11,  mag:30, reload:1.7,  range:190, fireCd:0.085,mode:'auto',    unlock:8,  special:'drum-mag auto — steady spray',         img:'weapon-tommy'},
-  {name:'Launcher',icon:'🚀', dmg:40,  mag:1,  reload:2.6,  range:340, fireCd:1.2,  mode:'launcher',unlock:12, special:'explosive rocket — splash damage',     img:'weapon-launcher'},
-  {name:'Vipers',  icon:'🐍', dmg:9,   mag:24, reload:1.7,  range:210, fireCd:0.09, mode:'auto', twin:true, unlock:15, special:'twin barrels — double the lead', img:'weapon-vipers'},
-  {name:'Pulse SMG',icon:'⚡', dmg:7,   mag:36, reload:1.45, range:230, fireCd:0.055,mode:'auto',    unlock:1, special:'hyper-fast pulse stream',             img:'weapon-pulse-smg', featured:true},
-  {name:'Arc Rifle',icon:'🔷', dmg:18,  mag:14, reload:1.9,  range:360, fireCd:0.18, mode:'auto', arc:true, unlock:1, special:'electric rounds chain once',   img:'weapon-arc-rifle', featured:true},
-  {name:'Frost Blaster',icon:'❄️', dmg:12, mag:28, reload:2.0, range:250, fireCd:0.12, mode:'auto', frost:true, unlock:1, special:'slows enemies on hit',       img:'weapon-frost-blaster', featured:true},
-  {name:'Rocket Launcher',icon:'🚀', dmg:62, mag:2, reload:3.2, range:390, fireCd:1.35, mode:'launcher', unlock:1, special:'heavy rockets — bigger splash',     img:'weapon-rocket-launcher', featured:true},
+  {name:'Fists',       icon:'👊', dmg:14, reach:34, sweep:0.75, fireCd:0.26, mode:'combo',  unlock:1, melee:true, col:'#e8c4a8', special:'3-hit combo — the finisher hits harder'},
+  {name:'Bat',         icon:'🏏', dmg:26, reach:52, sweep:0.85, fireCd:0.34, mode:'combo',  unlock:1, melee:true, col:'#c58a4a', special:'3-hit combo with a wide finisher'},
+  {name:'Knife',       icon:'🔪', dmg:12, reach:38, sweep:0.6,  fireCd:0.15, mode:'jab',    unlock:2, melee:true, col:'#cfd6dc', special:'blazing-fast stabs'},
+  {name:'Pipe',        icon:'🔧', dmg:48, reach:60, sweep:1.0,  fireCd:0.62, mode:'heavy',  unlock:3, melee:true, col:'#8a949c', special:'slow heavy swing — hits everything in the arc'},
+  {name:'Nunchaku',    icon:'🥋', dmg:16, reach:48, sweep:0.9,  fireCd:0.22, mode:'combo',  unlock:4, melee:true, col:'#d4a017', special:'fast 3-hit combo'},
+  {name:'Spear',       icon:'🔱', dmg:34, reach:84, sweep:0.32, fireCd:0.46, mode:'thrust', unlock:6, melee:true, col:'#b9c2c9', special:'long thrust that pierces a line of enemies'},
+  {name:'Sledgehammer',icon:'🔨', dmg:90, reach:66, sweep:1.1,  fireCd:0.85, mode:'heavy',  unlock:8, melee:true, col:'#7d8790', special:'crushing swing — massive knockback'},
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
@@ -1025,25 +1016,24 @@ function cycleMutPick(){ const order=['random','none',...MUTATORS.map(x=>x.id)];
 // ===== Perk picks =====
 // Mid-run agency: every 3rd wave (3,6,9…) pauses on a 3-card choice before the next wave spawns.
 // Each perk's apply(h) mutates the player instance directly (h.perkDmgMul etc.) — read at the
-// existing single choke points in fire()/hurt()/die() rather than a generic buff-list, matching
+// existing single choke points in attack()/hurt()/die() rather than a generic buff-list, matching
 // how activeMutator's numeric fields are consumed.
 const PERK_TUNE = { statRanks:3, ricochetRange:180, ricochetMul:0.5,
   reloadRadius:110, reloadDamage:40, reloadCooldown:6, lightningKills:4,
-  lightningRange:220, lightningDamage:35, lightningTargets:3, grappleRadius:48, grappleDamage:55 };
+  lightningRange:220, lightningDamage:35, lightningTargets:3 };
 const PERKS = [
-  {id:'extClip',  icon:'🧰', name:'EXTENDED CLIP', desc:'+50% magazine size',            apply:h=>{ h.magMul=(h.magMul||1)*1.5; }},
+  {id:'extClip',  icon:'🧰', name:'LONG REACH',    desc:'+20% weapon reach',             apply:h=>{ h.perkReachMul=(h.perkReachMul||1)*1.2; }},
   {id:'adrenaline',icon:'⚡', name:'ADRENALINE',    desc:'+15% move speed',               apply:h=>{ h.perkSpeedMul=(h.perkSpeedMul||1)*1.15; }},
-  {id:'heavyRounds',icon:'🔨',name:'HEAVY ROUNDS',  desc:'+20% weapon damage',            apply:h=>{ h.perkDmgMul=(h.perkDmgMul||1)*1.2; }},
+  {id:'heavyRounds',icon:'🔨',name:'HEAVY HITS',    desc:'+20% weapon damage',            apply:h=>{ h.perkDmgMul=(h.perkDmgMul||1)*1.2; }},
   {id:'thickSkin',icon:'🛡️', name:'THICK SKIN',    desc:'-20% damage taken',             apply:h=>{ h.perkDmgInMul=(h.perkDmgInMul||1)*0.8; }},
   {id:'regen',    icon:'💗', name:'REGENERATION',  desc:'Heal 1.5 hp/s passively',       apply:h=>{ h.perkRegen=(h.perkRegen||0)+1.5; }},
   {id:'secondWind',icon:'💖',name:'SECOND WIND',    desc:'Survive one lethal hit at 50% hp',apply:h=>{ h.perkRevives=(h.perkRevives||0)+1; }},
-  {id:'ricochet',icon:'↪️',name:'RICOCHET ROUNDS',maxRanks:1,desc:'Bullet hits bounce to one nearby enemy for 50% damage. Excludes flames and rockets.',apply:h=>{ h.perkRicochet=true; }},
-  {id:'reloadBlast',icon:'💥',name:'EXPLOSIVE RELOAD',maxRanks:1,desc:'Finish a reload to blast nearby enemies for 40 damage. 6s cooldown.',apply:h=>{ h.perkReloadBlast=true; }},
+  {id:'ricochet',icon:'↪️',name:'CLEAVE',maxRanks:1,desc:'Each hit also cleaves one nearby enemy for 50% damage.',apply:h=>{ h.perkRicochet=true; }},
+  {id:'reloadBlast',icon:'💥',name:'SHOCKWAVE FINISHER',maxRanks:1,desc:'Combo finishers blast nearby enemies for 40 damage. 6s cooldown.',apply:h=>{ h.perkReloadBlast=true; }},
   {id:'killLightning',icon:'🌩️',name:'KILL STORM',maxRanks:1,desc:'Every 4 kills zap up to 3 enemies near the last kill for 35 damage. Zap kills do not charge it.',apply:h=>{ h.perkKillLightning=true; h.perkKillCount=0; }},
-  {id:'grappleDamage',icon:'🪝',name:'RAZOR SWING',maxRanks:1,desc:'While grappling, strike nearby enemies for 55 damage once per enemy per swing.',apply:h=>{ h.perkGrappleDamage=true; }},
   {id:'lifesteal',icon:'🧛', name:'BLOODTHIRST',   desc:'Heal 4 hp on every kill',       apply:h=>{ h.perkLifesteal=(h.perkLifesteal||0)+4; }},
-  {id:'sharpshooter',icon:'🎯',name:'SHARPSHOOTER',desc:'+20% chance to deal double damage',apply:h=>{ h.perkCrit=(h.perkCrit||0)+0.2; }},
-  {id:'quickHands',icon:'🤲',name:'QUICK HANDS',   desc:'-30% reload time',              apply:h=>{ h.perkReloadMul=(h.perkReloadMul||1)*0.7; }},
+  {id:'sharpshooter',icon:'🎯',name:'CRITICAL STRIKES',desc:'+20% chance to deal double damage',apply:h=>{ h.perkCrit=(h.perkCrit||0)+0.2; }},
+  {id:'quickHands',icon:'🤲',name:'QUICK HANDS',   desc:'-20% time between swings',      apply:h=>{ h.perkCdMul=(h.perkCdMul||1)*0.8; }},
   {id:'scavenger',icon:'🧲', name:'SCAVENGER',     desc:'Zombies drop 40% more scrap',   apply:h=>{ h.perkScrapMul=(h.perkScrapMul||1)*1.4; }},
 ];
 let perkChoices=[], pendingWaveBoss=false;
@@ -1087,7 +1077,7 @@ const WEEKLIES = [
   {icon:'💀', desc:'Get 40+ kills in one run',                test:c=>c.matchKills>=40},
   {icon:'⏱',  desc:'Survive 4+ minutes in one run',           test:c=>c.time>=240},
   {icon:'💨', desc:'Reach wave 7, under 60 damage',     test:c=>c.wave>=7 && c.dmgTaken<60},
-  {icon:'🪝', desc:'Grapple + 15 kills in one run',    test:c=>c.grappled && c.matchKills>=15},
+  {icon:'🔨', desc:'Use the Sledgehammer power-up + 15 kills in one run',    test:c=>c.grappled && c.matchKills>=15},
 ];
 function weekKey(){ const d=new Date(); const m=new Date(d.getFullYear(),d.getMonth(),d.getDate());
   m.setDate(m.getDate()-((m.getDay()+6)%7));   // back up to Monday
@@ -1130,9 +1120,9 @@ const BANNERS = [
   {id:'violet',  icon:'🟣', name:'Violet Banner',  desc:'Royal violet name banner',   cost:250, color:'#c08bff'},
 ];
 function bannerItem(id){ return BANNERS.find(b=>b.id===id); }
-// Extended Magazines — a permanent, coin-bought upgrade (meta.magLvl) that widens every weapon's
-// magazine. Tunables: capacity bonus per level and the coin cost of each tier.
-const MAG_MAX=3, MAG_STEP=0.20;          // up to +60% magazine capacity across all guns
+// Iron Knuckles — a permanent, coin-bought upgrade (meta.magLvl, key kept for saved progress) that
+// boosts every melee weapon's damage. Tunables: bonus per level and the coin cost of each tier.
+const MAG_MAX=3, MAG_STEP=0.10;          // up to +30% melee damage across all weapons
 const MAG_COST=[250, 500, 900];          // coin cost for tier 1 / 2 / 3
 function magMulMeta(){ return 1 + Math.min(meta.magLvl||0, MAG_MAX)*MAG_STEP; }
 function magInfo(){ const lvl=Math.min(meta.magLvl||0, MAG_MAX), maxed=lvl>=MAG_MAX;
@@ -1195,7 +1185,8 @@ const rings = [];                           // expanding shockwave rings (explos
 
 const humans = [];
 const zombies = [];
-const bullets = [];
+const bullets = [];      // turret rounds + spitter acid (the player's weapons are melee now)
+const slashes = [];      // melee swing arcs: {x,y,a,reach,sweep,step,thrust,fin,heavy,t,dur,col,hit}
 const bombs = [];
 const zaps = [];          // lightning visual segments
 const particles = [];
@@ -1239,9 +1230,7 @@ const CHAR_VISUAL_SCALE = 1.18;       // drawn chibi scale only; collisions stay
 const HERO_H = 70;                    // on-field hero sprite height (px) — nameplate offset tracks this
 const HERO_ARM_ANCHOR_X = 0;           // live weapon-arm pivot on PNG heroes, in sprite-local pixels
 const HERO_ARM_ANCHOR_Y = -15;         // chest-height anchor; avoids belly-mounted arms on v2 sprites
-const HERO_ARM_REACH = 12;             // shoulder-to-wrist length in drawHeroArm's local (pre-scale)
-                                        // space — shared with gunTip()/wristPos() below so bullets
-                                        // spawn from the same point the arm is actually drawn at
+const HERO_ARM_REACH = 12;             // shoulder-to-wrist length in drawHeroArm's local (pre-scale) space
 const WEAPON_HAND_SCALE = 1.06;       // procedural in-hand fallback scale
 const WEAPON_PNG_HAND_SCALE = 1.30;   // real PNG in-hand art scale
 let barrels = [];             // cached barrel decor (shootable) — rebuilt in buildDecor
@@ -1308,8 +1297,8 @@ function makeHuman(isPlayer, avatar, weapon, name){
     isPlayer, name: name || avatar.name, avatar, look: avatar.look, weapon,
     x:0, y:0, vx:0, vy:0, aim:-Math.PI/2,
     hp:avatar.health, maxhp:avatar.health, speed:avatar.speed*42,
-    alive:true, mag:weapon.mag, reloading:0, fireCd:0, walk:0, hitFlash:0, kills:0, faceX:1, seed:rand(0,9),
-    shield:0, burn:0, burnSrc:null, streak:0, lastKillT:-99, team:0, ally:false, muzzleT:0, recoil:0,
+    alive:true, fireCd:0, swingT:0, swingDur:0.2, swingStep:0, swingArc:0.8, comboWin:0, walk:0, hitFlash:0, kills:0, faceX:1, seed:rand(0,9),
+    shield:0, burn:0, burnSrc:null, streak:0, lastKillT:-99, team:0, ally:false,
     onTower:null, climbCd:0,   // watchtower state — must be numeric so the climb guard (climbCd<=0) fires
 
     // ai
@@ -1519,7 +1508,7 @@ function newBot(team, namePool, i){
 // z.amb so only the ambient mover touches them; spawnMatch wipes the array and clears the flag.
 let menuAmbient=false;
 function menuScene(){
-  zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
+  zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   if(!decor.length) buildDecor();                        // first boot: give the menu real scenery
   menuAmbient=true;
   const cx=(player&&player.x)||ARENA_W/2, cy=(player&&player.y)||ARENA_H/2;
@@ -1542,7 +1531,7 @@ function menuSceneUpdate(dt){
   }
 }
 function spawnMatch(){
-  humans.length=0; zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
+  humans.length=0; zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   builds.length=0; scraps.length=0;
@@ -1556,11 +1545,10 @@ function spawnMatch(){
   // interior loot — every house hides a pickup (a reason to step inside)
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
   // player
-  player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
+  player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[clamp(meta.weapon|0,0,WEAPONS.length-1)], meta.name||'deegan');
   player.team=0; player.gpIndex=0; player.x=ARENA_W/2; player.y=ARENA_H/2;   // bare pit: always center, no cover to spawn clear of
-  player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null;
+  player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null; player.powerT=0; player.baseWeapon=null;
   player.scrap=0; player.buildSel=-1; player.placeCd=0;   // builder state (start with mode off)
-  player.magMul=magMulMeta(); player.mag=magCap(player);  // Extended Magazines upgrade → wider mag, start full
   humans.push(player);
   tryJoinPlayer2(connectedPads());   // catch a 2nd controller that was ALREADY connected before drop-in, not just one that connects mid-match
   // scattered scrap caches — a reason to explore; seeds your first walls before the first kills
@@ -1594,11 +1582,11 @@ function spawnMatch(){
     for(let i=0;i<9;i++){ const s=farSpawn(ARENA*0.1); pickups.push(makePickup(s.x,s.y)); }
   }
 }
-const PKINDS=['health','health','medkit','armor','ammo','weapon'];
+const PKINDS=['health','health','medkit','armor','weapon'];
 const PKCOL={health:{bg:'#1f5a2a',line:'#5fd35f'}, medkit:{bg:'#7a1f24',line:'#ff5a6e'},
-  armor:{bg:'#1f3a5a',line:'#5fa8ff'}, ammo:{bg:'#5a431f',line:'#ff9b3d'}, weapon:{bg:'#3a1f5a',line:'#c08bff'}};
-const PKGLYPH={health:'+', medkit:'✚', armor:'▽', ammo:'≡', weapon:'★'};
-const PKMSG={health:'+30 HP', medkit:'FULL HEAL', armor:'+50 ARMOR', ammo:'AMMO REFILL', weapon:'NEW WEAPON'};
+  armor:{bg:'#1f3a5a',line:'#5fa8ff'}, weapon:{bg:'#3a1f5a',line:'#c08bff'}};
+const PKGLYPH={health:'+', medkit:'✚', armor:'▽', weapon:'★'};
+const PKMSG={health:'+30 HP', medkit:'FULL HEAL', armor:'+50 ARMOR', weapon:'NEW WEAPON'};
 function makePickup(x,y,kind){ kind=kind||pick(PKINDS); return {x,y,kind,r:13,t:rand(0,3),w: kind==='weapon'?pick(WEAPONS):null}; }
 function ignite(e,src){ e.burn=Math.max(e.burn||0, 2.6); e.burnSrc=src; }
 function aliveHumans(){ let n=0; for(const h of humans) if(h.alive) n++; return n; }
@@ -1619,92 +1607,87 @@ function botTarget(e){
   return {o:best, d:Math.sqrt(bd)};
 }
 // ---- src/game/combat/weapons.js ----
-// ---------- Combat ----------
-// effective magazine capacity for a fighter (base weapon mag × their extended-mag multiplier).
-// Bots have no magMul → 1×; the player's is set from the shop upgrade at match start.
-function magCap(h){ return Math.max(1, Math.round(h.weapon.mag * (h.magMul||1))); }
-function startReload(h){ if(h.reloading<=0 && h.mag<magCap(h)) h.reloading=h.weapon.reload*(h.perkReloadMul||1); }
-// per-weapon firing feel: tracer look (col/lw/tl/glow/tip), muzzle radius (mz),
-// recoil kick, spark count/spread, knockback push, and player screen shake.
-function bulletFx(w){
-  switch(w.name){
-    case 'Sniper':   return {col:'#cdecff',lw:4.5,tl:0.05, glow:12,tip:2.6, mz:10, kick:1.9, sparks:8, spread:.5, push:34, shake:6};
-    case 'Crossbow': return {col:'#d8b46a',lw:3,  tl:0.07, glow:5, tip:1.6, mz:3,  kick:1.2, sparks:2, spread:.3, push:20, shake:0};
-    case 'Shotgun':  return {col:'#ffd9a0',lw:2,  tl:0.008,glow:0, tip:1.0, mz:11, kick:1.7, sparks:9, spread:.7, push:60, shake:5};
-    case 'Magnum':   return {col:'#ffe07a',lw:3.8,tl:0.02, glow:7, tip:2.0, mz:9,  kick:1.6, sparks:7, spread:.6, push:38, shake:4};
-    case 'SMG':      return {col:'#fff2c8',lw:2.2,tl:0.013,glow:0, tip:1.2, mz:6,  kick:.8,  sparks:3, spread:.5, push:18, shake:0};
-    case 'Pulse SMG':return {col:'#8ff6ff',lw:2.1,tl:0.011,glow:6, tip:1.3, mz:7,  kick:.65, sparks:4, spread:.45, push:14, shake:0};
-    case 'Arc Rifle':return {col:'#78d7ff',lw:3.3,tl:0.022,glow:11,tip:1.8, mz:8,  kick:1.1, sparks:7, spread:.55, push:25, shake:2};
-    case 'Frost Blaster': return {col:'#c9f7ff',lw:3.0,tl:0.02, glow:9, tip:1.7, mz:7.5,kick:.95,sparks:6, spread:.55, push:22, shake:1};
-    case 'Minigun':  return {col:'#fff0b0',lw:2.4,tl:0.016,glow:3, tip:1.3, mz:7,  kick:.7,  sparks:3, spread:.5, push:16, shake:0};
-    case 'Tommy':    return {col:'#ffe7b0',lw:2.8,tl:0.014,glow:0, tip:1.4, mz:6.5,kick:.9,  sparks:4, spread:.5, push:20, shake:0};
-    default:         return {col:'#fff3c0',lw:3.6,tl:0.022,glow:6, tip:2.2, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
-  }
+// ---------- Combat (melee) ----------
+// Swing state lives on the fighter: swingT/swingDur (current swing anim), swingStep (combo index),
+// swingArc (half-arc of this swing's sweep) and comboWin (time left to chain the next combo hit).
+// Hit detection is instant on the press — distance <= reach + target radius and within the weapon's
+// half-arc of h.aim — and the drawn swing (swingAngle) is purely visual on top of that.
+const COMBO_STEPS = 3, FINISHER_MUL = 1.8;
+function swingAngle(h){
+  if(!(h.swingT>0) || !h.swingDur) return 0;
+  if(h.weapon && h.weapon.mode==='thrust') return 0;
+  const p = 1 - h.swingT/h.swingDur, e = 1-(1-p)*(1-p);               // ease-out: fast strike, slow follow-through
+  const dir = (h.swingStep%2) ? -1 : 1, arc = h.swingArc||0.8;
+  return dir * (-arc + 2*arc*e);
 }
-// True hand/muzzle world positions — mirror the exact transform chain drawHeroArm() uses to draw
-// the gun (shoulder anchor at HERO_ARM_ANCHOR_X/Y -> CHAR_VISUAL_SCALE -> rotate to h.aim -> arm
-// reach [-> barrel length]), so shots/sparks/shells leave from where the gun is actually drawn
-// instead of a fixed 16px radius from the character's centre regardless of weapon or art scale
-// (that mismatch was most visible on long guns like Rifle/Sniper — bullets read as firing from the
-// hip). Recoil is deliberately excluded: it's a post-shot kickback animation, not part of where the
-// muzzle sits at the instant a shot leaves.
-function wristPos(h){ const d=HERO_ARM_REACH*CHAR_VISUAL_SCALE;
-  return { x:h.x+Math.cos(h.aim)*d, y:h.y+HERO_ARM_ANCHOR_Y+Math.sin(h.aim)*d }; }
-function gunTip(h){ const d=(HERO_ARM_REACH+heldWeaponLen(h.weapon)+1)*CHAR_VISUAL_SCALE;
-  return { x:h.x+Math.cos(h.aim)*d, y:h.y+HERO_ARM_ANCHOR_Y+Math.sin(h.aim)*d }; }
-function fire(h){
-  if(!h.alive || grace>0 || h.fireCd>0 || h.reloading>0) return;
-  if(h.mag<=0){ startReload(h); return; }
-  const w=h.weapon; h.fireCd = w.fireCd * (h.isPlayer?1:h.fireMul);
-  const range=w.range*RANGE_SCALE;
-  const perkCritHit = !!(h.isPlayer && h.perkCrit && Math.random()<h.perkCrit);   // Sharpshooter: whole volley deals double
+function swingThrust(h){      // 0..1 forward lunge of the weapon for thrust-mode swings (visual only)
+  if(!(h.swingT>0) || !h.swingDur || !h.weapon || h.weapon.mode!=='thrust') return 0;
+  const p = 1 - h.swingT/h.swingDur; return Math.sin(p*Math.PI);
+}
+function attack(h){
+  if(!h.alive || grace>0 || h.fireCd>0) return;
+  const w=h.weapon, mode=w.mode;
+  // combo chain: swinging again inside comboWin advances the step; the 3rd hit is the finisher
+  let step = 0;
+  if(mode==='combo') step = h.comboWin>0 ? (h.swingStep+1)%COMBO_STEPS : 0;
+  else step = (h.swingStep+1)%2;
+  const fin = mode==='combo' && step===COMBO_STEPS-1;
+  const cdMul = h.isPlayer ? (h.perkCdMul||1) : (h.fireMul||1);
+  h.fireCd = w.fireCd * cdMul * (fin?1.6:1);
+  h.swingStep = step;
+  h.swingDur = clamp(w.fireCd*0.8, 0.1, 0.42) * (fin?1.3:1);
+  h.swingT = h.swingDur;
+  h.swingArc = (w.sweep||0.8) * (fin?1.4:1) * (mode==='thrust'?0:1);
+  h.comboWin = h.fireCd + 0.45;
+  const reach = w.reach * (h.isPlayer?(h.perkReachMul||1):1) * (fin?1.12:1);
+  const sweep = (w.sweep||0.8) * (fin?1.4:1);
+  const perkCritHit = !!(h.isPlayer && h.perkCrit && Math.random()<h.perkCrit);   // Critical Strikes perk: whole swing deals double
   if(perkCritHit) floaters.push({x:h.x, y:h.y-R-30, vy:-46, t:0.6, txt:'CRIT ×2', col:'#ffd24a'});
-  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1)*(perkCritHit?2:1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
-  if(w.mode==='flame'){
-    const fspd=320, tip=gunTip(h);
-    for(let i=0;i<3;i++){ const a=h.aim+rand(-0.34,0.34), sp=fspd*rand(.7,1.1);
-      bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        life:range/fspd, owner:h, dmg:w.dmg*dmgMul, flame:true, hits:0, r:rand(4,8),
-        color: pick(['#ff9b3d','#ff6a2a','#ffd24a']) }); }
-    h.mag--; sfx('flame'); if(h.mag<=0) startReload(h); return;
+  const dmgMul = (h.isPlayer ? magMulMeta()*(activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1)*(perkCritHit?2:1) : 1) * (fin?FINISHER_MUL:1);
+  const dmg = w.dmg*dmgMul;
+  const cap = mode==='jab'?1 : mode==='thrust'?4 : mode==='combo'?(fin?6:3) : 99;
+  const heavy = mode==='heavy' || fin;
+  // gather targets in the arc (nearest first)
+  const hits=[];
+  const consider = e=>{
+    if(!e.alive || e===h || e.amb) return;
+    if(humans.includes(e) && e.team===h.team) return;
+    const dx=e.x-h.x, dy=e.y-h.y, d=Math.hypot(dx,dy), er=e.r||R;
+    if(d>reach+er) return;
+    if(d>er+6){ let da=Math.atan2(dy,dx)-h.aim; da=Math.abs(((da+Math.PI)%TAU+TAU)%TAU-Math.PI);
+      if(da>sweep+Math.min(0.6,er/Math.max(d,1))) return; }
+    hits.push({e,d});
+  };
+  for(const z of zombies) consider(z);
+  for(const o of humans) consider(o);
+  hits.sort((a,b)=>a.d-b.d);
+  if(hits.length>cap) hits.length=cap;
+  const ca=Math.cos(h.aim), sa=Math.sin(h.aim);
+  const isHero = !!h.isPlayer;
+  for(const {e} of hits){
+    const wasZombie = !e.weapon;
+    hurt(e, dmg, h, !wasZombie);
+    if(wasZombie && !e.boss){ const kb = (fin?150: mode==='heavy'?(w.dmg>=80?210:120): mode==='thrust'?70: 36);
+      e.vx += ca*kb; e.vy += sa*kb; }
+    for(let k=0;k<(heavy?7:4);k++) spark(e.x-ca*(e.r||R)*0.5, e.y-6, pick(['#fff3c0','#ffd06a','#ffffff']), rand(60,200), h.aim+rand(-0.9,0.9), rand(.15,.3));
   }
-  if(w.mode==='launcher'){
-    const a=h.aim+(h.isPlayer?rand(-0.01,0.01):rand(-h.acc,h.acc)*0.5), rs=430, tip=gunTip(h);
-    bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*rs, vy:Math.sin(a)*rs,
-      life:range/rs, owner:h, dmg:w.dmg*dmgMul, boom:true, rocket:true, hits:0,
-      color:'#ffcaa0', lw:5, tl:0.02, glow:9, tip:3, aim:a });
-    h.mag--; h.muzzleT=0.09; h.muzzleR=12; h.recoil=2.4;
-    for(let i=0;i<12;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
-    h.vx-=Math.cos(a)*48; h.vy-=Math.sin(a)*48; if(h.isPlayer) shake=Math.min(shake+6,14);
-    sfx('shoot',w); if(h.mag<=0) startReload(h); return;
+  // Cleave perk: the first target's hit splashes onto one other nearby enemy
+  if(hits.length && h.perkRicochet){
+    const f=hits[0].e, other=perkTargets(h,f.x,f.y,PERK_TUNE.ricochetRange).find(t=>t!==f && !hits.some(x=>x.e===t));
+    if(other) perkStrike(h,other,dmg*PERK_TUNE.ricochetMul,f.x,f.y);
   }
-  const spd = w.mode==='sniper'?1040 : w.mode==='shotgun'?560 : 780;
-  const shots = w.mode==='shotgun'?6 : w.twin?2 : 1;
-  const fx = bulletFx(w);
-  const tip = gunTip(h);
-  // bots shoot wilder during the early-match warmup (see updateBot) — softens a fresh BR drop
-  const botAcc = h.isPlayer ? 0 : h.acc * (1 + 1.6*(1-clamp(elapsed/18,0,1)));
-  for(let i=0;i<shots;i++){
-    const spread = w.mode==='shotgun'? rand(-0.28,0.28) : (h.isPlayer?rand(-0.012,0.012):rand(-botAcc,botAcc));
-    const a=h.aim+spread + (w.twin?(i===0?-0.02:0.02):0);
-    const perp = w.twin?(i===0?-3:3):0;   // twin barrels fire from side-by-side muzzles
-    let dmg=w.dmg*dmgMul, crit=false;
-    if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
-    bullets.push({ x:tip.x - Math.sin(h.aim)*perp, y:tip.y + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
-      life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper'||w.arc, arc:w.arc, frost:w.frost, hits:0,
-      color: crit?'#ffd24a':fx.col, lw: crit?4.2:fx.lw, tl: fx.tl, glow: crit?10:fx.glow, tip: crit?2.2:fx.tip });
+  if(fin && hits.length) finisherBlast(h);
+  // feel: lunge into the swing, hit-stop on contact, shake on heavy hits
+  const lunge = heavy ? 120 : mode==='thrust' ? 150 : 70;
+  if(isHero) { h.vx += ca*lunge; h.vy += sa*lunge*0.4; }
+  if(hits.length){
+    if(isHero){ hitstop=Math.max(hitstop, heavy?0.07:0.03);
+      if(heavy) shake=Math.min(shake+(w.dmg>=80?7:4), 14);
+      if(h.gpIndex!=null && heavy) gpRumble(h.gpIndex,70,0.2,clamp(w.dmg/120,0.3,0.7)); }
   }
-  h.mag--;
-  // muzzle flash + recoil scale with the gun
-  h.muzzleT=0.06; h.muzzleR=fx.mz; h.recoil=fx.kick;
-  for(let i=0;i<fx.sparks;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#fff1bf']), rand(50,150+fx.mz*8), h.aim+rand(-1,1)*fx.spread);
-  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2, wrist=wristPos(h);  // ejected shell (red for shotgun), from the ejection port near the hand
-    spark(wrist.x, wrist.y-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
-  h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
-  if(h.gpIndex!=null && fx.push>=34) gpRumble(h.gpIndex,60,0.15,clamp(fx.push/90,0.25,0.7));   // heavy guns kick through the pad
-  if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
-  sfx('shoot', w);
-  if(h.mag<=0) startReload(h);
+  slashes.push({x:h.x, y:h.y-10, a:h.aim, reach, sweep, step, thrust:mode==='thrust', fin, heavy,
+    t:0, dur:heavy?0.22:0.16, col:fin?'#ffd24a':'#ffffff', hit:hits.length>0});
+  sfx('swing', heavy?'heavy':null, h);
 }
 // if a hit lands within DOOR_HALF-ish range of a building wall, leave a drip streak on that
 // wall's facade (local coords, so it moves with the building — buildings never move, so this
@@ -1850,13 +1833,7 @@ function perkStrike(h,e,dmg,x,y){
   zaps.push({x1:x,y1:y,x2:e.x,y2:e.y,t:0.18});
   hurt(e,dmg,h,humans.includes(e));
 }
-function ricochetHit(b,e){
-  if(!b.owner?.perkRicochet || b.flame || b.boom || b.ricochetUsed) return;
-  b.ricochetUsed=true;
-  const target=perkTargets(b.owner,e.x,e.y,PERK_TUNE.ricochetRange).find(t=>t!==e);
-  if(target) perkStrike(b.owner,target,b.dmg*PERK_TUNE.ricochetMul,e.x,e.y);
-}
-function reloadBlast(h){
+function finisherBlast(h){
   if(!h.perkReloadBlast || elapsed<(h.perkReloadReady||0) || grace>0) return;
   h.perkReloadReady=elapsed+PERK_TUNE.reloadCooldown;
   rings.push({x:h.x,y:h.y,t:0,dur:0.35,r0:8,r1:PERK_TUNE.reloadRadius,col:'255,170,70',lw:4});
@@ -1874,54 +1851,48 @@ function killStorm(h,e){
   } finally { h.perkStormActive=false; }
 }
 // ---- src/game/combat/abilities.js ----
-// ---------- Power-ups ----------
+// ---------- Power-ups (melee brawler) ----------
+// Q — drone strike: zaps the nearest enemies from above.  E — first aid: heals a chunk of max HP.
+// F — power weapon: swaps to the Sledgehammer for POWER_DUR seconds, then back to the equipped weapon.
+const DRONE={range:420, hits:6, dmg:55, cd:11};
+const FIRSTAID={heal:0.4, cd:25};
+const GRAPPLE={cd:40, power:15, range:430, k:22, c:2.2, reel:230, minLen:46, maxV:760, maxT:2.6};   // rope fields only matter to the dormant updateGrapple
 function castLightning(h){
-  if(h.lightCd>0 || grace>0) return; h.lightCd=11;
-  const R2=360*360; let n=0;
-  const targets=[];
-  for(const z of zombies) if(z.alive && dist2(h.x,h.y,z.x,z.y)<R2) targets.push({e:z,hum:false});
-  for(const o of humans) if(o.alive && o!==h && dist2(h.x,h.y,o.x,o.y)<R2) targets.push({e:o,hum:true});
+  if(h.lightCd>0 || grace>0 || !h.alive) return; h.lightCd=DRONE.cd;
+  const R2=DRONE.range*DRONE.range, targets=[];
+  for(const z of zombies) if(z.alive && !z.amb && dist2(h.x,h.y,z.x,z.y)<R2) targets.push({e:z,hum:false});
+  for(const o of humans) if(o.alive && o!==h && o.team!==h.team && dist2(h.x,h.y,o.x,o.y)<R2) targets.push({e:o,hum:true});
   targets.sort((a,b)=>dist2(h.x,h.y,a.e.x,a.e.y)-dist2(h.x,h.y,b.e.x,b.e.y));
-  let px=h.x, py=h.y;
-  for(const t of targets){ if(n>=5) break; n++;
-    zaps.push({x1:px,y1:py,x2:t.e.x,y2:t.e.y,t:0.25});
-    px=t.e.x; py=t.e.y;
-    hurt(t.e, 45, h, t.hum);
+  let n=0;
+  for(const t of targets){ if(n>=DRONE.hits) break; n++;
+    zaps.push({x1:t.e.x+rand(-14,14),y1:t.e.y-300,x2:t.e.x,y2:t.e.y,t:0.25});
+    hurt(t.e, DRONE.dmg*(h.perkDmgMul||1), h, t.hum);
     rings.push({x:t.e.x, y:t.e.y, t:0, dur:0.32, r0:6, r1:42, col:'160,210,255', lw:2.5});
     for(let i=0;i<8;i++) spark(t.e.x,t.e.y,'#9fd2ff',rand(60,200),rand(0,TAU),.5);
   }
-  if(h.isPlayer){ shake=Math.min(shake+5,12); sfx('bolt'); }
+  if(h.isPlayer){ if(n){ shake=Math.min(shake+5,12); sfx('bolt'); } else { toast('DRONE: NO TARGETS'); h.lightCd=1; sfx('tick'); } }
 }
 function throwBomb(h){
-  if(h.bombCd>0 || grace>0) return; h.bombCd=10;
-  const a=h.aim, d=180;
-  const fuse=0.85*(activeMutator?.bombFuseMul||1);
-  bombs.push({x:h.x, y:h.y, tx:h.x+Math.cos(a)*d, ty:h.y+Math.sin(a)*d, t:0, fuse, owner:h, sx:h.x, sy:h.y});
-  if(h.isPlayer) sfx('throw');
-}
-
-// ---------- Grapple hook (player mobility) ----------
-// Unilateral spring-damper rope: it only pulls when taut (d > len), and the force is
-// radial-only — tangential velocity passes through untouched, so momentum is conserved
-// through the swing and release keeps your full speed (the zip IS the reward). The rest
-// length reels in over time; reeling a taut rope does work on the player, adding speed.
-const GRAPPLE={range:430, k:22, c:2.2, reel:230, minLen:46, cd:7, maxV:760, maxT:2.6};
-function grappleAnchor(h){ // march along aim, anchor on the first building edge
-  const step=8, a=h.aim;
-  for(let d=step; d<=GRAPPLE.range; d+=step){
-    const x=h.x+Math.cos(a)*d, y=h.y+Math.sin(a)*d;
-    for(const o of obstacles){ if(x>o.x&&x<o.x+o.w&&y>o.y&&y<o.y+o.h) return {x,y}; }
-  }
-  return null;
+  if(h.bombCd>0 || grace>0 || !h.alive) return;
+  if(h.hp>=h.maxhp){ if(h.isPlayer){ toast('ALREADY AT FULL HEALTH'); sfx('tick'); } return; }
+  h.bombCd=FIRSTAID.cd;
+  const heal=Math.round(h.maxhp*FIRSTAID.heal); h.hp=Math.min(h.maxhp,h.hp+heal);
+  floaters.push({x:h.x, y:h.y-R-24, vy:-46, t:0.7, txt:'+'+heal, col:'#7dff9a'});
+  rings.push({x:h.x, y:h.y, t:0, dur:0.5, r0:6, r1:36, col:'120,255,150', lw:2.5});
+  if(h.isPlayer) sfx('pickup');
 }
 function castGrapple(h){
-  if(grace>0 || !h.alive) return;
-  if(h.grap){ grappleRelease(h); return; }        // press again to let go early
-  if(h.grapCd>0) return;
-  const hit=grappleAnchor(h);
-  if(!hit){ h.grapCd=1; if(h.isPlayer){ toast('NO ANCHOR IN RANGE'); sfx('tick'); } return; }
-  h.grap={ax:hit.x, ay:hit.y, len:Math.hypot(hit.x-h.x,hit.y-h.y), t:0};
-  if(h.isPlayer){ matchStat.grappled=true; sfx('throw'); }
+  if(h.grapCd>0 || grace>0 || !h.alive) return;
+  const sled=WEAPONS.find(w=>w.name==='Sledgehammer');
+  if(!sled || h.weapon===sled) return;
+  h.grapCd=GRAPPLE.cd; h.baseWeapon=h.weapon; h.weapon=sled; h.powerT=GRAPPLE.power; h.swingT=0; h.comboWin=0;
+  rings.push({x:h.x, y:h.y, t:0, dur:0.5, r0:6, r1:48, col:'255,210,90', lw:3});
+  if(h.isPlayer){ matchStat.grappled=true; toast('SLEDGEHAMMER! '+GRAPPLE.power+'s'); sfx('level'); }
+}
+function tickPower(h,dt){
+  if(!(h.powerT>0)) return;
+  h.powerT-=dt;
+  if(h.powerT<=0){ h.powerT=0; if(h.baseWeapon){ h.weapon=h.baseWeapon; h.baseWeapon=null; } h.swingT=0; h.comboWin=0; }
 }
 function grappleRelease(h){ h.grap=null; h.grapCd=GRAPPLE.cd; }
 // ---- src/game/world/building.js ----
@@ -2015,13 +1986,6 @@ function updateScraps(dt){
 }
 function updateGrapple(h,dt){
   const g=h.grap; if(!g) return;
-  if(h.perkGrappleDamage){
-    g.perkHits=g.perkHits||new Set();
-    for(const e of perkTargets(h,h.x,h.y,PERK_TUNE.grappleRadius)){
-      if(g.perkHits.has(e)) continue;
-      g.perkHits.add(e); perkStrike(h,e,PERK_TUNE.grappleDamage,h.x,h.y);
-    }
-  }
   g.t+=dt;
   g.len=Math.max(GRAPPLE.minLen, g.len-GRAPPLE.reel*dt);
   const dx=g.ax-h.x, dy=g.ay-h.y, d=Math.hypot(dx,dy);
@@ -2141,7 +2105,6 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
   keys[k]=true;
-  if(k==='r' && player) startReload(player);
   if(k==='q' && player) castLightning(player);
   if(k==='e' && player) throwBomb(player);
   if(k==='f' && player) castGrapple(player);
@@ -2363,6 +2326,10 @@ function _sfx(kind,mode){
     else {                             // semi (Pistol/Rifle-ish) — snappy crack + growl + slide cycling
       pin(0.06); fnoise(0.03,0.15,'highpass',2500*j,0.7); dtone(230*j,0.06,'sawtooth',0.16,70,2000);
       tone(58,0.08,'sine',0.14,40); tail(0.14,0.09,420); mech(42,0.06); shell(300,0.042); } }
+  else if(kind==='swing'){ const t=performance.now(); if(t-lastShot<30) return; lastShot=t;
+    const heavy=mode==='heavy', j=1+rand(-0.08,0.08);                   // whoosh: band-passed air + a low body on heavy swings
+    fnoise(heavy?0.2:0.11, heavy?0.14:0.09, 'bandpass', (heavy?520:1300)*j, 0.9, heavy?260:700);
+    if(heavy) tone(70*j,0.14,'sine',0.12,42); }
   else if(kind==='flame'){ const t=performance.now(); if(t-lastShot<45) return; lastShot=t;
     fnoise(0.13,0.09,'bandpass',900*(1+rand(-0.1,0.1)),0.6,480); tone(92,0.09,'sawtooth',0.05,72);
     fnoise(0.16,0.035,'highpass',5200,0.7,2600); }                       // fuel hiss riding on top
@@ -2407,12 +2374,11 @@ function _sfx(kind,mode){
 // ============================================================
 // ---- src/game/entities/ai.js ----
 function updateBot(h,dt){
-  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=magCap(h); }
   const near=botTarget(h); const tgt=near.o;
   let mvx=0,mvy=0; const out=outsideZone(h);
   const dc=Math.hypot(h.x-zone.cx,h.y-zone.cy);
   if(out || dc>zone.r-90){ const a=Math.atan2(zone.cy-h.y,zone.cx-h.x); mvx+=Math.cos(a)*1.2; mvy+=Math.sin(a)*1.2; }
-  const pref=h.weapon.range*RANGE_SCALE*0.7;
+  const pref=h.weapon.reach*0.8;
   // early-match warmup: bots ease in over the first ~18s — shorter sight, slower to fire, and
   // they hesitate longer before shooting the player — so a fresh drop isn't instantly lethal.
   const warm = clamp(elapsed/18, 0, 1);
@@ -2424,9 +2390,9 @@ function updateBot(h,dt){
     else if(near.d<pref*0.55){ mvx-=Math.cos(a)*0.8; mvy-=Math.sin(a)*0.8; }
     if(h.reJitter<=0){ h.strafe*=Math.random()<.5?-1:1; h.reJitter=rand(.6,1.4); } h.reJitter-=dt;
     mvx+=Math.cos(a+Math.PI/2)*h.strafe*0.6; mvy+=Math.sin(a+Math.PI/2)*h.strafe*0.6;
-    if(near.d < h.weapon.range*RANGE_SCALE*1.02){
+    if(near.d < h.weapon.reach+20){
       const err=Math.abs(((h.aim-a+Math.PI)%TAU)-Math.PI);
-      if(err<0.22){ h.lockT+=dt; if(h.lockT>react){ if(h.mag>0) fire(h); else startReload(h); } } else h.lockT=Math.max(0,h.lockT-dt*.5);
+      if(err<0.22){ h.lockT+=dt; if(h.lockT>react) attack(h); } else h.lockT=Math.max(0,h.lockT-dt*.5);
     } else h.lockT=0;
   } else { h.lockT=0; if(!out){ if(h.think<=0){ h.wanderA=rand(0,TAU); h.think=rand(.8,1.8); } h.think-=dt;
     mvx+=Math.cos(h.wanderA)*0.5; mvy+=Math.sin(h.wanderA)*0.5; h.aim=angLerp(h.aim,h.wanderA,0.08); } }
@@ -2559,7 +2525,6 @@ function updateZombie(z,dt){
 // ---- src/game/input/player.js ----
 function updatePlayer(h,dt,gp,readShared){
   if(!h.alive) return;
-  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0){ h.mag=magCap(h); reloadBlast(h); } }
   let mx=0,my=0;
   if(readShared){
     if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
@@ -2586,7 +2551,7 @@ function updatePlayer(h,dt,gp,readShared){
     if(h.climbCd<=0) for(const o of obstacles){ if(!o.tower) continue; const L=towerLadder(o);
       if(h.x>L.x-6 && h.x<L.x+L.w+6 && h.y>L.y-6 && h.y<L.y+L.h+12){
         h.onTower=o; const r=towerRoof(o); h.x=o.x+o.w/2; h.y=r.y+r.h-7; h.vx=h.vy=0; h.climbCd=0.5;
-        toast('🪜 ON THE ROOF — hold it & shoot down'); sfx('pickup'); break; } }
+        toast('🪜 ON THE ROOF — hold it & swing down'); sfx('pickup'); break; } }
   } else {
     const r=towerRoof(h.onTower);
     if(h.y>=r.y+r.h-1.3 && my>0.3){                                   // press down at the south edge → drop off
@@ -2597,7 +2562,7 @@ function updatePlayer(h,dt,gp,readShared){
   if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=assistAim(h,Math.atan2(gp.ay,gp.ax)); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
   else if(readShared && aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
   else if(readShared && !isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
-  if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
+  if(gp){ if(gp.fire) firing=true; if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
   // reticle world target — player-1-only screen overlay globals (aimWX/aimWY/aimShow); player 2
   // doesn't get an on-screen reticle in this pass, a deliberate scope cut, not an oversight — see
   // memory.md 2-player entry
@@ -2612,8 +2577,9 @@ function updatePlayer(h,dt,gp,readShared){
   if(h.buildSel>=0){ const g=buildGhost(h); h.ghostX=g.cx; h.ghostY=g.cy;
     h.ghostOk=canPlace(BUILDS[h.buildSel], g.cx, g.cy) && (h.scrap||0)>=BUILDS[h.buildSel].cost;
     if(firing) placeBuild(h); }
-  else if(firing) fire(h);
+  else if(firing) attack(h);
   if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt; if(h.grapCd>0) h.grapCd-=dt;
+  tickPower(h,dt);
   updateGrapple(h,dt);
   stepDust(h,dt);
   campfireHeal(h,dt); perkRegenTick(h,dt);
@@ -2693,13 +2659,12 @@ function connectedPads(){ return navigator.getGamepads ? [...navigator.getGamepa
 function tryJoinPlayer2(pads){
   if(player2 || !player || !player.alive) return;
   if(!pads || !pads[1]) return;
-  player2 = makeHuman(true, AVATARS[(meta.avatar+1)%AVATARS.length], WEAPONS[meta.weapon], 'Player 2');
+  player2 = makeHuman(true, AVATARS[(meta.avatar+1)%AVATARS.length], WEAPONS[clamp(meta.weapon|0,0,WEAPONS.length-1)], 'Player 2');
   player2.isPlayer2 = true; player2.gpIndex = 1; player2.team = 0;
   player2.x = clamp(player.x + rand(-70,-40), R, ARENA_W-R);
   player2.y = clamp(player.y + rand(-30,30), R, ARENA_H-R);
-  player2.lightCd=0; player2.bombCd=0; player2.grapCd=0; player2.grap=null;
+  player2.lightCd=0; player2.bombCd=0; player2.grapCd=0; player2.grap=null; player2.powerT=0; player2.baseWeapon=null;
   player2.scrap=0; player2.buildSel=-1; player2.placeCd=0;
-  player2.magMul=1; player2.mag=magCap(player2);
   humans.push(player2);
   toast('🎮 Player 2 joined!'); sfx('pickup');
 }
@@ -2726,7 +2691,7 @@ function updateRevive(dt){
   if(reviveT>=REVIVE_TIME){
     reviveT=0; const p=player2;
     p.alive=true; p.hp=Math.round(p.maxhp*0.5); p.burn=0; p.shield=0; p.vx=p.vy=0;
-    p.fireCd=0.5; p.reloading=0; p.mag=magCap(p);
+    p.fireCd=0.5; p.swingT=0; p.comboWin=0;
     toast('🎮 Player 2 is back up!'); sfx('level');
     rings.push({x:p.x,y:p.y,t:0,dur:0.6,r0:8,r1:REVIVE_R+30,col:'90,209,255',lw:4});
     for(let i=0;i<18;i++) spark(p.x,p.y-6,'#5ad1ff',rand(80,240),rand(0,TAU),.7);
@@ -2894,7 +2859,7 @@ function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA_W-R); h.y=clamp(h.y+h.vy*dt,R,ARENA_H-R);
   if(h.onTower) clampToRoof(h); else resolveObstacles(h);   // roof campers move on the platform, not the ground
   if(h.fireCd>0) h.fireCd-=dt; if(h.hitFlash>0) h.hitFlash-=dt;
-  if(h.muzzleT>0) h.muzzleT-=dt; if(h.recoil>0) h.recoil-=dt*7;
+  if(h.swingT>0) h.swingT-=dt; if(h.comboWin>0) h.comboWin-=dt;
   if(Math.abs(h.vx)>4) h.faceX=h.vx<0?-1:1;
   if(zoneActive() && grace<=0 && outsideZone(h)){ h.hp-=zone.dmg*dt;
     if(Math.random()<dt*7) spark(h.x+rand(-8,8),h.y+rand(-8,8),'#ff7a4a',rand(20,60),rand(0,TAU),.4);
@@ -2960,18 +2925,16 @@ function updateBullets(dt){
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
-        hurt(z,b.dmg,b.owner,false); ricochetHit(b,z); if(b.flame) ignite(z,b.owner); if(b.frost) z.slowT=Math.max(z.slowT||0,2.0);
-        if(b.arc && b.hits===0){ const n=nearestHuman(z,false).o; if(n&&n!==b.owner&&n!==z){ hurt(n,b.dmg*.55,b.owner,!!n.isPlayer); zaps.push({x1:z.x,y1:z.y,x2:n.x,y2:n.y,t:.18}); } }
-        if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
-        b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
+        hurt(z,b.dmg,b.owner,false);
+        for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
+        b.hits++; gone=true; break; } }
     if(!gone) for(const h of humans){ if(!h.alive||h===b.owner||(b.owner&&h.team===b.owner.team)) continue;
       if(dist2(b.x,b.y,h.x,h.y)<(R+3)*(R+3)){
         if(b.boom){ gone=true; break; }
-        hurt(h,b.dmg,b.owner,true); ricochetHit(b,h); if(b.flame) ignite(h,b.owner); if(b.frost) h.slowT=Math.max(h.slowT||0,1.6);
-        if(b.arc && b.hits===0){ const n=nearestHuman(h,false).o; if(n&&n!==b.owner&&n!==h){ hurt(n,b.dmg*.55,b.owner,!!n.isPlayer); zaps.push({x1:h.x,y1:h.y,x2:n.x,y2:n.y,t:.18}); } }
+        hurt(h,b.dmg,b.owner,true);
         h.vx+=b.vx*0.04; h.vy+=b.vy*0.04;
-        if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
-        b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
+        for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
+        b.hits++; gone=true; break; } }
     const oob = b.x<0||b.y<0||b.x>ARENA_W||b.y>ARENA_H;
     if(gone||b.life<=0||oob){
       if(b.boom && !oob) explode(b);   // rockets detonate on impact / at max range (not off-map)
@@ -2987,8 +2950,7 @@ function applyPickup(h,p){
   if(p.kind==='health'){ h.hp=Math.min(h.maxhp,h.hp+30); }
   else if(p.kind==='medkit'){ h.hp=h.maxhp; }
   else if(p.kind==='armor'){ h.shield=Math.min(100,(h.shield||0)+50); }
-  else if(p.kind==='ammo'){ h.mag=magCap(h); h.reloading=0; }
-  else if(p.kind==='weapon'){ h.weapon=p.w; h.mag=magCap(h); h.reloading=0; }
+  else if(p.kind==='weapon'){ if(h.baseWeapon) h.baseWeapon=p.w; else h.weapon=p.w; h.swingT=0; h.comboWin=0; }
   if(h.isPlayer){ sfx('pickup'); toast(PKMSG[p.kind]); }
   for(let i=0;i<10;i++) spark(p.x,p.y,PKCOL[p.kind].line,rand(50,160),rand(0,TAU),.5);
 }
@@ -2998,7 +2960,6 @@ function updatePickups(dt){
       if(dist2(p.x,p.y,h.x,h.y) < (R+p.r+2)*(R+p.r+2)){
         if((p.kind==='health'||p.kind==='medkit') && h.hp>=h.maxhp) continue;
         if(p.kind==='armor' && (h.shield||0)>=100) continue;
-        if(p.kind==='ammo' && h.mag>=magCap(h)) continue;
         applyPickup(h,p); taken=true; break; } }
     if(taken) pickups.splice(i,1);
   }
@@ -3022,8 +2983,8 @@ function updatePickups(dt){
     else { d.lt+=dt;
       for(const h of humans){ if(!h.alive) continue;
         if(dist2(d.x,d.y,h.x,h.y)<(R+17)*(R+17)){
-          const goodW=pick(WEAPONS.filter(w=>['Minigun','Sniper','Crossbow','Flame'].includes(w.name)));
-          h.weapon=goodW; h.mag=magCap(h); h.reloading=0;
+          const goodW=pick(WEAPONS.filter(w=>w.unlock>=4));
+          h.weapon=goodW; h.swingT=0; h.comboWin=0;
           h.shield=Math.min(100,(h.shield||0)+60); h.hp=Math.min(h.maxhp,h.hp+30);
           if(h.isPlayer){ sfx('loot'); toast('📦 '+goodW.name.toUpperCase()+' + ARMOR'); }
           for(let k=0;k<16;k++) spark(d.x,d.y,'#ffd24a',rand(60,200),rand(0,TAU),.6);
@@ -3034,6 +2995,7 @@ function updateParticles(dt){
   for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.life-=dt; p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.92;p.vy*=0.92;
     if(p.life<=0){ particles.splice(i,1); if(partPool.length<400) partPool.push(p); } }
   for(let i=floaters.length-1;i>=0;i--){ const f=floaters[i]; f.t-=dt; f.y+=f.vy*dt; f.vy*=0.96; if(f.t<=0) floaters.splice(i,1); }
+  for(let i=slashes.length-1;i>=0;i--){ slashes[i].t+=dt; if(slashes[i].t>=slashes[i].dur) slashes.splice(i,1); }
   for(let i=zaps.length-1;i>=0;i--){ zaps[i].t-=dt; if(zaps[i].t<=0) zaps.splice(i,1); }
   for(let i=rings.length-1;i>=0;i--){ rings[i].t+=dt; if(rings[i].t>=rings[i].dur) rings.splice(i,1); }
   for(let i=killFeed.length-1;i>=0;i--){ killFeed[i].t-=dt; if(killFeed[i].t<=0) killFeed.splice(i,1); }
@@ -3380,7 +3342,18 @@ function draw(){
     ctx.fillStyle='#8a6a3a'; ctx.beginPath(); ctx.arc(g.ax,g.ay,4.2,0,TAU); ctx.fill();
     ctx.strokeStyle=INK; ctx.lineWidth=1.4; ctx.stroke();
   }
-  // bullets (flame = fiery blobs, others = glowing tracers)
+  // melee swing arcs: a fading crescent (or a stab streak for thrusts) that follows the swing direction
+  for(const sl of slashes){
+    const k=sl.t/sl.dur, al=(1-k)*(sl.fin?0.95:0.75);
+    ctx.save(); ctx.translate(sl.x,sl.y); ctx.rotate(sl.a); ctx.globalAlpha=al; ctx.lineCap='round';
+    ctx.strokeStyle=sl.col; ctx.shadowColor=sl.col; ctx.shadowBlur=sl.heavy?14:8;
+    if(sl.thrust){ const e=Math.min(1,k*3.2)*sl.reach; ctx.lineWidth=4*(1-k)+1; ctx.beginPath(); ctx.moveTo(sl.reach*0.2,0); ctx.lineTo(e,0); ctx.stroke(); }
+    else { const dir=(sl.step%2)?-1:1, a0=-sl.sweep*dir, a1=sl.sweep*dir, sw=Math.min(1,k*2.4);
+      ctx.lineWidth=(sl.heavy?7:4.5)*(1-k*0.6); ctx.beginPath(); ctx.arc(0,0,sl.reach*0.82,a0,a0+(a1-a0)*sw,dir<0); ctx.stroke(); }
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+  // bullets (turret rounds + spitter acid)
   ctx.lineCap='round';
   for(const b of bullets){
     if(b.flame){ ctx.globalAlpha=clamp(b.life*3,0,1); ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r||5,0,TAU); ctx.fill(); ctx.globalAlpha=1; continue; }
@@ -3522,9 +3495,8 @@ function draw(){
 function drawReticle(){
   if(!(screenState==='playing' && !spectating && player && player.alive && grace<=0 && aimShow)) return;
   const x=aimWX, y=aimWY;
-  const low = player.reloading<=0 && player.mag<=Math.max(1,Math.ceil(magCap(player)*0.25));
   ctx.save(); ctx.globalAlpha=0.9; ctx.lineWidth=2; ctx.lineCap='round';
-  ctx.strokeStyle = player.reloading>0?'#ffd166' : low?'#ff6a6a' : '#ffffff';
+  ctx.strokeStyle = player.fireCd>0 ? '#ffd166' : '#ffffff';
   ctx.beginPath(); ctx.arc(x,y,9,0,TAU); ctx.stroke();
   for(const a of [0,Math.PI/2,Math.PI,3*Math.PI/2]){ ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*5,y+Math.sin(a)*5); ctx.lineTo(x+Math.cos(a)*13,y+Math.sin(a)*13); ctx.stroke(); }
   ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(x,y,1.5,0,TAU); ctx.fill();
@@ -4197,7 +4169,34 @@ function drawWeaponArt(w){
   ctx.drawImage(art, srcX, srcY, srcW, srcH, -dw*0.08, -dh*0.55, dw, dh);
   return true;
 }
+// ---- melee props: drawn in weapon space (origin at the hand, +x along the blade) ----
+function meleeLen(w){ return Math.max(10, Math.min(46, w.reach*0.55)); }
+function weaponOneHand(w){ return !!w && (w.name==='Pistol'||w.name==='Magnum'||(w.melee && w.name!=='Spear' && w.name!=='Sledgehammer')); }
+function drawMeleeProp(w, c){
+  const L = meleeLen(w), ink = 'rgba(0,0,0,.55)';
+  c.lineJoin='round'; c.lineCap='round'; c.strokeStyle=ink; c.lineWidth=1;
+  switch(w.name){
+    case 'Fists': c.fillStyle='#d94a3a'; c.beginPath(); c.arc(2.5,0,3.6,0,TAU); c.fill(); c.stroke(); break;
+    case 'Bat': c.fillStyle='#c79a5c'; c.beginPath(); c.moveTo(-2,-1.2); c.lineTo(L*0.55,-1.5); c.lineTo(L,-3.2); c.lineTo(L,3.2); c.lineTo(L*0.55,1.5); c.lineTo(-2,1.2); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle='rgba(255,255,255,.25)'; c.fillRect(L*0.3,-1.2,L*0.6,0.9); break;
+    case 'Knife': c.fillStyle='#3a2a1c'; roundRect(-3,-1.6,6,3.2,1,c); c.fill(); c.stroke();
+      c.fillStyle='#dfe6ee'; c.beginPath(); c.moveTo(3,-2); c.lineTo(L,0); c.lineTo(3,2); c.closePath(); c.fill(); c.stroke(); break;
+    case 'Pipe': c.fillStyle='#8c939c'; roundRect(-2,-2.2,L+2,4.4,1.8,c); c.fill(); c.stroke();
+      c.fillStyle='rgba(255,255,255,.3)'; c.fillRect(0,-1.7,L-2,1); c.fillStyle='#5d636b'; c.fillRect(L-4,-2.2,2,4.4); break;
+    case 'Nunchaku': { const a = L*0.42;
+      c.fillStyle='#2b2b30'; roundRect(-2,-1.8,a+2,3.6,1.4,c); c.fill(); c.stroke();
+      c.strokeStyle='#caa15a'; c.lineWidth=1.3; c.beginPath(); c.moveTo(a,0); c.quadraticCurveTo(a+L*0.18,-L*0.28,a+L*0.2,-L*0.1); c.stroke();
+      c.strokeStyle=ink; c.lineWidth=1; c.fillStyle='#2b2b30'; c.save(); c.translate(a+L*0.2,-L*0.1); c.rotate(-0.7); roundRect(0,-1.8,L*0.5,3.6,1.4,c); c.fill(); c.stroke(); c.restore(); break; }
+    case 'Spear': c.strokeStyle='#6b4a28'; c.lineWidth=2.2; c.beginPath(); c.moveTo(-L*0.28,0); c.lineTo(L-6,0); c.stroke();
+      c.strokeStyle=ink; c.lineWidth=1; c.fillStyle='#e6edf3'; c.beginPath(); c.moveTo(L-8,-3); c.lineTo(L+4,0); c.lineTo(L-8,3); c.closePath(); c.fill(); c.stroke(); break;
+    case 'Sledgehammer': c.strokeStyle='#6b4a28'; c.lineWidth=2.6; c.beginPath(); c.moveTo(-L*0.2,0); c.lineTo(L,0); c.stroke();
+      c.strokeStyle=ink; c.lineWidth=1; c.fillStyle='#7d838c'; roundRect(L-5,-6.5,11,13,2,c); c.fill(); c.stroke();
+      c.fillStyle='rgba(255,255,255,.25)'; c.fillRect(L-3.5,-5.5,2,11); break;
+    default: c.strokeStyle=w.col||'#ccc'; c.lineWidth=3; c.beginPath(); c.moveTo(0,0); c.lineTo(L,0); c.stroke();
+  }
+}
 function heldWeaponLen(w){
+  if(w && w.melee) return meleeLen(w) * WEAPON_HAND_SCALE;
   const g = GUNK[(w&&w.name)||'Pistol'] || {l:14};
   const art = imgOk(w&&w.img);
   if(art){
@@ -4220,6 +4219,8 @@ function drawHeldWeapon(w, fallbackName){
 }
 function drawGun(name,c){
   c=c||ctx;
+  const mw = WEAPONS.find(x=>x.name===name && x.melee);
+  if(mw){ drawMeleeProp(mw, c); return; }
   const g=GUNK[name]||{l:14,c:'#3a3f48'}, ink='rgba(0,0,0,.38)';
   c.lineJoin='round'; c.lineWidth=1;
   // ---- BEHIND BODY (drawn first so the main body occludes their near edge) ----
@@ -4323,7 +4324,7 @@ function drawGun(name,c){
 // (the plate background + tier ring come from CSS; DPR-scaled so it stays sharp on retina)
 function weaponIcon(w){
   const art=imgOk(w.img);
-  const g=GUNK[w.name]||{l:14}; const x0=-11, x1=g.l+9, span=x1-x0;
+  const g=GUNK[w.name]||{l:w.melee?meleeLen(w):14}; const x0=-11, x1=g.l+9, span=x1-x0;
   const CW=124, CH=58, DPR=3;
   const c=document.createElement('canvas'); c.width=CW*DPR; c.height=CH*DPR;
   c.style.width=CW+'px'; c.style.height=CH+'px';
@@ -4370,8 +4371,8 @@ function drawHuman(h){
   const breath=moving?0:Math.sin(now*2.3+seed)*0.9;          // idle chest rise
   // stride & bob grow with actual speed: a creep barely moves, a full sprint pumps hard
   const bob=(moving?Math.sin(h.walk)*(1.1+1.7*spd01):0)+breath, step=moving?Math.sin(h.walk)*(1.8+3.2*spd01):0;
-  const ga=h.aim, flash=h.hitFlash>0;
-  const oneHand = h.weapon && (h.weapon.name==='Pistol'||h.weapon.name==='Magnum');
+  const ga=h.aim+swingAngle(h), flash=h.hitFlash>0;
+  const oneHand = weaponOneHand(h.weapon);
   ctx.save(); ctx.translate(x,y); ctx.scale(CHAR_VISUAL_SCALE, CHAR_VISUAL_SCALE); ctx.lineJoin='round'; ctx.lineCap='round';
   // shadow
   ctx.fillStyle='rgba(0,0,0,.20)'; ctx.beginPath(); ctx.ellipse(0,19,15,5,0,0,TAU); ctx.fill();
@@ -4439,7 +4440,7 @@ function drawHuman(h){
   }
   // gun arm (front), rotated to aim; keep the gun upright when aiming left
   const gname = h.weapon?h.weapon.name:'Pistol';
-  const reach = 15 - (h.recoil>0?h.recoil*3:0);   // recoil kicks the gun back
+  const reach = 15 + swingThrust(h)*14;   // thrust weapons lunge forward
   ctx.save(); ctx.translate(0,-2); ctx.rotate(ga);
   ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
   ctx.strokeStyle=flash?'#fff':L.skin; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
@@ -4451,16 +4452,9 @@ function drawHuman(h){
     ctx.strokeStyle=L.skin; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(fx-7,6); ctx.lineTo(fx,2.2); ctx.stroke();
     ctx.fillStyle=L.skin; ctx.strokeStyle=INK; ctx.lineWidth=1.2;
     ctx.beginPath(); ctx.arc(fx,2.2,2.5,0,TAU); ctx.fill(); ctx.stroke(); }
-  if(h.muzzleT>0){ const gl=heldWeaponLen(h.weapon), mr=h.muzzleR||7; ctx.save(); ctx.translate(gl+1,0);
-    ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
-    ctx.fillStyle='#fff6c0'; for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2+0.4);
-      ctx.beginPath(); ctx.moveTo(0,-mr*0.34); ctx.lineTo(mr*1.4+rand(0,3),0); ctx.lineTo(0,mr*0.34); ctx.closePath(); ctx.fill(); ctx.restore(); }
-    ctx.beginPath(); ctx.arc(0,0,mr*0.48,0,TAU); ctx.fill(); ctx.restore(); }
   ctx.restore();
   // player ring
-  if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.ellipse(0,19,17,5.5,0,0,TAU); ctx.stroke();
-    if(h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
-      ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); } }
+  if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.ellipse(0,19,17,5.5,0,0,TAU); ctx.stroke(); }
   ctx.restore();
   drawNameplate(h);
 }
@@ -4503,14 +4497,7 @@ function drawHeroSprite(h, img){
   // that rotates the full 360° to the aim — the weapon shows in-hand and points wherever we shoot.
   const armless = h.avatar && h.avatar.armless;
   if(armless){ drawHeroArm(h, 0); }                                 // pivots at the (already-moved) chest, aims true
-  else if(h.muzzleT>0){ const mr=h.muzzleR||7, mx=Math.cos(h.aim)*20, my=Math.sin(h.aim)*12-6;   // muzzle flash along aim
-    ctx.save(); ctx.translate(mx,my);
-    ctx.fillStyle='rgba(255,205,80,.5)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
-    ctx.fillStyle='#fff6c0'; ctx.beginPath(); ctx.arc(0,0,mr*0.5,0,TAU); ctx.fill(); ctx.restore(); }
   ctx.restore();                                                     // close bob/sway frame
-  if(h.isPlayer && h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1);   // reload ring (steady, un-bobbed)
-    ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
-    ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); }
   ctx.restore();
 }
 // Draw the billboard with an articulated two-part leg walk: the static PNG has no frames, so split
@@ -4532,10 +4519,10 @@ function drawWalkBody(img, DW, DH, gait){
 // rig so combat reads identically. Called in the sprite's local space (already translated to h.x,h.y).
 function drawHeroArm(h, bob){
   const L = h.look || (h.avatar && h.avatar.look) || {skin:'#f0c8a0', outfit:'#556'};
-  const ga = h.aim, gname = h.weapon ? h.weapon.name : 'Pistol';
+  const ga = h.aim+swingAngle(h), gname = h.weapon ? h.weapon.name : 'Pistol';
   const gl = heldWeaponLen(h.weapon);
-  const oneHand = h.weapon && (h.weapon.name==='Pistol' || h.weapon.name==='Magnum');
-  const reach = HERO_ARM_REACH - (h.recoil>0 ? h.recoil*3 : 0);        // recoil kicks the gun back
+  const oneHand = weaponOneHand(h.weapon);
+  const reach = HERO_ARM_REACH + swingThrust(h)*14;                     // thrust weapons lunge forward
   const sleeve = L.outfit || '#556', skin = L.skin || '#f0c8a0';
   ctx.save(); ctx.translate(HERO_ARM_ANCHOR_X, HERO_ARM_ANCHOR_Y + bob*0.6); ctx.scale(CHAR_VISUAL_SCALE, CHAR_VISUAL_SCALE); ctx.rotate(ga);   // shoulder pivot at the chest, bobbing with the body
   ctx.lineJoin='round'; ctx.lineCap='round';
@@ -4553,12 +4540,6 @@ function drawHeroArm(h, bob){
     ctx.strokeStyle=sleeve; ctx.lineWidth=2.8; ctx.beginPath(); ctx.moveTo(fx-6.5,6.5); ctx.lineTo(fx,2.4); ctx.stroke();
     ctx.fillStyle=skin; ctx.strokeStyle=INK; ctx.lineWidth=1.1;
     ctx.beginPath(); ctx.arc(fx,2.4,2.3,0,TAU); ctx.fill(); ctx.stroke(); }
-  // muzzle flash at the barrel tip (in gun space, so it tracks the aim)
-  if(h.muzzleT>0){ const mr=h.muzzleR||7; ctx.save(); ctx.translate(gl+1,0);
-    ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
-    ctx.fillStyle='#fff6c0'; for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2+0.4);
-      ctx.beginPath(); ctx.moveTo(0,-mr*0.34); ctx.lineTo(mr*1.4+rand(0,3),0); ctx.lineTo(0,mr*0.34); ctx.closePath(); ctx.fill(); ctx.restore(); }
-    ctx.beginPath(); ctx.arc(0,0,mr*0.48,0,TAU); ctx.fill(); ctx.restore(); }
   ctx.restore();
 }
 function drawHair(L,hy,flip){
@@ -4616,19 +4597,6 @@ function drawNameplate(h){
   // armor/shield bar (thin blue, above hp)
   if(h.shield>0){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(x-bw/2,y-10,bw,3);
     ctx.fillStyle='#5fa8ff'; ctx.fillRect(x-bw/2,y-10,bw*clamp(h.shield/100,0,1),3); }
-  // ammo pips (orange) for player, mini for bots
-  if(h.isPlayer){ const w=h.weapon, n=magCap(h);
-    const seg=Math.min(n,10), gap=2, tot=bw, sw=(tot-(seg-1)*gap)/seg;
-    const low = h.reloading<=0 && h.mag<=Math.max(1,Math.ceil(n*0.25));
-    const pulse = low ? (0.45+0.55*Math.abs(Math.sin(performance.now()/130))) : 1;
-    for(let i=0;i<seg;i++){ ctx.fillStyle = i<h.mag ? (low?'rgba(255,'+Math.round(70+90*pulse)+',60,1)':'#ff9b3d') : 'rgba(0,0,0,.45)';
-      ctx.fillRect(x-bw/2+i*(sw+gap), y+1, sw, 4); }
-    if(h.reloading>0){ ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='700 9px Trebuchet MS'; ctx.fillText('reloading…',x,y+13); }
-    else if(low){ ctx.fillStyle='#ff6a6a'; ctx.font='700 9px Trebuchet MS'; ctx.fillText('LOW AMMO',x,y+13); }
-  } else if(h.reloading>0){ // bot reload progress
-    ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(x-bw/2,y+1,bw,3);
-    ctx.fillStyle='rgba(255,255,255,.8)'; ctx.fillRect(x-bw/2,y+1,bw*(1-h.reloading/h.weapon.reload),3);
-  }
 }
 // ---- src/game/rendering/enemies.js ----
 // Enemy art direction: broad silhouettes, cel-lit volumes and role-specific equipment.
@@ -4852,7 +4820,7 @@ function refreshHud(){
   el('xpfill').style.width = clamp(meta.xp/xpNeed(meta.level),0,1)*100 + '%';
   el('lvlText').textContent = 'LV '+meta.level;
   // power cooldown fills + "ready" glow when off cooldown
-  const bc=(player?clamp(player.lightCd/11,0,1):0), mc=(player?clamp(player.bombCd/10,0,1):0),
+  const bc=(player?clamp(player.lightCd/11,0,1):0), mc=(player?clamp(player.bombCd/FIRSTAID.cd,0,1):0),
         gc=(player&&!player.grap?clamp(player.grapCd/GRAPPLE.cd,0,1):0);
   el('boltCool').style.height = bc*100 + '%'; el('boltBtn').classList.toggle('ready', bc<=0 && grace<=0);
   el('bombCool').style.height = mc*100 + '%'; el('bombBtn').classList.toggle('ready', mc<=0 && grace<=0);
@@ -4990,8 +4958,8 @@ function renderShop(){
   // ---- Upgrades: Extended Magazines (permanent, all weapons) ----
   const m=magInfo();
   const magCard='<div class="achcard shopcard upgcard'+(m.maxed?' equipped':(meta.coins<m.nextCost?' poor':''))+'" data-upg="extmag">'
-    +'<span class="aic">📦</span><div class="atxt"><b>Extended Magazines</b>'
-    +'<span>'+(m.bonus?('+'+m.bonus+'% mag'):'wider mags for every gun')
+    +'<span class="aic">📦</span><div class="atxt"><b>Iron Knuckles</b>'
+    +'<span>'+(m.bonus?('+'+m.bonus+'% damage'):'harder hits with every weapon')
     +(m.maxed?' · MAX':' · Lv '+m.lvl+'/'+MAG_MAX)+'</span></div>'
     +'<button class="shopbtn'+(m.maxed?' on':'')+'">'+(m.maxed?'MAXED':('🪙 '+m.nextCost))+'</button></div>';
   // Native-only: real-money consumable coin top-up (App Store 3.1.1 forbids the Stripe link
@@ -5024,11 +4992,10 @@ function renderShop(){
         +'<button class="shopbtn'+(eq?' on':'')+'">'+btn+'</button></div>'; }).join('');
 }
 function buyMag(){ const m=magInfo();
-  if(m.maxed){ toast('Extended Magazines already maxed!'); return; }
+  if(m.maxed){ toast('Iron Knuckles already maxed!'); return; }
   if(meta.coins<m.nextCost){ toast('Not enough coins — earn more in matches!'); return; }
   meta.coins-=m.nextCost; meta.magLvl=(meta.magLvl||0)+1; saveMeta();
-  toast('📦 EXTENDED MAGS Lv '+meta.magLvl+' — +'+Math.round(meta.magLvl*MAG_STEP*100)+'% mag capacity!'); sfx('level');
-  if(player && player.alive){ player.magMul=magMulMeta(); }   // apply live if bought mid-session
+  toast('🥊 IRON KNUCKLES Lv '+meta.magLvl+' — +'+Math.round(meta.magLvl*MAG_STEP*100)+'% melee damage!'); sfx('level');
   renderShop(); renderMenu();
 }
 function shopTap(id){
@@ -5206,13 +5173,9 @@ function buildAvatarGrid(){
     g.appendChild(card);
   });
 }
-const WMODE={semi:'SEMI',auto:'AUTO',shotgun:'SHOT',sniper:'SNIPE',flame:'FLAME',launcher:'BOOM'};
+const WMODE={combo:'COMBO',jab:'JAB',thrust:'THRUST',heavy:'HEAVY'};
 function wstats(w){
-  const pel = w.mode==='shotgun'?6 : w.mode==='flame'?3 : (w.twin?2:1);   // projectiles per trigger
-  let perShot = w.dmg*pel;
-  if(w.mode==='launcher') perShot = 90;                       // splash damage, not the direct hit
-  const cyc = w.mag*w.fireCd + w.reload;                      // full mag + reload (s)
-  return { perShot, dps: Math.round(perShot*w.mag/cyc), rpm: Math.round(60/w.fireCd) };
+  return { perShot: w.dmg, dps: Math.round(w.dmg/w.fireCd), rpm: Math.round(60/w.fireCd) };   // single-target swing damage / swing rate
 }
 // rarity tier by unlock level — drives the card's accent colour + chip
 function weaponTier(w){ const u=w.unlock||1;
@@ -5231,6 +5194,7 @@ function dpsDelta(dps, eqDps){
 }
 function buildWeaponGrid(){
   const g=el('weaponGrid'); g.innerHTML='';
+  meta.weapon = clamp(meta.weapon|0,0,WEAPONS.length-1);
   const eqDps = wstats(WEAPONS[meta.weapon]).dps;
   const maxDps = Math.max(...WEAPONS.map(w=>wstats(w).dps));    // strongest gun → full Power bar
   const ownedDps = WEAPONS.filter(weaponUnlocked).map(w=>wstats(w).dps);
@@ -5248,9 +5212,9 @@ function buildWeaponGrid(){
       '<div class="wdps"><b>'+s.dps+'</b><span>DPS</span>'+(unlocked&&!sel?dpsDelta(s.dps,eqDps):'')+'</div>'+
       statBar('pow','Power', unlocked?'#'+rankOf(s.dps):'', s.dps/maxDps)+
       statBar('dmg','Damage', s.perShot, Math.min(s.perShot,250)/250)+
-      statBar('fire','Fire rate', s.rpm+'/m', Math.min(s.rpm,1200)/1200)+
-      statBar('mag','Mag', w.mag, Math.min(w.mag/60,1))+
-      statBar('rng','Range', w.range, w.range/600)+
+      statBar('fire','Swing rate', s.rpm+'/m', Math.min(s.rpm,400)/400)+
+      statBar('mag','Reach', w.reach, w.reach/90)+
+      statBar('rng','Arc', Math.round(w.sweep*2*57.3)+'°', Math.min(w.sweep/1.1,1))+
       '<div class="special">'+w.special+'</div>'+
       '<div class="lvl">'+(unlocked?'Level '+w.unlock:'🔒 Unlocks at Lv '+w.unlock)+'</div>'+
       (sel?'<div class="equip">EQUIPPED</div>':'')+
@@ -5265,6 +5229,7 @@ function startMatch(){
   spectating=false; specTarget=null; el('specBar').classList.add('hidden');
   applyVolume();
   // never drop in with a locked weapon/avatar (e.g. after data reset)
+  meta.weapon = clamp(meta.weapon|0,0,WEAPONS.length-1);
   if(!weaponUnlocked(WEAPONS[meta.weapon])) meta.weapon=0;
   if(!avatarUnlocked(AVATARS[meta.avatar])) meta.avatar=0;
   zoneReset(); spawnMatch();

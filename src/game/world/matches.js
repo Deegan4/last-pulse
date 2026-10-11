@@ -5,7 +5,7 @@
 // z.amb so only the ambient mover touches them; spawnMatch wipes the array and clears the flag.
 let menuAmbient=false;
 function menuScene(){
-  zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
+  zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   if(!decor.length) buildDecor();                        // first boot: give the menu real scenery
   menuAmbient=true;
   const cx=(player&&player.x)||ARENA_W/2, cy=(player&&player.y)||ARENA_H/2;
@@ -28,7 +28,7 @@ function menuSceneUpdate(dt){
   }
 }
 function spawnMatch(){
-  humans.length=0; zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
+  humans.length=0; zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
   builds.length=0; scraps.length=0;
@@ -42,11 +42,10 @@ function spawnMatch(){
   // interior loot — every house hides a pickup (a reason to step inside)
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
   // player
-  player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
+  player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[clamp(meta.weapon|0,0,WEAPONS.length-1)], meta.name||'deegan');
   player.team=0; player.gpIndex=0; player.x=ARENA_W/2; player.y=ARENA_H/2;   // bare pit: always center, no cover to spawn clear of
-  player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null;
+  player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null; player.powerT=0; player.baseWeapon=null;
   player.scrap=0; player.buildSel=-1; player.placeCd=0;   // builder state (start with mode off)
-  player.magMul=magMulMeta(); player.mag=magCap(player);  // Extended Magazines upgrade → wider mag, start full
   humans.push(player);
   tryJoinPlayer2(connectedPads());   // catch a 2nd controller that was ALREADY connected before drop-in, not just one that connects mid-match
   // scattered scrap caches — a reason to explore; seeds your first walls before the first kills
@@ -80,11 +79,11 @@ function spawnMatch(){
     for(let i=0;i<9;i++){ const s=farSpawn(ARENA*0.1); pickups.push(makePickup(s.x,s.y)); }
   }
 }
-const PKINDS=['health','health','medkit','armor','ammo','weapon'];
+const PKINDS=['health','health','medkit','armor','weapon'];
 const PKCOL={health:{bg:'#1f5a2a',line:'#5fd35f'}, medkit:{bg:'#7a1f24',line:'#ff5a6e'},
-  armor:{bg:'#1f3a5a',line:'#5fa8ff'}, ammo:{bg:'#5a431f',line:'#ff9b3d'}, weapon:{bg:'#3a1f5a',line:'#c08bff'}};
-const PKGLYPH={health:'+', medkit:'✚', armor:'▽', ammo:'≡', weapon:'★'};
-const PKMSG={health:'+30 HP', medkit:'FULL HEAL', armor:'+50 ARMOR', ammo:'AMMO REFILL', weapon:'NEW WEAPON'};
+  armor:{bg:'#1f3a5a',line:'#5fa8ff'}, weapon:{bg:'#3a1f5a',line:'#c08bff'}};
+const PKGLYPH={health:'+', medkit:'✚', armor:'▽', weapon:'★'};
+const PKMSG={health:'+30 HP', medkit:'FULL HEAL', armor:'+50 ARMOR', weapon:'NEW WEAPON'};
 function makePickup(x,y,kind){ kind=kind||pick(PKINDS); return {x,y,kind,r:13,t:rand(0,3),w: kind==='weapon'?pick(WEAPONS):null}; }
 function ignite(e,src){ e.burn=Math.max(e.burn||0, 2.6); e.burnSrc=src; }
 function aliveHumans(){ let n=0; for(const h of humans) if(h.alive) n++; return n; }

@@ -72,7 +72,18 @@ function draw(){
     ctx.fillStyle='#8a6a3a'; ctx.beginPath(); ctx.arc(g.ax,g.ay,4.2,0,TAU); ctx.fill();
     ctx.strokeStyle=INK; ctx.lineWidth=1.4; ctx.stroke();
   }
-  // bullets (flame = fiery blobs, others = glowing tracers)
+  // melee swing arcs: a fading crescent (or a stab streak for thrusts) that follows the swing direction
+  for(const sl of slashes){
+    const k=sl.t/sl.dur, al=(1-k)*(sl.fin?0.95:0.75);
+    ctx.save(); ctx.translate(sl.x,sl.y); ctx.rotate(sl.a); ctx.globalAlpha=al; ctx.lineCap='round';
+    ctx.strokeStyle=sl.col; ctx.shadowColor=sl.col; ctx.shadowBlur=sl.heavy?14:8;
+    if(sl.thrust){ const e=Math.min(1,k*3.2)*sl.reach; ctx.lineWidth=4*(1-k)+1; ctx.beginPath(); ctx.moveTo(sl.reach*0.2,0); ctx.lineTo(e,0); ctx.stroke(); }
+    else { const dir=(sl.step%2)?-1:1, a0=-sl.sweep*dir, a1=sl.sweep*dir, sw=Math.min(1,k*2.4);
+      ctx.lineWidth=(sl.heavy?7:4.5)*(1-k*0.6); ctx.beginPath(); ctx.arc(0,0,sl.reach*0.82,a0,a0+(a1-a0)*sw,dir<0); ctx.stroke(); }
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+  // bullets (turret rounds + spitter acid)
   ctx.lineCap='round';
   for(const b of bullets){
     if(b.flame){ ctx.globalAlpha=clamp(b.life*3,0,1); ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r||5,0,TAU); ctx.fill(); ctx.globalAlpha=1; continue; }
@@ -214,9 +225,8 @@ function draw(){
 function drawReticle(){
   if(!(screenState==='playing' && !spectating && player && player.alive && grace<=0 && aimShow)) return;
   const x=aimWX, y=aimWY;
-  const low = player.reloading<=0 && player.mag<=Math.max(1,Math.ceil(magCap(player)*0.25));
   ctx.save(); ctx.globalAlpha=0.9; ctx.lineWidth=2; ctx.lineCap='round';
-  ctx.strokeStyle = player.reloading>0?'#ffd166' : low?'#ff6a6a' : '#ffffff';
+  ctx.strokeStyle = player.fireCd>0 ? '#ffd166' : '#ffffff';
   ctx.beginPath(); ctx.arc(x,y,9,0,TAU); ctx.stroke();
   for(const a of [0,Math.PI/2,Math.PI,3*Math.PI/2]){ ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*5,y+Math.sin(a)*5); ctx.lineTo(x+Math.cos(a)*13,y+Math.sin(a)*13); ctx.stroke(); }
   ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(x,y,1.5,0,TAU); ctx.fill();

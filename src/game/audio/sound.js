@@ -156,6 +156,10 @@ function _sfx(kind,mode){
     else {                             // semi (Pistol/Rifle-ish) — snappy crack + growl + slide cycling
       pin(0.06); fnoise(0.03,0.15,'highpass',2500*j,0.7); dtone(230*j,0.06,'sawtooth',0.16,70,2000);
       tone(58,0.08,'sine',0.14,40); tail(0.14,0.09,420); mech(42,0.06); shell(300,0.042); } }
+  else if(kind==='swing'){ const t=performance.now(); if(t-lastShot<30) return; lastShot=t;
+    const heavy=mode==='heavy', j=1+rand(-0.08,0.08);                   // whoosh: band-passed air + a low body on heavy swings
+    fnoise(heavy?0.2:0.11, heavy?0.14:0.09, 'bandpass', (heavy?520:1300)*j, 0.9, heavy?260:700);
+    if(heavy) tone(70*j,0.14,'sine',0.12,42); }
   else if(kind==='flame'){ const t=performance.now(); if(t-lastShot<45) return; lastShot=t;
     fnoise(0.13,0.09,'bandpass',900*(1+rand(-0.1,0.1)),0.6,480); tone(92,0.09,'sawtooth',0.05,72);
     fnoise(0.16,0.035,'highpass',5200,0.7,2600); }                       // fuel hiss riding on top

@@ -3,8 +3,8 @@ function makeHuman(isPlayer, avatar, weapon, name){
     isPlayer, name: name || avatar.name, avatar, look: avatar.look, weapon,
     x:0, y:0, vx:0, vy:0, aim:-Math.PI/2,
     hp:avatar.health, maxhp:avatar.health, speed:avatar.speed*42,
-    alive:true, mag:weapon.mag, reloading:0, fireCd:0, walk:0, hitFlash:0, kills:0, faceX:1, seed:rand(0,9),
-    shield:0, burn:0, burnSrc:null, streak:0, lastKillT:-99, team:0, ally:false, muzzleT:0, recoil:0,
+    alive:true, fireCd:0, swingT:0, swingDur:0.2, swingStep:0, swingArc:0.8, comboWin:0, walk:0, hitFlash:0, kills:0, faceX:1, seed:rand(0,9),
+    shield:0, burn:0, burnSrc:null, streak:0, lastKillT:-99, team:0, ally:false,
     onTower:null, climbCd:0,   // watchtower state — must be numeric so the climb guard (climbCd<=0) fires
 
     // ai

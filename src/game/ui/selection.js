@@ -89,13 +89,9 @@ function buildAvatarGrid(){
     g.appendChild(card);
   });
 }
-const WMODE={semi:'SEMI',auto:'AUTO',shotgun:'SHOT',sniper:'SNIPE',flame:'FLAME',launcher:'BOOM'};
+const WMODE={combo:'COMBO',jab:'JAB',thrust:'THRUST',heavy:'HEAVY'};
 function wstats(w){
-  const pel = w.mode==='shotgun'?6 : w.mode==='flame'?3 : (w.twin?2:1);   // projectiles per trigger
-  let perShot = w.dmg*pel;
-  if(w.mode==='launcher') perShot = 90;                       // splash damage, not the direct hit
-  const cyc = w.mag*w.fireCd + w.reload;                      // full mag + reload (s)
-  return { perShot, dps: Math.round(perShot*w.mag/cyc), rpm: Math.round(60/w.fireCd) };
+  return { perShot: w.dmg, dps: Math.round(w.dmg/w.fireCd), rpm: Math.round(60/w.fireCd) };   // single-target swing damage / swing rate
 }
 // rarity tier by unlock level — drives the card's accent colour + chip
 function weaponTier(w){ const u=w.unlock||1;
@@ -114,6 +110,7 @@ function dpsDelta(dps, eqDps){
 }
 function buildWeaponGrid(){
   const g=el('weaponGrid'); g.innerHTML='';
+  meta.weapon = clamp(meta.weapon|0,0,WEAPONS.length-1);
   const eqDps = wstats(WEAPONS[meta.weapon]).dps;
   const maxDps = Math.max(...WEAPONS.map(w=>wstats(w).dps));    // strongest gun → full Power bar
   const ownedDps = WEAPONS.filter(weaponUnlocked).map(w=>wstats(w).dps);
@@ -131,9 +128,9 @@ function buildWeaponGrid(){
       '<div class="wdps"><b>'+s.dps+'</b><span>DPS</span>'+(unlocked&&!sel?dpsDelta(s.dps,eqDps):'')+'</div>'+
       statBar('pow','Power', unlocked?'#'+rankOf(s.dps):'', s.dps/maxDps)+
       statBar('dmg','Damage', s.perShot, Math.min(s.perShot,250)/250)+
-      statBar('fire','Fire rate', s.rpm+'/m', Math.min(s.rpm,1200)/1200)+
-      statBar('mag','Mag', w.mag, Math.min(w.mag/60,1))+
-      statBar('rng','Range', w.range, w.range/600)+
+      statBar('fire','Swing rate', s.rpm+'/m', Math.min(s.rpm,400)/400)+
+      statBar('mag','Reach', w.reach, w.reach/90)+
+      statBar('rng','Arc', Math.round(w.sweep*2*57.3)+'°', Math.min(w.sweep/1.1,1))+
       '<div class="special">'+w.special+'</div>'+
       '<div class="lvl">'+(unlocked?'Level '+w.unlock:'🔒 Unlocks at Lv '+w.unlock)+'</div>'+
       (sel?'<div class="equip">EQUIPPED</div>':'')+
@@ -148,6 +145,7 @@ function startMatch(){
   spectating=false; specTarget=null; el('specBar').classList.add('hidden');
   applyVolume();
   // never drop in with a locked weapon/avatar (e.g. after data reset)
+  meta.weapon = clamp(meta.weapon|0,0,WEAPONS.length-1);
   if(!weaponUnlocked(WEAPONS[meta.weapon])) meta.weapon=0;
   if(!avatarUnlocked(AVATARS[meta.avatar])) meta.avatar=0;
   zoneReset(); spawnMatch();

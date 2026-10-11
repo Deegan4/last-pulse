@@ -88,13 +88,6 @@ function updateScraps(dt){
 }
 function updateGrapple(h,dt){
   const g=h.grap; if(!g) return;
-  if(h.perkGrappleDamage){
-    g.perkHits=g.perkHits||new Set();
-    for(const e of perkTargets(h,h.x,h.y,PERK_TUNE.grappleRadius)){
-      if(g.perkHits.has(e)) continue;
-      g.perkHits.add(e); perkStrike(h,e,PERK_TUNE.grappleDamage,h.x,h.y);
-    }
-  }
   g.t+=dt;
   g.len=Math.max(GRAPPLE.minLen, g.len-GRAPPLE.reel*dt);
   const dx=g.ax-h.x, dy=g.ay-h.y, d=Math.hypot(dx,dy);

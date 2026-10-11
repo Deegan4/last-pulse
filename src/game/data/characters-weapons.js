@@ -16,22 +16,13 @@ const AVATARS = [
   {name:'Titan',  speed:4.4, health:150, unlock:26, img:'hero-titan',  armless:true, aura:'#ff5a5a', look:{skin:'#e8b48c',hair:'#3a3f47',outfit:'#33373d',style:'horns'}},
 ];
 const WEAPONS = [
-  {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit',        img:'weapon-pistol'},
-  {name:'Rifle',   icon:'🪖', dmg:10,  mag:10, reload:1.25, range:150, fireCd:0.10, mode:'auto',    unlock:1,  special:'10 bullets per ammo',                  img:'weapon-rifle'},
-  {name:'Shotgun', icon:'💥', dmg:20,  mag:2,  reload:1.25, range:150, fireCd:0.62, mode:'shotgun', unlock:2,  special:'wide pellet spread',                   img:'weapon-shotgun'},
-  {name:'SMG',     icon:'🧨', dmg:8,   mag:25, reload:1.6,  range:200, fireCd:0.07, mode:'auto',    unlock:3,  special:'blazing fire rate',                    img:'weapon-smg'},
-  {name:'Magnum',  icon:'🔩', dmg:55,  mag:6,  reload:1.8,  range:340, fireCd:0.40, mode:'semi',    unlock:4,  special:'heavy-hitting revolver',               img:'weapon-magnum'},
-  {name:'Sniper',  icon:'🎯', dmg:190, mag:1,  reload:3.0,  range:600, fireCd:0.9,  mode:'sniper',  unlock:5,  special:'pierces — huge range & damage',        img:'weapon-sniper'},
-  {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt',                 img:'weapon-crossbow'},
-  {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire',                 img:'weapon-flame'},
-  {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds',          img:'weapon-minigun'},
-  {name:'Tommy',   icon:'🎻', dmg:11,  mag:30, reload:1.7,  range:190, fireCd:0.085,mode:'auto',    unlock:8,  special:'drum-mag auto — steady spray',         img:'weapon-tommy'},
-  {name:'Launcher',icon:'🚀', dmg:40,  mag:1,  reload:2.6,  range:340, fireCd:1.2,  mode:'launcher',unlock:12, special:'explosive rocket — splash damage',     img:'weapon-launcher'},
-  {name:'Vipers',  icon:'🐍', dmg:9,   mag:24, reload:1.7,  range:210, fireCd:0.09, mode:'auto', twin:true, unlock:15, special:'twin barrels — double the lead', img:'weapon-vipers'},
-  {name:'Pulse SMG',icon:'⚡', dmg:7,   mag:36, reload:1.45, range:230, fireCd:0.055,mode:'auto',    unlock:1, special:'hyper-fast pulse stream',             img:'weapon-pulse-smg', featured:true},
-  {name:'Arc Rifle',icon:'🔷', dmg:18,  mag:14, reload:1.9,  range:360, fireCd:0.18, mode:'auto', arc:true, unlock:1, special:'electric rounds chain once',   img:'weapon-arc-rifle', featured:true},
-  {name:'Frost Blaster',icon:'❄️', dmg:12, mag:28, reload:2.0, range:250, fireCd:0.12, mode:'auto', frost:true, unlock:1, special:'slows enemies on hit',       img:'weapon-frost-blaster', featured:true},
-  {name:'Rocket Launcher',icon:'🚀', dmg:62, mag:2, reload:3.2, range:390, fireCd:1.35, mode:'launcher', unlock:1, special:'heavy rockets — bigger splash',     img:'weapon-rocket-launcher', featured:true},
+  {name:'Fists',       icon:'👊', dmg:14, reach:34, sweep:0.75, fireCd:0.26, mode:'combo',  unlock:1, melee:true, col:'#e8c4a8', special:'3-hit combo — the finisher hits harder'},
+  {name:'Bat',         icon:'🏏', dmg:26, reach:52, sweep:0.85, fireCd:0.34, mode:'combo',  unlock:1, melee:true, col:'#c58a4a', special:'3-hit combo with a wide finisher'},
+  {name:'Knife',       icon:'🔪', dmg:12, reach:38, sweep:0.6,  fireCd:0.15, mode:'jab',    unlock:2, melee:true, col:'#cfd6dc', special:'blazing-fast stabs'},
+  {name:'Pipe',        icon:'🔧', dmg:48, reach:60, sweep:1.0,  fireCd:0.62, mode:'heavy',  unlock:3, melee:true, col:'#8a949c', special:'slow heavy swing — hits everything in the arc'},
+  {name:'Nunchaku',    icon:'🥋', dmg:16, reach:48, sweep:0.9,  fireCd:0.22, mode:'combo',  unlock:4, melee:true, col:'#d4a017', special:'fast 3-hit combo'},
+  {name:'Spear',       icon:'🔱', dmg:34, reach:84, sweep:0.32, fireCd:0.46, mode:'thrust', unlock:6, melee:true, col:'#b9c2c9', special:'long thrust that pierces a line of enemies'},
+  {name:'Sledgehammer',icon:'🔨', dmg:90, reach:66, sweep:1.1,  fireCd:0.85, mode:'heavy',  unlock:8, melee:true, col:'#7d8790', special:'crushing swing — massive knockback'},
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;

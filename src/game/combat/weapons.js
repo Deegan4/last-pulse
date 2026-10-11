@@ -1,89 +1,84 @@
-// ---------- Combat ----------
-// effective magazine capacity for a fighter (base weapon mag × their extended-mag multiplier).
-// Bots have no magMul → 1×; the player's is set from the shop upgrade at match start.
-function magCap(h){ return Math.max(1, Math.round(h.weapon.mag * (h.magMul||1))); }
-function startReload(h){ if(h.reloading<=0 && h.mag<magCap(h)) h.reloading=h.weapon.reload*(h.perkReloadMul||1); }
-// per-weapon firing feel: tracer look (col/lw/tl/glow/tip), muzzle radius (mz),
-// recoil kick, spark count/spread, knockback push, and player screen shake.
-function bulletFx(w){
-  switch(w.name){
-    case 'Sniper':   return {col:'#cdecff',lw:4.5,tl:0.05, glow:12,tip:2.6, mz:10, kick:1.9, sparks:8, spread:.5, push:34, shake:6};
-    case 'Crossbow': return {col:'#d8b46a',lw:3,  tl:0.07, glow:5, tip:1.6, mz:3,  kick:1.2, sparks:2, spread:.3, push:20, shake:0};
-    case 'Shotgun':  return {col:'#ffd9a0',lw:2,  tl:0.008,glow:0, tip:1.0, mz:11, kick:1.7, sparks:9, spread:.7, push:60, shake:5};
-    case 'Magnum':   return {col:'#ffe07a',lw:3.8,tl:0.02, glow:7, tip:2.0, mz:9,  kick:1.6, sparks:7, spread:.6, push:38, shake:4};
-    case 'SMG':      return {col:'#fff2c8',lw:2.2,tl:0.013,glow:0, tip:1.2, mz:6,  kick:.8,  sparks:3, spread:.5, push:18, shake:0};
-    case 'Pulse SMG':return {col:'#8ff6ff',lw:2.1,tl:0.011,glow:6, tip:1.3, mz:7,  kick:.65, sparks:4, spread:.45, push:14, shake:0};
-    case 'Arc Rifle':return {col:'#78d7ff',lw:3.3,tl:0.022,glow:11,tip:1.8, mz:8,  kick:1.1, sparks:7, spread:.55, push:25, shake:2};
-    case 'Frost Blaster': return {col:'#c9f7ff',lw:3.0,tl:0.02, glow:9, tip:1.7, mz:7.5,kick:.95,sparks:6, spread:.55, push:22, shake:1};
-    case 'Minigun':  return {col:'#fff0b0',lw:2.4,tl:0.016,glow:3, tip:1.3, mz:7,  kick:.7,  sparks:3, spread:.5, push:16, shake:0};
-    case 'Tommy':    return {col:'#ffe7b0',lw:2.8,tl:0.014,glow:0, tip:1.4, mz:6.5,kick:.9,  sparks:4, spread:.5, push:20, shake:0};
-    default:         return {col:'#fff3c0',lw:3.6,tl:0.022,glow:6, tip:2.2, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
-  }
+// ---------- Combat (melee) ----------
+// Swing state lives on the fighter: swingT/swingDur (current swing anim), swingStep (combo index),
+// swingArc (half-arc of this swing's sweep) and comboWin (time left to chain the next combo hit).
+// Hit detection is instant on the press — distance <= reach + target radius and within the weapon's
+// half-arc of h.aim — and the drawn swing (swingAngle) is purely visual on top of that.
+const COMBO_STEPS = 3, FINISHER_MUL = 1.8;
+function swingAngle(h){
+  if(!(h.swingT>0) || !h.swingDur) return 0;
+  if(h.weapon && h.weapon.mode==='thrust') return 0;
+  const p = 1 - h.swingT/h.swingDur, e = 1-(1-p)*(1-p);               // ease-out: fast strike, slow follow-through
+  const dir = (h.swingStep%2) ? -1 : 1, arc = h.swingArc||0.8;
+  return dir * (-arc + 2*arc*e);
 }
-// True hand/muzzle world positions — mirror the exact transform chain drawHeroArm() uses to draw
-// the gun (shoulder anchor at HERO_ARM_ANCHOR_X/Y -> CHAR_VISUAL_SCALE -> rotate to h.aim -> arm
-// reach [-> barrel length]), so shots/sparks/shells leave from where the gun is actually drawn
-// instead of a fixed 16px radius from the character's centre regardless of weapon or art scale
-// (that mismatch was most visible on long guns like Rifle/Sniper — bullets read as firing from the
-// hip). Recoil is deliberately excluded: it's a post-shot kickback animation, not part of where the
-// muzzle sits at the instant a shot leaves.
-function wristPos(h){ const d=HERO_ARM_REACH*CHAR_VISUAL_SCALE;
-  return { x:h.x+Math.cos(h.aim)*d, y:h.y+HERO_ARM_ANCHOR_Y+Math.sin(h.aim)*d }; }
-function gunTip(h){ const d=(HERO_ARM_REACH+heldWeaponLen(h.weapon)+1)*CHAR_VISUAL_SCALE;
-  return { x:h.x+Math.cos(h.aim)*d, y:h.y+HERO_ARM_ANCHOR_Y+Math.sin(h.aim)*d }; }
-function fire(h){
-  if(!h.alive || grace>0 || h.fireCd>0 || h.reloading>0) return;
-  if(h.mag<=0){ startReload(h); return; }
-  const w=h.weapon; h.fireCd = w.fireCd * (h.isPlayer?1:h.fireMul);
-  const range=w.range*RANGE_SCALE;
-  const perkCritHit = !!(h.isPlayer && h.perkCrit && Math.random()<h.perkCrit);   // Sharpshooter: whole volley deals double
+function swingThrust(h){      // 0..1 forward lunge of the weapon for thrust-mode swings (visual only)
+  if(!(h.swingT>0) || !h.swingDur || !h.weapon || h.weapon.mode!=='thrust') return 0;
+  const p = 1 - h.swingT/h.swingDur; return Math.sin(p*Math.PI);
+}
+function attack(h){
+  if(!h.alive || grace>0 || h.fireCd>0) return;
+  const w=h.weapon, mode=w.mode;
+  // combo chain: swinging again inside comboWin advances the step; the 3rd hit is the finisher
+  let step = 0;
+  if(mode==='combo') step = h.comboWin>0 ? (h.swingStep+1)%COMBO_STEPS : 0;
+  else step = (h.swingStep+1)%2;
+  const fin = mode==='combo' && step===COMBO_STEPS-1;
+  const cdMul = h.isPlayer ? (h.perkCdMul||1) : (h.fireMul||1);
+  h.fireCd = w.fireCd * cdMul * (fin?1.6:1);
+  h.swingStep = step;
+  h.swingDur = clamp(w.fireCd*0.8, 0.1, 0.42) * (fin?1.3:1);
+  h.swingT = h.swingDur;
+  h.swingArc = (w.sweep||0.8) * (fin?1.4:1) * (mode==='thrust'?0:1);
+  h.comboWin = h.fireCd + 0.45;
+  const reach = w.reach * (h.isPlayer?(h.perkReachMul||1):1) * (fin?1.12:1);
+  const sweep = (w.sweep||0.8) * (fin?1.4:1);
+  const perkCritHit = !!(h.isPlayer && h.perkCrit && Math.random()<h.perkCrit);   // Critical Strikes perk: whole swing deals double
   if(perkCritHit) floaters.push({x:h.x, y:h.y-R-30, vy:-46, t:0.6, txt:'CRIT ×2', col:'#ffd24a'});
-  const dmgMul = h.isPlayer ? (activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1)*(perkCritHit?2:1) : 1;   // Glass Cannon mutator + Heavy Rounds perk — player shots only
-  if(w.mode==='flame'){
-    const fspd=320, tip=gunTip(h);
-    for(let i=0;i<3;i++){ const a=h.aim+rand(-0.34,0.34), sp=fspd*rand(.7,1.1);
-      bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        life:range/fspd, owner:h, dmg:w.dmg*dmgMul, flame:true, hits:0, r:rand(4,8),
-        color: pick(['#ff9b3d','#ff6a2a','#ffd24a']) }); }
-    h.mag--; sfx('flame'); if(h.mag<=0) startReload(h); return;
+  const dmgMul = (h.isPlayer ? magMulMeta()*(activeMutator?.dmgOutMul||1)*(h.perkDmgMul||1)*(perkCritHit?2:1) : 1) * (fin?FINISHER_MUL:1);
+  const dmg = w.dmg*dmgMul;
+  const cap = mode==='jab'?1 : mode==='thrust'?4 : mode==='combo'?(fin?6:3) : 99;
+  const heavy = mode==='heavy' || fin;
+  // gather targets in the arc (nearest first)
+  const hits=[];
+  const consider = e=>{
+    if(!e.alive || e===h || e.amb) return;
+    if(humans.includes(e) && e.team===h.team) return;
+    const dx=e.x-h.x, dy=e.y-h.y, d=Math.hypot(dx,dy), er=e.r||R;
+    if(d>reach+er) return;
+    if(d>er+6){ let da=Math.atan2(dy,dx)-h.aim; da=Math.abs(((da+Math.PI)%TAU+TAU)%TAU-Math.PI);
+      if(da>sweep+Math.min(0.6,er/Math.max(d,1))) return; }
+    hits.push({e,d});
+  };
+  for(const z of zombies) consider(z);
+  for(const o of humans) consider(o);
+  hits.sort((a,b)=>a.d-b.d);
+  if(hits.length>cap) hits.length=cap;
+  const ca=Math.cos(h.aim), sa=Math.sin(h.aim);
+  const isHero = !!h.isPlayer;
+  for(const {e} of hits){
+    const wasZombie = !e.weapon;
+    hurt(e, dmg, h, !wasZombie);
+    if(wasZombie && !e.boss){ const kb = (fin?150: mode==='heavy'?(w.dmg>=80?210:120): mode==='thrust'?70: 36);
+      e.vx += ca*kb; e.vy += sa*kb; }
+    for(let k=0;k<(heavy?7:4);k++) spark(e.x-ca*(e.r||R)*0.5, e.y-6, pick(['#fff3c0','#ffd06a','#ffffff']), rand(60,200), h.aim+rand(-0.9,0.9), rand(.15,.3));
   }
-  if(w.mode==='launcher'){
-    const a=h.aim+(h.isPlayer?rand(-0.01,0.01):rand(-h.acc,h.acc)*0.5), rs=430, tip=gunTip(h);
-    bullets.push({ x:tip.x, y:tip.y, vx:Math.cos(a)*rs, vy:Math.sin(a)*rs,
-      life:range/rs, owner:h, dmg:w.dmg*dmgMul, boom:true, rocket:true, hits:0,
-      color:'#ffcaa0', lw:5, tl:0.02, glow:9, tip:3, aim:a });
-    h.mag--; h.muzzleT=0.09; h.muzzleR=12; h.recoil=2.4;
-    for(let i=0;i<12;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#c8c8c8']), rand(60,190), a+Math.PI+rand(-.7,.7));
-    h.vx-=Math.cos(a)*48; h.vy-=Math.sin(a)*48; if(h.isPlayer) shake=Math.min(shake+6,14);
-    sfx('shoot',w); if(h.mag<=0) startReload(h); return;
+  // Cleave perk: the first target's hit splashes onto one other nearby enemy
+  if(hits.length && h.perkRicochet){
+    const f=hits[0].e, other=perkTargets(h,f.x,f.y,PERK_TUNE.ricochetRange).find(t=>t!==f && !hits.some(x=>x.e===t));
+    if(other) perkStrike(h,other,dmg*PERK_TUNE.ricochetMul,f.x,f.y);
   }
-  const spd = w.mode==='sniper'?1040 : w.mode==='shotgun'?560 : 780;
-  const shots = w.mode==='shotgun'?6 : w.twin?2 : 1;
-  const fx = bulletFx(w);
-  const tip = gunTip(h);
-  // bots shoot wilder during the early-match warmup (see updateBot) — softens a fresh BR drop
-  const botAcc = h.isPlayer ? 0 : h.acc * (1 + 1.6*(1-clamp(elapsed/18,0,1)));
-  for(let i=0;i<shots;i++){
-    const spread = w.mode==='shotgun'? rand(-0.28,0.28) : (h.isPlayer?rand(-0.012,0.012):rand(-botAcc,botAcc));
-    const a=h.aim+spread + (w.twin?(i===0?-0.02:0.02):0);
-    const perp = w.twin?(i===0?-3:3):0;   // twin barrels fire from side-by-side muzzles
-    let dmg=w.dmg*dmgMul, crit=false;
-    if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
-    bullets.push({ x:tip.x - Math.sin(h.aim)*perp, y:tip.y + Math.cos(h.aim)*perp, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
-      life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper'||w.arc, arc:w.arc, frost:w.frost, hits:0,
-      color: crit?'#ffd24a':fx.col, lw: crit?4.2:fx.lw, tl: fx.tl, glow: crit?10:fx.glow, tip: crit?2.2:fx.tip });
+  if(fin && hits.length) finisherBlast(h);
+  // feel: lunge into the swing, hit-stop on contact, shake on heavy hits
+  const lunge = heavy ? 120 : mode==='thrust' ? 150 : 70;
+  if(isHero) { h.vx += ca*lunge; h.vy += sa*lunge*0.4; }
+  if(hits.length){
+    if(isHero){ hitstop=Math.max(hitstop, heavy?0.07:0.03);
+      if(heavy) shake=Math.min(shake+(w.dmg>=80?7:4), 14);
+      if(h.gpIndex!=null && heavy) gpRumble(h.gpIndex,70,0.2,clamp(w.dmg/120,0.3,0.7)); }
   }
-  h.mag--;
-  // muzzle flash + recoil scale with the gun
-  h.muzzleT=0.06; h.muzzleR=fx.mz; h.recoil=fx.kick;
-  for(let i=0;i<fx.sparks;i++) spark(tip.x, tip.y, pick(['#ffd06a','#ffae3a','#fff1bf']), rand(50,150+fx.mz*8), h.aim+rand(-1,1)*fx.spread);
-  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2, wrist=wristPos(h);  // ejected shell (red for shotgun), from the ejection port near the hand
-    spark(wrist.x, wrist.y-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
-  h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
-  if(h.gpIndex!=null && fx.push>=34) gpRumble(h.gpIndex,60,0.15,clamp(fx.push/90,0.25,0.7));   // heavy guns kick through the pad
-  if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
-  sfx('shoot', w);
-  if(h.mag<=0) startReload(h);
+  slashes.push({x:h.x, y:h.y-10, a:h.aim, reach, sweep, step, thrust:mode==='thrust', fin, heavy,
+    t:0, dur:heavy?0.22:0.16, col:fin?'#ffd24a':'#ffffff', hit:hits.length>0});
+  sfx('swing', heavy?'heavy':null, h);
 }
 // if a hit lands within DOOR_HALF-ish range of a building wall, leave a drip streak on that
 // wall's facade (local coords, so it moves with the building — buildings never move, so this
@@ -229,13 +224,7 @@ function perkStrike(h,e,dmg,x,y){
   zaps.push({x1:x,y1:y,x2:e.x,y2:e.y,t:0.18});
   hurt(e,dmg,h,humans.includes(e));
 }
-function ricochetHit(b,e){
-  if(!b.owner?.perkRicochet || b.flame || b.boom || b.ricochetUsed) return;
-  b.ricochetUsed=true;
-  const target=perkTargets(b.owner,e.x,e.y,PERK_TUNE.ricochetRange).find(t=>t!==e);
-  if(target) perkStrike(b.owner,target,b.dmg*PERK_TUNE.ricochetMul,e.x,e.y);
-}
-function reloadBlast(h){
+function finisherBlast(h){
   if(!h.perkReloadBlast || elapsed<(h.perkReloadReady||0) || grace>0) return;
   h.perkReloadReady=elapsed+PERK_TUNE.reloadCooldown;
   rings.push({x:h.x,y:h.y,t:0,dur:0.35,r0:8,r1:PERK_TUNE.reloadRadius,col:'255,170,70',lw:4});

@@ -1,6 +1,5 @@
 function updatePlayer(h,dt,gp,readShared){
   if(!h.alive) return;
-  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0){ h.mag=magCap(h); reloadBlast(h); } }
   let mx=0,my=0;
   if(readShared){
     if(keys['w']||keys['arrowup']) my-=1; if(keys['s']||keys['arrowdown']) my+=1;
@@ -27,7 +26,7 @@ function updatePlayer(h,dt,gp,readShared){
     if(h.climbCd<=0) for(const o of obstacles){ if(!o.tower) continue; const L=towerLadder(o);
       if(h.x>L.x-6 && h.x<L.x+L.w+6 && h.y>L.y-6 && h.y<L.y+L.h+12){
         h.onTower=o; const r=towerRoof(o); h.x=o.x+o.w/2; h.y=r.y+r.h-7; h.vx=h.vy=0; h.climbCd=0.5;
-        toast('🪜 ON THE ROOF — hold it & shoot down'); sfx('pickup'); break; } }
+        toast('🪜 ON THE ROOF — hold it & swing down'); sfx('pickup'); break; } }
   } else {
     const r=towerRoof(h.onTower);
     if(h.y>=r.y+r.h-1.3 && my>0.3){                                   // press down at the south edge → drop off
@@ -38,7 +37,7 @@ function updatePlayer(h,dt,gp,readShared){
   if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=assistAim(h,Math.atan2(gp.ay,gp.ax)); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
   else if(readShared && aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
   else if(readShared && !isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
-  if(gp){ if(gp.fire) firing=true; if(gp.reload) startReload(h); if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
+  if(gp){ if(gp.fire) firing=true; if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
   // reticle world target — player-1-only screen overlay globals (aimWX/aimWY/aimShow); player 2
   // doesn't get an on-screen reticle in this pass, a deliberate scope cut, not an oversight — see
   // memory.md 2-player entry
@@ -53,8 +52,9 @@ function updatePlayer(h,dt,gp,readShared){
   if(h.buildSel>=0){ const g=buildGhost(h); h.ghostX=g.cx; h.ghostY=g.cy;
     h.ghostOk=canPlace(BUILDS[h.buildSel], g.cx, g.cy) && (h.scrap||0)>=BUILDS[h.buildSel].cost;
     if(firing) placeBuild(h); }
-  else if(firing) fire(h);
+  else if(firing) attack(h);
   if(h.lightCd>0) h.lightCd-=dt; if(h.bombCd>0) h.bombCd-=dt; if(h.grapCd>0) h.grapCd-=dt;
+  tickPower(h,dt);
   updateGrapple(h,dt);
   stepDust(h,dt);
   campfireHeal(h,dt); perkRegenTick(h,dt);

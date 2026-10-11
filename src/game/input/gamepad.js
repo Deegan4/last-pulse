@@ -33,13 +33,12 @@ function connectedPads(){ return navigator.getGamepads ? [...navigator.getGamepa
 function tryJoinPlayer2(pads){
   if(player2 || !player || !player.alive) return;
   if(!pads || !pads[1]) return;
-  player2 = makeHuman(true, AVATARS[(meta.avatar+1)%AVATARS.length], WEAPONS[meta.weapon], 'Player 2');
+  player2 = makeHuman(true, AVATARS[(meta.avatar+1)%AVATARS.length], WEAPONS[clamp(meta.weapon|0,0,WEAPONS.length-1)], 'Player 2');
   player2.isPlayer2 = true; player2.gpIndex = 1; player2.team = 0;
   player2.x = clamp(player.x + rand(-70,-40), R, ARENA_W-R);
   player2.y = clamp(player.y + rand(-30,30), R, ARENA_H-R);
-  player2.lightCd=0; player2.bombCd=0; player2.grapCd=0; player2.grap=null;
+  player2.lightCd=0; player2.bombCd=0; player2.grapCd=0; player2.grap=null; player2.powerT=0; player2.baseWeapon=null;
   player2.scrap=0; player2.buildSel=-1; player2.placeCd=0;
-  player2.magMul=1; player2.mag=magCap(player2);
   humans.push(player2);
   toast('🎮 Player 2 joined!'); sfx('pickup');
 }
@@ -66,7 +65,7 @@ function updateRevive(dt){
   if(reviveT>=REVIVE_TIME){
     reviveT=0; const p=player2;
     p.alive=true; p.hp=Math.round(p.maxhp*0.5); p.burn=0; p.shield=0; p.vx=p.vy=0;
-    p.fireCd=0.5; p.reloading=0; p.mag=magCap(p);
+    p.fireCd=0.5; p.swingT=0; p.comboWin=0;
     toast('🎮 Player 2 is back up!'); sfx('level');
     rings.push({x:p.x,y:p.y,t:0,dur:0.6,r0:8,r1:REVIVE_R+30,col:'90,209,255',lw:4});
     for(let i=0;i<18;i++) spark(p.x,p.y-6,'#5ad1ff',rand(80,240),rand(0,TAU),.7);
@@ -234,7 +233,7 @@ function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA_W-R); h.y=clamp(h.y+h.vy*dt,R,ARENA_H-R);
   if(h.onTower) clampToRoof(h); else resolveObstacles(h);   // roof campers move on the platform, not the ground
   if(h.fireCd>0) h.fireCd-=dt; if(h.hitFlash>0) h.hitFlash-=dt;
-  if(h.muzzleT>0) h.muzzleT-=dt; if(h.recoil>0) h.recoil-=dt*7;
+  if(h.swingT>0) h.swingT-=dt; if(h.comboWin>0) h.comboWin-=dt;
   if(Math.abs(h.vx)>4) h.faceX=h.vx<0?-1:1;
   if(zoneActive() && grace<=0 && outsideZone(h)){ h.hp-=zone.dmg*dt;
     if(Math.random()<dt*7) spark(h.x+rand(-8,8),h.y+rand(-8,8),'#ff7a4a',rand(20,60),rand(0,TAU),.4);

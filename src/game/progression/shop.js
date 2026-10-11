@@ -18,9 +18,9 @@ const BANNERS = [
   {id:'violet',  icon:'🟣', name:'Violet Banner',  desc:'Royal violet name banner',   cost:250, color:'#c08bff'},
 ];
 function bannerItem(id){ return BANNERS.find(b=>b.id===id); }
-// Extended Magazines — a permanent, coin-bought upgrade (meta.magLvl) that widens every weapon's
-// magazine. Tunables: capacity bonus per level and the coin cost of each tier.
-const MAG_MAX=3, MAG_STEP=0.20;          // up to +60% magazine capacity across all guns
+// Iron Knuckles — a permanent, coin-bought upgrade (meta.magLvl, key kept for saved progress) that
+// boosts every melee weapon's damage. Tunables: bonus per level and the coin cost of each tier.
+const MAG_MAX=3, MAG_STEP=0.10;          // up to +30% melee damage across all weapons
 const MAG_COST=[250, 500, 900];          // coin cost for tier 1 / 2 / 3
 function magMulMeta(){ return 1 + Math.min(meta.magLvl||0, MAG_MAX)*MAG_STEP; }
 function magInfo(){ const lvl=Math.min(meta.magLvl||0, MAG_MAX), maxed=lvl>=MAG_MAX;

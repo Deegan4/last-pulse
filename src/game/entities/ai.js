@@ -1,10 +1,9 @@
 function updateBot(h,dt){
-  if(h.reloading>0){ h.reloading-=dt; if(h.reloading<=0) h.mag=magCap(h); }
   const near=botTarget(h); const tgt=near.o;
   let mvx=0,mvy=0; const out=outsideZone(h);
   const dc=Math.hypot(h.x-zone.cx,h.y-zone.cy);
   if(out || dc>zone.r-90){ const a=Math.atan2(zone.cy-h.y,zone.cx-h.x); mvx+=Math.cos(a)*1.2; mvy+=Math.sin(a)*1.2; }
-  const pref=h.weapon.range*RANGE_SCALE*0.7;
+  const pref=h.weapon.reach*0.8;
   // early-match warmup: bots ease in over the first ~18s — shorter sight, slower to fire, and
   // they hesitate longer before shooting the player — so a fresh drop isn't instantly lethal.
   const warm = clamp(elapsed/18, 0, 1);
@@ -16,9 +15,9 @@ function updateBot(h,dt){
     else if(near.d<pref*0.55){ mvx-=Math.cos(a)*0.8; mvy-=Math.sin(a)*0.8; }
     if(h.reJitter<=0){ h.strafe*=Math.random()<.5?-1:1; h.reJitter=rand(.6,1.4); } h.reJitter-=dt;
     mvx+=Math.cos(a+Math.PI/2)*h.strafe*0.6; mvy+=Math.sin(a+Math.PI/2)*h.strafe*0.6;
-    if(near.d < h.weapon.range*RANGE_SCALE*1.02){
+    if(near.d < h.weapon.reach+20){
       const err=Math.abs(((h.aim-a+Math.PI)%TAU)-Math.PI);
-      if(err<0.22){ h.lockT+=dt; if(h.lockT>react){ if(h.mag>0) fire(h); else startReload(h); } } else h.lockT=Math.max(0,h.lockT-dt*.5);
+      if(err<0.22){ h.lockT+=dt; if(h.lockT>react) attack(h); } else h.lockT=Math.max(0,h.lockT-dt*.5);
     } else h.lockT=0;
   } else { h.lockT=0; if(!out){ if(h.think<=0){ h.wanderA=rand(0,TAU); h.think=rand(.8,1.8); } h.think-=dt;
     mvx+=Math.cos(h.wanderA)*0.5; mvy+=Math.sin(h.wanderA)*0.5; h.aim=angLerp(h.aim,h.wanderA,0.08); } }

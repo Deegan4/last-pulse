@@ -28,25 +28,24 @@ function cycleMutPick(){ const order=['random','none',...MUTATORS.map(x=>x.id)];
 // ===== Perk picks =====
 // Mid-run agency: every 3rd wave (3,6,9…) pauses on a 3-card choice before the next wave spawns.
 // Each perk's apply(h) mutates the player instance directly (h.perkDmgMul etc.) — read at the
-// existing single choke points in fire()/hurt()/die() rather than a generic buff-list, matching
+// existing single choke points in attack()/hurt()/die() rather than a generic buff-list, matching
 // how activeMutator's numeric fields are consumed.
 const PERK_TUNE = { statRanks:3, ricochetRange:180, ricochetMul:0.5,
   reloadRadius:110, reloadDamage:40, reloadCooldown:6, lightningKills:4,
-  lightningRange:220, lightningDamage:35, lightningTargets:3, grappleRadius:48, grappleDamage:55 };
+  lightningRange:220, lightningDamage:35, lightningTargets:3 };
 const PERKS = [
-  {id:'extClip',  icon:'🧰', name:'EXTENDED CLIP', desc:'+50% magazine size',            apply:h=>{ h.magMul=(h.magMul||1)*1.5; }},
+  {id:'extClip',  icon:'🧰', name:'LONG REACH',    desc:'+20% weapon reach',             apply:h=>{ h.perkReachMul=(h.perkReachMul||1)*1.2; }},
   {id:'adrenaline',icon:'⚡', name:'ADRENALINE',    desc:'+15% move speed',               apply:h=>{ h.perkSpeedMul=(h.perkSpeedMul||1)*1.15; }},
-  {id:'heavyRounds',icon:'🔨',name:'HEAVY ROUNDS',  desc:'+20% weapon damage',            apply:h=>{ h.perkDmgMul=(h.perkDmgMul||1)*1.2; }},
+  {id:'heavyRounds',icon:'🔨',name:'HEAVY HITS',    desc:'+20% weapon damage',            apply:h=>{ h.perkDmgMul=(h.perkDmgMul||1)*1.2; }},
   {id:'thickSkin',icon:'🛡️', name:'THICK SKIN',    desc:'-20% damage taken',             apply:h=>{ h.perkDmgInMul=(h.perkDmgInMul||1)*0.8; }},
   {id:'regen',    icon:'💗', name:'REGENERATION',  desc:'Heal 1.5 hp/s passively',       apply:h=>{ h.perkRegen=(h.perkRegen||0)+1.5; }},
   {id:'secondWind',icon:'💖',name:'SECOND WIND',    desc:'Survive one lethal hit at 50% hp',apply:h=>{ h.perkRevives=(h.perkRevives||0)+1; }},
-  {id:'ricochet',icon:'↪️',name:'RICOCHET ROUNDS',maxRanks:1,desc:'Bullet hits bounce to one nearby enemy for 50% damage. Excludes flames and rockets.',apply:h=>{ h.perkRicochet=true; }},
-  {id:'reloadBlast',icon:'💥',name:'EXPLOSIVE RELOAD',maxRanks:1,desc:'Finish a reload to blast nearby enemies for 40 damage. 6s cooldown.',apply:h=>{ h.perkReloadBlast=true; }},
+  {id:'ricochet',icon:'↪️',name:'CLEAVE',maxRanks:1,desc:'Each hit also cleaves one nearby enemy for 50% damage.',apply:h=>{ h.perkRicochet=true; }},
+  {id:'reloadBlast',icon:'💥',name:'SHOCKWAVE FINISHER',maxRanks:1,desc:'Combo finishers blast nearby enemies for 40 damage. 6s cooldown.',apply:h=>{ h.perkReloadBlast=true; }},
   {id:'killLightning',icon:'🌩️',name:'KILL STORM',maxRanks:1,desc:'Every 4 kills zap up to 3 enemies near the last kill for 35 damage. Zap kills do not charge it.',apply:h=>{ h.perkKillLightning=true; h.perkKillCount=0; }},
-  {id:'grappleDamage',icon:'🪝',name:'RAZOR SWING',maxRanks:1,desc:'While grappling, strike nearby enemies for 55 damage once per enemy per swing.',apply:h=>{ h.perkGrappleDamage=true; }},
   {id:'lifesteal',icon:'🧛', name:'BLOODTHIRST',   desc:'Heal 4 hp on every kill',       apply:h=>{ h.perkLifesteal=(h.perkLifesteal||0)+4; }},
-  {id:'sharpshooter',icon:'🎯',name:'SHARPSHOOTER',desc:'+20% chance to deal double damage',apply:h=>{ h.perkCrit=(h.perkCrit||0)+0.2; }},
-  {id:'quickHands',icon:'🤲',name:'QUICK HANDS',   desc:'-30% reload time',              apply:h=>{ h.perkReloadMul=(h.perkReloadMul||1)*0.7; }},
+  {id:'sharpshooter',icon:'🎯',name:'CRITICAL STRIKES',desc:'+20% chance to deal double damage',apply:h=>{ h.perkCrit=(h.perkCrit||0)+0.2; }},
+  {id:'quickHands',icon:'🤲',name:'QUICK HANDS',   desc:'-20% time between swings',      apply:h=>{ h.perkCdMul=(h.perkCdMul||1)*0.8; }},
   {id:'scavenger',icon:'🧲', name:'SCAVENGER',     desc:'Zombies drop 40% more scrap',   apply:h=>{ h.perkScrapMul=(h.perkScrapMul||1)*1.4; }},
 ];
 let perkChoices=[], pendingWaveBoss=false;
@@ -90,7 +89,7 @@ const WEEKLIES = [
   {icon:'💀', desc:'Get 40+ kills in one run',                test:c=>c.matchKills>=40},
   {icon:'⏱',  desc:'Survive 4+ minutes in one run',           test:c=>c.time>=240},
   {icon:'💨', desc:'Reach wave 7, under 60 damage',     test:c=>c.wave>=7 && c.dmgTaken<60},
-  {icon:'🪝', desc:'Grapple + 15 kills in one run',    test:c=>c.grappled && c.matchKills>=15},
+  {icon:'🔨', desc:'Use the Sledgehammer power-up + 15 kills in one run',    test:c=>c.grappled && c.matchKills>=15},
 ];
 function weekKey(){ const d=new Date(); const m=new Date(d.getFullYear(),d.getMonth(),d.getDate());
   m.setDate(m.getDate()-((m.getDay()+6)%7));   // back up to Monday

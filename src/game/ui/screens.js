@@ -71,8 +71,8 @@ function renderShop(){
   // ---- Upgrades: Extended Magazines (permanent, all weapons) ----
   const m=magInfo();
   const magCard='<div class="achcard shopcard upgcard'+(m.maxed?' equipped':(meta.coins<m.nextCost?' poor':''))+'" data-upg="extmag">'
-    +'<span class="aic">📦</span><div class="atxt"><b>Extended Magazines</b>'
-    +'<span>'+(m.bonus?('+'+m.bonus+'% mag'):'wider mags for every gun')
+    +'<span class="aic">📦</span><div class="atxt"><b>Iron Knuckles</b>'
+    +'<span>'+(m.bonus?('+'+m.bonus+'% damage'):'harder hits with every weapon')
     +(m.maxed?' · MAX':' · Lv '+m.lvl+'/'+MAG_MAX)+'</span></div>'
     +'<button class="shopbtn'+(m.maxed?' on':'')+'">'+(m.maxed?'MAXED':('🪙 '+m.nextCost))+'</button></div>';
   // Native-only: real-money consumable coin top-up (App Store 3.1.1 forbids the Stripe link
@@ -105,11 +105,10 @@ function renderShop(){
         +'<button class="shopbtn'+(eq?' on':'')+'">'+btn+'</button></div>'; }).join('');
 }
 function buyMag(){ const m=magInfo();
-  if(m.maxed){ toast('Extended Magazines already maxed!'); return; }
+  if(m.maxed){ toast('Iron Knuckles already maxed!'); return; }
   if(meta.coins<m.nextCost){ toast('Not enough coins — earn more in matches!'); return; }
   meta.coins-=m.nextCost; meta.magLvl=(meta.magLvl||0)+1; saveMeta();
-  toast('📦 EXTENDED MAGS Lv '+meta.magLvl+' — +'+Math.round(meta.magLvl*MAG_STEP*100)+'% mag capacity!'); sfx('level');
-  if(player && player.alive){ player.magMul=magMulMeta(); }   // apply live if bought mid-session
+  toast('🥊 IRON KNUCKLES Lv '+meta.magLvl+' — +'+Math.round(meta.magLvl*MAG_STEP*100)+'% melee damage!'); sfx('level');
   renderShop(); renderMenu();
 }
 function shopTap(id){

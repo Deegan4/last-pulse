@@ -4,7 +4,6 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
   keys[k]=true;
-  if(k==='r' && player) startReload(player);
   if(k==='q' && player) castLightning(player);
   if(k==='e' && player) throwBomb(player);
   if(k==='f' && player) castGrapple(player);
