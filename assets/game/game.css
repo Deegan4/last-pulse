@@ -90,21 +90,6 @@
     background:radial-gradient(circle at 50% 35%, #3a4a2c, #20251a);box-shadow:0 6px 22px rgba(0,0,0,.35)}
   #hero3d.ready{display:block}
 
-  /* ---------- Character customization ---------- */
-  .customizer{width:min(100%,520px);margin:0 auto 10px;padding:12px;border:1px solid rgba(214,255,110,.28);
-    border-radius:16px;background:linear-gradient(145deg,rgba(53,78,35,.82),rgba(24,38,22,.76));
-    box-shadow:0 8px 22px rgba(0,0,0,.22)}
-  .customizerHead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:9px}
-  .customizerHead b{font-size:15px;color:#fff;letter-spacing:.4px}.customizerHead span{font-size:10px;color:#b9d18d;font-weight:700}
-  .customRow{display:grid;grid-template-columns:68px 1fr;align-items:center;gap:8px;margin:8px 0}
-  .customRow label{font-size:11px;color:#dfeccb;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
-  .customChoices{display:flex;gap:7px;flex-wrap:wrap}
-  .customChoice{min-width:36px;height:30px;padding:0 9px;border:1px solid rgba(255,255,255,.2);border-radius:999px;
-    background:rgba(0,0,0,.23);color:#fff;font-weight:800;font-size:11px;cursor:pointer;transition:transform .08s,border-color .12s,box-shadow .12s}
-  .customChoice:active{transform:scale(.94)}.customChoice.on{border-color:#d6ff6e;box-shadow:0 0 0 2px #d6ff6e44;background:rgba(181,235,86,.2)}
-  .paletteChoice{width:30px;min-width:30px;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.38)}
-  .customSummary{margin-top:9px;color:#b9d18d;font-size:11px;font-weight:700;text-align:center}
-
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:520px;margin:0 auto}
   .card{background:rgba(60,82,38,.72);border:2px solid var(--line);border-radius:14px;
     padding:10px 10px 12px;position:relative;cursor:pointer;transition:transform .08s,border-color .12s}

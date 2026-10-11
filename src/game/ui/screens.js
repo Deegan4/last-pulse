@@ -10,7 +10,7 @@ function maybeDonateToast(){
   setTimeout(()=>{ if(screenState==='start') toast('💜 Enjoying Last Pulse? Tap “Support the game” to tip the dev'); }, 1100);
 }
 function renderMenu(){
-  const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar],meta.custom)); }
+  const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
   renderRoster();
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
   const xp=el('menuXp'); if(xp) xp.style.width=clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%';
@@ -33,7 +33,7 @@ function renderRoster(){
     const unlocked=avatarUnlocked(av), sel=i===meta.avatar;
     const item=document.createElement('div'); item.className='rosterItem'+(sel?' sel':'')+(unlocked?'':' locked');
     item.title=unlocked?av.name:av.name+' — unlocks at Lv '+av.unlock;
-    const rip=document.createElement('div'); rip.className='rip'; rip.appendChild(portraitChibi(av,i===meta.avatar?meta.custom:null));
+    const rip=document.createElement('div'); rip.className='rip'; rip.appendChild(portraitChibi(av));
     item.appendChild(rip);
     item.insertAdjacentHTML('beforeend','<span class="rin">'+av.name+'</span>');
     if(unlocked) item.addEventListener('click',()=>{ if(meta.avatar===i) return;
@@ -194,15 +194,4 @@ function maybeShowWhatsNew(){
   if(seen===GAME_VERSION) return;
   if(!seen && meta.matches===0 && meta.level<=1){ safeSet('dd2_seenver',GAME_VERSION); return; }
   openWhatsNew();
-}
-function paintPortraitCustomization(o,custom){
-  if(!custom) return; const pal=CUSTOM.palettes.find(x=>x.id===custom.palette)||CUSTOM.palettes[0];
-  o.save(); o.strokeStyle='#23281b'; o.lineWidth=2.2; o.strokeStyle=pal.outfit; o.beginPath(); o.moveTo(25,45); o.lineTo(45,55); o.stroke();
-  o.strokeStyle=pal.accent; o.lineWidth=1.5; o.beginPath(); o.moveTo(25,45); o.lineTo(45,55); o.stroke();
-  if(custom.accessory==='headset'){ o.strokeStyle='#b7d6e8'; o.lineWidth=1.5; o.beginPath(); o.arc(35,38,13,Math.PI*1.05,Math.PI*1.95); o.stroke(); }
-  if(custom.accessory==='scarf'){ o.fillStyle=pal.accent; o.fillRect(25,47,20,3); }
-  if(custom.accessory==='visor'){ o.fillStyle='rgba(35,235,210,.75)'; o.fillRect(27,36,16,4); }
-  if(custom.hair==='spikes'){ o.fillStyle=pal.outfit; o.beginPath(); o.moveTo(28,31); o.lineTo(31,23); o.lineTo(35,30); o.lineTo(39,22); o.lineTo(43,31); o.closePath(); o.fill(); }
-  if(custom.trait==='scar'){ o.strokeStyle='#c94d4d'; o.lineWidth=1.1; o.beginPath(); o.moveTo(39,38); o.lineTo(41,43); o.stroke(); }
-  o.restore();
 }

@@ -1,6 +1,6 @@
 function makeHuman(isPlayer, avatar, weapon, name){
   return {
-    isPlayer, name: name || avatar.name, avatar, look: avatar.look, weapon, custom:isPlayer?{...meta.custom}:null,
+    isPlayer, name: name || avatar.name, avatar, look: avatar.look, weapon,
     x:0, y:0, vx:0, vy:0, aim:-Math.PI/2,
     hp:avatar.health, maxhp:avatar.health, speed:avatar.speed*42,
     alive:true, mag:weapon.mag, reloading:0, fireCd:0, walk:0, hitFlash:0, kills:0, faceX:1, seed:rand(0,9),

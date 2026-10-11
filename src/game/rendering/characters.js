@@ -107,34 +107,7 @@ function drawHuman(h){
     if(h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
       ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); } }
   ctx.restore();
-  drawCustomizationOverlay(h, false);
   drawNameplate(h);
-}
-// Cosmetic overlays keep the authored hero PNGs intact while adding a readable, per-player
-// identity layer. They are deliberately small, outlined shapes so they survive zoom/DPR changes.
-function drawCustomizationOverlay(h, sprite){
-  if(!h.isPlayer || !h.custom) return;
-  const c=h.custom, pal=CUSTOM.palettes.find(x=>x.id===c.palette)||CUSTOM.palettes[0];
-  const s=sprite?1:1, headY=sprite?-30:-17;
-  ctx.save(); ctx.lineJoin='round'; ctx.lineCap='round';
-  // palette: a luminous shoulder sash plus a small waist accent makes the outfit change visible
-  ctx.strokeStyle=INK; ctx.lineWidth=4.5; ctx.beginPath(); ctx.moveTo(-8,headY+19); ctx.lineTo(8,headY+25); ctx.stroke();
-  ctx.strokeStyle=pal.outfit; ctx.lineWidth=2.8; ctx.beginPath(); ctx.moveTo(-8,headY+19); ctx.lineTo(8,headY+25); ctx.stroke();
-  ctx.fillStyle=pal.accent; ctx.globalAlpha=.9; ctx.fillRect(-7,headY+27,14,2); ctx.globalAlpha=1;
-  // hair silhouettes are placed above the source art, giving every player a second, mixable shape
-  ctx.fillStyle=pal.outfit; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
-  if(c.hair==='fade'){ ctx.beginPath(); ctx.arc(0,headY-1,9.2,Math.PI,0); ctx.fill(); ctx.stroke(); ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(-7,headY-2,3,4); }
-  if(c.hair==='waves'){ for(const p of [[-6,-3],[0,-6],[6,-3]]){ ctx.beginPath(); ctx.arc(p[0],headY+p[1],3.2,0,TAU); ctx.fill(); ctx.stroke(); } }
-  if(c.hair==='spikes'){ ctx.beginPath(); ctx.moveTo(-8,headY-3); ctx.lineTo(-6,headY-11); ctx.lineTo(-2,headY-5); ctx.lineTo(2,headY-12); ctx.lineTo(5,headY-5); ctx.lineTo(8,headY-9); ctx.lineTo(8,headY+1); ctx.lineTo(-8,headY+1); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  // accessories
-  if(c.accessory==='headset'){ ctx.strokeStyle='#b7d6e8'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,headY,11,-Math.PI*1.02,-Math.PI*.02); ctx.stroke(); ctx.fillStyle='#72c9e8'; ctx.beginPath(); ctx.arc(-10,headY+1,2.6,0,TAU); ctx.arc(10,headY+1,2.6,0,TAU); ctx.fill(); }
-  if(c.accessory==='scarf'){ ctx.fillStyle=pal.accent; ctx.strokeStyle=INK; ctx.lineWidth=1.4; roundRect(-10,headY+8,20,5,2); ctx.fill(); ctx.stroke(); ctx.fillStyle=pal.accent; ctx.beginPath(); ctx.moveTo(5,headY+12); ctx.lineTo(10,headY+23); ctx.lineTo(5,headY+20); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  if(c.accessory==='visor'){ ctx.fillStyle='rgba(35,235,210,.75)'; ctx.strokeStyle=INK; ctx.lineWidth=1.2; roundRect(-8,headY-1,16,5,2); ctx.fill(); ctx.stroke(); }
-  // facial traits
-  if(c.trait==='wink'){ ctx.strokeStyle='#171a14'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(-5,headY+2); ctx.lineTo(-1.5,headY+2); ctx.stroke(); }
-  if(c.trait==='scar'){ ctx.strokeStyle='#c94d4d'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(4,headY-1); ctx.lineTo(6,headY+4); ctx.stroke(); }
-  if(c.trait==='smile'){ ctx.strokeStyle='#8a4a3a'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,headY+4,3,0.15*Math.PI,0.85*Math.PI); ctx.stroke(); }
-  ctx.restore();
 }
 // Billboard a hero PNG in place of the drawn chibi: shadow + player ring under it, a gentle
 // walk-bob / run-lean, a white flash on hit, plus muzzle flash + reload ring so combat still reads.
@@ -183,7 +156,6 @@ function drawHeroSprite(h, img){
   if(h.isPlayer && h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1);   // reload ring (steady, un-bobbed)
     ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
     ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); }
-  drawCustomizationOverlay(h, true);
   ctx.restore();
 }
 // Draw the billboard with an articulated two-part leg walk: the static PNG has no frames, so split
