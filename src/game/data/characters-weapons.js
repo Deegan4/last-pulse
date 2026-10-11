@@ -15,34 +15,6 @@ const AVATARS = [
   {name:'Onyx',   speed:4.7, health:138, unlock:24, img:'hero-onyx',   armless:true, aura:'#39e0ff', look:{skin:'#3a4048',hair:'#141414',outfit:'#191b1f',style:'horns'}},
   {name:'Titan',  speed:4.4, health:150, unlock:26, img:'hero-titan',  armless:true, aura:'#ff5a5a', look:{skin:'#e8b48c',hair:'#3a3f47',outfit:'#33373d',style:'horns'}},
 ];
-// Modular cosmetic layers are intentionally independent of fighter stats. Existing saves get
-// the first option in each family, while the avatar's own look remains the visual baseline.
-const CUSTOM = {
-  palettes:[
-    {id:'pulse',name:'Pulse',outfit:'#2f6ecc',accent:'#d6ff6e'},
-    {id:'ember',name:'Ember',outfit:'#b84f35',accent:'#ffcf6b'},
-    {id:'tide',name:'Tide',outfit:'#247f91',accent:'#8de8ff'},
-    {id:'violet',name:'Violet',outfit:'#7047a8',accent:'#e0b8ff'},
-    {id:'sun',name:'Solar',outfit:'#c89227',accent:'#fff0a8'},
-  ],
-  hair:[
-    {id:'base',name:'Signature',icon:'✦'}, {id:'fade',name:'Fade',icon:'▰'},
-    {id:'waves',name:'Waves',icon:'〰'}, {id:'spikes',name:'Spikes',icon:'▲'},
-  ],
-  accessories:[
-    {id:'none',name:'None',icon:'—'}, {id:'headset',name:'Headset',icon:'◉'},
-    {id:'scarf',name:'Scarf',icon:'⌁'}, {id:'visor',name:'Visor',icon:'▱'},
-  ],
-  traits:[
-    {id:'bright',name:'Bright eyes',icon:'●'}, {id:'wink',name:'Wink',icon:'◒'},
-    {id:'scar',name:'Battle scar',icon:'╱'}, {id:'smile',name:'Big smile',icon:'⌣'},
-  ]
-};
-function defaultCustom(){ return {palette:'pulse',hair:'base',accessory:'none',trait:'bright'}; }
-function readCustom(){
-  try{ const v=JSON.parse(safeGet('dd2_custom','{}')); const d=defaultCustom();
-    return {...d,...(v&&typeof v==='object'?v:{})}; }catch(e){ return defaultCustom(); }
-}
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit',        img:'weapon-pistol'},
   {name:'Rifle',   icon:'🪖', dmg:10,  mag:10, reload:1.25, range:150, fireCd:0.10, mode:'auto',    unlock:1,  special:'10 bullets per ammo',                  img:'weapon-rifle'},

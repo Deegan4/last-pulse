@@ -5,7 +5,6 @@ const meta = {
   name: safeGet('dd2_name','deegan'),
   avatar: parseInt(safeGet('dd2_avatar','0'),10) || 0,
   weapon: parseInt(safeGet('dd2_weapon','0'),10) || 0,
-  custom: readCustom(),
   // career stats
   matches: parseInt(safeGet('dd2_matches','0'),10) || 0,
   wins: parseInt(safeGet('dd2_wins','0'),10) || 0,
@@ -59,7 +58,6 @@ let lastLevelCoins = 0, lastRankUp = null;   // set by grantXp, shown by levelTo
 function saveMeta(){
   safeSet('dd2_level',meta.level); safeSet('dd2_xp',meta.xp); safeSet('dd2_name',meta.name);
   safeSet('dd2_avatar',meta.avatar); safeSet('dd2_weapon',meta.weapon);
-  safeSet('dd2_custom',JSON.stringify(meta.custom));
   safeSet('dd2_matches',meta.matches); safeSet('dd2_wins',meta.wins); safeSet('dd2_ckills',meta.ckills);
   safeSet('dd2_deaths',meta.deaths); safeSet('dd2_best',meta.best);
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);

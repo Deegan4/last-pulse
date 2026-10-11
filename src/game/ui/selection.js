@@ -1,9 +1,9 @@
-function portraitChibi(av,custom){
+function portraitChibi(av){
   const im=av && imgOk(av.img);
   if(im){   // hero PNG portrait, bottom-aligned in the card
     const c=document.createElement('canvas'); c.width=70; c.height=84; const o=c.getContext('2d');
     const DH=82, DW=DH*(im.naturalWidth/im.naturalHeight);
-    o.drawImage(im, 35-DW/2, 84-DH, DW, DH); paintPortraitCustomization(o,custom); return c;
+    o.drawImage(im, 35-DW/2, 84-DH, DW, DH); return c;
   }
   const c=document.createElement('canvas'); c.width=70; c.height=84; const o=c.getContext('2d');
   const L=av.look; o.translate(35,58); o.lineJoin='round'; o.lineCap='round';
@@ -72,7 +72,6 @@ function avClass(av){ if(av.health>=130) return {k:'tank',t:'Tank'}; if(av.speed
 function buildAvatarGrid(){
   const g=el('avatarGrid'); g.innerHTML='';
   el('curLevel').textContent=meta.level; el('curLevel2').textContent=meta.level;
-  renderCustomizer();
   AVATARS.forEach((av,i)=>{
     const unlocked=avatarUnlocked(av), sel=i===meta.avatar, c=avClass(av);
     const card=document.createElement('div'); card.className='card'+(sel?' sel':'')+(unlocked?'':' locked');
@@ -84,24 +83,11 @@ function buildAvatarGrid(){
       '<div class="lvl">'+(unlocked?'Level '+av.unlock:'🔒 Level '+av.unlock)+'</div>'+
       (sel?'<div class="equip">SELECTED</div>':'')+
       (unlocked?'':'<div class="lock">🔒</div>'));
-    if(unlocked) card.addEventListener('click',()=>{ meta.avatar=i; saveMeta(); renderCustomizer(); renderMenu();
+    if(unlocked) card.addEventListener('click',()=>{ meta.avatar=i; saveMeta(); renderMenu();
       [...g.children].forEach(c2=>{ c2.classList.remove('sel'); const e=c2.querySelector('.equip'); if(e) e.remove(); });
       card.classList.add('sel'); card.insertAdjacentHTML('beforeend','<div class="equip">SELECTED</div>'); });
     g.appendChild(card);
   });
-}
-function renderCustomizer(){
-  const groups=[['palette','paletteChoices'],['hair','hairChoices'],['accessory','accessoryChoices'],['trait','traitChoices']];
-  const list=k=>({palette:CUSTOM.palettes,hair:CUSTOM.hair,accessory:CUSTOM.accessories,trait:CUSTOM.traits}[k]);
-  for(const [key,hostId] of groups){ const host=el(hostId); if(!host) continue; host.innerHTML='';
-    for(const item of list(key)){ const b=document.createElement('button'); b.type='button'; b.className='customChoice'+(meta.custom[key]===item.id?' on':'');
-      b.textContent=key==='palette'?'':(item.icon+' '+item.name); b.title=item.name;
-      if(key==='palette') b.style.background=item.outfit; b.setAttribute('aria-label',item.name);
-      b.addEventListener('click',()=>{ meta.custom[key]=item.id; saveMeta(); renderCustomizer(); renderMenu(); }); host.appendChild(b); }
-  }
-  const p=CUSTOM.palettes.find(x=>x.id===meta.custom.palette)||CUSTOM.palettes[0];
-  const names=['hair','accessory','trait'].map(k=>(list(k).find(x=>x.id===meta.custom[k])||list(k)[0]).name);
-  const sum=el('customSummary'); if(sum) sum.textContent=p.name+' palette · '+names.join(' · ');
 }
 const WMODE={semi:'SEMI',auto:'AUTO',shotgun:'SHOT',sniper:'SNIPE',flame:'FLAME',launcher:'BOOM'};
 function wstats(w){

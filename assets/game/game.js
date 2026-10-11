@@ -210,34 +210,6 @@ const AVATARS = [
   {name:'Onyx',   speed:4.7, health:138, unlock:24, img:'hero-onyx',   armless:true, aura:'#39e0ff', look:{skin:'#3a4048',hair:'#141414',outfit:'#191b1f',style:'horns'}},
   {name:'Titan',  speed:4.4, health:150, unlock:26, img:'hero-titan',  armless:true, aura:'#ff5a5a', look:{skin:'#e8b48c',hair:'#3a3f47',outfit:'#33373d',style:'horns'}},
 ];
-// Modular cosmetic layers are intentionally independent of fighter stats. Existing saves get
-// the first option in each family, while the avatar's own look remains the visual baseline.
-const CUSTOM = {
-  palettes:[
-    {id:'pulse',name:'Pulse',outfit:'#2f6ecc',accent:'#d6ff6e'},
-    {id:'ember',name:'Ember',outfit:'#b84f35',accent:'#ffcf6b'},
-    {id:'tide',name:'Tide',outfit:'#247f91',accent:'#8de8ff'},
-    {id:'violet',name:'Violet',outfit:'#7047a8',accent:'#e0b8ff'},
-    {id:'sun',name:'Solar',outfit:'#c89227',accent:'#fff0a8'},
-  ],
-  hair:[
-    {id:'base',name:'Signature',icon:'✦'}, {id:'fade',name:'Fade',icon:'▰'},
-    {id:'waves',name:'Waves',icon:'〰'}, {id:'spikes',name:'Spikes',icon:'▲'},
-  ],
-  accessories:[
-    {id:'none',name:'None',icon:'—'}, {id:'headset',name:'Headset',icon:'◉'},
-    {id:'scarf',name:'Scarf',icon:'⌁'}, {id:'visor',name:'Visor',icon:'▱'},
-  ],
-  traits:[
-    {id:'bright',name:'Bright eyes',icon:'●'}, {id:'wink',name:'Wink',icon:'◒'},
-    {id:'scar',name:'Battle scar',icon:'╱'}, {id:'smile',name:'Big smile',icon:'⌣'},
-  ]
-};
-function defaultCustom(){ return {palette:'pulse',hair:'base',accessory:'none',trait:'bright'}; }
-function readCustom(){
-  try{ const v=JSON.parse(safeGet('dd2_custom','{}')); const d=defaultCustom();
-    return {...d,...(v&&typeof v==='object'?v:{})}; }catch(e){ return defaultCustom(); }
-}
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit',        img:'weapon-pistol'},
   {name:'Rifle',   icon:'🪖', dmg:10,  mag:10, reload:1.25, range:150, fireCd:0.10, mode:'auto',    unlock:1,  special:'10 bullets per ammo',                  img:'weapon-rifle'},
@@ -345,8 +317,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.74.0';
+const GAME_VERSION = '2.75.0';
 const CHANGELOG = [
+  { v:'2.75.0', items:[
+    ['✂️','Character customizer removed','the palette / hair / accessory / trait picker is gone — heroes now always show their original look'],
+  ]},
   { v:'2.74.0', items:[
     ['🎲','Mutator picker','choose a mutator on the main menu — Random, Off, or lock any one in for every run'],
     ['💨','Fast Horde','a new mutator: zombies move 30% faster'],
@@ -782,7 +757,6 @@ const meta = {
   name: safeGet('dd2_name','deegan'),
   avatar: parseInt(safeGet('dd2_avatar','0'),10) || 0,
   weapon: parseInt(safeGet('dd2_weapon','0'),10) || 0,
-  custom: readCustom(),
   // career stats
   matches: parseInt(safeGet('dd2_matches','0'),10) || 0,
   wins: parseInt(safeGet('dd2_wins','0'),10) || 0,
@@ -836,7 +810,6 @@ let lastLevelCoins = 0, lastRankUp = null;   // set by grantXp, shown by levelTo
 function saveMeta(){
   safeSet('dd2_level',meta.level); safeSet('dd2_xp',meta.xp); safeSet('dd2_name',meta.name);
   safeSet('dd2_avatar',meta.avatar); safeSet('dd2_weapon',meta.weapon);
-  safeSet('dd2_custom',JSON.stringify(meta.custom));
   safeSet('dd2_matches',meta.matches); safeSet('dd2_wins',meta.wins); safeSet('dd2_ckills',meta.ckills);
   safeSet('dd2_deaths',meta.deaths); safeSet('dd2_best',meta.best);
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);
@@ -1319,7 +1292,7 @@ function safeText(){
 // ---- src/game/entities/characters.js ----
 function makeHuman(isPlayer, avatar, weapon, name){
   return {
-    isPlayer, name: name || avatar.name, avatar, look: avatar.look, weapon, custom:isPlayer?{...meta.custom}:null,
+    isPlayer, name: name || avatar.name, avatar, look: avatar.look, weapon,
     x:0, y:0, vx:0, vy:0, aim:-Math.PI/2,
     hp:avatar.health, maxhp:avatar.health, speed:avatar.speed*42,
     alive:true, mag:weapon.mag, reloading:0, fireCd:0, walk:0, hitFlash:0, kills:0, faceX:1, seed:rand(0,9),
@@ -4507,34 +4480,7 @@ function drawHuman(h){
     if(h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
       ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); } }
   ctx.restore();
-  drawCustomizationOverlay(h, false);
   drawNameplate(h);
-}
-// Cosmetic overlays keep the authored hero PNGs intact while adding a readable, per-player
-// identity layer. They are deliberately small, outlined shapes so they survive zoom/DPR changes.
-function drawCustomizationOverlay(h, sprite){
-  if(!h.isPlayer || !h.custom) return;
-  const c=h.custom, pal=CUSTOM.palettes.find(x=>x.id===c.palette)||CUSTOM.palettes[0];
-  const s=sprite?1:1, headY=sprite?-30:-17;
-  ctx.save(); ctx.lineJoin='round'; ctx.lineCap='round';
-  // palette: a luminous shoulder sash plus a small waist accent makes the outfit change visible
-  ctx.strokeStyle=INK; ctx.lineWidth=4.5; ctx.beginPath(); ctx.moveTo(-8,headY+19); ctx.lineTo(8,headY+25); ctx.stroke();
-  ctx.strokeStyle=pal.outfit; ctx.lineWidth=2.8; ctx.beginPath(); ctx.moveTo(-8,headY+19); ctx.lineTo(8,headY+25); ctx.stroke();
-  ctx.fillStyle=pal.accent; ctx.globalAlpha=.9; ctx.fillRect(-7,headY+27,14,2); ctx.globalAlpha=1;
-  // hair silhouettes are placed above the source art, giving every player a second, mixable shape
-  ctx.fillStyle=pal.outfit; ctx.strokeStyle=INK; ctx.lineWidth=1.5;
-  if(c.hair==='fade'){ ctx.beginPath(); ctx.arc(0,headY-1,9.2,Math.PI,0); ctx.fill(); ctx.stroke(); ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(-7,headY-2,3,4); }
-  if(c.hair==='waves'){ for(const p of [[-6,-3],[0,-6],[6,-3]]){ ctx.beginPath(); ctx.arc(p[0],headY+p[1],3.2,0,TAU); ctx.fill(); ctx.stroke(); } }
-  if(c.hair==='spikes'){ ctx.beginPath(); ctx.moveTo(-8,headY-3); ctx.lineTo(-6,headY-11); ctx.lineTo(-2,headY-5); ctx.lineTo(2,headY-12); ctx.lineTo(5,headY-5); ctx.lineTo(8,headY-9); ctx.lineTo(8,headY+1); ctx.lineTo(-8,headY+1); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  // accessories
-  if(c.accessory==='headset'){ ctx.strokeStyle='#b7d6e8'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,headY,11,-Math.PI*1.02,-Math.PI*.02); ctx.stroke(); ctx.fillStyle='#72c9e8'; ctx.beginPath(); ctx.arc(-10,headY+1,2.6,0,TAU); ctx.arc(10,headY+1,2.6,0,TAU); ctx.fill(); }
-  if(c.accessory==='scarf'){ ctx.fillStyle=pal.accent; ctx.strokeStyle=INK; ctx.lineWidth=1.4; roundRect(-10,headY+8,20,5,2); ctx.fill(); ctx.stroke(); ctx.fillStyle=pal.accent; ctx.beginPath(); ctx.moveTo(5,headY+12); ctx.lineTo(10,headY+23); ctx.lineTo(5,headY+20); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  if(c.accessory==='visor'){ ctx.fillStyle='rgba(35,235,210,.75)'; ctx.strokeStyle=INK; ctx.lineWidth=1.2; roundRect(-8,headY-1,16,5,2); ctx.fill(); ctx.stroke(); }
-  // facial traits
-  if(c.trait==='wink'){ ctx.strokeStyle='#171a14'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(-5,headY+2); ctx.lineTo(-1.5,headY+2); ctx.stroke(); }
-  if(c.trait==='scar'){ ctx.strokeStyle='#c94d4d'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(4,headY-1); ctx.lineTo(6,headY+4); ctx.stroke(); }
-  if(c.trait==='smile'){ ctx.strokeStyle='#8a4a3a'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,headY+4,3,0.15*Math.PI,0.85*Math.PI); ctx.stroke(); }
-  ctx.restore();
 }
 // Billboard a hero PNG in place of the drawn chibi: shadow + player ring under it, a gentle
 // walk-bob / run-lean, a white flash on hit, plus muzzle flash + reload ring so combat still reads.
@@ -4583,7 +4529,6 @@ function drawHeroSprite(h, img){
   if(h.isPlayer && h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1);   // reload ring (steady, un-bobbed)
     ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
     ctx.beginPath(); ctx.arc(0,4,21,-Math.PI/2,-Math.PI/2+pr*TAU); ctx.stroke(); }
-  drawCustomizationOverlay(h, true);
   ctx.restore();
 }
 // Draw the billboard with an articulated two-part leg walk: the static PNG has no frames, so split
@@ -5002,7 +4947,7 @@ function maybeDonateToast(){
   setTimeout(()=>{ if(screenState==='start') toast('💜 Enjoying Last Pulse? Tap “Support the game” to tip the dev'); }, 1100);
 }
 function renderMenu(){
-  const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar],meta.custom)); }
+  const fp=el('fighterPortrait'); if(fp){ fp.innerHTML=''; fp.appendChild(portraitChibi(AVATARS[meta.avatar])); }
   renderRoster();
   const lv=el('menuLvl'); if(lv) lv.textContent=meta.level;
   const xp=el('menuXp'); if(xp) xp.style.width=clamp(meta.xp/xpNeed(meta.level),0,1)*100+'%';
@@ -5025,7 +4970,7 @@ function renderRoster(){
     const unlocked=avatarUnlocked(av), sel=i===meta.avatar;
     const item=document.createElement('div'); item.className='rosterItem'+(sel?' sel':'')+(unlocked?'':' locked');
     item.title=unlocked?av.name:av.name+' — unlocks at Lv '+av.unlock;
-    const rip=document.createElement('div'); rip.className='rip'; rip.appendChild(portraitChibi(av,i===meta.avatar?meta.custom:null));
+    const rip=document.createElement('div'); rip.className='rip'; rip.appendChild(portraitChibi(av));
     item.appendChild(rip);
     item.insertAdjacentHTML('beforeend','<span class="rin">'+av.name+'</span>');
     if(unlocked) item.addEventListener('click',()=>{ if(meta.avatar===i) return;
@@ -5187,24 +5132,13 @@ function maybeShowWhatsNew(){
   if(!seen && meta.matches===0 && meta.level<=1){ safeSet('dd2_seenver',GAME_VERSION); return; }
   openWhatsNew();
 }
-function paintPortraitCustomization(o,custom){
-  if(!custom) return; const pal=CUSTOM.palettes.find(x=>x.id===custom.palette)||CUSTOM.palettes[0];
-  o.save(); o.strokeStyle='#23281b'; o.lineWidth=2.2; o.strokeStyle=pal.outfit; o.beginPath(); o.moveTo(25,45); o.lineTo(45,55); o.stroke();
-  o.strokeStyle=pal.accent; o.lineWidth=1.5; o.beginPath(); o.moveTo(25,45); o.lineTo(45,55); o.stroke();
-  if(custom.accessory==='headset'){ o.strokeStyle='#b7d6e8'; o.lineWidth=1.5; o.beginPath(); o.arc(35,38,13,Math.PI*1.05,Math.PI*1.95); o.stroke(); }
-  if(custom.accessory==='scarf'){ o.fillStyle=pal.accent; o.fillRect(25,47,20,3); }
-  if(custom.accessory==='visor'){ o.fillStyle='rgba(35,235,210,.75)'; o.fillRect(27,36,16,4); }
-  if(custom.hair==='spikes'){ o.fillStyle=pal.outfit; o.beginPath(); o.moveTo(28,31); o.lineTo(31,23); o.lineTo(35,30); o.lineTo(39,22); o.lineTo(43,31); o.closePath(); o.fill(); }
-  if(custom.trait==='scar'){ o.strokeStyle='#c94d4d'; o.lineWidth=1.1; o.beginPath(); o.moveTo(39,38); o.lineTo(41,43); o.stroke(); }
-  o.restore();
-}
 // ---- src/game/ui/selection.js ----
-function portraitChibi(av,custom){
+function portraitChibi(av){
   const im=av && imgOk(av.img);
   if(im){   // hero PNG portrait, bottom-aligned in the card
     const c=document.createElement('canvas'); c.width=70; c.height=84; const o=c.getContext('2d');
     const DH=82, DW=DH*(im.naturalWidth/im.naturalHeight);
-    o.drawImage(im, 35-DW/2, 84-DH, DW, DH); paintPortraitCustomization(o,custom); return c;
+    o.drawImage(im, 35-DW/2, 84-DH, DW, DH); return c;
   }
   const c=document.createElement('canvas'); c.width=70; c.height=84; const o=c.getContext('2d');
   const L=av.look; o.translate(35,58); o.lineJoin='round'; o.lineCap='round';
@@ -5273,7 +5207,6 @@ function avClass(av){ if(av.health>=130) return {k:'tank',t:'Tank'}; if(av.speed
 function buildAvatarGrid(){
   const g=el('avatarGrid'); g.innerHTML='';
   el('curLevel').textContent=meta.level; el('curLevel2').textContent=meta.level;
-  renderCustomizer();
   AVATARS.forEach((av,i)=>{
     const unlocked=avatarUnlocked(av), sel=i===meta.avatar, c=avClass(av);
     const card=document.createElement('div'); card.className='card'+(sel?' sel':'')+(unlocked?'':' locked');
@@ -5285,24 +5218,11 @@ function buildAvatarGrid(){
       '<div class="lvl">'+(unlocked?'Level '+av.unlock:'🔒 Level '+av.unlock)+'</div>'+
       (sel?'<div class="equip">SELECTED</div>':'')+
       (unlocked?'':'<div class="lock">🔒</div>'));
-    if(unlocked) card.addEventListener('click',()=>{ meta.avatar=i; saveMeta(); renderCustomizer(); renderMenu();
+    if(unlocked) card.addEventListener('click',()=>{ meta.avatar=i; saveMeta(); renderMenu();
       [...g.children].forEach(c2=>{ c2.classList.remove('sel'); const e=c2.querySelector('.equip'); if(e) e.remove(); });
       card.classList.add('sel'); card.insertAdjacentHTML('beforeend','<div class="equip">SELECTED</div>'); });
     g.appendChild(card);
   });
-}
-function renderCustomizer(){
-  const groups=[['palette','paletteChoices'],['hair','hairChoices'],['accessory','accessoryChoices'],['trait','traitChoices']];
-  const list=k=>({palette:CUSTOM.palettes,hair:CUSTOM.hair,accessory:CUSTOM.accessories,trait:CUSTOM.traits}[k]);
-  for(const [key,hostId] of groups){ const host=el(hostId); if(!host) continue; host.innerHTML='';
-    for(const item of list(key)){ const b=document.createElement('button'); b.type='button'; b.className='customChoice'+(meta.custom[key]===item.id?' on':'');
-      b.textContent=key==='palette'?'':(item.icon+' '+item.name); b.title=item.name;
-      if(key==='palette') b.style.background=item.outfit; b.setAttribute('aria-label',item.name);
-      b.addEventListener('click',()=>{ meta.custom[key]=item.id; saveMeta(); renderCustomizer(); renderMenu(); }); host.appendChild(b); }
-  }
-  const p=CUSTOM.palettes.find(x=>x.id===meta.custom.palette)||CUSTOM.palettes[0];
-  const names=['hair','accessory','trait'].map(k=>(list(k).find(x=>x.id===meta.custom[k])||list(k)[0]).name);
-  const sum=el('customSummary'); if(sum) sum.textContent=p.name+' palette · '+names.join(' · ');
 }
 const WMODE={semi:'SEMI',auto:'AUTO',shotgun:'SHOT',sniper:'SNIPE',flame:'FLAME',launcher:'BOOM'};
 function wstats(w){

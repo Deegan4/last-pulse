@@ -9,8 +9,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.74.0';
+const GAME_VERSION = '2.75.0';
 const CHANGELOG = [
+  { v:'2.75.0', items:[
+    ['✂️','Character customizer removed','the palette / hair / accessory / trait picker is gone — heroes now always show their original look'],
+  ]},
   { v:'2.74.0', items:[
     ['🎲','Mutator picker','choose a mutator on the main menu — Random, Off, or lock any one in for every run'],
     ['💨','Fast Horde','a new mutator: zombies move 30% faster'],
