@@ -20,8 +20,8 @@ function pickMutator(){
   if(m==='none') return null;
   const forced=MUTATORS.find(x=>x.id===m); if(forced) return forced;
   return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
-function mutPickLabel(){ const m=MUTATORS.find(x=>x.id===meta.mutPick);
-  return meta.mutPick==='none' ? '🚫 Mutator: Off' : m ? m.icon+' Mutator: '+m.name : '🎲 Mutator: Random'; }
+function mutPickLabel(){ const m=MUTATORS.find(x=>x.id===meta.mutPick);   // menu-button HTML (constants only)
+  return '<small>MUTATOR</small><b>'+(meta.mutPick==='none' ? '🚫 Off' : m ? m.icon+' '+m.name : '🎲 Random')+'</b>'; }
 function cycleMutPick(){ const order=['random','none',...MUTATORS.map(x=>x.id)];
   meta.mutPick=order[(Math.max(0,order.indexOf(meta.mutPick))+1)%order.length]; saveMeta(); }
 

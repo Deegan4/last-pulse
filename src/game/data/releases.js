@@ -9,8 +9,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.76.0';
+const GAME_VERSION = '2.76.1';
 const CHANGELOG = [
+  { v:'2.76.1', items:[
+    ['🧹','Cleaner main menu','Map and Mutator now sit side by side under Play, every section shares one width, and Achievements / Shop / Support are a tidy grid'],
+  ]},
   { v:'2.76.0', items:[
     ['🗺️','Six maps and a map picker','Meadow, Dusty Outpost, Frozen Pines, Ashlands, Stone Ruins and Sunken Marsh — each with its own ground, time of day and layout density'],
     ['🔓','Two maps are free','Meadow and Dusty Outpost are free; the other four come with "Unlock Everything"'],
