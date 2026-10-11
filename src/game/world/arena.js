@@ -49,8 +49,8 @@ function currentMap(){
   const want=MAPS.find(m=>m.id===meta.mapPick), pool=availableMaps();
   return (want && pool.includes(want)) ? want : pick(pool);
 }
-function mapPickLabel(){ const m=MAPS.find(x=>x.id===meta.mapPick);
-  return m ? m.icon+' Map: '+m.name+((m.free||meta.iapUnlockAll)?'':' 🔒') : '🎲 Map: Random'; }
+function mapPickLabel(){ const m=MAPS.find(x=>x.id===meta.mapPick);   // menu-button HTML (constants only)
+  return '<small>MAP</small><b>'+(m ? m.icon+' '+m.name+((m.free||meta.iapUnlockAll)?'':' 🔒') : '🎲 Random')+'</b>'; }
 function cycleMapPick(){ const order=['random',...MAPS.map(x=>x.id)];
   for(let i=1;i<=order.length;i++){ const id=order[(Math.max(0,order.indexOf(meta.mapPick))+i)%order.length];
     const m=MAPS.find(x=>x.id===id); if(!m || m.free || meta.iapUnlockAll){ meta.mapPick=id; break; } }

@@ -312,8 +312,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.76.0';
+const GAME_VERSION = '2.76.1';
 const CHANGELOG = [
+  { v:'2.76.1', items:[
+    ['🧹','Cleaner main menu','Map and Mutator now sit side by side under Play, every section shares one width, and Achievements / Shop / Support are a tidy grid'],
+  ]},
   { v:'2.76.0', items:[
     ['🗺️','Six maps and a map picker','Meadow, Dusty Outpost, Frozen Pines, Ashlands, Stone Ruins and Sunken Marsh — each with its own ground, time of day and layout density'],
     ['🔓','Two maps are free','Meadow and Dusty Outpost are free; the other four come with "Unlock Everything"'],
@@ -1011,8 +1014,8 @@ function pickMutator(){
   if(m==='none') return null;
   const forced=MUTATORS.find(x=>x.id===m); if(forced) return forced;
   return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
-function mutPickLabel(){ const m=MUTATORS.find(x=>x.id===meta.mutPick);
-  return meta.mutPick==='none' ? '🚫 Mutator: Off' : m ? m.icon+' Mutator: '+m.name : '🎲 Mutator: Random'; }
+function mutPickLabel(){ const m=MUTATORS.find(x=>x.id===meta.mutPick);   // menu-button HTML (constants only)
+  return '<small>MUTATOR</small><b>'+(meta.mutPick==='none' ? '🚫 Off' : m ? m.icon+' '+m.name : '🎲 Random')+'</b>'; }
 function cycleMutPick(){ const order=['random','none',...MUTATORS.map(x=>x.id)];
   meta.mutPick=order[(Math.max(0,order.indexOf(meta.mutPick))+1)%order.length]; saveMeta(); }
 
@@ -1400,8 +1403,8 @@ function currentMap(){
   const want=MAPS.find(m=>m.id===meta.mapPick), pool=availableMaps();
   return (want && pool.includes(want)) ? want : pick(pool);
 }
-function mapPickLabel(){ const m=MAPS.find(x=>x.id===meta.mapPick);
-  return m ? m.icon+' Map: '+m.name+((m.free||meta.iapUnlockAll)?'':' 🔒') : '🎲 Map: Random'; }
+function mapPickLabel(){ const m=MAPS.find(x=>x.id===meta.mapPick);   // menu-button HTML (constants only)
+  return '<small>MAP</small><b>'+(m ? m.icon+' '+m.name+((m.free||meta.iapUnlockAll)?'':' 🔒') : '🎲 Random')+'</b>'; }
 function cycleMapPick(){ const order=['random',...MAPS.map(x=>x.id)];
   for(let i=1;i<=order.length;i++){ const id=order[(Math.max(0,order.indexOf(meta.mapPick))+i)%order.length];
     const m=MAPS.find(x=>x.id===id); if(!m || m.free || meta.iapUnlockAll){ meta.mapPick=id; break; } }
@@ -5321,10 +5324,10 @@ function startMatch(){
 el('nameInput').value = meta.name==='deegan'?'':meta.name;
 el('nameInput').placeholder = 'deegan';
 el('toModeBtn').addEventListener('click',goAvatar);   // straight to fighter select — horde is the game
-{ const pb=el('mapPickBtn'); pb.textContent=mapPickLabel();
-  pb.addEventListener('click',()=>{ cycleMapPick(); pb.textContent=mapPickLabel(); }); }
-{ const mb=el('mutPickBtn'); mb.textContent=mutPickLabel();
-  mb.addEventListener('click',()=>{ cycleMutPick(); mb.textContent=mutPickLabel(); }); }
+{ const pb=el('mapPickBtn'); pb.innerHTML=mapPickLabel();
+  pb.addEventListener('click',()=>{ cycleMapPick(); pb.innerHTML=mapPickLabel(); }); }
+{ const mb=el('mutPickBtn'); mb.innerHTML=mutPickLabel();
+  mb.addEventListener('click',()=>{ cycleMutPick(); mb.innerHTML=mutPickLabel(); }); }
 el('fighterPortrait').addEventListener('click',goAvatar);
 el('changeAvatar').addEventListener('click',goAvatar);
 el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState='weapon'; show('weaponScreen'); });

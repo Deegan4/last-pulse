@@ -651,3 +651,30 @@
     #powers #scrapHud{justify-self:center}
     .power{width:54px;height:54px;font-size:23px}
   }
+
+  /* --- v2.76.1 main-menu layout pass: one shared column width, grouped sections, even spacing --- */
+  #startScreen.menu{--mw:min(88%,340px);align-items:center}
+  #startScreen.menu .fighter,#startScreen.menu .rosterStrip,#startScreen.menu .btn.play,
+  #startScreen.menu .pickrow,#startScreen.menu .dailycard,#startScreen.menu .statscard,
+  #startScreen.menu .menugrid{width:var(--mw);box-sizing:border-box}
+  #startScreen.menu .fighter{margin:12px 0 8px}
+  #startScreen.menu .btn.play{margin:10px 0 10px;padding:15px 0;text-align:center}
+  .pickrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .pick{appearance:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;
+    padding:8px 6px;border-radius:13px;border:1.5px solid var(--stroke);background:rgba(30,44,20,.62);color:#fff;
+    font-family:inherit;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:transform .08s}
+  .pick:active{transform:scale(.97)}
+  .pick small{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#b9d18d}
+  .pick b{font-size:12.5px;font-weight:800;letter-spacing:.3px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #startScreen.menu .dailycard{margin:0 0 6px}
+  #startScreen.menu #weeklyCard{margin:0}
+  #startScreen.menu .statscard{margin:12px 0 0;gap:6px}
+  #startScreen.menu .statscard .st{padding:6px 4px}
+  #startScreen.menu .statscard .st b{font-size:17px}
+  #startScreen.menu .statscard .st span{font-size:10px}
+  .menugrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .menugrid .achbtn{margin:0;width:100%;box-sizing:border-box;padding:11px 6px;font-size:12px;letter-spacing:.4px;white-space:nowrap}
+  .menugrid .achcount{margin-left:2px;font-size:11px}
+  .menugrid .donatebtn{grid-column:1/-1;background:transparent;box-shadow:none;font-size:12px;padding:9px 6px;
+    border:1.5px solid rgba(200,140,255,.4)}
+  #startScreen.menu .footer-ver{margin-top:10px;padding-bottom:calc(var(--sab) + 14px)}

@@ -105,16 +105,18 @@
     <div class="rosterStrip" id="rosterStrip"></div>
 
     <button class="btn play" id="toModeBtn"><span id="playLabel">▶ PLAY</span></button>
-    <button class="btn ghost achbtn" id="mapPickBtn">🎲 Map: Random</button>
-    <button class="btn ghost achbtn" id="mutPickBtn">🎲 Mutator: Random</button>
+    <div class="pickrow">
+      <button class="pick" id="mapPickBtn" aria-label="Choose map"></button>
+      <button class="pick" id="mutPickBtn" aria-label="Choose mutator"></button>
+    </div>
     <div id="dailyCard" class="dailycard"></div>
     <div id="weeklyCard" class="dailycard"></div>
     <div id="statsCard" class="statscard"></div>
-    <div class="menurow">
+    <div class="menugrid">
       <button class="btn ghost achbtn" id="achBtn">🏅 Achievements <span id="achCount" class="achcount"></span></button>
       <button class="btn ghost achbtn" id="shopBtn">🛒 Shop</button>
+      <button class="btn ghost achbtn donatebtn" id="donateBtn">💜 Support the game</button>
     </div>
-    <div class="menurow"><button class="btn ghost achbtn donatebtn" id="donateBtn">💜 Support the game</button></div>
     <button class="btn ghost achbtn a2hsbtn hidden" id="a2hsBtn">📲 Add to Home Screen</button>
     <div class="footer footer-ver"><span id="verLink" class="verlink"></span></div>
   </div>
