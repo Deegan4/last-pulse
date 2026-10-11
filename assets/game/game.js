@@ -345,8 +345,13 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.73.0';
+const GAME_VERSION = '2.74.0';
 const CHANGELOG = [
+  { v:'2.74.0', items:[
+    ['🎲','Mutator picker','choose a mutator on the main menu — Random, Off, or lock any one in for every run'],
+    ['💨','Fast Horde','a new mutator: zombies move 30% faster'],
+    ['🧨','Volatile','a new mutator: zombies burst when killed and chain into their pack'],
+  ]},
   { v:'2.73.0', items:[
     ['🛢','Shootable fuel barrels','red barrels blow up after 3 hits — lure the horde in and detonate them'],
     ['🎯','Prop prompts','caches, clinics, relays and fuel pumps show a ready ring and a recharge arc when you walk up'],
@@ -787,6 +792,7 @@ const meta = {
   streak: parseInt(safeGet('dd2_streak','0'),10) || 0,
   bestStreak: parseInt(safeGet('dd2_bstreak','0'),10) || 0,
   bestWave: parseInt(safeGet('dd2_bwave','0'),10) || 0,
+  mutPick: safeGet('dd2_mutpick','random'),
   sfxVol: Math.max(0,Math.min(1, parseFloat(safeGet('dd2_sfxvol','0.8'))||0.8)),
   aimSens: Math.max(0.3,Math.min(2, parseFloat(safeGet('dd2_sens','1'))||1)),
   achieved: (safeGet('dd2_ach','')||'').split(',').filter(Boolean),   // unlocked achievement ids
@@ -834,7 +840,7 @@ function saveMeta(){
   safeSet('dd2_matches',meta.matches); safeSet('dd2_wins',meta.wins); safeSet('dd2_ckills',meta.ckills);
   safeSet('dd2_deaths',meta.deaths); safeSet('dd2_best',meta.best);
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);
-  safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_sens',meta.aimSens);
+  safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_mutpick',meta.mutPick); safeSet('dd2_sens',meta.aimSens);
   safeSet('dd2_ach', meta.achieved.join(','));
   safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
   safeSet('dd2_banner',meta.banner);
@@ -1021,10 +1027,21 @@ const MUTATORS = [
   {id:'lowGrav',  icon:'🎈', name:'LOW GRAVITY',   desc:'Bombs hang longer and blast wider',          bombFuseMul:1.8, bombRadMul:1.4},
   {id:'glassCannon', icon:'💎', name:'GLASS CANNON', desc:'You deal +60% damage but take +60% too',   dmgOutMul:1.6, dmgInMul:1.6},
   {id:'richVein',    icon:'💰', name:'RICH VEIN',    desc:'Zombies drop 70% more scrap',              scrapMul:1.7},
+  {id:'fastHorde',  icon:'💨', name:'FAST HORDE',   desc:'Zombies move 30% faster',                    zSpdMul:1.3},
+  {id:'volatile',   icon:'🧨', name:'VOLATILE',     desc:'Zombies burst when killed, chaining into their pack', volatile:true},
   {id:'bloodMoon',   icon:'🔴', name:'BLOOD MOON',   desc:'+50% XP and coins this run',                xpMul:1.5, coinMul:1.5},
 ];
 const MUTATOR_CHANCE = 0.35;    // "occasional" — most matches stay vanilla
-function pickMutator(){ return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
+// meta.mutPick: 'random' (default, MUTATOR_CHANCE per match) | 'none' | a MUTATORS id (forced every run)
+function pickMutator(){
+  const m=meta.mutPick;
+  if(m==='none') return null;
+  const forced=MUTATORS.find(x=>x.id===m); if(forced) return forced;
+  return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
+function mutPickLabel(){ const m=MUTATORS.find(x=>x.id===meta.mutPick);
+  return meta.mutPick==='none' ? '🚫 Mutator: Off' : m ? m.icon+' Mutator: '+m.name : '🎲 Mutator: Random'; }
+function cycleMutPick(){ const order=['random','none',...MUTATORS.map(x=>x.id)];
+  meta.mutPick=order[(Math.max(0,order.indexOf(meta.mutPick))+1)%order.length]; saveMeta(); }
 
 // ===== Perk picks =====
 // Mid-run agency: every 3rd wave (3,6,9…) pauses on a 3-card choice before the next wave spawns.
@@ -1840,6 +1857,7 @@ function die(e, src, isHumanTarget){
   }
   if(!isHumanTarget){ // zombie death pop
     rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
+    if(activeMutator?.volatile && !e.boom) volatileBurst(e,src);
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
     const scrapMul = (activeMutator?.scrapMul||1)*((src&&src.isPlayer&&src.perkScrapMul)||1);   // Rich Vein mutator
     // boss loot table — guaranteed, unlike the regular corpse's 62% scrap roll: a big scrap
@@ -2081,6 +2099,18 @@ function zombieBurst(e){
   for(const o of humans){ if(!o.alive) continue; const d2=dist2(e.x,e.y,o.x,o.y);
     if(d2<RAD2){ const dd=e.dmg*1.7*(1-Math.sqrt(d2)/RAD); if(dd>0){ hurt(o, Math.max(8,dd), null, true); if(o.isPlayer) shake=Math.min(shake+3,15); } } }
   sfx('boom',null,e);
+}
+// VOLATILE mutator — a dying zombie pops and hurts nearby zombies (never the player/bots), which
+// can chain through a tight pack. `volDepth` caps the chain so a big clump can't recurse unbounded.
+let volDepth=0;
+function volatileBurst(e,src){
+  if(volDepth>=6) return;
+  const RAD=70, RAD2=RAD*RAD; volDepth++;
+  for(let i=0;i<8;i++) spark(e.x,e.y-4,i%2?'#ffb13d':'#ff7a2a',rand(60,200),rand(0,TAU),.5);
+  rings.push({x:e.x,y:e.y,t:0,dur:.35,r0:6,r1:RAD,col:'255,170,70',lw:3});
+  if(volDepth===1){ shake=Math.min(shake+2,10); sfx('boom',null,e); }
+  for(const z of zombies){ if(!z.alive||z===e) continue; if(dist2(e.x,e.y,z.x,z.y)<RAD2) hurt(z,35,src,false); }
+  volDepth--;
 }
 // Shaman support pulse — nearby zombies get a short movement frenzy, forcing the player to
 // decide whether to burn down the support unit or kite the sped-up pack.
@@ -2545,7 +2575,7 @@ function updateZombie(z,dt){
   }
   if(z.lunge>0) z.lunge-=dt*3.2;
   const m=len(mvx,mvy);
-  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1)*(z.frenzyT>0?1.24:1)*(z.hasteT>0?1.35:1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6*(z.frenzyT>0?1.2:1); if(mvx) z.faceX=mvx<0?-1:1; }
+  if(m>0){ const sp=z.speed*(z.slowT>0?0.55:1)*(z.frenzyT>0?1.24:1)*(z.hasteT>0?1.35:1)*(activeMutator?.zSpdMul||1); z.vx+=(mvx/m*sp-z.vx)*0.12; z.vy+=(mvy/m*sp-z.vy)*0.12; z.walk+=dt*6*(z.frenzyT>0?1.2:1); if(mvx) z.faceX=mvx<0?-1:1; }
   else { z.vx*=0.85; z.vy*=0.85; }
   // kicked-up dirt (in-view only): runners scrabble constantly, brutes throw heavy
   // stomp-clods on each footfall, normals scuff the odd puff
@@ -5346,6 +5376,8 @@ function startMatch(){
 el('nameInput').value = meta.name==='deegan'?'':meta.name;
 el('nameInput').placeholder = 'deegan';
 el('toModeBtn').addEventListener('click',goAvatar);   // straight to fighter select — horde is the game
+{ const mb=el('mutPickBtn'); mb.textContent=mutPickLabel();
+  mb.addEventListener('click',()=>{ cycleMutPick(); mb.textContent=mutPickLabel(); }); }
 el('fighterPortrait').addEventListener('click',goAvatar);
 el('changeAvatar').addEventListener('click',goAvatar);
 el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState='weapon'; show('weaponScreen'); });

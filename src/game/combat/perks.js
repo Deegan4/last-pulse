@@ -9,10 +9,21 @@ const MUTATORS = [
   {id:'lowGrav',  icon:'🎈', name:'LOW GRAVITY',   desc:'Bombs hang longer and blast wider',          bombFuseMul:1.8, bombRadMul:1.4},
   {id:'glassCannon', icon:'💎', name:'GLASS CANNON', desc:'You deal +60% damage but take +60% too',   dmgOutMul:1.6, dmgInMul:1.6},
   {id:'richVein',    icon:'💰', name:'RICH VEIN',    desc:'Zombies drop 70% more scrap',              scrapMul:1.7},
+  {id:'fastHorde',  icon:'💨', name:'FAST HORDE',   desc:'Zombies move 30% faster',                    zSpdMul:1.3},
+  {id:'volatile',   icon:'🧨', name:'VOLATILE',     desc:'Zombies burst when killed, chaining into their pack', volatile:true},
   {id:'bloodMoon',   icon:'🔴', name:'BLOOD MOON',   desc:'+50% XP and coins this run',                xpMul:1.5, coinMul:1.5},
 ];
 const MUTATOR_CHANCE = 0.35;    // "occasional" — most matches stay vanilla
-function pickMutator(){ return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
+// meta.mutPick: 'random' (default, MUTATOR_CHANCE per match) | 'none' | a MUTATORS id (forced every run)
+function pickMutator(){
+  const m=meta.mutPick;
+  if(m==='none') return null;
+  const forced=MUTATORS.find(x=>x.id===m); if(forced) return forced;
+  return Math.random()<MUTATOR_CHANCE ? pick(MUTATORS) : null; }
+function mutPickLabel(){ const m=MUTATORS.find(x=>x.id===meta.mutPick);
+  return meta.mutPick==='none' ? '🚫 Mutator: Off' : m ? m.icon+' Mutator: '+m.name : '🎲 Mutator: Random'; }
+function cycleMutPick(){ const order=['random','none',...MUTATORS.map(x=>x.id)];
+  meta.mutPick=order[(Math.max(0,order.indexOf(meta.mutPick))+1)%order.length]; saveMeta(); }
 
 // ===== Perk picks =====
 // Mid-run agency: every 3rd wave (3,6,9…) pauses on a 3-card choice before the next wave spawns.

@@ -191,6 +191,7 @@ function die(e, src, isHumanTarget){
   }
   if(!isHumanTarget){ // zombie death pop
     rings.push({x:e.x, y:e.y, t:0, dur:0.3, r0:5, r1:30*(e.size||1), col:'150,200,90', lw:3});
+    if(activeMutator?.volatile && !e.boom) volatileBurst(e,src);
     if(e.boom) zombieBurst(e);      // bloater ruptures into an acid cloud
     const scrapMul = (activeMutator?.scrapMul||1)*((src&&src.isPlayer&&src.perkScrapMul)||1);   // Rich Vein mutator
     // boss loot table — guaranteed, unlike the regular corpse's 62% scrap roll: a big scrap
