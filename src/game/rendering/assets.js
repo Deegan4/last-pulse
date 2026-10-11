@@ -67,9 +67,4 @@ loadImg('weapon-arc-rifle',      'assets/img/weapon-arc-rifle.png');
 loadImg('weapon-frost-blaster',  'assets/img/weapon-frost-blaster.png');
 loadImg('weapon-rocket-launcher','assets/img/weapon-rocket-launcher.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
-const GROUND_SKINS = {
-  day: ['grass','desert','snow','stone','swamp'],
-  dusk: ['desert','stone','swamp','ash'],
-  night: ['ash','stone','snow','swamp'],
-};
 

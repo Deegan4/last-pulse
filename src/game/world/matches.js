@@ -60,7 +60,7 @@ function spawnMatch(){
       toast(activeMutator.icon+' '+activeMutator.name+' — '+activeMutator.desc);
       el('statMut').textContent = activeMutator.icon+' '+activeMutator.name;
       el('mutRow').classList.remove('is-hidden');
-    } else el('mutRow').classList.add('is-hidden');
+    } else { el('mutRow').classList.add('is-hidden'); if(activeMap) toast(activeMap.icon+' '+activeMap.name); }
     // two 2-story watchtowers to climb and shoot down from (Horde only)
     for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
       while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
