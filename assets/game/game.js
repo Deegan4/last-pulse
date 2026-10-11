@@ -1158,7 +1158,9 @@ function avatarUnlocked(a){ return meta.iapUnlockAll || meta.level >= a.unlock; 
 //  World
 // ============================================================
 // ---- src/game/core/state.js ----
-const ARENA = 4000;
+// Flat side-view fighting pit (brawler rewrite) — was a 4000x4000 top-down square (`ARENA`).
+// Bounded, not scrolling: a wave clears inside this box, same rhythm hordeUpdate already drives.
+const ARENA_W = 2200, ARENA_H = 640;
 const cam = {x:0,y:0};
 let screenState = 'start';   // 'start'|'avatar'|'weapon'|'playing'|'results'
 let paused = false;
@@ -1250,18 +1252,22 @@ const CAMPFIRE = { r:72, heal:6 };   // heal radius (px) and hp/sec near a fire
 //  Safe area (shrinking zone)
 // ============================================================
 // ---- src/game/world/zone.js ----
-const zone = { cx:ARENA/2, cy:ARENA/2, r:ARENA*0.6, fromCx:0,fromCy:0,fromR:0,toCx:0,toCy:0,toR:0,
+// Zone shrink/hold machinery is dormant in the brawler (zoneActive() is false for the only
+// shipped mode, 'horde') — same "kept dormant, never resurrected" treatment as BR/Squad. `zone`
+// itself still gets read every frame by updatePickups()/supply drops for a spawn-radius center,
+// so its static init values must match the new flat-pit geometry even though shrink never runs.
+const zone = { cx:ARENA_W/2, cy:ARENA_H/2, r:Math.max(ARENA_W,ARENA_H)*0.6, fromCx:0,fromCy:0,fromR:0,toCx:0,toCy:0,toR:0,
   phase:0, state:'hold', t:0, dur:0, dmg:1.5 };
 const PHASES = [
-  { hold:40, shrink:14, r:ARENA*0.40, dmg:2 },
-  { hold:30, shrink:12, r:ARENA*0.26, dmg:3 },
-  { hold:24, shrink:11, r:ARENA*0.15, dmg:5 },
-  { hold:20, shrink:10, r:ARENA*0.08, dmg:7 },
-  { hold:16, shrink:9,  r:ARENA*0.03, dmg:10 },
+  { hold:40, shrink:14, r:ARENA_W*0.40, dmg:2 },
+  { hold:30, shrink:12, r:ARENA_W*0.26, dmg:3 },
+  { hold:24, shrink:11, r:ARENA_W*0.15, dmg:5 },
+  { hold:20, shrink:10, r:ARENA_W*0.08, dmg:7 },
+  { hold:16, shrink:9,  r:ARENA_W*0.03, dmg:10 },
   { hold:14, shrink:8,  r:0,          dmg:16 },
 ];
 function zoneReset(){
-  zone.cx=ARENA/2; zone.cy=ARENA/2; zone.r=ARENA*0.6;
+  zone.cx=ARENA_W/2; zone.cy=ARENA_H/2; zone.r=Math.max(ARENA_W,ARENA_H)*0.6;
   zone.phase=0; zone.state='hold'; zone.t=0; zone.dur=PHASES[0].hold; zone.dmg=PHASES[0].dmg;
 }
 function zoneUpdate(dt){
@@ -1271,8 +1277,8 @@ function zoneUpdate(dt){
       const ph=PHASES[zone.phase], maxOff=Math.max(0,zone.r-ph.r);
       const a=rand(0,TAU), off=Math.sqrt(Math.random())*maxOff;
       zone.fromCx=zone.cx; zone.fromCy=zone.cy; zone.fromR=zone.r;
-      zone.toCx=clamp(zone.cx+Math.cos(a)*off, ph.r, ARENA-ph.r);
-      zone.toCy=clamp(zone.cy+Math.sin(a)*off, ph.r, ARENA-ph.r);
+      zone.toCx=clamp(zone.cx+Math.cos(a)*off, ph.r, ARENA_W-ph.r);
+      zone.toCy=clamp(zone.cy+Math.sin(a)*off, ph.r, ARENA_H-ph.r);
       zone.toR=ph.r; zone.state='shrink'; zone.t=0; zone.dur=ph.shrink; zone.dmg=ph.dmg;
       zoneWarn=2.8; sfx('warn');
     }
@@ -1365,16 +1371,26 @@ function blockedSpawn(x,y){
   return false;
 }
 // a decor position clear of buildings + ponds (retries; last try is accepted if all blocked)
-function decorSpot(m){ let x=rand(m,ARENA-m), y=rand(m,ARENA-m);
-  for(let t=0; t<16 && blockedSpawn(x,y); t++){ x=rand(m,ARENA-m); y=rand(m,ARENA-m); } return {x,y}; }
+function decorSpot(m){ let x=rand(m,ARENA_W-m), y=rand(m,ARENA_H-m);
+  for(let t=0; t<16 && blockedSpawn(x,y); t++){ x=rand(m,ARENA_W-m); y=rand(m,ARENA_H-m); } return {x,y}; }
 function farSpawn(minFromCenter){
-  let fx=ARENA/2, fy=ARENA/2;
+  let fx=ARENA_W/2, fy=ARENA_H/2;
   for(let i=0;i<48;i++){
-    const a=rand(0,TAU), rr=rand(minFromCenter, ARENA*0.5*0.92);
-    fx=clamp(ARENA/2+Math.cos(a)*rr,80,ARENA-80); fy=clamp(ARENA/2+Math.sin(a)*rr,80,ARENA-80);
+    const a=rand(0,TAU), rr=rand(minFromCenter, Math.min(ARENA_W,ARENA_H)*0.5*0.92);
+    fx=clamp(ARENA_W/2+Math.cos(a)*rr,80,ARENA_W-80); fy=clamp(ARENA_H/2+Math.sin(a)*rr,80,ARENA_H-80);
     if(!blockedSpawn(fx,fy)) return {x:fx,y:fy};
   }
   return {x:fx,y:fy};
+}
+// Brawler entrance spawn: just inside the pit's left/right wall at a random height, so zombies
+// visibly walk in from one side instead of popping in omnidirectionally (the old BR/Squad
+// farSpawn() model). Used by the live Horde spawn path; farSpawn() above stays for the dormant
+// BR/Squad paths so their (unreachable) code keeps parsing against the old semantics.
+function edgeSpawn(){
+  const side = Math.random()<0.5 ? -1 : 1;
+  const x = side<0 ? R+rand(0,30) : ARENA_W-R-rand(0,30);
+  const y = clamp(ARENA_H/2 + rand(-ARENA_H*0.32, ARENA_H*0.32), R, ARENA_H-R);
+  return {x, y, side};
 }
 const ROOFS=['#9a4d3a','#5a6a86','#6a8a5a','#7a6a4a','#8a5a7a'];
 // Building kinds — all share the hollow-walls/door/interior system (collision, loot, zombie
@@ -1412,66 +1428,19 @@ function cycleMapPick(){ const order=['random',...MAPS.map(x=>x.id)];
   for(let i=1;i<=order.length;i++){ const id=order[(Math.max(0,order.indexOf(meta.mapPick))+i)%order.length];
     const m=MAPS.find(x=>x.id===id); if(!m || m.free || meta.iapUnlockAll){ meta.mapPick=id; break; } }
   saveMeta(); }
+// Bare pit (brawler rewrite) — the houses/water/campfire/landmark settlement-builder is gone;
+// Anger of Stick 5's arenas are a flat fighting pit with no destructible terrain or loot houses,
+// and that's the explicit call here too (full replacement, not a simplified side-view version of
+// the old cover system). `obstacles`/`worldInteractables` stay empty arrays on purpose — every
+// consumer of them (resolveObstacles/wallRects/insideBuilding/bulletInObstacle/
+// updateWorldInteractables) already no-ops safely on an empty array, so nothing downstream needed
+// to change. Map picking still works (background palette only, no density/building effect).
 function buildDecor(){
   decor.length=0; obstacles.length=0; worldInteractables.length=0;
   const MP=currentMap(); activeMap=MP;
-  const mc=(n,k)=>Math.max(0,Math.round(n*(MP.m[k]??1)));   // map density multiplier
   timeOfDay = pick(MP.tod);
   groundSkin = MP.ground; ensureGround(groundSkin); groundKey = '';
-  // the world grows with your level: more houses (each hiding loot), more ponds and
-  // greenery, and new landmarks unlock at level milestones (see below). Counts here are tuned
-  // for the v2.36 arena bump (3000→4000, ~1.8x the area) — scaled up but not 1:1 with area, so
-  // the bigger map reads as MORE to explore rather than just diluting the old density.
-  const lvl = meta.level;
-  const nBuild = Math.max(5, mc(Math.min(13 + Math.floor(lvl/4), 22),'build'));
-  const nWater = Math.min(mc(Math.min(9 + Math.floor(lvl/8), 13),'water'), 17);
-  const xtra   = Math.min(lvl, 20);                 // generic density bonus
-  for(let i=0;i<112;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
-  for(let i=0;i<nWater;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
-  // buildings (cover) — kept apart and away from the very centre
-  for(let i=0;i<nBuild;i++){ let b, ok=false, tries=0;
-    do{ const w=rand(110,210), h=rand(90,170);
-      // pick a look: wide footprints lean barn; otherwise a shop/cabin/house mix
-      const kind = w>BIG_HOUSE ? (Math.random()<0.6?'barn':pick(['shop','house']))
-                               : pick(['house','house','shop','cabin']);
-      b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, kind, roof:pick(BKINDS[kind].roof)}; ok=true;
-      if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
-      // GAP: wide, even spacing between buildings so they read as a tidy settlement, not a clump
-      for(const o of obstacles) if(b.x<o.x+o.w+90 && b.x+b.w+90>o.x && b.y<o.y+o.h+90 && b.y+b.h+90>o.y) ok=false;
-      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+60, ph=wd.s*0.64+60;   // keep houses well clear of ponds
-        if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
-      tries++; } while(!ok && tries<40);
-    if(ok){ obstacles.push(b); decor.push(b); } }
-  // Building doors start shuttered, then can be shot open to create an entry route.
-  for(const o of obstacles.filter(o=>o.type==='building')){
-    const door={type:'door', x:o.x+o.w/2-DOOR_HALF, y:o.y+o.h-WALL_T-2, w:DOOR_HALF*2, h:WALL_T+4, hp:70, maxhp:70, building:o};
-    obstacles.push(door); decor.push(door);
-  }
-  for(let i=0;i<mc(36+Math.floor(xtra*0.9),'tree');i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
-  for(let i=0;i<mc(46+Math.floor(xtra*1.3),'bush');i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
-  for(let i=0;i<mc(92+Math.floor(xtra*2.6),'grass');i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
-  for(let i=0;i<mc(36+Math.floor(xtra*1.3),'flower');i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
-  for(let i=0;i<mc(20+Math.floor(xtra*0.7),'rock');i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
-  for(let i=0;i<8+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
-  for(let i=0;i<8+Math.floor(xtra*0.35);i++){ const p=decorSpot(70); decor.push({type:'cache', x:p.x, y:p.y, s:rand(0.88,1.16), open:Math.random()<0.28}); }
-  for(let i=0;i<5+Math.floor(xtra*0.22);i++){ const p=decorSpot(80); decor.push({type:'barrel', x:p.x, y:p.y, s:rand(0.86,1.18), hot:Math.random()<0.36, fuel:true}); }
-  for(let i=0;i<3+Math.floor(lvl/10);i++){ const p=decorSpot(95); decor.push({type:'antenna', x:p.x, y:p.y, s:rand(0.9,1.15), blink:rand(0,TAU)}); }
-  for(let i=0;i<2+Math.floor(lvl/12);i++){ const p=decorSpot(105); decor.push({type:'medtent', x:p.x, y:p.y, s:rand(0.9,1.12), flip:Math.random()<0.5}); }
-  // Destructible cover: solid in the world, readable at phone scale, and cheap to simulate.
-  for(let i=0;i<5+Math.floor(xtra*0.25);i++){
-    const p=decorSpot(80), horiz=Math.random()<0.5;
-    const b={type:'barricade', x:p.x-34, y:p.y-11, w:horiz?68:22, h:horiz?22:68, hp:80, maxhp:80};
-    obstacles.push(b); decor.push(b);
-  }
-  // level-milestone landmarks — the map gains character as you rank up
-  if(lvl>=3)  for(let i=0;i<4;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
-  if(lvl>=6)  for(let i=0;i<7;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
-  if(lvl>=10) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
-  if(lvl>=15||MP.landmarks) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
-  if(lvl>=20||MP.landmarks) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
-  decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
-  campfires = decor.filter(d=>d.type==='campfire');
-  barrels = decor.filter(d=>d.type==='barrel');   // cache for the heal-aura check
+  campfires = []; barrels = [];
 }
 // Additive map escalation (Horde only) — called on boss waves from the wave-clear block. NEVER
 // clears or repositions existing decor/obstacles (that would strand zombies/the player inside
@@ -1480,23 +1449,9 @@ function buildDecor(){
 // against every living human (buildDecor doesn't need that — it runs before anyone spawns).
 // Safe to call mid-match: it's only ever invoked at the "wave cleared" point, where the horde
 // loop has already confirmed zero zombies are alive, so there's nothing else to avoid placing on.
-function escalateMap(){
-  if(mapEscalations>=MAP_ESCALATE_MAX) return;
-  let added=0;
-  for(let i=0;i<MAP_ESCALATE_PER;i++){ let b, ok=false, tries=0;
-    do{ const w=rand(110,210), h=rand(90,170);
-      const kind = w>BIG_HOUSE ? (Math.random()<0.6?'barn':pick(['shop','house'])) : pick(['house','house','shop','cabin']);
-      b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, kind, roof:pick(BKINDS[kind].roof)}; ok=true;
-      if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
-      for(const o of obstacles) if(b.x<o.x+o.w+90 && b.x+b.w+90>o.x && b.y<o.y+o.h+90 && b.y+b.h+90>o.y) ok=false;
-      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+60, ph=wd.s*0.64+60;
-        if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
-      for(const h of humans){ if(!h.alive) continue;   // never drop a wall on a living player
-        if(h.x>b.x-70 && h.x<b.x+b.w+70 && h.y>b.y-70 && h.y<b.y+b.h+70){ ok=false; break; } }
-      tries++; } while(!ok && tries<40);
-    if(ok){ obstacles.push(b); decor.push(b); added++; } }   // drawables.sort() in draw() handles y-order — no decor re-sort needed
-  if(added){ mapEscalations++; toast('🧱 New buildings have appeared on the map'); }
-}
+// No-op in the bare pit (see buildDecor) — there's no building system left to escalate. Kept as
+// a function (not deleted) since hordeSpawnWave() still calls it on every boss wave.
+function escalateMap(){}
 // Buildings are hollow — 4 solid walls with a door gap at the bottom-centre, so entities
 // can walk inside through the door and bullets fly through the doorway but not the walls.
 const WALL_T = 9, DOOR_HALF = 21;   // gap 42px: humans (r15) fit easily, brutes (r20) barely
@@ -1551,8 +1506,8 @@ function bulletInObstacle(b){
 function newBot(team, namePool, i){
   const av=pick(AVATARS);
   const b=makeHuman(false, av, pick(WEAPONS), namePool? namePool[i%namePool.length] : av.name);
-  b.team=team; let s=farSpawn(ARENA*0.16), tries=0;   // don't drop a bot on top of the player
-  while(player && dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10){ s=farSpawn(ARENA*0.16); tries++; }
+  b.team=team; let s=farSpawn(Math.min(ARENA_W,ARENA_H)*0.16), tries=0;   // don't drop a bot on top of the player
+  while(player && dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10){ s=farSpawn(Math.min(ARENA_W,ARENA_H)*0.16); tries++; }
   b.x=s.x; b.y=s.y; b.aim=rand(0,TAU);
   return b;
 }
@@ -1567,23 +1522,23 @@ function menuScene(){
   zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
   if(!decor.length) buildDecor();                        // first boot: give the menu real scenery
   menuAmbient=true;
-  const cx=(player&&player.x)||ARENA/2, cy=(player&&player.y)||ARENA/2;
+  const cx=(player&&player.x)||ARENA_W/2, cy=(player&&player.y)||ARENA_H/2;
   for(let i=0;i<14;i++){
     const kind=pick(['normal','normal','normal','normal','runner','runner','brute']);
     const dir=Math.random()<0.5?-1:1;
-    const z=makeZombie(clamp(cx+rand(-520,520),R,ARENA-R), clamp(cy+rand(-620,620),R,ARENA-R), kind);
+    const z=makeZombie(clamp(cx+rand(-520,520),R,ARENA_W-R), clamp(cy+rand(-620,620),R,ARENA_H-R), kind);
     z.amb={dir}; z.faceX=dir; z.vx=dir*z.speed*0.85; z.vy=rand(-8,8); z.walk=rand(0,TAU);
     zombies.push(z);
   }
 }
 function menuSceneUpdate(dt){
   if(!menuAmbient) return;
-  const cx=(player&&player.x)||ARENA/2;
+  const cx=(player&&player.x)||ARENA_W/2;
   for(const z of zombies){ if(!z.amb) continue;
     z.x+=z.vx*dt; z.y+=z.vy*dt; z.walk+=dt*6;
     if((z.amb.dir>0 && z.x>cx+560) || (z.amb.dir<0 && z.x<cx-560)){   // crossed the view → wrap
       z.amb.dir*=-1; z.faceX=z.amb.dir; z.vx=z.amb.dir*z.speed*0.85;
-      z.y=clamp(((player&&player.y)||ARENA/2)+rand(-620,620),R,ARENA-R); }
+      z.y=clamp(((player&&player.y)||ARENA_H/2)+rand(-620,620),R,ARENA_H-R); }
   }
 }
 function spawnMatch(){
@@ -1602,7 +1557,7 @@ function spawnMatch(){
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
-  player.team=0; player.gpIndex=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
+  player.team=0; player.gpIndex=0; player.x=ARENA_W/2; player.y=ARENA_H/2;   // bare pit: always center, no cover to spawn clear of
   player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null;
   player.scrap=0; player.buildSel=-1; player.placeCd=0;   // builder state (start with mode off)
   player.magMul=magMulMeta(); player.mag=magCap(player);  // Extended Magazines upgrade → wider mag, start full
@@ -1620,13 +1575,9 @@ function spawnMatch(){
       el('statMut').textContent = activeMutator.icon+' '+activeMutator.name;
       el('mutRow').classList.remove('is-hidden');
     } else { el('mutRow').classList.add('is-hidden'); if(activeMap) toast(activeMap.icon+' '+activeMap.name); }
-    // two 2-story watchtowers to climb and shoot down from (Horde only)
-    for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
-      while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
-      const tw={type:'tower', tower:true, x:clamp(sp.x-TOWER_W/2,120,ARENA-120-TOWER_W), y:clamp(sp.y-TOWER_H/2,120,ARENA-120-TOWER_H),
-        w:TOWER_W, h:TOWER_H, roof:'#6b7178', scanT:0, scanCd:0};
-      obstacles.push(tw); decor.push(tw); }
-    const n=Math.round(10*(activeMutator?.zMul||1)); for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
+    // bare pit (brawler rewrite): no climbable watchtowers — the first wave walks in from both
+    // edges of the stage instead of spawning at a fixed distance in a random direction.
+    const n=Math.round(10*(activeMutator?.zMul||1)); for(let i=0;i<n;i++){ const s=edgeSpawn(); zombies.push(makeZombie(s.x,s.y)); }
   } else if(gameMode==='squad'){
     fieldSize=16;
     const allyNames=['Buddy','Scout','Doc','Tank'];
@@ -1994,7 +1945,7 @@ function buildGhost(h){                              // snapped centre in front 
 }
 function canPlace(def, cx, cy){
   const x=cx-def.w/2, y=cy-def.h/2, w=def.w, hh=def.h;
-  if(x<48||y<48||x+w>ARENA-48||y+hh>ARENA-48) return false;
+  if(x<48||y<48||x+w>ARENA_W-48||y+hh>ARENA_H-48) return false;
   for(const o of obstacles){ if(x<o.x+o.w && x+w>o.x && y<o.y+o.h && y+hh>o.y) return false; }
   for(const b of builds){ if(x<b.x+b.w && x+w>b.x && y<b.y+b.h && y+hh>b.y) return false; }
   if(blockedSpawn(cx,cy)) return false;             // keep off ponds (obstacles already covered above)
@@ -2592,7 +2543,7 @@ function updateZombie(z,dt){
     else if(zfam==='normal' && Math.random()<dt*4)
       spark(z.x+rand(-6,6), z.y+15, 'rgba(140,118,80,.5)', rand(6,20), rand(-Math.PI*0.85,-Math.PI*0.15), rand(.3,.5));
   }
-  z.x=clamp(z.x+z.vx*dt,R,ARENA-R); z.y=clamp(z.y+z.vy*dt,R,ARENA-R);
+  z.x=clamp(z.x+z.vx*dt,R,ARENA_W-R); z.y=clamp(z.y+z.vy*dt,R,ARENA_H-R);
   resolveObstacles(z);
 }
 
@@ -2744,8 +2695,8 @@ function tryJoinPlayer2(pads){
   if(!pads || !pads[1]) return;
   player2 = makeHuman(true, AVATARS[(meta.avatar+1)%AVATARS.length], WEAPONS[meta.weapon], 'Player 2');
   player2.isPlayer2 = true; player2.gpIndex = 1; player2.team = 0;
-  player2.x = clamp(player.x + rand(-70,-40), R, ARENA-R);
-  player2.y = clamp(player.y + rand(-30,30), R, ARENA-R);
+  player2.x = clamp(player.x + rand(-70,-40), R, ARENA_W-R);
+  player2.y = clamp(player.y + rand(-30,30), R, ARENA_H-R);
   player2.lightCd=0; player2.bombCd=0; player2.grapCd=0; player2.grap=null;
   player2.scrap=0; player2.buildSel=-1; player2.placeCd=0;
   player2.magMul=1; player2.mag=magCap(player2);
@@ -2940,7 +2891,7 @@ function updateGamepadMenuNav(gp){
   else if(gp.back && closeId){ audioInit(); el(closeId).click(); }
 }
 function integrate(h,dt){
-  h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
+  h.x=clamp(h.x+h.vx*dt,R,ARENA_W-R); h.y=clamp(h.y+h.vy*dt,R,ARENA_H-R);
   if(h.onTower) clampToRoof(h); else resolveObstacles(h);   // roof campers move on the platform, not the ground
   if(h.fireCd>0) h.fireCd-=dt; if(h.hitFlash>0) h.hitFlash-=dt;
   if(h.muzzleT>0) h.muzzleT-=dt; if(h.recoil>0) h.recoil-=dt*7;
@@ -3021,7 +2972,7 @@ function updateBullets(dt){
         h.vx+=b.vx*0.04; h.vy+=b.vy*0.04;
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
-    const oob = b.x<0||b.y<0||b.x>ARENA||b.y>ARENA;
+    const oob = b.x<0||b.y<0||b.x>ARENA_W||b.y>ARENA_H;
     if(gone||b.life<=0||oob){
       if(b.boom && !oob) explode(b);   // rockets detonate on impact / at max range (not off-map)
       bullets.splice(i,1); }
@@ -3054,14 +3005,14 @@ function updatePickups(dt){
   // trickle new items inside the safe zone (avoid water/buildings)
   if(pickups.length<9 && Math.random()<dt*0.45){
     for(let tries=0;tries<8;tries++){ const a=rand(0,TAU), rr=Math.sqrt(Math.random())*zone.r*0.85;
-      const px=clamp(zone.cx+Math.cos(a)*rr,120,ARENA-120), py=clamp(zone.cy+Math.sin(a)*rr,120,ARENA-120);
+      const px=clamp(zone.cx+Math.cos(a)*rr,120,ARENA_W-120), py=clamp(zone.cy+Math.sin(a)*rr,120,ARENA_H-120);
       if(!blockedSpawn(px,py)){ pickups.push(makePickup(px,py)); break; } } }
   // supply drops
   nextDrop-=dt;
   if(nextDrop<=0 && drops.length<2){ nextDrop=rand(24,36);
     let tx=zone.cx, ty=zone.cy;
     for(let tries=0;tries<8;tries++){ const a=rand(0,TAU), rr=Math.sqrt(Math.random())*zone.r*0.6;
-      tx=clamp(zone.cx+Math.cos(a)*rr,150,ARENA-150); ty=clamp(zone.cy+Math.sin(a)*rr,150,ARENA-150);
+      tx=clamp(zone.cx+Math.cos(a)*rr,150,ARENA_W-150); ty=clamp(zone.cy+Math.sin(a)*rr,150,ARENA_H-150);
       if(!blockedSpawn(tx,ty)) break; }
     drops.push({x:tx, y:ty-520, tx, ty, landed:false, lt:0}); if(player&&player.alive) toast('📦 SUPPLY DROP INCOMING'); }
   for(let i=drops.length-1;i>=0;i--){ const d=drops[i];
@@ -3236,7 +3187,7 @@ function hordeUpdate(dt){
       for(const z of zombies){ if(!z.alive) continue;
         if(dist2(z.x,z.y,player.x,player.y) > 700*700){             // only relocate the far, stranded ones
           const a=rand(0,TAU), rr=rand(320,460);
-          z.x=clamp(player.x+Math.cos(a)*rr, R, ARENA-R); z.y=clamp(player.y+Math.sin(a)*rr, R, ARENA-R); z.vx=z.vy=0; } } }
+          z.x=clamp(player.x+Math.cos(a)*rr, R, ARENA_W-R); z.y=clamp(player.y+Math.sin(a)*rr, R, ARENA_H-R); z.vx=z.vy=0; } } }
   } else hordeStallT=0;
   hordeLastAlive=aliveZ;
   if(aliveZ>0) return;                                              // wave not cleared → keep fighting
@@ -3253,12 +3204,12 @@ function hordeSpawnWave(boss){
   toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave+' — CLEARED, next wave!'); sfx('warn');
   const zMul=activeMutator?.zMul||1;
   const n=Math.min((8+hordeWave*3)*zMul, 42*zMul);                 // steeper ramp so it doesn't stay trivial
-  for(let i=0;i<n;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
-    while(dist2(s.x,s.y,player.x,player.y)<500*500 && tries<10);
+  // bare pit: every wave walks in from the stage's left/right edges (see arena.js edgeSpawn),
+  // not a random point "far from center" — that was the old open-arena BR/Squad model.
+  for(let i=0;i<n;i++){ const s=edgeSpawn();
     const z=makeZombie(s.x,s.y,hordeKind(hordeWave)); hordeScale(z,hordeWave); zombies.push(z); }
   if(boss){ const nb=1+Math.floor(hordeWave/10);                    // 1 juggernaut @w5, 2 @w10-15, 3 @w20…
-    for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
-      while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
+    for(let i=0;i<nb;i++){ const s=edgeSpawn();
       const bigBoss=hordeWave>=15 && Math.random()<0.35;
       const z=makeZombie(s.x,s.y,bigBoss?'colossus':'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
   if(boss) escalateMap();   // same milestone as boss waves — the map gets meaner right when the fight does
@@ -3358,7 +3309,7 @@ function showResults(win, place){
 function draw(){
   ctx.clearRect(0,0,W,H);
   gtime = performance.now()/1000;
-  let t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA/2,y:ARENA/2});
+  let t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA_W/2,y:ARENA_H/2});
   // co-op: frame the MIDPOINT of both players instead of just player 1, so player 2 doesn't drift
   // toward the camera's edge. leashPlayer2() (called after integrate() each frame) is what
   // actually keeps them close enough for this midpoint to stay meaningful — see its comment for
@@ -3367,8 +3318,8 @@ function draw(){
     t = {x:(player.x+player2.x)/2, y:(player.y+player2.y)/2, vx:(player.vx+player2.vx)/2, vy:(player.vy+player2.vy)/2};
   // camera look-ahead: lead the view in the direction of travel so fast movement feels dynamic
   const lx=(t.vx||0)*MOVE.camLead, ly=(t.vy||0)*MOVE.camLead;
-  let tcx=clamp(t.x+lx-W/2,0,Math.max(0,ARENA-W)), tcy=clamp(t.y+ly-H/2,0,Math.max(0,ARENA-H));
-  if(ARENA<W) tcx=(ARENA-W)/2; if(ARENA<H) tcy=(ARENA-H)/2;
+  let tcx=clamp(t.x+lx-W/2,0,Math.max(0,ARENA_W-W)), tcy=clamp(t.y+ly-H/2,0,Math.max(0,ARENA_H-H));
+  if(ARENA_W<W) tcx=(ARENA_W-W)/2; if(ARENA_H<H) tcy=(ARENA_H-H)/2;
   // smooth camera follow (snap if far, e.g. on (re)spawn)
   const cd=Math.hypot(tcx-cam.x,tcy-cam.y);
   if(cd>400 || screenState!=='playing'){ cam.x=tcx; cam.y=tcy; } else { cam.x+=(tcx-cam.x)*0.16; cam.y+=(tcy-cam.y)*0.16; }
@@ -3646,7 +3597,7 @@ function drawField(){
   for(const d of decor){ if(d.type!=='patch'||!inView(d.x,d.y,d.s)) continue;
     ctx.fillStyle='rgba(40,80,30,'+d.h+')'; ctx.beginPath(); ctx.ellipse(d.x,d.y,d.s,d.s*0.7,0,0,TAU); ctx.fill(); }
   // world border (fence-ish)
-  ctx.strokeStyle='rgba(40,60,24,.8)'; ctx.lineWidth=8; ctx.strokeRect(4,4,ARENA-8,ARENA-8);
+  ctx.strokeStyle='rgba(40,60,24,.8)'; ctx.lineWidth=8; ctx.strokeRect(4,4,ARENA_W-8,ARENA_H-8);
 }
 // interior layer — y-sorted at the building's TOP edge so entities inside draw on top of the
 // floor. Also computes the facade fade (player inside or stepping through the door).
@@ -4853,7 +4804,7 @@ function drawZone(){
 const MINI_LANDMARK_COL = {campfire:'#ff8a2a', well:'#7fc8e8', statue:'#c9c2b0', graveyard:'#8f8d86',
   cache:'#d6ff6e', antenna:'#6fe6ff', medtent:'#f2f6e8', barrel:'#ff7d5c', barricade:'#b88754'};
 function drawMini(){
-  const S=132, sc=S/ARENA; mctx.clearRect(0,0,S,S);
+  const S=132, sc=S/Math.max(ARENA_W,ARENA_H); mctx.clearRect(0,0,S,S);
   mctx.fillStyle='#2c4a1e'; mctx.fillRect(0,0,S,S);
   // water ponds — drawn first so buildings/landmarks read on top
   mctx.fillStyle='rgba(80,150,190,.55)';

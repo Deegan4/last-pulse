@@ -1,4 +1,6 @@
-const ARENA = 4000;
+// Flat side-view fighting pit (brawler rewrite) — was a 4000x4000 top-down square (`ARENA`).
+// Bounded, not scrolling: a wave clears inside this box, same rhythm hordeUpdate already drives.
+const ARENA_W = 2200, ARENA_H = 640;
 const cam = {x:0,y:0};
 let screenState = 'start';   // 'start'|'avatar'|'weapon'|'playing'|'results'
 let paused = false;

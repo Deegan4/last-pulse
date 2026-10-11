@@ -135,7 +135,7 @@ function updateZombie(z,dt){
     else if(zfam==='normal' && Math.random()<dt*4)
       spark(z.x+rand(-6,6), z.y+15, 'rgba(140,118,80,.5)', rand(6,20), rand(-Math.PI*0.85,-Math.PI*0.15), rand(.3,.5));
   }
-  z.x=clamp(z.x+z.vx*dt,R,ARENA-R); z.y=clamp(z.y+z.vy*dt,R,ARENA-R);
+  z.x=clamp(z.x+z.vx*dt,R,ARENA_W-R); z.y=clamp(z.y+z.vy*dt,R,ARENA_H-R);
   resolveObstacles(z);
 }
 

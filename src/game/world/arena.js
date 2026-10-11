@@ -8,16 +8,26 @@ function blockedSpawn(x,y){
   return false;
 }
 // a decor position clear of buildings + ponds (retries; last try is accepted if all blocked)
-function decorSpot(m){ let x=rand(m,ARENA-m), y=rand(m,ARENA-m);
-  for(let t=0; t<16 && blockedSpawn(x,y); t++){ x=rand(m,ARENA-m); y=rand(m,ARENA-m); } return {x,y}; }
+function decorSpot(m){ let x=rand(m,ARENA_W-m), y=rand(m,ARENA_H-m);
+  for(let t=0; t<16 && blockedSpawn(x,y); t++){ x=rand(m,ARENA_W-m); y=rand(m,ARENA_H-m); } return {x,y}; }
 function farSpawn(minFromCenter){
-  let fx=ARENA/2, fy=ARENA/2;
+  let fx=ARENA_W/2, fy=ARENA_H/2;
   for(let i=0;i<48;i++){
-    const a=rand(0,TAU), rr=rand(minFromCenter, ARENA*0.5*0.92);
-    fx=clamp(ARENA/2+Math.cos(a)*rr,80,ARENA-80); fy=clamp(ARENA/2+Math.sin(a)*rr,80,ARENA-80);
+    const a=rand(0,TAU), rr=rand(minFromCenter, Math.min(ARENA_W,ARENA_H)*0.5*0.92);
+    fx=clamp(ARENA_W/2+Math.cos(a)*rr,80,ARENA_W-80); fy=clamp(ARENA_H/2+Math.sin(a)*rr,80,ARENA_H-80);
     if(!blockedSpawn(fx,fy)) return {x:fx,y:fy};
   }
   return {x:fx,y:fy};
+}
+// Brawler entrance spawn: just inside the pit's left/right wall at a random height, so zombies
+// visibly walk in from one side instead of popping in omnidirectionally (the old BR/Squad
+// farSpawn() model). Used by the live Horde spawn path; farSpawn() above stays for the dormant
+// BR/Squad paths so their (unreachable) code keeps parsing against the old semantics.
+function edgeSpawn(){
+  const side = Math.random()<0.5 ? -1 : 1;
+  const x = side<0 ? R+rand(0,30) : ARENA_W-R-rand(0,30);
+  const y = clamp(ARENA_H/2 + rand(-ARENA_H*0.32, ARENA_H*0.32), R, ARENA_H-R);
+  return {x, y, side};
 }
 const ROOFS=['#9a4d3a','#5a6a86','#6a8a5a','#7a6a4a','#8a5a7a'];
 // Building kinds — all share the hollow-walls/door/interior system (collision, loot, zombie
@@ -55,66 +65,19 @@ function cycleMapPick(){ const order=['random',...MAPS.map(x=>x.id)];
   for(let i=1;i<=order.length;i++){ const id=order[(Math.max(0,order.indexOf(meta.mapPick))+i)%order.length];
     const m=MAPS.find(x=>x.id===id); if(!m || m.free || meta.iapUnlockAll){ meta.mapPick=id; break; } }
   saveMeta(); }
+// Bare pit (brawler rewrite) — the houses/water/campfire/landmark settlement-builder is gone;
+// Anger of Stick 5's arenas are a flat fighting pit with no destructible terrain or loot houses,
+// and that's the explicit call here too (full replacement, not a simplified side-view version of
+// the old cover system). `obstacles`/`worldInteractables` stay empty arrays on purpose — every
+// consumer of them (resolveObstacles/wallRects/insideBuilding/bulletInObstacle/
+// updateWorldInteractables) already no-ops safely on an empty array, so nothing downstream needed
+// to change. Map picking still works (background palette only, no density/building effect).
 function buildDecor(){
   decor.length=0; obstacles.length=0; worldInteractables.length=0;
   const MP=currentMap(); activeMap=MP;
-  const mc=(n,k)=>Math.max(0,Math.round(n*(MP.m[k]??1)));   // map density multiplier
   timeOfDay = pick(MP.tod);
   groundSkin = MP.ground; ensureGround(groundSkin); groundKey = '';
-  // the world grows with your level: more houses (each hiding loot), more ponds and
-  // greenery, and new landmarks unlock at level milestones (see below). Counts here are tuned
-  // for the v2.36 arena bump (3000→4000, ~1.8x the area) — scaled up but not 1:1 with area, so
-  // the bigger map reads as MORE to explore rather than just diluting the old density.
-  const lvl = meta.level;
-  const nBuild = Math.max(5, mc(Math.min(13 + Math.floor(lvl/4), 22),'build'));
-  const nWater = Math.min(mc(Math.min(9 + Math.floor(lvl/8), 13),'water'), 17);
-  const xtra   = Math.min(lvl, 20);                 // generic density bonus
-  for(let i=0;i<112;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
-  for(let i=0;i<nWater;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
-  // buildings (cover) — kept apart and away from the very centre
-  for(let i=0;i<nBuild;i++){ let b, ok=false, tries=0;
-    do{ const w=rand(110,210), h=rand(90,170);
-      // pick a look: wide footprints lean barn; otherwise a shop/cabin/house mix
-      const kind = w>BIG_HOUSE ? (Math.random()<0.6?'barn':pick(['shop','house']))
-                               : pick(['house','house','shop','cabin']);
-      b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, kind, roof:pick(BKINDS[kind].roof)}; ok=true;
-      if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
-      // GAP: wide, even spacing between buildings so they read as a tidy settlement, not a clump
-      for(const o of obstacles) if(b.x<o.x+o.w+90 && b.x+b.w+90>o.x && b.y<o.y+o.h+90 && b.y+b.h+90>o.y) ok=false;
-      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+60, ph=wd.s*0.64+60;   // keep houses well clear of ponds
-        if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
-      tries++; } while(!ok && tries<40);
-    if(ok){ obstacles.push(b); decor.push(b); } }
-  // Building doors start shuttered, then can be shot open to create an entry route.
-  for(const o of obstacles.filter(o=>o.type==='building')){
-    const door={type:'door', x:o.x+o.w/2-DOOR_HALF, y:o.y+o.h-WALL_T-2, w:DOOR_HALF*2, h:WALL_T+4, hp:70, maxhp:70, building:o};
-    obstacles.push(door); decor.push(door);
-  }
-  for(let i=0;i<mc(36+Math.floor(xtra*0.9),'tree');i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
-  for(let i=0;i<mc(46+Math.floor(xtra*1.3),'bush');i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
-  for(let i=0;i<mc(92+Math.floor(xtra*2.6),'grass');i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
-  for(let i=0;i<mc(36+Math.floor(xtra*1.3),'flower');i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
-  for(let i=0;i<mc(20+Math.floor(xtra*0.7),'rock');i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
-  for(let i=0;i<8+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
-  for(let i=0;i<8+Math.floor(xtra*0.35);i++){ const p=decorSpot(70); decor.push({type:'cache', x:p.x, y:p.y, s:rand(0.88,1.16), open:Math.random()<0.28}); }
-  for(let i=0;i<5+Math.floor(xtra*0.22);i++){ const p=decorSpot(80); decor.push({type:'barrel', x:p.x, y:p.y, s:rand(0.86,1.18), hot:Math.random()<0.36, fuel:true}); }
-  for(let i=0;i<3+Math.floor(lvl/10);i++){ const p=decorSpot(95); decor.push({type:'antenna', x:p.x, y:p.y, s:rand(0.9,1.15), blink:rand(0,TAU)}); }
-  for(let i=0;i<2+Math.floor(lvl/12);i++){ const p=decorSpot(105); decor.push({type:'medtent', x:p.x, y:p.y, s:rand(0.9,1.12), flip:Math.random()<0.5}); }
-  // Destructible cover: solid in the world, readable at phone scale, and cheap to simulate.
-  for(let i=0;i<5+Math.floor(xtra*0.25);i++){
-    const p=decorSpot(80), horiz=Math.random()<0.5;
-    const b={type:'barricade', x:p.x-34, y:p.y-11, w:horiz?68:22, h:horiz?22:68, hp:80, maxhp:80};
-    obstacles.push(b); decor.push(b);
-  }
-  // level-milestone landmarks — the map gains character as you rank up
-  if(lvl>=3)  for(let i=0;i<4;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
-  if(lvl>=6)  for(let i=0;i<7;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
-  if(lvl>=10) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
-  if(lvl>=15||MP.landmarks) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
-  if(lvl>=20||MP.landmarks) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
-  decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
-  campfires = decor.filter(d=>d.type==='campfire');
-  barrels = decor.filter(d=>d.type==='barrel');   // cache for the heal-aura check
+  campfires = []; barrels = [];
 }
 // Additive map escalation (Horde only) — called on boss waves from the wave-clear block. NEVER
 // clears or repositions existing decor/obstacles (that would strand zombies/the player inside
@@ -123,23 +86,9 @@ function buildDecor(){
 // against every living human (buildDecor doesn't need that — it runs before anyone spawns).
 // Safe to call mid-match: it's only ever invoked at the "wave cleared" point, where the horde
 // loop has already confirmed zero zombies are alive, so there's nothing else to avoid placing on.
-function escalateMap(){
-  if(mapEscalations>=MAP_ESCALATE_MAX) return;
-  let added=0;
-  for(let i=0;i<MAP_ESCALATE_PER;i++){ let b, ok=false, tries=0;
-    do{ const w=rand(110,210), h=rand(90,170);
-      const kind = w>BIG_HOUSE ? (Math.random()<0.6?'barn':pick(['shop','house'])) : pick(['house','house','shop','cabin']);
-      b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, kind, roof:pick(BKINDS[kind].roof)}; ok=true;
-      if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
-      for(const o of obstacles) if(b.x<o.x+o.w+90 && b.x+b.w+90>o.x && b.y<o.y+o.h+90 && b.y+b.h+90>o.y) ok=false;
-      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+60, ph=wd.s*0.64+60;
-        if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
-      for(const h of humans){ if(!h.alive) continue;   // never drop a wall on a living player
-        if(h.x>b.x-70 && h.x<b.x+b.w+70 && h.y>b.y-70 && h.y<b.y+b.h+70){ ok=false; break; } }
-      tries++; } while(!ok && tries<40);
-    if(ok){ obstacles.push(b); decor.push(b); added++; } }   // drawables.sort() in draw() handles y-order — no decor re-sort needed
-  if(added){ mapEscalations++; toast('🧱 New buildings have appeared on the map'); }
-}
+// No-op in the bare pit (see buildDecor) — there's no building system left to escalate. Kept as
+// a function (not deleted) since hordeSpawnWave() still calls it on every boss wave.
+function escalateMap(){}
 // Buildings are hollow — 4 solid walls with a door gap at the bottom-centre, so entities
 // can walk inside through the door and bullets fly through the doorway but not the walls.
 const WALL_T = 9, DOOR_HALF = 21;   // gap 42px: humans (r15) fit easily, brutes (r20) barely
@@ -194,8 +143,8 @@ function bulletInObstacle(b){
 function newBot(team, namePool, i){
   const av=pick(AVATARS);
   const b=makeHuman(false, av, pick(WEAPONS), namePool? namePool[i%namePool.length] : av.name);
-  b.team=team; let s=farSpawn(ARENA*0.16), tries=0;   // don't drop a bot on top of the player
-  while(player && dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10){ s=farSpawn(ARENA*0.16); tries++; }
+  b.team=team; let s=farSpawn(Math.min(ARENA_W,ARENA_H)*0.16), tries=0;   // don't drop a bot on top of the player
+  while(player && dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10){ s=farSpawn(Math.min(ARENA_W,ARENA_H)*0.16); tries++; }
   b.x=s.x; b.y=s.y; b.aim=rand(0,TAU);
   return b;
 }

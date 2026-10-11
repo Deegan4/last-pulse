@@ -63,7 +63,7 @@ function hordeUpdate(dt){
       for(const z of zombies){ if(!z.alive) continue;
         if(dist2(z.x,z.y,player.x,player.y) > 700*700){             // only relocate the far, stranded ones
           const a=rand(0,TAU), rr=rand(320,460);
-          z.x=clamp(player.x+Math.cos(a)*rr, R, ARENA-R); z.y=clamp(player.y+Math.sin(a)*rr, R, ARENA-R); z.vx=z.vy=0; } } }
+          z.x=clamp(player.x+Math.cos(a)*rr, R, ARENA_W-R); z.y=clamp(player.y+Math.sin(a)*rr, R, ARENA_H-R); z.vx=z.vy=0; } } }
   } else hordeStallT=0;
   hordeLastAlive=aliveZ;
   if(aliveZ>0) return;                                              // wave not cleared → keep fighting
@@ -80,12 +80,12 @@ function hordeSpawnWave(boss){
   toast(boss ? '☠ WAVE '+hordeWave+' · ELITES INCOMING' : 'WAVE '+hordeWave+' — CLEARED, next wave!'); sfx('warn');
   const zMul=activeMutator?.zMul||1;
   const n=Math.min((8+hordeWave*3)*zMul, 42*zMul);                 // steeper ramp so it doesn't stay trivial
-  for(let i=0;i<n;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.12); tries++; }
-    while(dist2(s.x,s.y,player.x,player.y)<500*500 && tries<10);
+  // bare pit: every wave walks in from the stage's left/right edges (see arena.js edgeSpawn),
+  // not a random point "far from center" — that was the old open-arena BR/Squad model.
+  for(let i=0;i<n;i++){ const s=edgeSpawn();
     const z=makeZombie(s.x,s.y,hordeKind(hordeWave)); hordeScale(z,hordeWave); zombies.push(z); }
   if(boss){ const nb=1+Math.floor(hordeWave/10);                    // 1 juggernaut @w5, 2 @w10-15, 3 @w20…
-    for(let i=0;i<nb;i++){ let s,tries=0; do{ s=farSpawn(ARENA*0.14); tries++; }
-      while(dist2(s.x,s.y,player.x,player.y)<560*560 && tries<10);
+    for(let i=0;i<nb;i++){ const s=edgeSpawn();
       const bigBoss=hordeWave>=15 && Math.random()<0.35;
       const z=makeZombie(s.x,s.y,bigBoss?'colossus':'juggernaut'); hordeScale(z,hordeWave); zombies.push(z); } }
   if(boss) escalateMap();   // same milestone as boss waves — the map gets meaner right when the fight does

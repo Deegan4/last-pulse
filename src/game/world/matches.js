@@ -8,23 +8,23 @@ function menuScene(){
   zombies.length=0; bullets.length=0; bombs.length=0; zaps.length=0;
   if(!decor.length) buildDecor();                        // first boot: give the menu real scenery
   menuAmbient=true;
-  const cx=(player&&player.x)||ARENA/2, cy=(player&&player.y)||ARENA/2;
+  const cx=(player&&player.x)||ARENA_W/2, cy=(player&&player.y)||ARENA_H/2;
   for(let i=0;i<14;i++){
     const kind=pick(['normal','normal','normal','normal','runner','runner','brute']);
     const dir=Math.random()<0.5?-1:1;
-    const z=makeZombie(clamp(cx+rand(-520,520),R,ARENA-R), clamp(cy+rand(-620,620),R,ARENA-R), kind);
+    const z=makeZombie(clamp(cx+rand(-520,520),R,ARENA_W-R), clamp(cy+rand(-620,620),R,ARENA_H-R), kind);
     z.amb={dir}; z.faceX=dir; z.vx=dir*z.speed*0.85; z.vy=rand(-8,8); z.walk=rand(0,TAU);
     zombies.push(z);
   }
 }
 function menuSceneUpdate(dt){
   if(!menuAmbient) return;
-  const cx=(player&&player.x)||ARENA/2;
+  const cx=(player&&player.x)||ARENA_W/2;
   for(const z of zombies){ if(!z.amb) continue;
     z.x+=z.vx*dt; z.y+=z.vy*dt; z.walk+=dt*6;
     if((z.amb.dir>0 && z.x>cx+560) || (z.amb.dir<0 && z.x<cx-560)){   // crossed the view → wrap
       z.amb.dir*=-1; z.faceX=z.amb.dir; z.vx=z.amb.dir*z.speed*0.85;
-      z.y=clamp(((player&&player.y)||ARENA/2)+rand(-620,620),R,ARENA-R); }
+      z.y=clamp(((player&&player.y)||ARENA_H/2)+rand(-620,620),R,ARENA_H-R); }
   }
 }
 function spawnMatch(){
@@ -43,7 +43,7 @@ function spawnMatch(){
   for(const o of obstacles) pickups.push(makePickup(o.x+o.w/2+rand(-12,12), o.y+o.h*0.55));
   // player
   player = makeHuman(true, AVATARS[meta.avatar], WEAPONS[meta.weapon], meta.name||'deegan');
-  player.team=0; player.gpIndex=0; const p=farSpawn(ARENA*0.18); player.x=p.x; player.y=p.y;
+  player.team=0; player.gpIndex=0; player.x=ARENA_W/2; player.y=ARENA_H/2;   // bare pit: always center, no cover to spawn clear of
   player.lightCd=0; player.bombCd=0; player.grapCd=0; player.grap=null;
   player.scrap=0; player.buildSel=-1; player.placeCd=0;   // builder state (start with mode off)
   player.magMul=magMulMeta(); player.mag=magCap(player);  // Extended Magazines upgrade → wider mag, start full
@@ -61,13 +61,9 @@ function spawnMatch(){
       el('statMut').textContent = activeMutator.icon+' '+activeMutator.name;
       el('mutRow').classList.remove('is-hidden');
     } else { el('mutRow').classList.add('is-hidden'); if(activeMap) toast(activeMap.icon+' '+activeMap.name); }
-    // two 2-story watchtowers to climb and shoot down from (Horde only)
-    for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
-      while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
-      const tw={type:'tower', tower:true, x:clamp(sp.x-TOWER_W/2,120,ARENA-120-TOWER_W), y:clamp(sp.y-TOWER_H/2,120,ARENA-120-TOWER_H),
-        w:TOWER_W, h:TOWER_H, roof:'#6b7178', scanT:0, scanCd:0};
-      obstacles.push(tw); decor.push(tw); }
-    const n=Math.round(10*(activeMutator?.zMul||1)); for(let i=0;i<n;i++){ const s=farSpawn(ARENA*0.18); zombies.push(makeZombie(s.x,s.y)); }
+    // bare pit (brawler rewrite): no climbable watchtowers — the first wave walks in from both
+    // edges of the stage instead of spawning at a fixed distance in a random direction.
+    const n=Math.round(10*(activeMutator?.zMul||1)); for(let i=0;i<n;i++){ const s=edgeSpawn(); zombies.push(makeZombie(s.x,s.y)); }
   } else if(gameMode==='squad'){
     fieldSize=16;
     const allyNames=['Buddy','Scout','Doc','Tank'];

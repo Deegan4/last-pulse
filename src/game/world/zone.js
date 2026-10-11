@@ -1,15 +1,19 @@
-const zone = { cx:ARENA/2, cy:ARENA/2, r:ARENA*0.6, fromCx:0,fromCy:0,fromR:0,toCx:0,toCy:0,toR:0,
+// Zone shrink/hold machinery is dormant in the brawler (zoneActive() is false for the only
+// shipped mode, 'horde') — same "kept dormant, never resurrected" treatment as BR/Squad. `zone`
+// itself still gets read every frame by updatePickups()/supply drops for a spawn-radius center,
+// so its static init values must match the new flat-pit geometry even though shrink never runs.
+const zone = { cx:ARENA_W/2, cy:ARENA_H/2, r:Math.max(ARENA_W,ARENA_H)*0.6, fromCx:0,fromCy:0,fromR:0,toCx:0,toCy:0,toR:0,
   phase:0, state:'hold', t:0, dur:0, dmg:1.5 };
 const PHASES = [
-  { hold:40, shrink:14, r:ARENA*0.40, dmg:2 },
-  { hold:30, shrink:12, r:ARENA*0.26, dmg:3 },
-  { hold:24, shrink:11, r:ARENA*0.15, dmg:5 },
-  { hold:20, shrink:10, r:ARENA*0.08, dmg:7 },
-  { hold:16, shrink:9,  r:ARENA*0.03, dmg:10 },
+  { hold:40, shrink:14, r:ARENA_W*0.40, dmg:2 },
+  { hold:30, shrink:12, r:ARENA_W*0.26, dmg:3 },
+  { hold:24, shrink:11, r:ARENA_W*0.15, dmg:5 },
+  { hold:20, shrink:10, r:ARENA_W*0.08, dmg:7 },
+  { hold:16, shrink:9,  r:ARENA_W*0.03, dmg:10 },
   { hold:14, shrink:8,  r:0,          dmg:16 },
 ];
 function zoneReset(){
-  zone.cx=ARENA/2; zone.cy=ARENA/2; zone.r=ARENA*0.6;
+  zone.cx=ARENA_W/2; zone.cy=ARENA_H/2; zone.r=Math.max(ARENA_W,ARENA_H)*0.6;
   zone.phase=0; zone.state='hold'; zone.t=0; zone.dur=PHASES[0].hold; zone.dmg=PHASES[0].dmg;
 }
 function zoneUpdate(dt){
@@ -19,8 +23,8 @@ function zoneUpdate(dt){
       const ph=PHASES[zone.phase], maxOff=Math.max(0,zone.r-ph.r);
       const a=rand(0,TAU), off=Math.sqrt(Math.random())*maxOff;
       zone.fromCx=zone.cx; zone.fromCy=zone.cy; zone.fromR=zone.r;
-      zone.toCx=clamp(zone.cx+Math.cos(a)*off, ph.r, ARENA-ph.r);
-      zone.toCy=clamp(zone.cy+Math.sin(a)*off, ph.r, ARENA-ph.r);
+      zone.toCx=clamp(zone.cx+Math.cos(a)*off, ph.r, ARENA_W-ph.r);
+      zone.toCy=clamp(zone.cy+Math.sin(a)*off, ph.r, ARENA_H-ph.r);
       zone.toR=ph.r; zone.state='shrink'; zone.t=0; zone.dur=ph.shrink; zone.dmg=ph.dmg;
       zoneWarn=2.8; sfx('warn');
     }

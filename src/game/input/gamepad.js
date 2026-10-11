@@ -35,8 +35,8 @@ function tryJoinPlayer2(pads){
   if(!pads || !pads[1]) return;
   player2 = makeHuman(true, AVATARS[(meta.avatar+1)%AVATARS.length], WEAPONS[meta.weapon], 'Player 2');
   player2.isPlayer2 = true; player2.gpIndex = 1; player2.team = 0;
-  player2.x = clamp(player.x + rand(-70,-40), R, ARENA-R);
-  player2.y = clamp(player.y + rand(-30,30), R, ARENA-R);
+  player2.x = clamp(player.x + rand(-70,-40), R, ARENA_W-R);
+  player2.y = clamp(player.y + rand(-30,30), R, ARENA_H-R);
   player2.lightCd=0; player2.bombCd=0; player2.grapCd=0; player2.grap=null;
   player2.scrap=0; player2.buildSel=-1; player2.placeCd=0;
   player2.magMul=1; player2.mag=magCap(player2);
@@ -231,7 +231,7 @@ function updateGamepadMenuNav(gp){
   else if(gp.back && closeId){ audioInit(); el(closeId).click(); }
 }
 function integrate(h,dt){
-  h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
+  h.x=clamp(h.x+h.vx*dt,R,ARENA_W-R); h.y=clamp(h.y+h.vy*dt,R,ARENA_H-R);
   if(h.onTower) clampToRoof(h); else resolveObstacles(h);   // roof campers move on the platform, not the ground
   if(h.fireCd>0) h.fireCd-=dt; if(h.hitFlash>0) h.hitFlash-=dt;
   if(h.muzzleT>0) h.muzzleT-=dt; if(h.recoil>0) h.recoil-=dt*7;

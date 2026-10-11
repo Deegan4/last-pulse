@@ -35,7 +35,7 @@ function drawField(){
   for(const d of decor){ if(d.type!=='patch'||!inView(d.x,d.y,d.s)) continue;
     ctx.fillStyle='rgba(40,80,30,'+d.h+')'; ctx.beginPath(); ctx.ellipse(d.x,d.y,d.s,d.s*0.7,0,0,TAU); ctx.fill(); }
   // world border (fence-ish)
-  ctx.strokeStyle='rgba(40,60,24,.8)'; ctx.lineWidth=8; ctx.strokeRect(4,4,ARENA-8,ARENA-8);
+  ctx.strokeStyle='rgba(40,60,24,.8)'; ctx.lineWidth=8; ctx.strokeRect(4,4,ARENA_W-8,ARENA_H-8);
 }
 // interior layer — y-sorted at the building's TOP edge so entities inside draw on top of the
 // floor. Also computes the facade fade (player inside or stepping through the door).

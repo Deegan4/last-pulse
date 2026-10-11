@@ -41,7 +41,7 @@ function updateBullets(dt){
         h.vx+=b.vx*0.04; h.vy+=b.vy*0.04;
         if(!b.flame) for(let k=0;k<5;k++) spark(b.x,b.y,'#fff',rand(40,160),rand(0,TAU),.3);
         b.hits++; if(!b.pierce||b.hits>(b.flame?0:2)){gone=true;} break; } }
-    const oob = b.x<0||b.y<0||b.x>ARENA||b.y>ARENA;
+    const oob = b.x<0||b.y<0||b.x>ARENA_W||b.y>ARENA_H;
     if(gone||b.life<=0||oob){
       if(b.boom && !oob) explode(b);   // rockets detonate on impact / at max range (not off-map)
       bullets.splice(i,1); }
@@ -74,14 +74,14 @@ function updatePickups(dt){
   // trickle new items inside the safe zone (avoid water/buildings)
   if(pickups.length<9 && Math.random()<dt*0.45){
     for(let tries=0;tries<8;tries++){ const a=rand(0,TAU), rr=Math.sqrt(Math.random())*zone.r*0.85;
-      const px=clamp(zone.cx+Math.cos(a)*rr,120,ARENA-120), py=clamp(zone.cy+Math.sin(a)*rr,120,ARENA-120);
+      const px=clamp(zone.cx+Math.cos(a)*rr,120,ARENA_W-120), py=clamp(zone.cy+Math.sin(a)*rr,120,ARENA_H-120);
       if(!blockedSpawn(px,py)){ pickups.push(makePickup(px,py)); break; } } }
   // supply drops
   nextDrop-=dt;
   if(nextDrop<=0 && drops.length<2){ nextDrop=rand(24,36);
     let tx=zone.cx, ty=zone.cy;
     for(let tries=0;tries<8;tries++){ const a=rand(0,TAU), rr=Math.sqrt(Math.random())*zone.r*0.6;
-      tx=clamp(zone.cx+Math.cos(a)*rr,150,ARENA-150); ty=clamp(zone.cy+Math.sin(a)*rr,150,ARENA-150);
+      tx=clamp(zone.cx+Math.cos(a)*rr,150,ARENA_W-150); ty=clamp(zone.cy+Math.sin(a)*rr,150,ARENA_H-150);
       if(!blockedSpawn(tx,ty)) break; }
     drops.push({x:tx, y:ty-520, tx, ty, landed:false, lt:0}); if(player&&player.alive) toast('📦 SUPPLY DROP INCOMING'); }
   for(let i=drops.length-1;i>=0;i--){ const d=drops[i];

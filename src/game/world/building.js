@@ -18,7 +18,7 @@ function buildGhost(h){                              // snapped centre in front 
 }
 function canPlace(def, cx, cy){
   const x=cx-def.w/2, y=cy-def.h/2, w=def.w, hh=def.h;
-  if(x<48||y<48||x+w>ARENA-48||y+hh>ARENA-48) return false;
+  if(x<48||y<48||x+w>ARENA_W-48||y+hh>ARENA_H-48) return false;
   for(const o of obstacles){ if(x<o.x+o.w && x+w>o.x && y<o.y+o.h && y+hh>o.y) return false; }
   for(const b of builds){ if(x<b.x+b.w && x+w>b.x && y<b.y+b.h && y+hh>b.y) return false; }
   if(blockedSpawn(cx,cy)) return false;             // keep off ponds (obstacles already covered above)
