@@ -9,8 +9,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.76.1';
+const GAME_VERSION = '2.76.2';
 const CHANGELOG = [
+  { v:'2.76.2', items:[
+    ['🗺️','All six maps are free','Frozen Pines, Ashlands, Stone Ruins and Sunken Marsh no longer need Unlock Everything — pick any map, or let Random use all six'],
+  ]},
   { v:'2.76.1', items:[
     ['🧹','Cleaner main menu','Map and Mutator now sit side by side under Play, every section shares one width, and Achievements / Shop / Support are a tidy grid'],
   ]},

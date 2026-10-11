@@ -33,15 +33,15 @@ const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1,cache:1,antenna
 // ===== Maps =====
 // A map is a layout preset for buildDecor(): a ground texture, a time-of-day pool, and density
 // multipliers `m` (build/water/tree/bush/rock/grass/flower — missing key = 1). `landmarks` unlocks
-// statues + graveyards at any level. `free:false` maps need the "Unlock Everything" IAP (same rule
-// the old random biome grounds used) — flip `free` to change which maps free players can pick.
+// statues + graveyards at any level. `free:false` would gate a map behind the "Unlock Everything"
+// IAP (all six are free as of v2.76.2) — flip `free` per map to change which ones free players can pick.
 const MAPS = [
   {id:'meadow', icon:'🌿', name:'MEADOW',        free:true,  ground:'grass',  tod:['day','day','dusk','night'], m:{}},
   {id:'desert', icon:'🌵', name:'DUSTY OUTPOST', free:true,  ground:'desert', tod:['day','day','dusk'],         m:{water:.2,tree:.3,bush:.4,rock:2.2,grass:.5,flower:.2,build:.8}},
-  {id:'snow',   icon:'❄️', name:'FROZEN PINES',  free:false, ground:'snow',   tod:['day','night'],              m:{tree:1.6,bush:.6,water:.6,rock:1.2,flower:0,grass:.4}},
-  {id:'ash',    icon:'🌋', name:'ASHLANDS',      free:false, ground:'ash',    tod:['dusk','night'],             m:{tree:.2,bush:.2,water:0,rock:2.5,grass:.2,flower:0,build:.7}},
-  {id:'ruins',  icon:'🏛️', name:'STONE RUINS',   free:false, ground:'stone',  tod:['day','dusk'],               m:{build:1.35,tree:.5,bush:.6,rock:1.8,water:.4}, landmarks:true},
-  {id:'swamp',  icon:'🐸', name:'SUNKEN MARSH',  free:false, ground:'swamp',  tod:['dusk','night'],             m:{water:1.5,bush:1.8,tree:1.2,rock:.5,build:.8}},
+  {id:'snow',   icon:'❄️', name:'FROZEN PINES',  free:true, ground:'snow',   tod:['day','night'],              m:{tree:1.6,bush:.6,water:.6,rock:1.2,flower:0,grass:.4}},
+  {id:'ash',    icon:'🌋', name:'ASHLANDS',      free:true, ground:'ash',    tod:['dusk','night'],             m:{tree:.2,bush:.2,water:0,rock:2.5,grass:.2,flower:0,build:.7}},
+  {id:'ruins',  icon:'🏛️', name:'STONE RUINS',   free:true, ground:'stone',  tod:['day','dusk'],               m:{build:1.35,tree:.5,bush:.6,rock:1.8,water:.4}, landmarks:true},
+  {id:'swamp',  icon:'🐸', name:'SUNKEN MARSH',  free:true, ground:'swamp',  tod:['dusk','night'],             m:{water:1.5,bush:1.8,tree:1.2,rock:.5,build:.8}},
 ];
 const availableMaps = ()=> MAPS.filter(m=>m.free||meta.iapUnlockAll);
 // meta.mapPick: 'random' (any map you own) | a MAPS id. A pick you no longer own falls back to random.
