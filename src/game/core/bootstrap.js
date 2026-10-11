@@ -2,6 +2,8 @@
 el('nameInput').value = meta.name==='deegan'?'':meta.name;
 el('nameInput').placeholder = 'deegan';
 el('toModeBtn').addEventListener('click',goAvatar);   // straight to fighter select — horde is the game
+{ const mb=el('mutPickBtn'); mb.textContent=mutPickLabel();
+  mb.addEventListener('click',()=>{ cycleMutPick(); mb.textContent=mutPickLabel(); }); }
 el('fighterPortrait').addEventListener('click',goAvatar);
 el('changeAvatar').addEventListener('click',goAvatar);
 el('toWeaponBtn').addEventListener('click',()=>{ buildWeaponGrid(); screenState='weapon'; show('weaponScreen'); });

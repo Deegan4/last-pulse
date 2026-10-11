@@ -128,6 +128,18 @@ function zombieBurst(e){
     if(d2<RAD2){ const dd=e.dmg*1.7*(1-Math.sqrt(d2)/RAD); if(dd>0){ hurt(o, Math.max(8,dd), null, true); if(o.isPlayer) shake=Math.min(shake+3,15); } } }
   sfx('boom',null,e);
 }
+// VOLATILE mutator — a dying zombie pops and hurts nearby zombies (never the player/bots), which
+// can chain through a tight pack. `volDepth` caps the chain so a big clump can't recurse unbounded.
+let volDepth=0;
+function volatileBurst(e,src){
+  if(volDepth>=6) return;
+  const RAD=70, RAD2=RAD*RAD; volDepth++;
+  for(let i=0;i<8;i++) spark(e.x,e.y-4,i%2?'#ffb13d':'#ff7a2a',rand(60,200),rand(0,TAU),.5);
+  rings.push({x:e.x,y:e.y,t:0,dur:.35,r0:6,r1:RAD,col:'255,170,70',lw:3});
+  if(volDepth===1){ shake=Math.min(shake+2,10); sfx('boom',null,e); }
+  for(const z of zombies){ if(!z.alive||z===e) continue; if(dist2(e.x,e.y,z.x,z.y)<RAD2) hurt(z,35,src,false); }
+  volDepth--;
+}
 // Shaman support pulse — nearby zombies get a short movement frenzy, forcing the player to
 // decide whether to burn down the support unit or kite the sped-up pack.
 function zombieBuff(z){

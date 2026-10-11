@@ -15,6 +15,7 @@ const meta = {
   streak: parseInt(safeGet('dd2_streak','0'),10) || 0,
   bestStreak: parseInt(safeGet('dd2_bstreak','0'),10) || 0,
   bestWave: parseInt(safeGet('dd2_bwave','0'),10) || 0,
+  mutPick: safeGet('dd2_mutpick','random'),
   sfxVol: Math.max(0,Math.min(1, parseFloat(safeGet('dd2_sfxvol','0.8'))||0.8)),
   aimSens: Math.max(0.3,Math.min(2, parseFloat(safeGet('dd2_sens','1'))||1)),
   achieved: (safeGet('dd2_ach','')||'').split(',').filter(Boolean),   // unlocked achievement ids
@@ -62,7 +63,7 @@ function saveMeta(){
   safeSet('dd2_matches',meta.matches); safeSet('dd2_wins',meta.wins); safeSet('dd2_ckills',meta.ckills);
   safeSet('dd2_deaths',meta.deaths); safeSet('dd2_best',meta.best);
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);
-  safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_sens',meta.aimSens);
+  safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_mutpick',meta.mutPick); safeSet('dd2_sens',meta.aimSens);
   safeSet('dd2_ach', meta.achieved.join(','));
   safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
   safeSet('dd2_banner',meta.banner);
