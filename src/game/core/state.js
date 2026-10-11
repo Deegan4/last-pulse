@@ -13,6 +13,7 @@ const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast
 const MODES = ['horde'];
 let gameMode = MODES[0];  // Endless Horde is the only mode (BR & Squads retired v2.33.0)
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
+let activeMap = null;                      // this match's MAPS entry — see buildDecor
 let groundSkin = 'grass';                   // key in IMG; picked with timeOfDay in buildDecor()
 let activeMutator = null;                   // this match's MUTATORS entry, or null — see spawnMatch
 let hordeWave = 0;

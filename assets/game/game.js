@@ -300,11 +300,6 @@ loadImg('weapon-arc-rifle',      'assets/img/weapon-arc-rifle.png');
 loadImg('weapon-frost-blaster',  'assets/img/weapon-frost-blaster.png');
 loadImg('weapon-rocket-launcher','assets/img/weapon-rocket-launcher.png');
 const GROUND_TINT = { dusk:'rgba(255,140,50,.12)', night:'rgba(24,34,86,.32)' };  // sprite grass lit per time-of-day
-const GROUND_SKINS = {
-  day: ['grass','desert','snow','stone','swamp'],
-  dusk: ['desert','stone','swamp','ash'],
-  night: ['ash','stone','snow','swamp'],
-};
 // ---- src/game/data/releases.js ----
 // ===== Donations (Stripe) =====
 // PASTE YOUR STRIPE PAYMENT LINK HERE to turn on the "Support the game" button.
@@ -317,8 +312,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.75.0';
+const GAME_VERSION = '2.76.0';
 const CHANGELOG = [
+  { v:'2.76.0', items:[
+    ['🗺️','Six maps and a map picker','Meadow, Dusty Outpost, Frozen Pines, Ashlands, Stone Ruins and Sunken Marsh — each with its own ground, time of day and layout density'],
+    ['🔓','Two maps are free','Meadow and Dusty Outpost are free; the other four come with "Unlock Everything"'],
+  ]},
   { v:'2.75.0', items:[
     ['✂️','Character customizer removed','the palette / hair / accessory / trait picker is gone — heroes now always show their original look'],
   ]},
@@ -766,6 +765,7 @@ const meta = {
   streak: parseInt(safeGet('dd2_streak','0'),10) || 0,
   bestStreak: parseInt(safeGet('dd2_bstreak','0'),10) || 0,
   bestWave: parseInt(safeGet('dd2_bwave','0'),10) || 0,
+  mapPick: safeGet('dd2_mappick','random'),
   mutPick: safeGet('dd2_mutpick','random'),
   sfxVol: Math.max(0,Math.min(1, parseFloat(safeGet('dd2_sfxvol','0.8'))||0.8)),
   aimSens: Math.max(0.3,Math.min(2, parseFloat(safeGet('dd2_sens','1'))||1)),
@@ -813,7 +813,7 @@ function saveMeta(){
   safeSet('dd2_matches',meta.matches); safeSet('dd2_wins',meta.wins); safeSet('dd2_ckills',meta.ckills);
   safeSet('dd2_deaths',meta.deaths); safeSet('dd2_best',meta.best);
   safeSet('dd2_streak',meta.streak); safeSet('dd2_bstreak',meta.bestStreak); safeSet('dd2_bwave',meta.bestWave);
-  safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_mutpick',meta.mutPick); safeSet('dd2_sens',meta.aimSens);
+  safeSet('dd2_sfxvol',meta.sfxVol); safeSet('dd2_mutpick',meta.mutPick); safeSet('dd2_mappick',meta.mapPick); safeSet('dd2_sens',meta.aimSens);
   safeSet('dd2_ach', meta.achieved.join(','));
   safeSet('dd2_coins',meta.coins); safeSet('dd2_owned',meta.owned.join(',')); safeSet('dd2_trail',meta.trail);
   safeSet('dd2_banner',meta.banner);
@@ -1167,6 +1167,7 @@ const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast
 const MODES = ['horde'];
 let gameMode = MODES[0];  // Endless Horde is the only mode (BR & Squads retired v2.33.0)
 let timeOfDay = 'day';                      // 'day' | 'dusk' | 'night'
+let activeMap = null;                      // this match's MAPS entry — see buildDecor
 let groundSkin = 'grass';                   // key in IMG; picked with timeOfDay in buildDecor()
 let activeMutator = null;                   // this match's MUTATORS entry, or null — see spawnMatch
 let hordeWave = 0;
@@ -1380,20 +1381,44 @@ const BKINDS={
   cabin: {roof:['#4a6a44','#6a5a3a']},             // log-course walls + stovepipe
 };
 const TALL_DECOR={campfire:1,fence:1,well:1,statue:1,graveyard:1,cache:1,antenna:1,medtent:1,barrel:1,barricade:1,door:1};   // level-milestone landmarks + prop assets (y-sorted)
+// ===== Maps =====
+// A map is a layout preset for buildDecor(): a ground texture, a time-of-day pool, and density
+// multipliers `m` (build/water/tree/bush/rock/grass/flower — missing key = 1). `landmarks` unlocks
+// statues + graveyards at any level. `free:false` maps need the "Unlock Everything" IAP (same rule
+// the old random biome grounds used) — flip `free` to change which maps free players can pick.
+const MAPS = [
+  {id:'meadow', icon:'🌿', name:'MEADOW',        free:true,  ground:'grass',  tod:['day','day','dusk','night'], m:{}},
+  {id:'desert', icon:'🌵', name:'DUSTY OUTPOST', free:true,  ground:'desert', tod:['day','day','dusk'],         m:{water:.2,tree:.3,bush:.4,rock:2.2,grass:.5,flower:.2,build:.8}},
+  {id:'snow',   icon:'❄️', name:'FROZEN PINES',  free:false, ground:'snow',   tod:['day','night'],              m:{tree:1.6,bush:.6,water:.6,rock:1.2,flower:0,grass:.4}},
+  {id:'ash',    icon:'🌋', name:'ASHLANDS',      free:false, ground:'ash',    tod:['dusk','night'],             m:{tree:.2,bush:.2,water:0,rock:2.5,grass:.2,flower:0,build:.7}},
+  {id:'ruins',  icon:'🏛️', name:'STONE RUINS',   free:false, ground:'stone',  tod:['day','dusk'],               m:{build:1.35,tree:.5,bush:.6,rock:1.8,water:.4}, landmarks:true},
+  {id:'swamp',  icon:'🐸', name:'SUNKEN MARSH',  free:false, ground:'swamp',  tod:['dusk','night'],             m:{water:1.5,bush:1.8,tree:1.2,rock:.5,build:.8}},
+];
+const availableMaps = ()=> MAPS.filter(m=>m.free||meta.iapUnlockAll);
+// meta.mapPick: 'random' (any map you own) | a MAPS id. A pick you no longer own falls back to random.
+function currentMap(){
+  const want=MAPS.find(m=>m.id===meta.mapPick), pool=availableMaps();
+  return (want && pool.includes(want)) ? want : pick(pool);
+}
+function mapPickLabel(){ const m=MAPS.find(x=>x.id===meta.mapPick);
+  return m ? m.icon+' Map: '+m.name+((m.free||meta.iapUnlockAll)?'':' 🔒') : '🎲 Map: Random'; }
+function cycleMapPick(){ const order=['random',...MAPS.map(x=>x.id)];
+  for(let i=1;i<=order.length;i++){ const id=order[(Math.max(0,order.indexOf(meta.mapPick))+i)%order.length];
+    const m=MAPS.find(x=>x.id===id); if(!m || m.free || meta.iapUnlockAll){ meta.mapPick=id; break; } }
+  saveMeta(); }
 function buildDecor(){
   decor.length=0; obstacles.length=0; worldInteractables.length=0;
-  timeOfDay = pick(['day','day','dusk','night']);   // mostly day, sometimes dusk/night
-  // biome ground variants (desert/snow/ash/stone/swamp) are an "Unlock Everything" IAP perk —
-  // free players always render the classic grass ground, paid players get the full rotation.
-  const groundPool = meta.iapUnlockAll ? (GROUND_SKINS[timeOfDay] || GROUND_SKINS.day) : ['grass'];
-  groundSkin = pick(groundPool); ensureGround(groundSkin); groundKey = '';
+  const MP=currentMap(); activeMap=MP;
+  const mc=(n,k)=>Math.max(0,Math.round(n*(MP.m[k]??1)));   // map density multiplier
+  timeOfDay = pick(MP.tod);
+  groundSkin = MP.ground; ensureGround(groundSkin); groundKey = '';
   // the world grows with your level: more houses (each hiding loot), more ponds and
   // greenery, and new landmarks unlock at level milestones (see below). Counts here are tuned
   // for the v2.36 arena bump (3000→4000, ~1.8x the area) — scaled up but not 1:1 with area, so
   // the bigger map reads as MORE to explore rather than just diluting the old density.
   const lvl = meta.level;
-  const nBuild = Math.min(13 + Math.floor(lvl/4), 22);
-  const nWater = Math.min(9 + Math.floor(lvl/8), 13);
+  const nBuild = Math.max(5, mc(Math.min(13 + Math.floor(lvl/4), 22),'build'));
+  const nWater = Math.min(mc(Math.min(9 + Math.floor(lvl/8), 13),'water'), 17);
   const xtra   = Math.min(lvl, 20);                 // generic density bonus
   for(let i=0;i<112;i++){ decor.push({type:'patch', x:rand(0,ARENA), y:rand(0,ARENA), s:rand(40,120), h:rand(0.04,0.1)}); }
   for(let i=0;i<nWater;i++){ decor.push({type:'water', x:rand(200,ARENA-200), y:rand(200,ARENA-200), s:rand(90,180)}); }
@@ -1416,11 +1441,11 @@ function buildDecor(){
     const door={type:'door', x:o.x+o.w/2-DOOR_HALF, y:o.y+o.h-WALL_T-2, w:DOOR_HALF*2, h:WALL_T+4, hp:70, maxhp:70, building:o};
     obstacles.push(door); decor.push(door);
   }
-  for(let i=0;i<36+Math.floor(xtra*0.9);i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
-  for(let i=0;i<46+Math.floor(xtra*1.3);i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
-  for(let i=0;i<92+Math.floor(xtra*2.6);i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
-  for(let i=0;i<36+Math.floor(xtra*1.3);i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
-  for(let i=0;i<20+Math.floor(xtra*0.7);i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
+  for(let i=0;i<mc(36+Math.floor(xtra*0.9),'tree');i++){ const p=decorSpot(120); decor.push({type:'tree', x:p.x, y:p.y, s:rand(0.85,1.4), round:Math.random()<0.4}); }
+  for(let i=0;i<mc(46+Math.floor(xtra*1.3),'bush');i++){ const p=decorSpot(80); decor.push({type:'bush', x:p.x, y:p.y, s:rand(0.8,1.3)}); }
+  for(let i=0;i<mc(92+Math.floor(xtra*2.6),'grass');i++){ decor.push({type:'grass', x:rand(40,ARENA-40), y:rand(40,ARENA-40), s:rand(0.7,1.25), ph:rand(0,TAU)}); }
+  for(let i=0;i<mc(36+Math.floor(xtra*1.3),'flower');i++){ decor.push({type:'flower', x:rand(40,ARENA-40), y:rand(40,ARENA-40), c:pick(['#ff5a8a','#ffd166','#7fd0ff','#fff','#c08bff'])}); }
+  for(let i=0;i<mc(20+Math.floor(xtra*0.7),'rock');i++){ const p=decorSpot(40); decor.push({type:'rock', x:p.x, y:p.y, s:rand(0.7,1.5)}); }
   for(let i=0;i<8+Math.floor(lvl/6);i++){ decor.push({type:'dirt', x:rand(150,ARENA-150), y:rand(150,ARENA-150), s:rand(70,150)}); }
   for(let i=0;i<8+Math.floor(xtra*0.35);i++){ const p=decorSpot(70); decor.push({type:'cache', x:p.x, y:p.y, s:rand(0.88,1.16), open:Math.random()<0.28}); }
   for(let i=0;i<5+Math.floor(xtra*0.22);i++){ const p=decorSpot(80); decor.push({type:'barrel', x:p.x, y:p.y, s:rand(0.86,1.18), hot:Math.random()<0.36, fuel:true}); }
@@ -1436,8 +1461,8 @@ function buildDecor(){
   if(lvl>=3)  for(let i=0;i<4;i++){ const p=decorSpot(70); decor.push({type:'campfire', x:p.x, y:p.y}); }
   if(lvl>=6)  for(let i=0;i<7;i++){ const p=decorSpot(90); decor.push({type:'fence', x:p.x, y:p.y, n:3+(i%3), horiz:Math.random()<0.5}); }
   if(lvl>=10) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'well', x:p.x, y:p.y}); }
-  if(lvl>=15) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
-  if(lvl>=20) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
+  if(lvl>=15||MP.landmarks) for(let i=0;i<3;i++){ const p=decorSpot(80); decor.push({type:'statue', x:p.x, y:p.y}); }
+  if(lvl>=20||MP.landmarks) for(let i=0;i<2;i++){ const p=decorSpot(90); decor.push({type:'graveyard', x:p.x, y:p.y, seed:rand(0,1)}); }
   decor.sort((a,b)=> ((a.type==='water'||a.type==='dirt')?-1e9:a.y) - ((b.type==='water'||b.type==='dirt')?-1e9:b.y));
   campfires = decor.filter(d=>d.type==='campfire');
   barrels = decor.filter(d=>d.type==='barrel');   // cache for the heal-aura check
@@ -1588,7 +1613,7 @@ function spawnMatch(){
       toast(activeMutator.icon+' '+activeMutator.name+' — '+activeMutator.desc);
       el('statMut').textContent = activeMutator.icon+' '+activeMutator.name;
       el('mutRow').classList.remove('is-hidden');
-    } else el('mutRow').classList.add('is-hidden');
+    } else { el('mutRow').classList.add('is-hidden'); if(activeMap) toast(activeMap.icon+' '+activeMap.name); }
     // two 2-story watchtowers to climb and shoot down from (Horde only)
     for(let i=0;i<2;i++){ let sp,tries=0; do{ sp=decorSpot(210); tries++; }
       while(tries<24 && dist2(sp.x,sp.y,player.x,player.y)<280*280);
@@ -5296,6 +5321,8 @@ function startMatch(){
 el('nameInput').value = meta.name==='deegan'?'':meta.name;
 el('nameInput').placeholder = 'deegan';
 el('toModeBtn').addEventListener('click',goAvatar);   // straight to fighter select — horde is the game
+{ const pb=el('mapPickBtn'); pb.textContent=mapPickLabel();
+  pb.addEventListener('click',()=>{ cycleMapPick(); pb.textContent=mapPickLabel(); }); }
 { const mb=el('mutPickBtn'); mb.textContent=mutPickLabel();
   mb.addEventListener('click',()=>{ cycleMutPick(); mb.textContent=mutPickLabel(); }); }
 el('fighterPortrait').addEventListener('click',goAvatar);
