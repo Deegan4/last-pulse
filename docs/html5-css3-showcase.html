@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="HTML5 and CSS3 feature showcase for Last Pulse." />
+    <title>HTML5 + CSS3 Showcase | Last Pulse</title>
+    <link rel="stylesheet" href="../assets/css/html5-showcase.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-wrap">
+          <span class="brand-mark">LP</span>
+          <div>
+            <p class="eyebrow">Last Pulse</p>
+            <h1>HTML5 + CSS3 Feature Guide</h1>
+          </div>
+        </div>
+        <nav aria-label="Main navigation" class="main-nav">
+          <a href="#overview">Overview</a>
+          <a href="#html5">HTML5</a>
+          <a href="#css3">CSS3</a>
+          <a href="#forms">Forms</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </header>
+
+      <main id="overview">
+        <section class="hero panel">
+          <div class="hero-copy">
+            <p class="eyebrow accent">Modern web foundations</p>
+            <h2>Build richer, more accessible experiences with native HTML5 and modern CSS3.</h2>
+            <p>
+              HTML5 adds semantic structure, media support, and powerful form APIs, while CSS3 gives
+              us gradients, layout systems, animations, responsive design tools, and polished UI effects.
+            </p>
+            <div class="cta-row">
+              <a class="btn primary" href="#html5">Explore features</a>
+              <a class="btn secondary" href="../README.md">Back to project</a>
+            </div>
+          </div>
+          <div class="hero-stat-grid" aria-label="Highlights">
+            <article class="mini-stat">
+              <strong>Semantic</strong>
+              <span>Structure + accessibility</span>
+            </article>
+            <article class="mini-stat">
+              <strong>Responsive</strong>
+              <span>Grid + flex + media queries</span>
+            </article>
+            <article class="mini-stat">
+              <strong>Animated</strong>
+              <span>Transitions + transforms</span>
+            </article>
+            <article class="mini-stat">
+              <strong>PWA-ready</strong>
+              <span>Modern web capabilities</span>
+            </article>
+          </div>
+        </section>
+
+        <section id="html5" class="feature-section">
+          <div class="section-heading">
+            <p class="eyebrow">HTML5</p>
+            <h3>Semantic structure and rich native capabilities</h3>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card panel">
+              <h4>Semantic layout</h4>
+              <p>
+                <code>&lt;header&gt;</code>, <code>&lt;nav&gt;</code>, <code>&lt;main&gt;</code>,
+                <code>&lt;section&gt;</code>, and <code>&lt;footer&gt;</code> make pages clearer for both
+                users and assistive technology.
+              </p>
+            </article>
+
+            <article class="feature-card panel">
+              <h4>Media and embed support</h4>
+              <p>
+                HTML5 adds native <code>&lt;audio&gt;</code>, <code>&lt;video&gt;</code>, and better
+                support for embedding rich media without extra plugins.
+              </p>
+            </article>
+
+            <article class="feature-card panel">
+              <h4>Client-side features</h4>
+              <p>
+                Browser APIs such as local storage, form validation, drag and drop, and offline support
+                let pages behave more like apps without large frameworks.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section id="css3" class="feature-section">
+          <div class="section-heading">
+            <p class="eyebrow">CSS3</p>
+            <h3>Modern design system and visual polish</h3>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card panel">
+              <h4>Custom properties</h4>
+              <p>
+                CSS variables make theme tokens easy to manage and reuse across repeating styles such as
+                colors, spacing, radii, and shadows.
+              </p>
+            </article>
+
+            <article class="feature-card panel">
+              <h4>Layout systems</h4>
+              <p>
+                Flexbox and CSS Grid make responsive, mobile-first layouts easier to build while keeping
+                code readable and components predictable.
+              </p>
+            </article>
+
+            <article class="feature-card panel">
+              <h4>Animation and effects</h4>
+              <p>
+                Transitions, transforms, gradients, blur, shadows, and keyframe animation add motion and
+                depth while preserving performant, lightweight styling.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="showcase-grid panel">
+          <div class="showcase-copy">
+            <p class="eyebrow">Feature demo</p>
+            <h3>CSS3 layout and interaction examples</h3>
+            <ul class="check-list">
+              <li>Glassmorphism panels with layered gradients</li>
+              <li>Responsive cards that adapt by viewport size</li>
+              <li>Animated call-to-action buttons and hover states</li>
+              <li>Modern typography and neatly spaced component groups</li>
+            </ul>
+          </div>
+
+          <div class="demo-stack" aria-label="CSS demo stack">
+            <div class="demo-card card-one">Gradient</div>
+            <div class="demo-card card-two">Glass</div>
+            <div class="demo-card card-three">Motion</div>
+          </div>
+        </section>
+
+        <section id="forms" class="form-section panel">
+          <div class="section-heading">
+            <p class="eyebrow">HTML5 forms</p>
+            <h3>Modern input types and validation</h3>
+          </div>
+
+          <form class="demo-form" novalidate>
+            <label>
+              Name
+              <input type="text" name="name" placeholder="Enter your name" required />
+            </label>
+
+            <label>
+              Email
+              <input type="email" name="email" placeholder="name@example.com" required />
+            </label>
+
+            <label>
+              Preferred launch date
+              <input type="date" name="date" />
+            </label>
+
+            <label>
+              Brand color
+              <input type="color" name="color" value="#7ccf5a" />
+            </label>
+
+            <label class="range-field">
+              Experience level
+              <input type="range" min="1" max="10" value="7" />
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" checked />
+              I want web-ready UI improvements.
+            </label>
+
+            <button type="submit" class="btn primary">Submit</button>
+          </form>
+        </section>
+
+        <aside class="info-panel panel" aria-label="Progress and metadata">
+          <div class="section-heading compact">
+            <p class="eyebrow">Built with native browser features</p>
+            <h3>Progress and accessibility examples</h3>
+          </div>
+
+          <div class="meter-wrap">
+            <label for="skill-meter">HTML5/CSS3 readiness</label>
+            <progress id="skill-meter" value="92" max="100">92%</progress>
+            <output for="skill-meter">92%</output>
+          </div>
+
+          <div class="meter-wrap">
+            <label for="ui-meter">Responsive polish</label>
+            <meter id="ui-meter" min="0" max="100" value="88">88 out of 100</meter>
+          </div>
+
+          <details>
+            <summary>Why these features matter</summary>
+            <p>
+              Semantic HTML and modern CSS reduce maintenance overhead, improve accessibility, and enable
+              faster iteration without adding unnecessary libraries or build complexity.
+            </p>
+          </details>
+        </aside>
+      </main>
+
+      <footer id="contact" class="site-footer">
+        <p>Last Pulse • HTML5 + CSS3 showcase</p>
+        <a href="../index.html">Open the game</a>
+      </footer>
+    </div>
+  </body>
+</html>
