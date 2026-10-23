@@ -1,0 +1,90 @@
+// World3D — procedural high-angle playfield (no Meshy).
+// Sim (x,y) maps to Three.js (x, 0, y). Camera: ortho, pitch/yaw from game tunables.
+import * as THREE from '../vendor/three/three.module.js';
+
+const DEG = Math.PI / 180;
+let renderer, scene, camera, root, follow = { x: 1100, y: 320 };
+let ready = false;
+
+function showFail(){
+  const el = document.getElementById('webglFail');
+  if (el) el.classList.remove('hidden');
+  const cv = document.getElementById('cv');
+  if (cv) cv.classList.add('hidden');
+  ready = false;
+  window.World3D = Object.assign(window.World3D || {}, { ready: false });
+}
+
+function init(canvas){
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  } catch {
+    showFail();
+    return false;
+  }
+  if (!renderer.getContext()) { showFail(); return false; }
+  renderer.setClearColor(0x1a2218, 1);
+  scene = new THREE.Scene();
+  root = new THREE.Group();
+  scene.add(root);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x334422, 1.1));
+  const key = new THREE.DirectionalLight(0xfff2d0, 1.2);
+  key.position.set(4, 10, 2);
+  scene.add(key);
+
+  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5000);
+  ready = true;
+  window.World3D.ready = true;
+  return true;
+}
+
+function resize(w, h, dpr){
+  if (!ready) return;
+  const d = Math.min(dpr || 1, 2);
+  renderer.setPixelRatio(d);
+  renderer.setSize(w, h, false);
+  const halfW = w / 2, halfH = h / 2;
+  camera.left = -halfW; camera.right = halfW;
+  camera.top = halfH; camera.bottom = -halfH;
+  camera.updateProjectionMatrix();
+}
+
+function setCamFollow(x, y){ follow.x = x; follow.y = y; }
+
+function placeCamera(pitchDeg, yawDeg){
+  const pitch = pitchDeg * DEG, yaw = yawDeg * DEG;
+  const dist = 900;
+  const cx = follow.x, cz = follow.y;
+  camera.position.set(
+    cx + Math.sin(yaw) * Math.cos(pitch) * dist,
+    Math.sin(pitch) * dist,
+    cz + Math.cos(yaw) * Math.cos(pitch) * dist
+  );
+  camera.lookAt(cx, 0, cz);
+  camera.updateProjectionMatrix();
+}
+
+function render(pitchDeg = 60, yawDeg = 15){
+  if (!ready) return;
+  placeCamera(pitchDeg, yawDeg);
+  renderer.render(scene, camera);
+}
+
+window.World3D = {
+  ready: false, THREE, scene: null, root: null, camera: null,
+  init, resize, render, setCamFollow, showFail,
+  getScene(){ return scene; },
+  getRoot(){ return root; },
+};
+
+// Auto-init when DOM ready
+const boot = () => {
+  const cv = document.getElementById('cv');
+  if (!cv) return showFail();
+  if (!init(cv)) return;
+  window.World3D.scene = scene;
+  window.World3D.root = root;
+  window.World3D.camera = camera;
+};
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();

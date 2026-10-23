@@ -56,6 +56,7 @@ def assemble():
         'assets/game/game.js.map': json.dumps(smap, separators=(',', ':'))+'\n',
         'assets/game/game.css': (ROOT/'src/styles/game.css').read_text(encoding='utf-8'),
         'assets/game/models3d.js': (ROOT/'src/rendering/models3d.js').read_text(encoding='utf-8'),
+        'assets/game/world3d.js': (ROOT/'src/rendering/world3d.js').read_text(encoding='utf-8'),
     }
     return {p:s.encode() for p,s in outputs.items()}
 

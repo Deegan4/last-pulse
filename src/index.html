@@ -41,6 +41,10 @@
 <body>
 <div id="game">
   <canvas id="cv"></canvas>
+  <div id="webglFail" class="hidden" role="alert">
+    <h2>WebGL required</h2>
+    <p>Last Pulse needs WebGL for its 3D world. Try another browser or update your device.</p>
+  </div>
 
   <!-- ===== In-game HUD ===== -->
   <div id="hud" class="hidden">
@@ -273,7 +277,7 @@
      blit that sprite at the world position so it depth-sorts with the 2D art.
      Entirely fail-safe: no CDN / no WebGL / no GLB → window.Models3D never appears and
      every entity draws its hand-drawn 2D chibi instead. The game never depends on this. -->
-<script type="module" src="assets/game/models3d.js"></script>
+<script type="module" src="assets/game/world3d.js"></script>
 
 <!-- PWA install + offline play (ROADMAP.md "PWA install"). Registration is guarded to
      http(s) origins only: the native iOS wrapper loads this same document via file:// through

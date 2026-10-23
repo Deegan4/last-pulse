@@ -678,3 +678,14 @@
   .menugrid .donatebtn{grid-column:1/-1;background:transparent;box-shadow:none;font-size:12px;padding:9px 6px;
     border:1.5px solid rgba(200,140,255,.4)}
   #startScreen.menu .footer-ver{margin-top:10px;padding-bottom:calc(var(--sab) + 14px)}
+
+#webglFail{
+  position:absolute; inset:0; z-index:50;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:12px; padding:24px; text-align:center;
+  background:#0b0e14; color:#e8eef7;
+  font-family: system-ui, sans-serif;
+}
+#webglFail.hidden{ display:none; }
+#webglFail h2{ margin:0; font-size:1.4rem; }
+#webglFail p{ margin:0; max-width:28ch; opacity:.85; }
