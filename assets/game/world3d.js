@@ -72,19 +72,16 @@ function render(pitchDeg = 60, yawDeg = 15){
 
 window.World3D = {
   ready: false, THREE, scene: null, root: null, camera: null,
-  init, resize, render, setCamFollow, showFail,
+  init(canvas){
+    if (!init(canvas)) return false;
+    window.World3D.scene = scene;
+    window.World3D.root = root;
+    window.World3D.camera = camera;
+    return true;
+  },
+  resize, render, setCamFollow, showFail,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };
 
-// Auto-init when DOM ready
-const boot = () => {
-  const cv = document.getElementById('cv');
-  if (!cv) return showFail();
-  if (!init(cv)) return;
-  window.World3D.scene = scene;
-  window.World3D.root = root;
-  window.World3D.camera = camera;
-};
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-else boot();
+// Game must call World3D.init(cv) only after #cv has no 2D context (see stage.js / Task 2).

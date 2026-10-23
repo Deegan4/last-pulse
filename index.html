@@ -271,13 +271,8 @@
 
 <script src="assets/game/game.js"></script>
 
-<!-- ===== 3D model layer — progressive enhancement =====
-     Loads vendored Three.js and renders generated GLB models as billboards in the 2D field
-     (player avatars + local building props) AND on the avatar screen.
-     Each model is rendered to an offscreen sprite once per frame; drawHuman/drawBuilding
-     blit that sprite at the world position so it depth-sorts with the 2D art.
-     Entirely fail-safe: no CDN / no WebGL / no GLB → window.Models3D never appears and
-     every entity draws its hand-drawn 2D chibi instead. The game never depends on this. -->
+<!-- ===== World3D — 3D-only playfield (procedural Three.js; no Meshy) =====
+     Exports window.World3D; the game calls init/resize/render after releasing the 2D context. -->
 <script type="module" src="assets/game/world3d.js"></script>
 
 <!-- PWA install + offline play (ROADMAP.md "PWA install"). Registration is guarded to
