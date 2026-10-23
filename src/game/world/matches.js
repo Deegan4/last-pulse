@@ -9,6 +9,7 @@ function menuScene(){
   zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   if(!decor.length) buildDecor();                        // first boot: give the menu real scenery
   menuAmbient=true;
+  if (window.World3D?.ready) window.World3D.setZone?.(0, 0, 0);
   const cx=(player&&player.x)||ARENA_W/2, cy=(player&&player.y)||ARENA_H/2;
   for(let i=0;i<14;i++){
     const kind=pick(['normal','normal','normal','normal','runner','runner','brute']);

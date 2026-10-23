@@ -1,3 +1,6 @@
+let world3dTried = false;
+let world3dDead = false;
+
 function disposeEntityMeshes(list){
   const w3d = window.World3D;
   if (!w3d?.disposeMesh) return;
@@ -46,11 +49,11 @@ function syncAllEntityMeshes(){
 }
 
 function tryInitWorld3D(){
-  if (window.__world3dTried) return;
+  if (world3dTried) return;
   if (!window.World3D) return;
-  window.__world3dTried = true;
+  world3dTried = true;
   if (!window.World3D.init(cv)) {
-    window.__world3dDead = true;
+    world3dDead = true;
     return;
   }
   window.World3D.buildGround(ARENA_W, ARENA_H);
@@ -60,7 +63,7 @@ function tryInitWorld3D(){
 }
 
 function loop(now){
-  if (window.__world3dDead) return;
+  if (world3dDead) return;
   tryInitWorld3D();
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
@@ -97,7 +100,14 @@ function loop(now){
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }
     refreshHud(); drawMini();
-  } else { updateParticles(dt); menuSceneUpdate(dt); if(curGp) updateGamepadMenuNav(curGp); syncControllerStatus(); }
+  } else {
+    updateParticles(dt); menuSceneUpdate(dt);
+    if (menuAmbient) {
+      if (window.World3D?.ready) window.World3D.setZone?.(0, 0, 0);
+      for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
+    }
+    if(curGp) updateGamepadMenuNav(curGp); syncControllerStatus();
+  }
   draw();
   if(perfT0){ perfAcc+=performance.now()-perfT0; perfN++; perfPeakZ=Math.max(perfPeakZ,zombies.length);
     if(now-perfLog>2000){ const ms=perfAcc/Math.max(1,perfN);

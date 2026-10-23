@@ -28,13 +28,13 @@ if (existsSync(join(root, 'assets', 'meshy', 'manifest.json'))) {
     process.exit(1);
   }
 }
-// Billboard-GLB budget gate — every model the game loads live on mobile is rendered to an offscreen
-// sprite each frame. Raw textured Meshy meshes are ~500k tris / ~18MB, which blows the mobile memory
-// budget and stalls the sprite loop (the very fallback that then HIDES the models). Fail commits that
-// wire an oversized GLB before it ships. The shipped set comes from assets/meshy/loader.js (the
-// auto-generated manifest loader index.html imports) — same resolution the game uses: characters load
-// walk||preview, zombies load preview. Falls back to index.html's FALLBACK_FILES map if no loader.
+// Billboard-GLB budget gate — only when the play path still loads Meshy billboards (Models3D).
+// v2.77.0+ uses procedural World3D for the playfield; Meshy GLBs are archival and optional.
 {
+  const html = validationSource();
+  if (!/Models3D|models3d\.js/.test(html)) {
+    console.log('✓ GLB budget: skipped (3D playfield — Meshy billboards not required)');
+  } else {
   const MAX_MB = 4;          // per-GLB on-disk ceiling (Alex, the rigged reference, is ~2MB)
   const MAX_TRIS = 80000;    // per-GLB triangle ceiling for a field billboard
   const files = [];
@@ -79,6 +79,7 @@ if (existsSync(join(root, 'assets', 'meshy', 'manifest.json'))) {
   }
   if (over.length) { over.forEach(o => console.error('✗ GLB budget:', o)); process.exit(1); }
   console.log(`✓ GLB budget: ${files.length} billboard model(s) within ${MAX_MB}MB / ${MAX_TRIS.toLocaleString()} tris`);
+  }
 }
 
 // Name-drift gate — the in-game <title>, the README H1, and the GitHub repo name must agree, so

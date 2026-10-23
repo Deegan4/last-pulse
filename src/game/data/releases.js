@@ -9,8 +9,12 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.76.2';
+const GAME_VERSION = '2.77.0';
 const CHANGELOG = [
+  { v:'2.77.0', items:[
+    ['🌍','True 3D high-angle world','The playfield is a WebGL orthographic procedural low-poly scene — no Meshy GLBs on the match canvas'],
+    ['⚠️','WebGL required','If WebGL is unavailable the game shows a clear error instead of falling back to the old 2D world draw'],
+  ]},
   { v:'2.76.2', items:[
     ['🗺️','All six maps are free','Frozen Pines, Ashlands, Stone Ruins and Sunken Marsh no longer need Unlock Everything — pick any map, or let Random use all six'],
   ]},
