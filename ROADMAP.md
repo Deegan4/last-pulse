@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.77.0). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.77.1). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -10,6 +10,12 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 > and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
 > bumps the version. **When it disagrees with the code, the code wins** — verify against
 > `index.html` before trusting any bullet below.
+
+## v2.77.1 — "3D art polish" (shipped)
+
+- [x] **Textured ground** — map skins (`ground-*.png`) tile on the World3D plane via `setGroundTexture`.
+- [x] **Detailed buildings + shadows** — doors, windows, roof ridge, kind colors; PCF soft shadows.
+- [x] **Player hero billboard** — equipped `hero-*-v2.png` faces the camera; bots/zombies still capsules.
 
 ## v2.77 — "True 3D high-angle world" (shipped)
 
