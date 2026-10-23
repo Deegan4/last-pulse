@@ -50,6 +50,14 @@ function showFail(){
   window.World3D = Object.assign(window.World3D || {}, { ready: false });
 }
 
+let groundMesh = null;
+let groundUnder = null;
+let groundTexKey = '';
+const texLoader = new THREE.TextureLoader();
+const BUILD_BODY = { house: 0xc4a574, shop: 0xb8a090, barn: 0xa84838, cabin: 0x6b5344 };
+const BUILD_ROOF = { house: 0x9a4d3a, shop: 0x3f8f96, barn: 0x4a3730, cabin: 0x4a6a44 };
+const BUILD_TRIM = { house: 0x5c4030, shop: 0x2a5a60, barn: 0x2a2018, cabin: 0x3a4a34 };
+
 function init(canvas){
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -59,14 +67,27 @@ function init(canvas){
   }
   if (!renderer.getContext()) { showFail(); return false; }
   renderer.setClearColor(0x1a2218, 1);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x1a2218, 900, 2200);
   root = new THREE.Group();
   scene.add(root);
   hemiLight = new THREE.HemisphereLight(0xffffff, 0x334422, HEMI_INTENSITY_BASE);
   scene.add(hemiLight);
   keyLight = new THREE.DirectionalLight(0xfff2d0, KEY_INTENSITY_BASE);
-  keyLight.position.set(4, 10, 2);
+  keyLight.position.set(420, 680, 280);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(1024, 1024);
+  keyLight.shadow.camera.near = 10;
+  keyLight.shadow.camera.far = 2400;
+  keyLight.shadow.camera.left = -900;
+  keyLight.shadow.camera.right = 900;
+  keyLight.shadow.camera.top = 700;
+  keyLight.shadow.camera.bottom = -700;
+  keyLight.shadow.bias = -0.0008;
   scene.add(keyLight);
+  scene.add(keyLight.target);
 
   camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5000);
   initVfxMeshes();
@@ -136,12 +157,16 @@ function syncVfx(particles, zaps){
   vfxZaps.visible = zn > 0;
 }
 
+// Portrait phones only see ~W×H world units; buildings spawn ≥280px from center, so zoom out
+// or the pit looks empty. 2.1× keeps twin-stick readable while framing cover.
+const VIEW_SCALE = 2.1;
+
 function resize(w, h, dpr){
   if (!ready) return;
   const d = Math.min(dpr || 1, 2);
   renderer.setPixelRatio(d);
   renderer.setSize(w, h, false);
-  const halfW = w / 2, halfH = h / 2;
+  const halfW = (w / 2) * VIEW_SCALE, halfH = (h / 2) * VIEW_SCALE;
   camera.left = -halfW; camera.right = halfW;
   camera.top = halfH; camera.bottom = -halfH;
   camera.updateProjectionMatrix();
@@ -170,14 +195,76 @@ function render(pitchDeg = 60, yawDeg = 15){
   renderer.render(scene, camera);
 }
 
+function applyTexColorSpace(tex){
+  if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+  else if ('encoding' in tex && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+}
+
+function configureGroundMap(tex){
+  applyTexColorSpace(tex);
+  // Stretch one map across the pit — these PNGs are not tile-seamless
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.repeat.set(1, 1);
+  tex.anisotropy = Math.min(4, renderer?.capabilities?.getMaxAnisotropy?.() || 1);
+  tex.needsUpdate = true;
+}
+
+function setGroundTexture(key){
+  if (!ready || !groundMesh) return;
+  const k = key || 'grass';
+  if (k === groundTexKey && groundMesh.material?.map) return;
+  const url = 'assets/img/ground-' + k + '.png';
+  texLoader.load(url, (tex) => {
+    if (!groundMesh) return;
+    configureGroundMap(tex);
+    const old = groundMesh.material.map;
+    groundMesh.material.map = tex;
+    groundMesh.material.color.set(0xffffff);
+    groundMesh.material.needsUpdate = true;
+    if (old && old !== tex) old.dispose();
+    groundTexKey = k;
+  }, undefined, () => {
+    // keep solid green fallback
+    if (groundMesh) groundMesh.material.color.set(0x3d5a32);
+  });
+}
+
 function buildGround(arenaW, arenaH){
   if (!ready || !root) return null;
+  if (groundMesh) {
+    disposeMesh(groundMesh);
+    groundMesh = null;
+    groundTexKey = '';
+  }
+  if (groundUnder) {
+    disposeMesh(groundUnder);
+    groundUnder = null;
+  }
+  // Dark surround so the ortho frustum doesn't show a flat void past the pit edge
+  const under = new THREE.Mesh(
+    new THREE.PlaneGeometry(arenaW * 3.2, arenaH * 3.2),
+    new THREE.MeshLambertMaterial({ color: 0x121812 })
+  );
+  under.rotation.x = -Math.PI / 2;
+  under.position.set(arenaW / 2, -0.5, arenaH / 2);
+  under.receiveShadow = true;
+  root.add(under);
+  groundUnder = under;
+
   const geo = new THREE.PlaneGeometry(arenaW, arenaH);
-  const mat = new THREE.MeshLambertMaterial({ color: 0x3d5a32 });
+  const mat = new THREE.MeshLambertMaterial({ color: 0x4a6b3e });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.set(arenaW / 2, 0, arenaH / 2);
+  mesh.receiveShadow = true;
+  mesh.userData.arenaW = arenaW;
+  mesh.userData.arenaH = arenaH;
   root.add(mesh);
+  groundMesh = mesh;
+  if (keyLight) {
+    keyLight.target.position.set(arenaW / 2, 0, arenaH / 2);
+    keyLight.target.updateMatrixWorld();
+  }
   return mesh;
 }
 
@@ -195,19 +282,57 @@ function disposeMesh(obj){
 
 function makeBuildingMesh(d){
   const g = new THREE.Group();
-  const bodyH = 36;
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(d.w, bodyH, d.h),
-    new THREE.MeshLambertMaterial({ color: 0x8a7355 })
-  );
+  const kind = d.kind || 'house';
+  const bodyH = kind === 'barn' ? 42 : kind === 'cabin' ? 32 : 36;
+  const bodyCol = BUILD_BODY[kind] || 0xc4a574;
+  const roofCol = (d.roof && /^#/.test(d.roof)) ? new THREE.Color(d.roof).getHex() : (BUILD_ROOF[kind] || 0x9a4d3a);
+  const trimCol = BUILD_TRIM[kind] || 0x5c4030;
+  const bodyMat = new THREE.MeshLambertMaterial({ color: bodyCol });
+  const roofMat = new THREE.MeshLambertMaterial({ color: roofCol });
+  const trimMat = new THREE.MeshLambertMaterial({ color: trimCol });
+  const darkMat = new THREE.MeshLambertMaterial({ color: 0x1a1410 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(d.w, bodyH, d.h), bodyMat);
   body.position.set(d.w / 2, bodyH / 2, d.h / 2);
+  body.castShadow = true;
+  body.receiveShadow = true;
   g.add(body);
-  const roof = new THREE.Mesh(
-    new THREE.BoxGeometry(d.w + 4, 6, d.h + 4),
-    new THREE.MeshLambertMaterial({ color: 0x5c4030 })
-  );
-  roof.position.set(d.w / 2, bodyH + 3, d.h / 2);
+
+  // roof overhang slab
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(d.w + 8, 5, d.h + 8), roofMat);
+  roof.position.set(d.w / 2, bodyH + 2.5, d.h / 2);
+  roof.castShadow = true;
   g.add(roof);
+  // slight peak ridge
+  const ridge = new THREE.Mesh(new THREE.BoxGeometry(d.w + 2, 3, 4), roofMat);
+  ridge.position.set(d.w / 2, bodyH + 6, d.h / 2);
+  ridge.castShadow = true;
+  g.add(ridge);
+
+  // south-face door recess
+  const doorW = Math.min(14, d.w * 0.28);
+  const doorH = Math.min(18, bodyH * 0.55);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, doorH, 2.2), darkMat);
+  door.position.set(d.w / 2, doorH / 2 + 1, d.h - 0.4);
+  g.add(door);
+  const jamb = new THREE.Mesh(new THREE.BoxGeometry(doorW + 3, doorH + 2, 1.2), trimMat);
+  jamb.position.set(d.w / 2, doorH / 2 + 1, d.h - 1.6);
+  g.add(jamb);
+
+  // windows on south facade
+  const winY = bodyH * 0.62;
+  const winZ = d.h - 0.5;
+  for (const sx of [0.28, 0.72]) {
+    const wx = d.w * sx;
+    if (Math.abs(wx - d.w / 2) < doorW * 0.7) continue;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(8, 7, 1.4), trimMat);
+    frame.position.set(wx, winY, winZ - 0.8);
+    g.add(frame);
+    const pane = new THREE.Mesh(new THREE.BoxGeometry(6, 5, 1.2), new THREE.MeshLambertMaterial({ color: 0x7ec8e8 }));
+    pane.position.set(wx, winY, winZ - 0.2);
+    g.add(pane);
+  }
+
   g.position.set(d.x, 0, d.y);
   root.add(g);
   return g;
@@ -215,30 +340,97 @@ function makeBuildingMesh(d){
 
 const ENTITY_TOWER_ELEV = 46; // matches TOWER_ELEV in enemies.js (rooftop draw offset)
 
-function makeHumanMesh(look){
+function heroTextureUrl(imgKey){
+  if (!imgKey) return null;
+  // loadImg keys are 'hero-kai' → files 'hero-kai-v2.png'
+  return 'assets/img/' + imgKey + '-v2.png';
+}
+
+function applyHeroBillboardMap(plane, tex){
+  applyTexColorSpace(tex);
+  tex.needsUpdate = true;
+  const mat = plane.material;
+  if (mat.map && mat.map !== tex) mat.map.dispose();
+  mat.map = tex;
+  mat.color.set(0xffffff);
+  mat.transparent = true;
+  mat.alphaTest = 0.12;
+  mat.depthWrite = false;
+  mat.needsUpdate = true;
+  plane.visible = true;
+  const body = plane.parent?.getObjectByName('proxyBody');
+  const head = plane.parent?.getObjectByName('proxyHead');
+  if (body) body.visible = false;
+  if (head) head.visible = false;
+}
+
+function makeHumanMesh(look, opts = {}){
   const g = new THREE.Group();
+  const isPlayer = !!opts.isPlayer;
+  g.userData.isPlayer = isPlayer;
+  g.userData.billboard = isPlayer;
+
   const skin = new THREE.Color(look?.skin || '#e8b48c');
   const outfit = new THREE.Color(look?.outfit || '#888888');
   const body = new THREE.Mesh(
     new THREE.CapsuleGeometry(7, 10, 4, 8),
     new THREE.MeshLambertMaterial({ color: outfit })
   );
+  body.name = 'proxyBody';
   body.position.y = 14;
+  body.castShadow = true;
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(8, 12, 10),
     new THREE.MeshLambertMaterial({ color: skin })
   );
+  head.name = 'proxyHead';
   head.position.y = 28;
+  head.castShadow = true;
+
   const wrist = new THREE.Group();
   wrist.name = 'wrist';
-  wrist.position.set(8, 18, 0);
+  wrist.position.set(10, 18, 4);
   const gun = new THREE.Mesh(
-    new THREE.BoxGeometry(4, 3, 14),
-    new THREE.MeshLambertMaterial({ color: 0x222222 })
+    new THREE.BoxGeometry(3.5, 2.8, 16),
+    new THREE.MeshLambertMaterial({ color: 0x2a2a2e })
   );
-  gun.position.z = 7;
+  gun.position.z = 8;
+  gun.castShadow = true;
   wrist.add(gun);
+
   g.add(body, head, wrist);
+
+  if (isPlayer) {
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(30, 46),
+      new THREE.MeshBasicMaterial({
+        color: 0xffffff, transparent: true, alphaTest: 0.12,
+        depthWrite: false, side: THREE.DoubleSide,
+      })
+    );
+    plane.name = 'billboard';
+    plane.position.y = 23;
+    plane.visible = false;
+    g.add(plane);
+
+    const applyImg = (img) => {
+      if (!img || !img.naturalWidth) return false;
+      applyHeroBillboardMap(plane, new THREE.Texture(img));
+      return true;
+    };
+    if (opts.imgEl && applyImg(opts.imgEl)) {
+      // ok
+    } else {
+      const url = heroTextureUrl(opts.imgKey);
+      if (url) {
+        texLoader.load(url, (tex) => {
+          if (!plane.parent) { tex.dispose(); return; }
+          applyHeroBillboardMap(plane, tex);
+        });
+      }
+    }
+  }
+
   root.add(g);
   return g;
 }
@@ -252,11 +444,13 @@ function makeZombieMesh(kind, size = 1){
     new THREE.MeshLambertMaterial({ color: col })
   );
   body.position.y = 14 * s;
+  body.castShadow = true;
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(7 * s, 10, 8),
     new THREE.MeshLambertMaterial({ color: 0x6a8a5a })
   );
   head.position.y = 28 * s;
+  head.castShadow = true;
   g.add(body, head);
   root.add(g);
   return g;
@@ -266,9 +460,24 @@ function syncEntityMesh(e){
   if (!e.mesh) return;
   const elev = e.onTower ? ENTITY_TOWER_ELEV : 0;
   e.mesh.position.set(e.x, elev, e.y);
-  e.mesh.rotation.y = -e.aim + Math.PI / 2;
   const wrist = e.mesh.getObjectByName('wrist');
-  if (wrist) wrist.rotation.y = 0;
+  const billboard = e.mesh.getObjectByName('billboard');
+  if (e.mesh.userData.billboard && billboard && camera) {
+    // Keep group unrotated; face the hero plane at the camera; aim only the gun wrist.
+    e.mesh.rotation.y = 0;
+    billboard.quaternion.copy(camera.quaternion);
+    if (wrist) {
+      const reach = 12;
+      wrist.position.set(Math.cos(e.aim) * reach, 18, Math.sin(e.aim) * reach);
+      wrist.rotation.set(0, -e.aim + Math.PI / 2, 0);
+    }
+  } else {
+    e.mesh.rotation.y = -e.aim + Math.PI / 2;
+    if (wrist) {
+      wrist.position.set(8, 18, 0);
+      wrist.rotation.set(0, 0, 0);
+    }
+  }
 }
 
 function bulletColor(b){
@@ -360,7 +569,7 @@ window.World3D = {
     window.World3D.camera = camera;
     return true;
   },
-  resize, render, setCamFollow, setShake, showFail, buildGround, makeBuildingMesh, disposeMesh,
+  resize, render, setCamFollow, setShake, showFail, buildGround, setGroundTexture, makeBuildingMesh, disposeMesh,
   makeHumanMesh, makeZombieMesh, syncEntityMesh,
   makeBulletMesh, syncBullet, makePickupMesh, syncPickup, makeBombMesh, syncBomb,
   setZone, setDayFactor, syncVfx, screenToGround, worldToScreen,

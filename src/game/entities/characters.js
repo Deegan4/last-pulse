@@ -12,7 +12,9 @@ function makeHuman(isPlayer, avatar, weapon, name){
     think:0, lockT:0, reaction:rand(0.3,0.7), fireMul:rand(1.0,1.5), wanderA:rand(0,TAU),
   };
   if (window.World3D?.ready) {
-    h.mesh = window.World3D.makeHumanMesh(h.look);
+    const imgKey = h.avatar?.img;
+    const imgEl = (typeof imgOk === 'function' && imgKey) ? imgOk(imgKey) : null;
+    h.mesh = window.World3D.makeHumanMesh(h.look, { isPlayer: !!h.isPlayer, imgKey, imgEl });
     window.World3D.syncEntityMesh(h);
   }
   return h;

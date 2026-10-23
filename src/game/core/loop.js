@@ -68,7 +68,11 @@ function syncAllEntityMeshes(){
   const w3d = window.World3D;
   if (!w3d?.ready || !w3d.syncEntityMesh) return;
   for (const h of humans) {
-    if (h.alive && !h.mesh && w3d.makeHumanMesh) h.mesh = w3d.makeHumanMesh(h.look || h.avatar?.look);
+    if (h.alive && !h.mesh && w3d.makeHumanMesh) {
+      const imgKey = h.avatar?.img;
+      const imgEl = (typeof imgOk === 'function' && imgKey) ? imgOk(imgKey) : null;
+      h.mesh = w3d.makeHumanMesh(h.look || h.avatar?.look, { isPlayer: !!h.isPlayer, imgKey, imgEl });
+    }
     if (h.mesh) w3d.syncEntityMesh(h);
   }
   for (const z of zombies) {
@@ -94,6 +98,7 @@ function tryInitWorld3D(){
   }
   hookWebglContextLoss();
   window.World3D.buildGround(ARENA_W, ARENA_H);
+  window.World3D.setGroundTexture?.(typeof groundSkin !== 'undefined' ? groundSkin : 'grass');
   window.World3D.resize(W, H, DPR);
   syncBuildingMeshes();
   syncAllEntityMeshes();

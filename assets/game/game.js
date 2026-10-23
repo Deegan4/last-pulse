@@ -316,8 +316,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.77.0';
+const GAME_VERSION = '2.77.1';
 const CHANGELOG = [
+  { v:'2.77.1', items:[
+    ['🎨','3D art polish','Map ground textures, detailed buildings with doors/windows/shadows, and your hero PNG as a camera-facing billboard'],
+  ]},
   { v:'2.77.0', items:[
     ['🌍','True 3D high-angle world','The playfield is a WebGL orthographic procedural low-poly scene — no Meshy GLBs on the match canvas'],
     ['⚠️','WebGL required','If WebGL is unavailable the game shows a clear error instead of falling back to the old 2D world draw'],
@@ -1333,7 +1336,9 @@ function makeHuman(isPlayer, avatar, weapon, name){
     think:0, lockT:0, reaction:rand(0.3,0.7), fireMul:rand(1.0,1.5), wanderA:rand(0,TAU),
   };
   if (window.World3D?.ready) {
-    h.mesh = window.World3D.makeHumanMesh(h.look);
+    const imgKey = h.avatar?.img;
+    const imgEl = (typeof imgOk === 'function' && imgKey) ? imgOk(imgKey) : null;
+    h.mesh = window.World3D.makeHumanMesh(h.look, { isPlayer: !!h.isPlayer, imgKey, imgEl });
     window.World3D.syncEntityMesh(h);
   }
   return h;
@@ -1481,6 +1486,7 @@ function buildDecor(){
   const mc=(n,k)=>Math.max(0,Math.round(n*(MP.m[k]??1)));
   timeOfDay = pick(MP.tod);
   groundSkin = MP.ground; ensureGround(groundSkin); groundKey = '';
+  if (window.World3D?.ready) window.World3D.setGroundTexture?.(groundSkin);
   campfires = []; barrels = [];
   const nBuild = mc(10, 'build');
   const cx = ARENA_W / 2, cy = ARENA_H / 2;
@@ -5041,7 +5047,11 @@ function syncAllEntityMeshes(){
   const w3d = window.World3D;
   if (!w3d?.ready || !w3d.syncEntityMesh) return;
   for (const h of humans) {
-    if (h.alive && !h.mesh && w3d.makeHumanMesh) h.mesh = w3d.makeHumanMesh(h.look || h.avatar?.look);
+    if (h.alive && !h.mesh && w3d.makeHumanMesh) {
+      const imgKey = h.avatar?.img;
+      const imgEl = (typeof imgOk === 'function' && imgKey) ? imgOk(imgKey) : null;
+      h.mesh = w3d.makeHumanMesh(h.look || h.avatar?.look, { isPlayer: !!h.isPlayer, imgKey, imgEl });
+    }
     if (h.mesh) w3d.syncEntityMesh(h);
   }
   for (const z of zombies) {
@@ -5067,6 +5077,7 @@ function tryInitWorld3D(){
   }
   hookWebglContextLoss();
   window.World3D.buildGround(ARENA_W, ARENA_H);
+  window.World3D.setGroundTexture?.(typeof groundSkin !== 'undefined' ? groundSkin : 'grass');
   window.World3D.resize(W, H, DPR);
   syncBuildingMeshes();
   syncAllEntityMeshes();

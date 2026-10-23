@@ -1,5 +1,7 @@
 # memory.md — project handoff & running notes
 
+- **v2.77.1 — 3D art polish.** Textured map grounds, building doors/windows/shadows, and player
+  hero PNG billboard (bots/zombies still capsule proxies). No Meshy.
 - **v2.77.0 — True 3D high-angle world.** Match playfield is WebGL-only (`world3d.js` procedural
   ortho camera); legacy 2D `draw()` world blit and Meshy `Models3D` play path removed. WebGL
   failure is a hard error. Meshy moonshot cancelled (cost). Minimap stays 2D in `drawMini()`.
