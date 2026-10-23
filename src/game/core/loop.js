@@ -1,4 +1,18 @@
+function tryInitWorld3D(){
+  if (window.__world3dTried) return;
+  if (!window.World3D) return;
+  window.__world3dTried = true;
+  if (!window.World3D.init(cv)) {
+    window.__world3dDead = true;
+    return;
+  }
+  window.World3D.buildGround(ARENA_W, ARENA_H);
+  window.World3D.resize(W, H, DPR);
+}
+
 function loop(now){
+  if (window.__world3dDead) return;
+  tryInitWorld3D();
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
   const perfT0 = (screenState==='playing' && zombies.length>30) ? performance.now() : 0;   // heavy-frame sample

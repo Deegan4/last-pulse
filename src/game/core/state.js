@@ -8,6 +8,8 @@ let grace = 0;
 const GRACE = 2.6;
 // --- movement feel (tune here) ---
 const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast/skid, camera look-ahead (s of velocity)
+const CAM_PITCH = 60;   // degrees — high-angle tactical (World3D ortho camera)
+const CAM_YAW = 15;     // degrees — slight orbit
 // SHIPPED MODES — the single source of truth. BR & Squads were retired in v2.33.0 (engine paths
 // kept dormant), and the docs/driver kept referencing them for a while afterwards. scripts/
 // validate.mjs now gates every mode named in CLAUDE.md / the driver against this list, so a

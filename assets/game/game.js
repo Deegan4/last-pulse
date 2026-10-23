@@ -10,7 +10,7 @@
 // ---------- Stage / canvas ----------
 const stage = document.getElementById('game');
 const cv = document.getElementById('cv');
-const ctx = cv.getContext('2d');
+let ctx = null;   // no 2D on #cv — WebGL owns the playfield canvas (see World3D.init)
 const mini = document.getElementById('minimap');
 const mctx = mini.getContext('2d');
 let W = 0, H = 0, DPR = 1;
@@ -119,9 +119,16 @@ function resize(){
   }
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = gw; H = gh;
-  cv.width = Math.max(1, Math.floor(W * DPR));
-  cv.height = Math.max(1, Math.floor(H * DPR));
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const w3d = window.World3D;
+  const webglFailEl = document.getElementById('webglFail');
+  const webglFailed = w3d && w3d.ready === false && webglFailEl && !webglFailEl.classList.contains('hidden');
+  if (w3d && w3d.ready) {
+    w3d.resize(W, H, DPR);
+  } else if (!webglFailed) {
+    cv.width = Math.max(1, Math.floor(W * DPR));
+    cv.height = Math.max(1, Math.floor(H * DPR));
+    if (ctx) ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 150));
@@ -1158,6 +1165,8 @@ let grace = 0;
 const GRACE = 2.6;
 // --- movement feel (tune here) ---
 const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast/skid, camera look-ahead (s of velocity)
+const CAM_PITCH = 60;   // degrees — high-angle tactical (World3D ortho camera)
+const CAM_YAW = 15;     // degrees — slight orbit
 // SHIPPED MODES — the single source of truth. BR & Squads were retired in v2.33.0 (engine paths
 // kept dormant), and the docs/driver kept referencing them for a while afterwards. scripts/
 // validate.mjs now gates every mode named in CLAUDE.md / the driver against this list, so a
@@ -3269,7 +3278,6 @@ function showResults(win, place){
 // ============================================================
 // ---- src/game/rendering/scene.js ----
 function draw(){
-  ctx.clearRect(0,0,W,H);
   gtime = performance.now()/1000;
   let t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA_W/2,y:ARENA_H/2});
   // co-op: frame the MIDPOINT of both players instead of just player 1, so player 2 doesn't drift
@@ -3285,6 +3293,13 @@ function draw(){
   // smooth camera follow (snap if far, e.g. on (re)spawn)
   const cd=Math.hypot(tcx-cam.x,tcy-cam.y);
   if(cd>400 || screenState!=='playing'){ cam.x=tcx; cam.y=tcy; } else { cam.x+=(tcx-cam.x)*0.16; cam.y+=(tcy-cam.y)*0.16; }
+  if (window.World3D && window.World3D.ready) {
+    window.World3D.setCamFollow(t.x, t.y);
+    window.World3D.render(CAM_PITCH, CAM_YAW);
+    return;
+  }
+  if (!ctx) return;
+  ctx.clearRect(0,0,W,H);
   let shx=0,shy=0; if(shake>0){ shx=rand(-shake,shake); shy=rand(-shake,shake); shake-=18/60; if(shake<0)shake=0; }
   ctx.save(); ctx.translate(-cam.x+shx,-cam.y+shy);
 
@@ -4839,7 +4854,21 @@ function refreshHud(){
 //  Main loop
 // ============================================================
 // ---- src/game/core/loop.js ----
+function tryInitWorld3D(){
+  if (window.__world3dTried) return;
+  if (!window.World3D) return;
+  window.__world3dTried = true;
+  if (!window.World3D.init(cv)) {
+    window.__world3dDead = true;
+    return;
+  }
+  window.World3D.buildGround(ARENA_W, ARENA_H);
+  window.World3D.resize(W, H, DPR);
+}
+
 function loop(now){
+  if (window.__world3dDead) return;
+  tryInitWorld3D();
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
   const perfT0 = (screenState==='playing' && zombies.length>30) ? performance.now() : 0;   // heavy-frame sample

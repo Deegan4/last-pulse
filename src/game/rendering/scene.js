@@ -1,5 +1,4 @@
 function draw(){
-  ctx.clearRect(0,0,W,H);
   gtime = performance.now()/1000;
   let t = (spectating&&specTarget&&specTarget.alive)?specTarget : (player&&player.alive)?player:(player||{x:ARENA_W/2,y:ARENA_H/2});
   // co-op: frame the MIDPOINT of both players instead of just player 1, so player 2 doesn't drift
@@ -15,6 +14,13 @@ function draw(){
   // smooth camera follow (snap if far, e.g. on (re)spawn)
   const cd=Math.hypot(tcx-cam.x,tcy-cam.y);
   if(cd>400 || screenState!=='playing'){ cam.x=tcx; cam.y=tcy; } else { cam.x+=(tcx-cam.x)*0.16; cam.y+=(tcy-cam.y)*0.16; }
+  if (window.World3D && window.World3D.ready) {
+    window.World3D.setCamFollow(t.x, t.y);
+    window.World3D.render(CAM_PITCH, CAM_YAW);
+    return;
+  }
+  if (!ctx) return;
+  ctx.clearRect(0,0,W,H);
   let shx=0,shy=0; if(shake>0){ shx=rand(-shake,shake); shy=rand(-shake,shake); shake-=18/60; if(shake<0)shake=0; }
   ctx.save(); ctx.translate(-cam.x+shx,-cam.y+shy);
 

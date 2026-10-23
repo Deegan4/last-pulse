@@ -70,6 +70,17 @@ function render(pitchDeg = 60, yawDeg = 15){
   renderer.render(scene, camera);
 }
 
+function buildGround(arenaW, arenaH){
+  if (!ready || !root) return null;
+  const geo = new THREE.PlaneGeometry(arenaW, arenaH);
+  const mat = new THREE.MeshLambertMaterial({ color: 0x3d5a32 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(arenaW / 2, 0, arenaH / 2);
+  root.add(mesh);
+  return mesh;
+}
+
 window.World3D = {
   ready: false, THREE, scene: null, root: null, camera: null,
   init(canvas){
@@ -79,7 +90,7 @@ window.World3D = {
     window.World3D.camera = camera;
     return true;
   },
-  resize, render, setCamFollow, showFail,
+  resize, render, setCamFollow, showFail, buildGround,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };

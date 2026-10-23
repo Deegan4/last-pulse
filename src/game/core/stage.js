@@ -6,7 +6,7 @@
 // ---------- Stage / canvas ----------
 const stage = document.getElementById('game');
 const cv = document.getElementById('cv');
-const ctx = cv.getContext('2d');
+let ctx = null;   // no 2D on #cv — WebGL owns the playfield canvas (see World3D.init)
 const mini = document.getElementById('minimap');
 const mctx = mini.getContext('2d');
 let W = 0, H = 0, DPR = 1;
@@ -115,9 +115,16 @@ function resize(){
   }
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = gw; H = gh;
-  cv.width = Math.max(1, Math.floor(W * DPR));
-  cv.height = Math.max(1, Math.floor(H * DPR));
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const w3d = window.World3D;
+  const webglFailEl = document.getElementById('webglFail');
+  const webglFailed = w3d && w3d.ready === false && webglFailEl && !webglFailEl.classList.contains('hidden');
+  if (w3d && w3d.ready) {
+    w3d.resize(W, H, DPR);
+  } else if (!webglFailed) {
+    cv.width = Math.max(1, Math.floor(W * DPR));
+    cv.height = Math.max(1, Math.floor(H * DPR));
+    if (ctx) ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 150));
