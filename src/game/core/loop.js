@@ -60,11 +60,11 @@ function loop(now){
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
     for (const h of humans) if (h.alive) window.World3D?.syncEntityMesh?.(h);
-    for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
     updateRevive(dt);
     leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();
+    for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
     updateBuilds(dt); updateBullets(dt); updateBombs(dt); updatePickups(dt); updateScraps(dt); updateWorldInteractables(dt); updateParticles(dt);
     if(spectating){ spectateT+=dt; if(!specTarget||!specTarget.alive) specPick();
       el('specName').textContent = specTarget? specTarget.name : '—';

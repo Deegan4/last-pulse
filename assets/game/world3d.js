@@ -6,6 +6,20 @@ const DEG = Math.PI / 180;
 let renderer, scene, camera, root, follow = { x: 1100, y: 320 };
 let ready = false;
 
+const _raycaster = new THREE.Raycaster();
+const _ndc = new THREE.Vector2();
+const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const _hit = new THREE.Vector3();
+
+function screenToGround(cssX, cssY, rect){
+  if (!ready || !camera) return null;
+  _ndc.x = ((cssX - rect.left) / rect.width) * 2 - 1;
+  _ndc.y = -((cssY - rect.top) / rect.height) * 2 + 1;
+  _raycaster.setFromCamera(_ndc, camera);
+  if (!_raycaster.ray.intersectPlane(_plane, _hit)) return null;
+  return { x: _hit.x, y: _hit.z };
+}
+
 function showFail(){
   const el = document.getElementById('webglFail');
   if (el) el.classList.remove('hidden');
@@ -181,7 +195,7 @@ window.World3D = {
     return true;
   },
   resize, render, setCamFollow, showFail, buildGround, makeBuildingMesh, disposeMesh,
-  makeHumanMesh, makeZombieMesh, syncEntityMesh,
+  makeHumanMesh, makeZombieMesh, syncEntityMesh, screenToGround,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };
