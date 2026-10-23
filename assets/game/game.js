@@ -1264,9 +1264,16 @@ const PHASES = [
   { hold:16, shrink:9,  r:ARENA_W*0.03, dmg:10 },
   { hold:14, shrink:8,  r:0,          dmg:16 },
 ];
+function syncZoneToWorld3D(){
+  const w3d = window.World3D;
+  if (!w3d?.ready || typeof w3d.setZone !== 'function') return;
+  if (!zoneActive()) { w3d.setZone(0, 0, 0); return; }
+  w3d.setZone(zone.cx, zone.cy, Math.max(0, zone.r));
+}
 function zoneReset(){
   zone.cx=ARENA_W/2; zone.cy=ARENA_H/2; zone.r=Math.max(ARENA_W,ARENA_H)*0.6;
   zone.phase=0; zone.state='hold'; zone.t=0; zone.dur=PHASES[0].hold; zone.dmg=PHASES[0].dmg;
+  syncZoneToWorld3D();
 }
 function zoneUpdate(dt){
   zone.t += dt;
@@ -1288,6 +1295,7 @@ function zoneUpdate(dt){
       if(zone.phase>=PHASES.length){ zone.state='done'; zone.dur=1e9; }
       else { zone.state='hold'; zone.dur=PHASES[zone.phase].hold; } }
   }
+  syncZoneToWorld3D();
 }
 function outsideZone(e){ return Math.hypot(e.x-zone.cx, e.y-zone.cy) > zone.r; }
 function zoneActive(){ return gameMode!=='horde'; }
@@ -3383,6 +3391,7 @@ function draw(){
     }
     window.World3D.setShake(shx, shy);
     window.World3D.setCamFollow(t.x, t.y);
+    window.World3D.setDayFactor(dayLightFactor());
     window.World3D.render(CAM_PITCH, CAM_YAW);
     return;
   }
@@ -3615,6 +3624,11 @@ function drawVignette(){
     g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.66,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(8,14,6,0.34)');
     o.fillStyle=g; o.fillRect(0,0,c.width,c.height); vignetteGrad=c; }
   ctx.drawImage(vignetteGrad,0,0,W,H);   // fast blit of the pre-rendered vignette
+}
+function dayLightFactor(){
+  if (timeOfDay === 'day') return 1;
+  if (timeOfDay === 'dusk') return 0.62;
+  return 0.38;
 }
 function drawDayNight(){
   if(timeOfDay==='day') return;

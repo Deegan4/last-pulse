@@ -24,6 +24,7 @@ function draw(){
     }
     window.World3D.setShake(shx, shy);
     window.World3D.setCamFollow(t.x, t.y);
+    window.World3D.setDayFactor(dayLightFactor());
     window.World3D.render(CAM_PITCH, CAM_YAW);
     return;
   }
@@ -256,6 +257,11 @@ function drawVignette(){
     g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.66,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(8,14,6,0.34)');
     o.fillStyle=g; o.fillRect(0,0,c.width,c.height); vignetteGrad=c; }
   ctx.drawImage(vignetteGrad,0,0,W,H);   // fast blit of the pre-rendered vignette
+}
+function dayLightFactor(){
+  if (timeOfDay === 'day') return 1;
+  if (timeOfDay === 'dusk') return 0.62;
+  return 0.38;
 }
 function drawDayNight(){
   if(timeOfDay==='day') return;

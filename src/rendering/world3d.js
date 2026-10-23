@@ -6,6 +6,9 @@ const DEG = Math.PI / 180;
 let renderer, scene, camera, root, follow = { x: 1100, y: 320 };
 let camShakeX = 0, camShakeZ = 0;
 let ready = false;
+let hemiLight, keyLight, zoneMesh;
+const HEMI_INTENSITY_BASE = 1.1;
+const KEY_INTENSITY_BASE = 1.2;
 
 const _raycaster = new THREE.Raycaster();
 const _ndc = new THREE.Vector2();
@@ -42,10 +45,11 @@ function init(canvas){
   scene = new THREE.Scene();
   root = new THREE.Group();
   scene.add(root);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x334422, 1.1));
-  const key = new THREE.DirectionalLight(0xfff2d0, 1.2);
-  key.position.set(4, 10, 2);
-  scene.add(key);
+  hemiLight = new THREE.HemisphereLight(0xffffff, 0x334422, HEMI_INTENSITY_BASE);
+  scene.add(hemiLight);
+  keyLight = new THREE.DirectionalLight(0xfff2d0, KEY_INTENSITY_BASE);
+  keyLight.position.set(4, 10, 2);
+  scene.add(keyLight);
 
   camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5000);
   ready = true;
@@ -242,6 +246,32 @@ function syncBomb(b){
   b.mesh.position.set(b.x, 7, b.y);
 }
 
+function setZone(cx, cy, r){
+  if (!ready || !root) return;
+  const show = r > 0;
+  if (!zoneMesh) {
+    const geo = new THREE.RingGeometry(0.95, 1, 64);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x66ffcc, side: THREE.DoubleSide, transparent: true, opacity: 0.35,
+    });
+    zoneMesh = new THREE.Mesh(geo, mat);
+    zoneMesh.rotation.x = -Math.PI / 2;
+    root.add(zoneMesh);
+  }
+  zoneMesh.visible = show;
+  if (!show) return;
+  zoneMesh.position.set(cx, 0.5, cy);
+  zoneMesh.scale.set(r, r, 1);
+}
+
+function setDayFactor(t01){
+  if (!ready || !hemiLight || !keyLight) return;
+  const t = Math.max(0, Math.min(1, t01));
+  const dim = 0.32 + 0.68 * t;
+  hemiLight.intensity = HEMI_INTENSITY_BASE * dim;
+  keyLight.intensity = KEY_INTENSITY_BASE * (0.28 + 0.72 * t);
+}
+
 window.World3D = {
   ready: false, THREE, scene: null, root: null, camera: null,
   init(canvas){
@@ -254,7 +284,7 @@ window.World3D = {
   resize, render, setCamFollow, setShake, showFail, buildGround, makeBuildingMesh, disposeMesh,
   makeHumanMesh, makeZombieMesh, syncEntityMesh,
   makeBulletMesh, syncBullet, makePickupMesh, syncPickup, makeBombMesh, syncBomb,
-  screenToGround,
+  setZone, setDayFactor, screenToGround,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };

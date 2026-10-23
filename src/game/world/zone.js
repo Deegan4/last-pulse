@@ -12,9 +12,16 @@ const PHASES = [
   { hold:16, shrink:9,  r:ARENA_W*0.03, dmg:10 },
   { hold:14, shrink:8,  r:0,          dmg:16 },
 ];
+function syncZoneToWorld3D(){
+  const w3d = window.World3D;
+  if (!w3d?.ready || typeof w3d.setZone !== 'function') return;
+  if (!zoneActive()) { w3d.setZone(0, 0, 0); return; }
+  w3d.setZone(zone.cx, zone.cy, Math.max(0, zone.r));
+}
 function zoneReset(){
   zone.cx=ARENA_W/2; zone.cy=ARENA_H/2; zone.r=Math.max(ARENA_W,ARENA_H)*0.6;
   zone.phase=0; zone.state='hold'; zone.t=0; zone.dur=PHASES[0].hold; zone.dmg=PHASES[0].dmg;
+  syncZoneToWorld3D();
 }
 function zoneUpdate(dt){
   zone.t += dt;
@@ -36,6 +43,7 @@ function zoneUpdate(dt){
       if(zone.phase>=PHASES.length){ zone.state='done'; zone.dur=1e9; }
       else { zone.state='hold'; zone.dur=PHASES[zone.phase].hold; } }
   }
+  syncZoneToWorld3D();
 }
 function outsideZone(e){ return Math.hypot(e.x-zone.cx, e.y-zone.cy) > zone.r; }
 function zoneActive(){ return gameMode!=='horde'; }
