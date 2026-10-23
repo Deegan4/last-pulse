@@ -1,4 +1,107 @@
+let world3dTried = false;
+let world3dDead = false;
+let world3dMissingFrames = 0;
+const WORLD3D_MISSING_MAX = 120;
+let world3dContextHooked = false;
+
+function showWebglFail(){
+  window.World3D?.showFail?.();
+  const el = document.getElementById('webglFail');
+  if (el) el.classList.remove('hidden');
+  const c = document.getElementById('cv');
+  if (c) c.classList.add('hidden');
+}
+
+function hookWebglContextLoss(){
+  if (world3dContextHooked || !cv) return;
+  world3dContextHooked = true;
+  let restoreTried = false;
+  cv.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    world3dDead = true;
+    showWebglFail();
+  });
+  cv.addEventListener('webglcontextrestored', () => {
+    if (restoreTried || !window.World3D) return;
+    restoreTried = true;
+    world3dDead = false;
+    world3dTried = false;
+    tryInitWorld3D();
+  });
+}
+
+function disposeEntityMeshes(list){
+  const w3d = window.World3D;
+  if (!w3d?.disposeMesh) return;
+  for (const e of list) {
+    if (e.mesh) { w3d.disposeMesh(e.mesh); e.mesh = null; }
+  }
+}
+
+function disposeProjMesh(o){
+  const w3d = window.World3D;
+  if (o?.mesh && w3d?.disposeMesh) { w3d.disposeMesh(o.mesh); o.mesh = null; }
+}
+
+function disposeProjMeshes(list){
+  for (const o of list) disposeProjMesh(o);
+}
+
+function syncProjectileMeshes(){
+  const w3d = window.World3D;
+  if (!w3d?.ready) return;
+  for (const b of bullets) {
+    if (!b.mesh && w3d.makeBulletMesh) b.mesh = w3d.makeBulletMesh(b);
+    if (b.mesh) w3d.syncBullet(b);
+  }
+  for (const b of bombs) {
+    if (!b.mesh && w3d.makeBombMesh) b.mesh = w3d.makeBombMesh();
+    if (b.mesh) w3d.syncBomb(b);
+  }
+  for (const p of pickups) {
+    if (!p.mesh && w3d.makePickupMesh) p.mesh = w3d.makePickupMesh(p);
+    if (p.mesh) w3d.syncPickup(p);
+  }
+}
+
+function syncAllEntityMeshes(){
+  const w3d = window.World3D;
+  if (!w3d?.ready || !w3d.syncEntityMesh) return;
+  for (const h of humans) {
+    if (h.alive && !h.mesh && w3d.makeHumanMesh) h.mesh = w3d.makeHumanMesh(h.look || h.avatar?.look);
+    if (h.mesh) w3d.syncEntityMesh(h);
+  }
+  for (const z of zombies) {
+    if (z.alive && !z.mesh && w3d.makeZombieMesh) z.mesh = w3d.makeZombieMesh(z.kind, z.size);
+    if (z.mesh) w3d.syncEntityMesh(z);
+  }
+}
+
+function tryInitWorld3D(){
+  if (world3dTried) return;
+  if (!window.World3D) {
+    world3dMissingFrames++;
+    if (world3dMissingFrames >= WORLD3D_MISSING_MAX) {
+      world3dDead = true;
+      showWebglFail();
+    }
+    return;
+  }
+  world3dTried = true;
+  if (!window.World3D.init(cv)) {
+    world3dDead = true;
+    return;
+  }
+  hookWebglContextLoss();
+  window.World3D.buildGround(ARENA_W, ARENA_H);
+  window.World3D.resize(W, H, DPR);
+  syncBuildingMeshes();
+  syncAllEntityMeshes();
+}
+
 function loop(now){
+  if (world3dDead) return;
+  tryInitWorld3D();
   let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
   fpsAcc+=dt; fpsFrames++; if(fpsAcc>=0.4){ fps=fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0; }
   const perfT0 = (screenState==='playing' && zombies.length>30) ? performance.now() : 0;   // heavy-frame sample
@@ -22,16 +125,26 @@ function loop(now){
     if(player2 && player2.alive) updatePlayer(player2,dt,curGp2,false);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
+    for (const h of humans) if (h.alive) window.World3D?.syncEntityMesh?.(h);
     updateRevive(dt);
     leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
     separate();
+    for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
     updateBuilds(dt); updateBullets(dt); updateBombs(dt); updatePickups(dt); updateScraps(dt); updateWorldInteractables(dt); updateParticles(dt);
+    syncProjectileMeshes();
     if(spectating){ spectateT+=dt; if(!specTarget||!specTarget.alive) specPick();
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }
     refreshHud(); drawMini();
-  } else { updateParticles(dt); menuSceneUpdate(dt); if(curGp) updateGamepadMenuNav(curGp); syncControllerStatus(); }
+  } else {
+    updateParticles(dt); menuSceneUpdate(dt);
+    if (menuAmbient) {
+      if (window.World3D?.ready) window.World3D.setZone?.(0, 0, 0);
+      for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
+    }
+    if(curGp) updateGamepadMenuNav(curGp); syncControllerStatus();
+  }
   draw();
   if(perfT0){ perfAcc+=performance.now()-perfT0; perfN++; perfPeakZ=Math.max(perfPeakZ,zombies.length);
     if(now-perfLog>2000){ const ms=perfAcc/Math.max(1,perfN);

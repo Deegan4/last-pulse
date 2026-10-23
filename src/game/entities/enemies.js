@@ -31,7 +31,7 @@ const TOWER_W=88, TOWER_H=72, TOWER_ELEV=46;   // 2-story watchtower: footprint 
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
 function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
-  return { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
+  const z = { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
     seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8),
     leaper:!!t.leaper, buff:!!t.buff, leapCd:rand(0.8,2.2), buffCd:rand(1.2,3.0), frenzyT:0,
@@ -39,4 +39,9 @@ function makeZombie(x,y,kind){
     howler:!!t.howler, howlCd:t.howler?rand(2,4):0, howlFlash:0, hasteT:0,
     armored:!!t.armored,
     spawner:!!t.spawner, spawnCd:t.spawner?rand(3,5):0, spawnsLeft:t.spawner?3:0 };
+  if (window.World3D?.ready) {
+    z.mesh = window.World3D.makeZombieMesh(z.kind, z.size);
+    window.World3D.syncEntityMesh(z);
+  }
+  return z;
 }

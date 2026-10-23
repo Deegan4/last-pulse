@@ -42,6 +42,11 @@
 <body>
 <div id="game">
   <canvas id="cv"></canvas>
+  <canvas id="cvHud" aria-hidden="true"></canvas>
+  <div id="webglFail" class="hidden" role="alert">
+    <h2>WebGL required</h2>
+    <p>Last Pulse needs WebGL for its 3D world. Try another browser or update your device.</p>
+  </div>
 
   <!-- ===== In-game HUD ===== -->
   <div id="hud" class="hidden">
@@ -267,14 +272,9 @@
 
 <script src="assets/game/game.js"></script>
 
-<!-- ===== 3D model layer — progressive enhancement =====
-     Loads vendored Three.js and renders generated GLB models as billboards in the 2D field
-     (player avatars + local building props) AND on the avatar screen.
-     Each model is rendered to an offscreen sprite once per frame; drawHuman/drawBuilding
-     blit that sprite at the world position so it depth-sorts with the 2D art.
-     Entirely fail-safe: no CDN / no WebGL / no GLB → window.Models3D never appears and
-     every entity draws its hand-drawn 2D chibi instead. The game never depends on this. -->
-<script type="module" src="assets/game/models3d.js"></script>
+<!-- ===== World3D — 3D-only playfield (procedural Three.js; no Meshy) =====
+     Exports window.World3D; the game calls init/resize/render after releasing the 2D context. -->
+<script type="module" src="assets/game/world3d.js"></script>
 
 <!-- PWA install + offline play (ROADMAP.md "PWA install"). Registration is guarded to
      http(s) origins only: the native iOS wrapper loads this same document via file:// through

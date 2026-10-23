@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.76.2). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.77.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -10,6 +10,15 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 > and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
 > bumps the version. **When it disagrees with the code, the code wins** — verify against
 > `index.html` before trusting any bullet below.
+
+## v2.77 — "True 3D high-angle world" (shipped)
+
+- [x] **Procedural World3D playfield** — match rendering is WebGL orthographic (~60° pitch, ~15° yaw);
+      buildings, humans, zombies, projectiles, and zone ring live in `assets/game/world3d.js`.
+      The legacy 2D canvas world blit and Meshy billboard play path are removed from `draw()`.
+- [x] **3D-only boot** — WebGL failure shows a hard error panel; no 2D world fallback.
+- [x] **Meshy moonshot cancelled (cost)** — GLB text-to-3D generation is parked; existing
+      `assets/meshy/` files may remain for archival use but are not required to ship or play.
 
 ## v2.72 — "Safari navigation fix" (shipped)
 
@@ -425,10 +434,9 @@ refactor for marginal payoff; revisit if doing a broader gore pass._
 
 ## Moonshots (parked — need external unblocks or scope approval)
 
-- **3D characters (Meshy)** — wiring is DONE (`assets/meshy/loader.js` auto-wires generated
-  GLBs); generation of the remaining 25/28 assets is **blocked on `MESHY_API_KEY`** in the
-  environment config (never paste keys in chat) or an interactively-authorized Meshy MCP.
-  Then: `node scripts/gen-meshy.mjs` and verify in a real browser (CDN blocked headless).
+- **3D characters (Meshy)** — **cancelled (cost).** v2.77.0 ships procedural low-poly World3D
+  proxies instead of Meshy GLB billboards. `scripts/gen-meshy.mjs` and `assets/meshy/` may stay
+  on disk for experiments but are not on the play path or ship gate.
 - **Online multiplayer** — real-time netcode needs a backend + protocol; out of single-file
   scope. Only on explicit request; would start as a design doc.
 - **Global leaderboards** — smaller backend ask than multiplayer (one table + fetch); could

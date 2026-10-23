@@ -23,9 +23,9 @@ function updateBullets(dt){
       if(b.boom){ gone=true; }
       else {
         const hitObs=worldObstacleAt(b.x,b.y); if(hitObs) damageWorldObstacle(hitObs,b.dmg||12,b.owner);
-        for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue;
+        for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); disposeProjMesh(b); bullets.splice(i,1); continue;
       } }
-    if(!gone && !b.enemy && !b.boom && shootBarrel(b)){ bullets.splice(i,1); continue; }
+    if(!gone && !b.enemy && !b.boom && shootBarrel(b)){ disposeProjMesh(b); bullets.splice(i,1); continue; }
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
@@ -42,13 +42,13 @@ function updateBullets(dt){
     const oob = b.x<0||b.y<0||b.x>ARENA_W||b.y>ARENA_H;
     if(gone||b.life<=0||oob){
       if(b.boom && !oob) explode(b);   // rockets detonate on impact / at max range (not off-map)
-      bullets.splice(i,1); }
+      disposeProjMesh(b); bullets.splice(i,1); }
   }
 }
 function updateBombs(dt){
   for(let i=bombs.length-1;i>=0;i--){ const b=bombs[i]; b.t+=dt;
     const k=clamp(b.t/b.fuse,0,1); b.x=lerp(b.sx,b.tx,k); b.y=lerp(b.sy,b.ty,k);
-    if(b.t>=b.fuse){ explode(b); bombs.splice(i,1); } }
+    if(b.t>=b.fuse){ explode(b); disposeProjMesh(b); bombs.splice(i,1); } }
 }
 function applyPickup(h,p){
   if(p.kind==='health'){ h.hp=Math.min(h.maxhp,h.hp+30); }
@@ -65,7 +65,7 @@ function updatePickups(dt){
         if((p.kind==='health'||p.kind==='medkit') && h.hp>=h.maxhp) continue;
         if(p.kind==='armor' && (h.shield||0)>=100) continue;
         applyPickup(h,p); taken=true; break; } }
-    if(taken) pickups.splice(i,1);
+    if(taken){ disposeProjMesh(p); pickups.splice(i,1); }
   }
   // trickle new items inside the safe zone (avoid water/buildings)
   if(pickups.length<9 && Math.random()<dt*0.45){

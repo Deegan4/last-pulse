@@ -36,13 +36,29 @@ function updatePlayer(h,dt,gp,readShared){
   let firing=false, mouseAim=false;
   if(gp && (Math.abs(gp.ax)+Math.abs(gp.ay))>0.25){ const a=assistAim(h,Math.atan2(gp.ay,gp.ax)); h.aim=angLerp(h.aim,a,clamp(0.35*meta.aimSens,0.12,1)); firing=true; }
   else if(readShared && aimVec.active && (aimVec.x||aimVec.y)){ h.aim=Math.atan2(aimVec.y,aimVec.x); firing=true; }
+  else if(readShared && !isTouch && window.World3D?.ready){
+    const rect = cv.getBoundingClientRect();
+    const g = window.World3D.screenToGround(rect.left + mouse.x, rect.top + mouse.y, rect);
+    if (g) {
+      h.aim = Math.atan2(g.y - h.y, g.x - h.x);
+      firing = mouse.down || keys[' '];
+      mouseAim = true;
+    }
+  }
   else if(readShared && !isTouch){ h.aim=Math.atan2((mouse.y+cam.y)-h.y,(mouse.x+cam.x)-h.x); firing=mouse.down||keys[' ']; mouseAim=true; }
   if(gp){ if(gp.fire) firing=true; if(gp.light) castLightning(h); if(gp.bomb) throwBomb(h); if(gp.grapple) castGrapple(h); }
   // reticle world target — player-1-only screen overlay globals (aimWX/aimWY/aimShow); player 2
   // doesn't get an on-screen reticle in this pass, a deliberate scope cut, not an oversight — see
   // memory.md 2-player entry
   if(readShared){
-    if(mouseAim){ aimWX=mouse.x+cam.x; aimWY=mouse.y+cam.y; }
+    if(mouseAim){
+      if (window.World3D?.ready) {
+        const rect = cv.getBoundingClientRect();
+        const g = window.World3D.screenToGround(rect.left + mouse.x, rect.top + mouse.y, rect);
+        if (g) { aimWX = g.x; aimWY = g.y; }
+        else { aimWX = mouse.x + cam.x; aimWY = mouse.y + cam.y; }
+      } else { aimWX = mouse.x + cam.x; aimWY = mouse.y + cam.y; }
+    }
     else { aimWX=h.x+Math.cos(h.aim)*130; aimWY=h.y+Math.sin(h.aim)*130; }
     aimShow = mouseAim || firing || aimVec.active || !!(gp&&(Math.abs(gp.ax)+Math.abs(gp.ay))>0.25);
   }

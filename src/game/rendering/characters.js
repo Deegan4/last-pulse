@@ -4,7 +4,6 @@ function drawHuman(h){
   // "armless" heroes — they rely on the 2D sprite + drawHeroArm rig, and a 3D billboard would hide
   // the drawn gun-arm (leaving them empty-handed), so those always take the sprite path below.
   const armless3D = h.avatar && h.avatar.armless;
-  if(!armless3D && window.Models3D && Models3D.drawHuman(ctx,h)){ drawNameplate(h); return; }
   // sprite hero layer: if this fighter has a loaded PNG, billboard it and skip the drawn chibi.
   const heroImg = h.avatar && imgOk(h.avatar.img);
   if(heroImg){ drawHeroSprite(h, heroImg); drawNameplate(h); return; }

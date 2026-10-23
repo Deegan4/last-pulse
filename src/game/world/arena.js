@@ -65,19 +65,58 @@ function cycleMapPick(){ const order=['random',...MAPS.map(x=>x.id)];
   for(let i=1;i<=order.length;i++){ const id=order[(Math.max(0,order.indexOf(meta.mapPick))+i)%order.length];
     const m=MAPS.find(x=>x.id===id); if(!m || m.free || meta.iapUnlockAll){ meta.mapPick=id; break; } }
   saveMeta(); }
-// Bare pit (brawler rewrite) — the houses/water/campfire/landmark settlement-builder is gone;
-// Anger of Stick 5's arenas are a flat fighting pit with no destructible terrain or loot houses,
-// and that's the explicit call here too (full replacement, not a simplified side-view version of
-// the old cover system). `obstacles`/`worldInteractables` stay empty arrays on purpose — every
-// consumer of them (resolveObstacles/wallRects/insideBuilding/bulletInObstacle/
-// updateWorldInteractables) already no-ops safely on an empty array, so nothing downstream needed
-// to change. Map picking still works (background palette only, no density/building effect).
+function disposeDecorMeshes(){
+  const w3d = window.World3D;
+  if (!w3d || !w3d.disposeMesh) return;
+  for (const d of decor) {
+    if (d.mesh) { w3d.disposeMesh(d.mesh); d.mesh = null; }
+  }
+}
+function attachBuildingMesh(d){
+  if (d.type !== 'building' || d.mesh) return;
+  const w3d = window.World3D;
+  if (w3d && w3d.ready) d.mesh = w3d.makeBuildingMesh(d);
+}
+function syncBuildingMeshes(){
+  for (const d of decor) if (d.type === 'building' && !d.mesh) attachBuildingMesh(d);
+}
+function pushBuilding(b){
+  obstacles.push(b); decor.push(b);
+  attachBuildingMesh(b);
+}
+// Flat brawler pit — no ponds/landmarks; procedural 3D boxes stand in for canvas building art.
 function buildDecor(){
+  disposeDecorMeshes();
   decor.length=0; obstacles.length=0; worldInteractables.length=0;
   const MP=currentMap(); activeMap=MP;
+  const mc=(n,k)=>Math.max(0,Math.round(n*(MP.m[k]??1)));
   timeOfDay = pick(MP.tod);
   groundSkin = MP.ground; ensureGround(groundSkin); groundKey = '';
   campfires = []; barrels = [];
+  const nBuild = mc(10, 'build');
+  const cx = ARENA_W / 2, cy = ARENA_H / 2;
+  for (let i = 0; i < nBuild; i++) {
+    let b, ok = false, tries = 0;
+    do {
+      const w = rand(100, 180), h = rand(70, 130);
+      const kind = w > BIG_HOUSE ? (Math.random() < 0.6 ? 'barn' : pick(['shop', 'house']))
+        : pick(['house', 'house', 'shop', 'cabin']);
+      b = {
+        type: 'building',
+        x: rand(100, ARENA_W - 100 - w),
+        y: rand(60, ARENA_H - 60 - h),
+        w, h, kind,
+        roof: pick(BKINDS[kind].roof),
+      };
+      ok = true;
+      if (dist2(b.x + b.w / 2, b.y + b.h / 2, cx, cy) < 280 * 280) ok = false;
+      for (const o of obstacles) {
+        if (b.x < o.x + o.w + 70 && b.x + b.w + 70 > o.x && b.y < o.y + o.h + 50 && b.y + b.h + 50 > o.y) ok = false;
+      }
+      tries++;
+    } while (!ok && tries < 40);
+    if (ok) pushBuilding(b);
+  }
 }
 // Additive map escalation (Horde only) — called on boss waves from the wave-clear block. NEVER
 // clears or repositions existing decor/obstacles (that would strand zombies/the player inside

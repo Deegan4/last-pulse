@@ -1,5 +1,8 @@
 # memory.md — project handoff & running notes
 
+- **v2.77.0 — True 3D high-angle world.** Match playfield is WebGL-only (`world3d.js` procedural
+  ortho camera); legacy 2D `draw()` world blit and Meshy `Models3D` play path removed. WebGL
+  failure is a hard error. Meshy moonshot cancelled (cost). Minimap stays 2D in `drawMini()`.
 - **v2.68.0 — Interactive field asset bundle.** Upgraded existing caches, med tents, fuel barrels,
   and radio antennas into proximity rewards, and added destructible wooden barricades plus 70-HP
   building-door shutters to the live obstacle/depth-sort pipeline. Barricades and doors block
