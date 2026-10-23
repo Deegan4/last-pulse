@@ -8,6 +8,7 @@ function tryInitWorld3D(){
   }
   window.World3D.buildGround(ARENA_W, ARENA_H);
   window.World3D.resize(W, H, DPR);
+  syncBuildingMeshes();
 }
 
 function loop(now){

@@ -81,6 +81,38 @@ function buildGround(arenaW, arenaH){
   return mesh;
 }
 
+function disposeMesh(obj){
+  if (!obj) return;
+  if (obj.parent) obj.parent.remove(obj);
+  obj.traverse((child) => {
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) {
+      if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
+      else child.material.dispose();
+    }
+  });
+}
+
+function makeBuildingMesh(d){
+  const g = new THREE.Group();
+  const bodyH = 36;
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(d.w, bodyH, d.h),
+    new THREE.MeshLambertMaterial({ color: 0x8a7355 })
+  );
+  body.position.set(d.w / 2, bodyH / 2, d.h / 2);
+  g.add(body);
+  const roof = new THREE.Mesh(
+    new THREE.BoxGeometry(d.w + 4, 6, d.h + 4),
+    new THREE.MeshLambertMaterial({ color: 0x5c4030 })
+  );
+  roof.position.set(d.w / 2, bodyH + 3, d.h / 2);
+  g.add(roof);
+  g.position.set(d.x, 0, d.y);
+  root.add(g);
+  return g;
+}
+
 window.World3D = {
   ready: false, THREE, scene: null, root: null, camera: null,
   init(canvas){
@@ -90,7 +122,7 @@ window.World3D = {
     window.World3D.camera = camera;
     return true;
   },
-  resize, render, setCamFollow, showFail, buildGround,
+  resize, render, setCamFollow, showFail, buildGround, makeBuildingMesh, disposeMesh,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };
