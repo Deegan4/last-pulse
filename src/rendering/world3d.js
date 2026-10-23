@@ -14,6 +14,7 @@ const _raycaster = new THREE.Raycaster();
 const _ndc = new THREE.Vector2();
 const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _hit = new THREE.Vector3();
+const _world = new THREE.Vector3();
 
 function screenToGround(cssX, cssY, rect){
   if (!ready || !camera) return null;
@@ -22,6 +23,17 @@ function screenToGround(cssX, cssY, rect){
   _raycaster.setFromCamera(_ndc, camera);
   if (!_raycaster.ray.intersectPlane(_plane, _hit)) return null;
   return { x: _hit.x, y: _hit.z };
+}
+
+function worldToScreen(wx, wy){
+  if (!ready || !camera || !renderer) return null;
+  _world.set(wx, 0, wy);
+  _world.project(camera);
+  const el = renderer.domElement;
+  const w = el.clientWidth || 1;
+  const h = el.clientHeight || 1;
+  if (_world.z > 1) return null;
+  return { x: (_world.x * 0.5 + 0.5) * w, y: (-_world.y * 0.5 + 0.5) * h };
 }
 
 function showFail(){
@@ -284,7 +296,7 @@ window.World3D = {
   resize, render, setCamFollow, setShake, showFail, buildGround, makeBuildingMesh, disposeMesh,
   makeHumanMesh, makeZombieMesh, syncEntityMesh,
   makeBulletMesh, syncBullet, makePickupMesh, syncPickup, makeBombMesh, syncBomb,
-  setZone, setDayFactor, screenToGround,
+  setZone, setDayFactor, screenToGround, worldToScreen,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };

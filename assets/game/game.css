@@ -35,6 +35,7 @@
     width:100%;height:100%;
     box-shadow:0 0 0 100vmax #2a4420;}
   #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #cvHud{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:5}
 
   .hidden{display:none!important}
   .srow.is-hidden{display:none}
