@@ -6,6 +6,32 @@ function disposeEntityMeshes(list){
   }
 }
 
+function disposeProjMesh(o){
+  const w3d = window.World3D;
+  if (o?.mesh && w3d?.disposeMesh) { w3d.disposeMesh(o.mesh); o.mesh = null; }
+}
+
+function disposeProjMeshes(list){
+  for (const o of list) disposeProjMesh(o);
+}
+
+function syncProjectileMeshes(){
+  const w3d = window.World3D;
+  if (!w3d?.ready) return;
+  for (const b of bullets) {
+    if (!b.mesh && w3d.makeBulletMesh) b.mesh = w3d.makeBulletMesh(b);
+    if (b.mesh) w3d.syncBullet(b);
+  }
+  for (const b of bombs) {
+    if (!b.mesh && w3d.makeBombMesh) b.mesh = w3d.makeBombMesh();
+    if (b.mesh) w3d.syncBomb(b);
+  }
+  for (const p of pickups) {
+    if (!p.mesh && w3d.makePickupMesh) p.mesh = w3d.makePickupMesh(p);
+    if (p.mesh) w3d.syncPickup(p);
+  }
+}
+
 function syncAllEntityMeshes(){
   const w3d = window.World3D;
   if (!w3d?.ready || !w3d.syncEntityMesh) return;
@@ -66,6 +92,7 @@ function loop(now){
     separate();
     for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
     updateBuilds(dt); updateBullets(dt); updateBombs(dt); updatePickups(dt); updateScraps(dt); updateWorldInteractables(dt); updateParticles(dt);
+    syncProjectileMeshes();
     if(spectating){ spectateT+=dt; if(!specTarget||!specTarget.alive) specPick();
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }

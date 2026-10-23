@@ -1566,6 +1566,7 @@ function newBot(team, namePool, i){
 // z.amb so only the ambient mover touches them; spawnMatch wipes the array and clears the flag.
 let menuAmbient=false;
 function menuScene(){
+  disposeProjMeshes(bullets); disposeProjMeshes(bombs); disposeProjMeshes(pickups);
   zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   if(!decor.length) buildDecor();                        // first boot: give the menu real scenery
   menuAmbient=true;
@@ -1591,6 +1592,7 @@ function menuSceneUpdate(dt){
 function spawnMatch(){
   disposeEntityMeshes(humans);
   disposeEntityMeshes(zombies);
+  disposeProjMeshes(bullets); disposeProjMeshes(bombs); disposeProjMeshes(pickups);
   humans.length=0; zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
@@ -1648,7 +1650,12 @@ const PKCOL={health:{bg:'#1f5a2a',line:'#5fd35f'}, medkit:{bg:'#7a1f24',line:'#f
   armor:{bg:'#1f3a5a',line:'#5fa8ff'}, weapon:{bg:'#3a1f5a',line:'#c08bff'}};
 const PKGLYPH={health:'+', medkit:'✚', armor:'▽', weapon:'★'};
 const PKMSG={health:'+30 HP', medkit:'FULL HEAL', armor:'+50 ARMOR', weapon:'NEW WEAPON'};
-function makePickup(x,y,kind){ kind=kind||pick(PKINDS); return {x,y,kind,r:13,t:rand(0,3),w: kind==='weapon'?pick(WEAPONS):null}; }
+function makePickup(x,y,kind){
+  kind=kind||pick(PKINDS);
+  const p={x,y,kind,r:13,t:rand(0,3),w: kind==='weapon'?pick(WEAPONS):null};
+  if (window.World3D?.ready) p.mesh = window.World3D.makePickupMesh(p);
+  return p;
+}
 function ignite(e,src){ e.burn=Math.max(e.burn||0, 2.6); e.burnSrc=src; }
 function aliveHumans(){ let n=0; for(const h of humans) if(h.alive) n++; return n; }
 function nearestHuman(e, fromHumansOnly){
@@ -2022,8 +2029,10 @@ function updateBuilds(dt){
       for(const z of zombies){ if(!z.alive) continue; const d=dist2(b.cx,b.cy,z.x,z.y); if(d<bd){ bd=d; best=z; } }
       if(best){ b.aim=angLerp(b.aim, Math.atan2(best.y-b.cy,best.x-b.cx), clamp(dt*10,0,1));
         if(b.cd<=0 && grace<=0){ b.cd=def.fireCd; const sp=560, a=b.aim+rand(-0.04,0.04);
-          bullets.push({ x:b.cx+Math.cos(a)*18, y:b.cy+Math.sin(a)*18-4, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-            life:def.range/sp+0.12, owner:b, dmg:def.dmg, r:3, color:'#ffe08a' });
+          const shot={ x:b.cx+Math.cos(a)*18, y:b.cy+Math.sin(a)*18-4, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+            life:def.range/sp+0.12, owner:b, dmg:def.dmg, r:3, color:'#ffe08a' };
+          bullets.push(shot);
+          if (window.World3D?.ready) shot.mesh = window.World3D.makeBulletMesh(shot);
           b.muzzle=0.06; sfx('turret'); } }
     } else if(def.key==='spikes'){
       b.tick-=dt;
@@ -2066,8 +2075,10 @@ function updateGrapple(h,dt){
 function spitAcid(z,tgt){
   const spd=306, lead=0.14, tx=tgt.x+(tgt.vx||0)*lead, ty=tgt.y+(tgt.vy||0)*lead;
   const a=Math.atan2(ty-z.y,tx-z.x);
-  bullets.push({ x:z.x+Math.cos(a)*z.r, y:z.y+Math.sin(a)*z.r-6, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
-    life:520/spd, owner:z, dmg:z.dmg, enemy:true, acid:true, hits:0, r:5, color:'#b6ff3a' });
+  const gob={ x:z.x+Math.cos(a)*z.r, y:z.y+Math.sin(a)*z.r-6, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+    life:520/spd, owner:z, dmg:z.dmg, enemy:true, acid:true, hits:0, r:5, color:'#b6ff3a' };
+  bullets.push(gob);
+  if (window.World3D?.ready) gob.mesh = window.World3D.makeBulletMesh(gob);
   sfx('spit',null,z);
 }
 // Bloater death burst — an acid AoE that only damages humans (falls off with distance)
@@ -2997,9 +3008,9 @@ function updateBullets(dt){
       if(b.boom){ gone=true; }
       else {
         const hitObs=worldObstacleAt(b.x,b.y); if(hitObs) damageWorldObstacle(hitObs,b.dmg||12,b.owner);
-        for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); bullets.splice(i,1); continue;
+        for(let k=0;k<4;k++) spark(b.x,b.y,'#cdbf9a',rand(30,100),rand(0,TAU),.25); disposeProjMesh(b); bullets.splice(i,1); continue;
       } }
-    if(!gone && !b.enemy && !b.boom && shootBarrel(b)){ bullets.splice(i,1); continue; }
+    if(!gone && !b.enemy && !b.boom && shootBarrel(b)){ disposeProjMesh(b); bullets.splice(i,1); continue; }
     if(!gone && !b.enemy) for(const z of zombies){ if(!z.alive) continue;   // enemy acid passes through zombies
       if(dist2(b.x,b.y,z.x,z.y)<(z.r+3)*(z.r+3)){
         if(b.boom){ gone=true; break; }
@@ -3016,13 +3027,13 @@ function updateBullets(dt){
     const oob = b.x<0||b.y<0||b.x>ARENA_W||b.y>ARENA_H;
     if(gone||b.life<=0||oob){
       if(b.boom && !oob) explode(b);   // rockets detonate on impact / at max range (not off-map)
-      bullets.splice(i,1); }
+      disposeProjMesh(b); bullets.splice(i,1); }
   }
 }
 function updateBombs(dt){
   for(let i=bombs.length-1;i>=0;i--){ const b=bombs[i]; b.t+=dt;
     const k=clamp(b.t/b.fuse,0,1); b.x=lerp(b.sx,b.tx,k); b.y=lerp(b.sy,b.ty,k);
-    if(b.t>=b.fuse){ explode(b); bombs.splice(i,1); } }
+    if(b.t>=b.fuse){ explode(b); disposeProjMesh(b); bombs.splice(i,1); } }
 }
 function applyPickup(h,p){
   if(p.kind==='health'){ h.hp=Math.min(h.maxhp,h.hp+30); }
@@ -3039,7 +3050,7 @@ function updatePickups(dt){
         if((p.kind==='health'||p.kind==='medkit') && h.hp>=h.maxhp) continue;
         if(p.kind==='armor' && (h.shield||0)>=100) continue;
         applyPickup(h,p); taken=true; break; } }
-    if(taken) pickups.splice(i,1);
+    if(taken){ disposeProjMesh(p); pickups.splice(i,1); }
   }
   // trickle new items inside the safe zone (avoid water/buildings)
   if(pickups.length<9 && Math.random()<dt*0.45){
@@ -3363,6 +3374,14 @@ function draw(){
   const cd=Math.hypot(tcx-cam.x,tcy-cam.y);
   if(cd>400 || screenState!=='playing'){ cam.x=tcx; cam.y=tcy; } else { cam.x+=(tcx-cam.x)*0.16; cam.y+=(tcy-cam.y)*0.16; }
   if (window.World3D && window.World3D.ready) {
+    let shx = 0, shy = 0;
+    if (shake > 0) {
+      shx = rand(-shake, shake);
+      shy = rand(-shake, shake);
+      shake -= 18 / 60;
+      if (shake < 0) shake = 0;
+    }
+    window.World3D.setShake(shx, shy);
     window.World3D.setCamFollow(t.x, t.y);
     window.World3D.render(CAM_PITCH, CAM_YAW);
     return;
@@ -4931,6 +4950,32 @@ function disposeEntityMeshes(list){
   }
 }
 
+function disposeProjMesh(o){
+  const w3d = window.World3D;
+  if (o?.mesh && w3d?.disposeMesh) { w3d.disposeMesh(o.mesh); o.mesh = null; }
+}
+
+function disposeProjMeshes(list){
+  for (const o of list) disposeProjMesh(o);
+}
+
+function syncProjectileMeshes(){
+  const w3d = window.World3D;
+  if (!w3d?.ready) return;
+  for (const b of bullets) {
+    if (!b.mesh && w3d.makeBulletMesh) b.mesh = w3d.makeBulletMesh(b);
+    if (b.mesh) w3d.syncBullet(b);
+  }
+  for (const b of bombs) {
+    if (!b.mesh && w3d.makeBombMesh) b.mesh = w3d.makeBombMesh();
+    if (b.mesh) w3d.syncBomb(b);
+  }
+  for (const p of pickups) {
+    if (!p.mesh && w3d.makePickupMesh) p.mesh = w3d.makePickupMesh(p);
+    if (p.mesh) w3d.syncPickup(p);
+  }
+}
+
 function syncAllEntityMeshes(){
   const w3d = window.World3D;
   if (!w3d?.ready || !w3d.syncEntityMesh) return;
@@ -4991,6 +5036,7 @@ function loop(now){
     separate();
     for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
     updateBuilds(dt); updateBullets(dt); updateBombs(dt); updatePickups(dt); updateScraps(dt); updateWorldInteractables(dt); updateParticles(dt);
+    syncProjectileMeshes();
     if(spectating){ spectateT+=dt; if(!specTarget||!specTarget.alive) specPick();
       el('specName').textContent = specTarget? specTarget.name : '—';
       if(spectateT>16 && !ended){ ended=true; showResults(false, deathPlace); } }

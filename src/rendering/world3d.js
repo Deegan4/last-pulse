@@ -4,6 +4,7 @@ import * as THREE from '../vendor/three/three.module.js';
 
 const DEG = Math.PI / 180;
 let renderer, scene, camera, root, follow = { x: 1100, y: 320 };
+let camShakeX = 0, camShakeZ = 0;
 let ready = false;
 
 const _raycaster = new THREE.Raycaster();
@@ -65,14 +66,16 @@ function resize(w, h, dpr){
 
 function setCamFollow(x, y){ follow.x = x; follow.y = y; }
 
+function setShake(sx, sz){ camShakeX = sx; camShakeZ = sz; }
+
 function placeCamera(pitchDeg, yawDeg){
   const pitch = pitchDeg * DEG, yaw = yawDeg * DEG;
   const dist = 900;
   const cx = follow.x, cz = follow.y;
   camera.position.set(
-    cx + Math.sin(yaw) * Math.cos(pitch) * dist,
+    cx + Math.sin(yaw) * Math.cos(pitch) * dist + camShakeX,
     Math.sin(pitch) * dist,
-    cz + Math.cos(yaw) * Math.cos(pitch) * dist
+    cz + Math.cos(yaw) * Math.cos(pitch) * dist + camShakeZ
   );
   camera.lookAt(cx, 0, cz);
   camera.updateProjectionMatrix();
@@ -185,6 +188,60 @@ function syncEntityMesh(e){
   if (wrist) wrist.rotation.y = 0;
 }
 
+function bulletColor(b){
+  if (b.acid) return 0xc6ff4a;
+  if (b.color) return new THREE.Color(b.color).getHex();
+  return 0xffe066;
+}
+
+function makeBulletMesh(b){
+  const r = b.r || (b.acid ? 5 : 2.2);
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(r, 6, 6),
+    new THREE.MeshBasicMaterial({ color: bulletColor(b) })
+  );
+  root.add(m);
+  return m;
+}
+
+function syncBullet(b){
+  if (!b.mesh) return;
+  const y = b.acid ? 10 : 8;
+  b.mesh.position.set(b.x, y, b.y);
+}
+
+const PICKUP_MESH_COL = { health: 0x5fd35f, medkit: 0xff5a6e, armor: 0x5fa8ff, weapon: 0xc08bff };
+
+function makePickupMesh(p){
+  const col = PICKUP_MESH_COL[p.kind] || 0xffffff;
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(p.r || 13, 8, 8),
+    new THREE.MeshBasicMaterial({ color: col })
+  );
+  root.add(m);
+  return m;
+}
+
+function syncPickup(p){
+  if (!p.mesh) return;
+  const bob = Math.sin(p.t * 4) * 2;
+  p.mesh.position.set(p.x, 6 + bob, p.y);
+}
+
+function makeBombMesh(){
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(5, 5, 5),
+    new THREE.MeshBasicMaterial({ color: 0xff3a2a })
+  );
+  root.add(m);
+  return m;
+}
+
+function syncBomb(b){
+  if (!b.mesh) return;
+  b.mesh.position.set(b.x, 7, b.y);
+}
+
 window.World3D = {
   ready: false, THREE, scene: null, root: null, camera: null,
   init(canvas){
@@ -194,8 +251,10 @@ window.World3D = {
     window.World3D.camera = camera;
     return true;
   },
-  resize, render, setCamFollow, showFail, buildGround, makeBuildingMesh, disposeMesh,
-  makeHumanMesh, makeZombieMesh, syncEntityMesh, screenToGround,
+  resize, render, setCamFollow, setShake, showFail, buildGround, makeBuildingMesh, disposeMesh,
+  makeHumanMesh, makeZombieMesh, syncEntityMesh,
+  makeBulletMesh, syncBullet, makePickupMesh, syncPickup, makeBombMesh, syncBomb,
+  screenToGround,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };

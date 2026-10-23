@@ -62,8 +62,10 @@ function updateBuilds(dt){
       for(const z of zombies){ if(!z.alive) continue; const d=dist2(b.cx,b.cy,z.x,z.y); if(d<bd){ bd=d; best=z; } }
       if(best){ b.aim=angLerp(b.aim, Math.atan2(best.y-b.cy,best.x-b.cx), clamp(dt*10,0,1));
         if(b.cd<=0 && grace<=0){ b.cd=def.fireCd; const sp=560, a=b.aim+rand(-0.04,0.04);
-          bullets.push({ x:b.cx+Math.cos(a)*18, y:b.cy+Math.sin(a)*18-4, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-            life:def.range/sp+0.12, owner:b, dmg:def.dmg, r:3, color:'#ffe08a' });
+          const shot={ x:b.cx+Math.cos(a)*18, y:b.cy+Math.sin(a)*18-4, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+            life:def.range/sp+0.12, owner:b, dmg:def.dmg, r:3, color:'#ffe08a' };
+          bullets.push(shot);
+          if (window.World3D?.ready) shot.mesh = window.World3D.makeBulletMesh(shot);
           b.muzzle=0.06; sfx('turret'); } }
     } else if(def.key==='spikes'){
       b.tick-=dt;
@@ -106,8 +108,10 @@ function updateGrapple(h,dt){
 function spitAcid(z,tgt){
   const spd=306, lead=0.14, tx=tgt.x+(tgt.vx||0)*lead, ty=tgt.y+(tgt.vy||0)*lead;
   const a=Math.atan2(ty-z.y,tx-z.x);
-  bullets.push({ x:z.x+Math.cos(a)*z.r, y:z.y+Math.sin(a)*z.r-6, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
-    life:520/spd, owner:z, dmg:z.dmg, enemy:true, acid:true, hits:0, r:5, color:'#b6ff3a' });
+  const gob={ x:z.x+Math.cos(a)*z.r, y:z.y+Math.sin(a)*z.r-6, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+    life:520/spd, owner:z, dmg:z.dmg, enemy:true, acid:true, hits:0, r:5, color:'#b6ff3a' };
+  bullets.push(gob);
+  if (window.World3D?.ready) gob.mesh = window.World3D.makeBulletMesh(gob);
   sfx('spit',null,z);
 }
 // Bloater death burst — an acid AoE that only damages humans (falls off with distance)

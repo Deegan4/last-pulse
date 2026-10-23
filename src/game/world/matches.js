@@ -5,6 +5,7 @@
 // z.amb so only the ambient mover touches them; spawnMatch wipes the array and clears the flag.
 let menuAmbient=false;
 function menuScene(){
+  disposeProjMeshes(bullets); disposeProjMeshes(bombs); disposeProjMeshes(pickups);
   zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   if(!decor.length) buildDecor();                        // first boot: give the menu real scenery
   menuAmbient=true;
@@ -30,6 +31,7 @@ function menuSceneUpdate(dt){
 function spawnMatch(){
   disposeEntityMeshes(humans);
   disposeEntityMeshes(zombies);
+  disposeProjMeshes(bullets); disposeProjMeshes(bombs); disposeProjMeshes(pickups);
   humans.length=0; zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
@@ -87,7 +89,12 @@ const PKCOL={health:{bg:'#1f5a2a',line:'#5fd35f'}, medkit:{bg:'#7a1f24',line:'#f
   armor:{bg:'#1f3a5a',line:'#5fa8ff'}, weapon:{bg:'#3a1f5a',line:'#c08bff'}};
 const PKGLYPH={health:'+', medkit:'✚', armor:'▽', weapon:'★'};
 const PKMSG={health:'+30 HP', medkit:'FULL HEAL', armor:'+50 ARMOR', weapon:'NEW WEAPON'};
-function makePickup(x,y,kind){ kind=kind||pick(PKINDS); return {x,y,kind,r:13,t:rand(0,3),w: kind==='weapon'?pick(WEAPONS):null}; }
+function makePickup(x,y,kind){
+  kind=kind||pick(PKINDS);
+  const p={x,y,kind,r:13,t:rand(0,3),w: kind==='weapon'?pick(WEAPONS):null};
+  if (window.World3D?.ready) p.mesh = window.World3D.makePickupMesh(p);
+  return p;
+}
 function ignite(e,src){ e.burn=Math.max(e.burn||0, 2.6); e.burnSrc=src; }
 function aliveHumans(){ let n=0; for(const h of humans) if(h.alive) n++; return n; }
 function nearestHuman(e, fromHumansOnly){

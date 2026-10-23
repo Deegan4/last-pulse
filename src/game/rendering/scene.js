@@ -15,6 +15,14 @@ function draw(){
   const cd=Math.hypot(tcx-cam.x,tcy-cam.y);
   if(cd>400 || screenState!=='playing'){ cam.x=tcx; cam.y=tcy; } else { cam.x+=(tcx-cam.x)*0.16; cam.y+=(tcy-cam.y)*0.16; }
   if (window.World3D && window.World3D.ready) {
+    let shx = 0, shy = 0;
+    if (shake > 0) {
+      shx = rand(-shake, shake);
+      shy = rand(-shake, shake);
+      shake -= 18 / 60;
+      if (shake < 0) shake = 0;
+    }
+    window.World3D.setShake(shx, shy);
     window.World3D.setCamFollow(t.x, t.y);
     window.World3D.render(CAM_PITCH, CAM_YAW);
     return;
