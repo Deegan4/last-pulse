@@ -113,6 +113,64 @@ function makeBuildingMesh(d){
   return g;
 }
 
+const ENTITY_TOWER_ELEV = 46; // matches TOWER_ELEV in enemies.js (rooftop draw offset)
+
+function makeHumanMesh(look){
+  const g = new THREE.Group();
+  const skin = new THREE.Color(look?.skin || '#e8b48c');
+  const outfit = new THREE.Color(look?.outfit || '#888888');
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(7, 10, 4, 8),
+    new THREE.MeshLambertMaterial({ color: outfit })
+  );
+  body.position.y = 14;
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(8, 12, 10),
+    new THREE.MeshLambertMaterial({ color: skin })
+  );
+  head.position.y = 28;
+  const wrist = new THREE.Group();
+  wrist.name = 'wrist';
+  wrist.position.set(8, 18, 0);
+  const gun = new THREE.Mesh(
+    new THREE.BoxGeometry(4, 3, 14),
+    new THREE.MeshLambertMaterial({ color: 0x222222 })
+  );
+  gun.position.z = 7;
+  wrist.add(gun);
+  g.add(body, head, wrist);
+  root.add(g);
+  return g;
+}
+
+function makeZombieMesh(kind, size = 1){
+  const g = new THREE.Group();
+  const s = size || 1;
+  const col = kind === 'brute' || kind === 'juggernaut' ? 0x4a5a3a : 0x5a7a4a;
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(7 * s, 12 * s, 4, 8),
+    new THREE.MeshLambertMaterial({ color: col })
+  );
+  body.position.y = 14 * s;
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(7 * s, 10, 8),
+    new THREE.MeshLambertMaterial({ color: 0x6a8a5a })
+  );
+  head.position.y = 28 * s;
+  g.add(body, head);
+  root.add(g);
+  return g;
+}
+
+function syncEntityMesh(e){
+  if (!e.mesh) return;
+  const elev = e.onTower ? ENTITY_TOWER_ELEV : 0;
+  e.mesh.position.set(e.x, elev, e.y);
+  e.mesh.rotation.y = -e.aim + Math.PI / 2;
+  const wrist = e.mesh.getObjectByName('wrist');
+  if (wrist) wrist.rotation.y = 0;
+}
+
 window.World3D = {
   ready: false, THREE, scene: null, root: null, camera: null,
   init(canvas){
@@ -123,6 +181,7 @@ window.World3D = {
     return true;
   },
   resize, render, setCamFollow, showFail, buildGround, makeBuildingMesh, disposeMesh,
+  makeHumanMesh, makeZombieMesh, syncEntityMesh,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };

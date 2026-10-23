@@ -1,3 +1,24 @@
+function disposeEntityMeshes(list){
+  const w3d = window.World3D;
+  if (!w3d?.disposeMesh) return;
+  for (const e of list) {
+    if (e.mesh) { w3d.disposeMesh(e.mesh); e.mesh = null; }
+  }
+}
+
+function syncAllEntityMeshes(){
+  const w3d = window.World3D;
+  if (!w3d?.ready || !w3d.syncEntityMesh) return;
+  for (const h of humans) {
+    if (h.alive && !h.mesh && w3d.makeHumanMesh) h.mesh = w3d.makeHumanMesh(h.look || h.avatar?.look);
+    if (h.mesh) w3d.syncEntityMesh(h);
+  }
+  for (const z of zombies) {
+    if (z.alive && !z.mesh && w3d.makeZombieMesh) z.mesh = w3d.makeZombieMesh(z.kind, z.size);
+    if (z.mesh) w3d.syncEntityMesh(z);
+  }
+}
+
 function tryInitWorld3D(){
   if (window.__world3dTried) return;
   if (!window.World3D) return;
@@ -9,6 +30,7 @@ function tryInitWorld3D(){
   window.World3D.buildGround(ARENA_W, ARENA_H);
   window.World3D.resize(W, H, DPR);
   syncBuildingMeshes();
+  syncAllEntityMeshes();
 }
 
 function loop(now){
@@ -37,6 +59,8 @@ function loop(now){
     if(player2 && player2.alive) updatePlayer(player2,dt,curGp2,false);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
+    for (const h of humans) if (h.alive) window.World3D?.syncEntityMesh?.(h);
+    for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
     updateRevive(dt);
     leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }

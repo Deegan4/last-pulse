@@ -28,6 +28,8 @@ function menuSceneUpdate(dt){
   }
 }
 function spawnMatch(){
+  disposeEntityMeshes(humans);
+  disposeEntityMeshes(zombies);
   humans.length=0; zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;

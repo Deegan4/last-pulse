@@ -148,6 +148,7 @@ function hurt(e, dmg, src, isHumanTarget){
 }
 function die(e, src, isHumanTarget){
   e.alive=false; e.hp=0; e.burn=0;
+  if (e.mesh && window.World3D) { window.World3D.disposeMesh(e.mesh); e.mesh = null; }
   const gore = '#c0303a', goreCol = 'rgba(120,22,30,';   // red blood for everyone
   const ka = (src && src!==e) ? Math.atan2(e.y-src.y, e.x-src.x) : rand(0,TAU);
   for(let i=0;i<14;i++) spark(e.x,e.y, gore, rand(60,240), rand(0,TAU), .9);            // burst

@@ -1302,7 +1302,7 @@ function safeText(){
 // ============================================================
 // ---- src/game/entities/characters.js ----
 function makeHuman(isPlayer, avatar, weapon, name){
-  return {
+  const h = {
     isPlayer, name: name || avatar.name, avatar, look: avatar.look, weapon,
     x:0, y:0, vx:0, vy:0, aim:-Math.PI/2,
     hp:avatar.health, maxhp:avatar.health, speed:avatar.speed*42,
@@ -1314,6 +1314,11 @@ function makeHuman(isPlayer, avatar, weapon, name){
     strafe: Math.random()<.5?-1:1, reJitter:0, aggro:rand(440,560), acc:rand(0.05,0.16),
     think:0, lockT:0, reaction:rand(0.3,0.7), fireMul:rand(1.0,1.5), wanderA:rand(0,TAU),
   };
+  if (window.World3D?.ready) {
+    h.mesh = window.World3D.makeHumanMesh(h.look);
+    window.World3D.syncEntityMesh(h);
+  }
+  return h;
 }
 // ---- src/game/entities/enemies.js ----
 const ZTYPES = {
@@ -1349,7 +1354,7 @@ const TOWER_W=88, TOWER_H=72, TOWER_ELEV=46;   // 2-story watchtower: footprint 
 function pickZKind(){ const r=Math.random(); return r<ZTYPES.brute.w?'brute':r<ZTYPES.brute.w+ZTYPES.runner.w?'runner':'normal'; }
 function makeZombie(x,y,kind){
   kind = kind || pickZKind(); const t=ZTYPES[kind];
-  return { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
+  const z = { x,y, vx:0,vy:0, aim:0, kind, family:t.family||kind, hp:t.hp, maxhp:t.hp, dmg:t.dmg, r:t.r, skin:t.skin, torso:t.torso, size:t.size,
     alive:true, walk:0, hitFlash:0, attackCd:0, think:rand(0,1), wanderA:rand(0,TAU), faceX:1, speed:rand(t.sp[0],t.sp[1]),
     seed:rand(0,9), lunge:0, burn:0, burnSrc:null, ranged:!!t.ranged, boom:!!t.boom, spitCd:rand(0.6,1.8),
     leaper:!!t.leaper, buff:!!t.buff, leapCd:rand(0.8,2.2), buffCd:rand(1.2,3.0), frenzyT:0,
@@ -1357,6 +1362,11 @@ function makeZombie(x,y,kind){
     howler:!!t.howler, howlCd:t.howler?rand(2,4):0, howlFlash:0, hasteT:0,
     armored:!!t.armored,
     spawner:!!t.spawner, spawnCd:t.spawner?rand(3,5):0, spawnsLeft:t.spawner?3:0 };
+  if (window.World3D?.ready) {
+    z.mesh = window.World3D.makeZombieMesh(z.kind, z.size);
+    window.World3D.syncEntityMesh(z);
+  }
+  return z;
 }
 // ---- src/game/world/arena.js ----
 // ---- watchtower geometry: solid footprint, an inset walkable roof, and a south-facing ladder zone ----
@@ -1579,6 +1589,8 @@ function menuSceneUpdate(dt){
   }
 }
 function spawnMatch(){
+  disposeEntityMeshes(humans);
+  disposeEntityMeshes(zombies);
   humans.length=0; zombies.length=0; bullets.length=0; slashes.length=0; bombs.length=0; zaps.length=0;
   particles.length=0; floaters.length=0; killFeed.length=0; zoneWarn=0;
   pickups.length=0; drops.length=0; hitmarks.length=0; splats.length=0; wallStreaks.length=0; dmgDirs.length=0; confetti=[]; rings.length=0;
@@ -1806,6 +1818,7 @@ function hurt(e, dmg, src, isHumanTarget){
 }
 function die(e, src, isHumanTarget){
   e.alive=false; e.hp=0; e.burn=0;
+  if (e.mesh && window.World3D) { window.World3D.disposeMesh(e.mesh); e.mesh = null; }
   const gore = '#c0303a', goreCol = 'rgba(120,22,30,';   // red blood for everyone
   const ka = (src && src!==e) ? Math.atan2(e.y-src.y, e.x-src.x) : rand(0,TAU);
   for(let i=0;i<14;i++) spark(e.x,e.y, gore, rand(60,240), rand(0,TAU), .9);            // burst
@@ -4894,6 +4907,27 @@ function refreshHud(){
 //  Main loop
 // ============================================================
 // ---- src/game/core/loop.js ----
+function disposeEntityMeshes(list){
+  const w3d = window.World3D;
+  if (!w3d?.disposeMesh) return;
+  for (const e of list) {
+    if (e.mesh) { w3d.disposeMesh(e.mesh); e.mesh = null; }
+  }
+}
+
+function syncAllEntityMeshes(){
+  const w3d = window.World3D;
+  if (!w3d?.ready || !w3d.syncEntityMesh) return;
+  for (const h of humans) {
+    if (h.alive && !h.mesh && w3d.makeHumanMesh) h.mesh = w3d.makeHumanMesh(h.look || h.avatar?.look);
+    if (h.mesh) w3d.syncEntityMesh(h);
+  }
+  for (const z of zombies) {
+    if (z.alive && !z.mesh && w3d.makeZombieMesh) z.mesh = w3d.makeZombieMesh(z.kind, z.size);
+    if (z.mesh) w3d.syncEntityMesh(z);
+  }
+}
+
 function tryInitWorld3D(){
   if (window.__world3dTried) return;
   if (!window.World3D) return;
@@ -4905,6 +4939,7 @@ function tryInitWorld3D(){
   window.World3D.buildGround(ARENA_W, ARENA_H);
   window.World3D.resize(W, H, DPR);
   syncBuildingMeshes();
+  syncAllEntityMeshes();
 }
 
 function loop(now){
@@ -4933,6 +4968,8 @@ function loop(now){
     if(player2 && player2.alive) updatePlayer(player2,dt,curGp2,false);
     for(const h of humans){ if(h.alive && !h.isPlayer) updateBot(h,dt); }
     for(const h of humans){ if(h.alive) integrate(h,dt); }
+    for (const h of humans) if (h.alive) window.World3D?.syncEntityMesh?.(h);
+    for (const z of zombies) if (z.alive) window.World3D?.syncEntityMesh?.(z);
     updateRevive(dt);
     leashPlayer2();   // co-op has one shared, non-zooming camera (see draw()) — keep both players in its view
     for(const z of zombies){ if(z.alive) updateZombie(z,dt); }
