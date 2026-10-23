@@ -157,12 +157,16 @@ function syncVfx(particles, zaps){
   vfxZaps.visible = zn > 0;
 }
 
+// Portrait phones only see ~W×H world units; buildings spawn ≥280px from center, so zoom out
+// or the pit looks empty. 2.1× keeps twin-stick readable while framing cover.
+const VIEW_SCALE = 2.1;
+
 function resize(w, h, dpr){
   if (!ready) return;
   const d = Math.min(dpr || 1, 2);
   renderer.setPixelRatio(d);
   renderer.setSize(w, h, false);
-  const halfW = w / 2, halfH = h / 2;
+  const halfW = (w / 2) * VIEW_SCALE, halfH = (h / 2) * VIEW_SCALE;
   camera.left = -halfW; camera.right = halfW;
   camera.top = halfH; camera.bottom = -halfH;
   camera.updateProjectionMatrix();
