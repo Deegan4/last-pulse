@@ -92,6 +92,7 @@ function buildDecor(){
   const mc=(n,k)=>Math.max(0,Math.round(n*(MP.m[k]??1)));
   timeOfDay = pick(MP.tod);
   groundSkin = MP.ground; ensureGround(groundSkin); groundKey = '';
+  if (window.World3D?.ready) window.World3D.setGroundTexture?.(groundSkin);
   campfires = []; barrels = [];
   const nBuild = mc(10, 'build');
   const cx = ARENA_W / 2, cy = ARENA_H / 2;
