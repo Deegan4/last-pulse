@@ -1,5 +1,34 @@
 let world3dTried = false;
 let world3dDead = false;
+let world3dMissingFrames = 0;
+const WORLD3D_MISSING_MAX = 120;
+let world3dContextHooked = false;
+
+function showWebglFail(){
+  window.World3D?.showFail?.();
+  const el = document.getElementById('webglFail');
+  if (el) el.classList.remove('hidden');
+  const c = document.getElementById('cv');
+  if (c) c.classList.add('hidden');
+}
+
+function hookWebglContextLoss(){
+  if (world3dContextHooked || !cv) return;
+  world3dContextHooked = true;
+  let restoreTried = false;
+  cv.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    world3dDead = true;
+    showWebglFail();
+  });
+  cv.addEventListener('webglcontextrestored', () => {
+    if (restoreTried || !window.World3D) return;
+    restoreTried = true;
+    world3dDead = false;
+    world3dTried = false;
+    tryInitWorld3D();
+  });
+}
 
 function disposeEntityMeshes(list){
   const w3d = window.World3D;
@@ -50,12 +79,20 @@ function syncAllEntityMeshes(){
 
 function tryInitWorld3D(){
   if (world3dTried) return;
-  if (!window.World3D) return;
+  if (!window.World3D) {
+    world3dMissingFrames++;
+    if (world3dMissingFrames >= WORLD3D_MISSING_MAX) {
+      world3dDead = true;
+      showWebglFail();
+    }
+    return;
+  }
   world3dTried = true;
   if (!window.World3D.init(cv)) {
     world3dDead = true;
     return;
   }
+  hookWebglContextLoss();
   window.World3D.buildGround(ARENA_W, ARENA_H);
   window.World3D.resize(W, H, DPR);
   syncBuildingMeshes();

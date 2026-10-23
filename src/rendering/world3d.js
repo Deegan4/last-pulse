@@ -7,6 +7,11 @@ let renderer, scene, camera, root, follow = { x: 1100, y: 320 };
 let camShakeX = 0, camShakeZ = 0;
 let ready = false;
 let hemiLight, keyLight, zoneMesh;
+const MAX_VFX_PARTICLES = 150;
+const MAX_VFX_ZAPS = 32;
+let vfxParticles, vfxParticleGeo, vfxParticlePos, vfxParticleCol;
+let vfxZaps, vfxZapGeo, vfxZapPos;
+const _vfxCol = new THREE.Color();
 const HEMI_INTENSITY_BASE = 1.1;
 const KEY_INTENSITY_BASE = 1.2;
 
@@ -64,9 +69,71 @@ function init(canvas){
   scene.add(keyLight);
 
   camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5000);
+  initVfxMeshes();
   ready = true;
   window.World3D.ready = true;
   return true;
+}
+
+function initVfxMeshes(){
+  vfxParticleGeo = new THREE.BufferGeometry();
+  vfxParticlePos = new Float32Array(MAX_VFX_PARTICLES * 3);
+  vfxParticleCol = new Float32Array(MAX_VFX_PARTICLES * 3);
+  vfxParticleGeo.setAttribute('position', new THREE.BufferAttribute(vfxParticlePos, 3));
+  vfxParticleGeo.setAttribute('color', new THREE.BufferAttribute(vfxParticleCol, 3));
+  vfxParticles = new THREE.Points(
+    vfxParticleGeo,
+    new THREE.PointsMaterial({ size: 7, vertexColors: true, transparent: true, opacity: 0.92, sizeAttenuation: false })
+  );
+  root.add(vfxParticles);
+
+  vfxZapGeo = new THREE.BufferGeometry();
+  vfxZapPos = new Float32Array(MAX_VFX_ZAPS * 2 * 3);
+  vfxZapGeo.setAttribute('position', new THREE.BufferAttribute(vfxZapPos, 3));
+  vfxZaps = new THREE.LineSegments(
+    vfxZapGeo,
+    new THREE.LineBasicMaterial({ color: 0x99eeff, transparent: true, opacity: 0.9 })
+  );
+  root.add(vfxZaps);
+}
+
+function particleVfxColor(css, out, i){
+  try { _vfxCol.set(css); } catch { _vfxCol.set(0xffee88); }
+  out[i * 3] = _vfxCol.r;
+  out[i * 3 + 1] = _vfxCol.g;
+  out[i * 3 + 2] = _vfxCol.b;
+}
+
+function syncVfx(particles, zaps){
+  if (!ready || !vfxParticles) return;
+  const pn = Math.min(particles?.length || 0, MAX_VFX_PARTICLES);
+  for (let i = 0; i < pn; i++) {
+    const p = particles[i];
+    const o = i * 3;
+    vfxParticlePos[o] = p.x;
+    vfxParticlePos[o + 1] = 10 + (p.r || 2);
+    vfxParticlePos[o + 2] = p.y;
+    particleVfxColor(p.color, vfxParticleCol, i);
+  }
+  vfxParticleGeo.setDrawRange(0, pn);
+  vfxParticleGeo.attributes.position.needsUpdate = true;
+  vfxParticleGeo.attributes.color.needsUpdate = true;
+  vfxParticles.visible = pn > 0;
+
+  const zn = Math.min(zaps?.length || 0, MAX_VFX_ZAPS);
+  for (let i = 0; i < zn; i++) {
+    const z = zaps[i];
+    const o = i * 6;
+    vfxZapPos[o] = z.x1;
+    vfxZapPos[o + 1] = 14;
+    vfxZapPos[o + 2] = z.y1;
+    vfxZapPos[o + 3] = z.x2;
+    vfxZapPos[o + 4] = 14;
+    vfxZapPos[o + 5] = z.y2;
+  }
+  vfxZapGeo.setDrawRange(0, zn * 2);
+  vfxZapGeo.attributes.position.needsUpdate = true;
+  vfxZaps.visible = zn > 0;
 }
 
 function resize(w, h, dpr){
@@ -296,7 +363,7 @@ window.World3D = {
   resize, render, setCamFollow, setShake, showFail, buildGround, makeBuildingMesh, disposeMesh,
   makeHumanMesh, makeZombieMesh, syncEntityMesh,
   makeBulletMesh, syncBullet, makePickupMesh, syncPickup, makeBombMesh, syncBomb,
-  setZone, setDayFactor, screenToGround, worldToScreen,
+  setZone, setDayFactor, syncVfx, screenToGround, worldToScreen,
   getScene(){ return scene; },
   getRoot(){ return root; },
 };

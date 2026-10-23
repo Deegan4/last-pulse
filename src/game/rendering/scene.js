@@ -25,7 +25,8 @@ function draw(){
     if (shake < 0) shake = 0;
   }
   window.World3D.setShake?.(shx, shy);
-  window.World3D.setCamFollow(t.x, t.y);
+  window.World3D.setCamFollow(cam.x + W / 2, cam.y + H / 2);
+  if (screenState === 'playing') window.World3D.syncVfx?.(particles, zaps);
   window.World3D.setDayFactor(dayLightFactor());
   window.World3D.render(CAM_PITCH, CAM_YAW);
 
