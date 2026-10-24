@@ -1,6 +1,6 @@
 # ROADMAP.md — Last Pulse future plan
 
-_The forward-looking plan for **Last Pulse** (v2.77.1). [memory.md](memory.md) records what
+_The forward-looking plan for **Last Pulse** (v2.78.0). [memory.md](memory.md) records what
 shipped and how; this file says what's next and why. When an item ships: add its memory.md
 bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 
@@ -10,6 +10,13 @@ bullet, bump `GAME_VERSION` + `CHANGELOG` in index.html, and check it off here._
 > and boss waves were listed as unbuilt months after shipping. Re-sync it in the same commit that
 > bumps the version. **When it disagrees with the code, the code wins** — verify against
 > `index.html` before trusting any bullet below.
+
+## v2.78.0 — "Perspective high-angle camera" (shipped)
+
+- [x] **Perspective match camera** — `src/rendering/world3d.js` uses `PerspectiveCamera`
+      (fov 50, dist 2100, near 10, far 8000) at the same 60° pitch / 15° yaw. Ground width at
+      430×932 stays within 1% of the old ortho `VIEW_SCALE` 2.1 framing. Hero billboard and
+      capsule bots/zombies unchanged. Fog pulled to 1600–5200 so the player is not swallowed.
 
 ## v2.77.1 — "3D art polish" (shipped)
 
