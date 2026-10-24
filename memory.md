@@ -1,5 +1,9 @@
 # memory.md — project handoff & running notes
 
+- **v2.78.0 — Perspective high-angle camera.** Match camera in `src/rendering/world3d.js` is
+  `PerspectiveCamera` (fov 50, dist 2100). Pitch stays 60°, yaw 15°, and 430×932 ground width
+  stays within 1% of the old ortho view. Fog is 1600–5200 so the pulled-back camera does not
+  gray out the player. Hero PNG billboard and capsule bots/zombies unchanged.
 - **v2.77.1 — 3D art polish.** Textured map grounds, building doors/windows/shadows, and player
   hero PNG billboard (bots/zombies still capsule proxies). No Meshy.
 - **v2.77.0 — True 3D high-angle world.** Match playfield is WebGL-only (`world3d.js` procedural

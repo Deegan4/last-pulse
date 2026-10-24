@@ -9,8 +9,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.77.1';
+const GAME_VERSION = '2.78.0';
 const CHANGELOG = [
+  { v:'2.78.0', items:[
+    ['📷','Perspective high-angle camera','The playfield camera is perspective now — same 60° pitch and the same ground scale, so cover reads with real depth'],
+  ]},
   { v:'2.77.1', items:[
     ['🎨','3D art polish','Map ground textures, detailed buildings with doors/windows/shadows, and your hero PNG as a camera-facing billboard'],
   ]},

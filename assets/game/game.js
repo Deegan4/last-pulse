@@ -316,8 +316,11 @@ const STRIPE_DONATE_URL = 'https://buy.stripe.com/00wdR9aBb19v2oXgmwgQE08';   //
 // ===== Version / what's-new =====
 // Bump GAME_VERSION and add an entry at the TOP of CHANGELOG when shipping player-visible
 // changes; returning players get a one-time "Game Updated!" popup with the newest entry.
-const GAME_VERSION = '2.77.1';
+const GAME_VERSION = '2.78.0';
 const CHANGELOG = [
+  { v:'2.78.0', items:[
+    ['📷','Perspective high-angle camera','The playfield camera is perspective now — same 60° pitch and the same ground scale, so cover reads with real depth'],
+  ]},
   { v:'2.77.1', items:[
     ['🎨','3D art polish','Map ground textures, detailed buildings with doors/windows/shadows, and your hero PNG as a camera-facing billboard'],
   ]},
@@ -1178,7 +1181,7 @@ let grace = 0;
 const GRACE = 2.6;
 // --- movement feel (tune here) ---
 const MOVE = { accel:0.30, friction:0.80, camLead:0.16 };   // start-snap, coast/skid, camera look-ahead (s of velocity)
-const CAM_PITCH = 60;   // degrees — high-angle tactical (World3D ortho camera)
+const CAM_PITCH = 60;   // degrees — high-angle tactical (World3D perspective camera)
 const CAM_YAW = 15;     // degrees — slight orbit
 // SHIPPED MODES — the single source of truth. BR & Squads were retired in v2.33.0 (engine paths
 // kept dormant), and the docs/driver kept referencing them for a while afterwards. scripts/

@@ -1,5 +1,5 @@
 // World3D — procedural high-angle playfield (no Meshy).
-// Sim (x,y) maps to Three.js (x, 0, y). Camera: ortho, pitch/yaw from game tunables.
+// Sim (x,y) maps to Three.js (x, 0, y). Camera: perspective, pitch/yaw from game tunables.
 import * as THREE from '../vendor/three/three.module.js';
 
 const DEG = Math.PI / 180;
@@ -70,7 +70,8 @@ function init(canvas){
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x1a2218, 900, 2200);
+  // Camera sits ~2100 from the player. The old 900–2200 fog swallowed that distance.
+  scene.fog = new THREE.Fog(0x1a2218, 1600, 5200);
   root = new THREE.Group();
   scene.add(root);
   hemiLight = new THREE.HemisphereLight(0xffffff, 0x334422, HEMI_INTENSITY_BASE);
@@ -89,7 +90,7 @@ function init(canvas){
   scene.add(keyLight);
   scene.add(keyLight.target);
 
-  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5000);
+  camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 10, 8000);
   initVfxMeshes();
   ready = true;
   window.World3D.ready = true;
@@ -157,18 +158,17 @@ function syncVfx(particles, zaps){
   vfxZaps.visible = zn > 0;
 }
 
-// Portrait phones only see ~W×H world units; buildings spawn ≥280px from center, so zoom out
-// or the pit looks empty. 2.1× keeps twin-stick readable while framing cover.
-const VIEW_SCALE = 2.1;
+// Vertical fov. Distance is the scale lever: at 430×932, dist 2100 keeps the
+// left-to-right ground width within 1% of the old ortho view (VIEW_SCALE 2.1 → ~903 units).
+const CAM_FOV = 50;
+const CAM_DIST = 2100;
 
 function resize(w, h, dpr){
   if (!ready) return;
   const d = Math.min(dpr || 1, 2);
   renderer.setPixelRatio(d);
   renderer.setSize(w, h, false);
-  const halfW = (w / 2) * VIEW_SCALE, halfH = (h / 2) * VIEW_SCALE;
-  camera.left = -halfW; camera.right = halfW;
-  camera.top = halfH; camera.bottom = -halfH;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
 
@@ -178,7 +178,7 @@ function setShake(sx, sz){ camShakeX = sx; camShakeZ = sz; }
 
 function placeCamera(pitchDeg, yawDeg){
   const pitch = pitchDeg * DEG, yaw = yawDeg * DEG;
-  const dist = 900;
+  const dist = CAM_DIST;
   const cx = follow.x, cz = follow.y;
   camera.position.set(
     cx + Math.sin(yaw) * Math.cos(pitch) * dist + camShakeX,
